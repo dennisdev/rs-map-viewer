@@ -1092,6 +1092,8 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
 
             const objectTriangleCounts: Map<number, [number, number]> = new Map();
 
+            const spawnTriangleCounts: Map<number, number> = new Map();
+
             spawns.forEach(({ id, type, rotation, localX, localY, plane }) => {
                 const def = regionLoader.getObjectDef(id);
 
@@ -1199,6 +1201,7 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
                 }
 
                 uniqueSpawns.add(type << 16 | id);
+                spawnTriangleCounts.set(type << 16 | id, model.faceCount);
 
                 const copy = ModelData.copyFrom(model, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
 
@@ -1431,6 +1434,7 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
 
             console.log(Array.from(objectTriangleCounts.entries()).filter(([id, [count, triangleCount]]) => triangleCount > 5000));
 
+            console.log(Array.from(spawnTriangleCounts.values()).reduce((a, b) => a + b, 0));
             console.log(uniqueSpawns);
         }
     }
