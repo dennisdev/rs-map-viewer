@@ -459,11 +459,13 @@ void main() {
 
     vec3 localPos = a_position + vec3(tilePos.x, 0, tilePos.y);
     
-    if (gl_DrawID > 1) {
+    if (gl_DrawID > 0) {
         if (contourGround == 0) {
             localPos.y -= getHeightInterp(tilePos.x, tilePos.y, plane) / 128.0;
+            // localPos.y -= 5.0;
         } else {
             localPos.y -= getHeightInterp(localPos.x, localPos.z, plane) / 128.0;
+            // localPos.y -= 5.0;
         }
     }
     
@@ -2009,7 +2011,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -2270,7 +2272,7 @@ class Test {
             drawCall.draw();
         });
 
-        getSpiralDeltas(5)
+        getSpiralDeltas(3)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
             .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
