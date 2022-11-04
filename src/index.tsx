@@ -43,6 +43,7 @@ async function test() {
   console.time('wasm');
 
   Compression.initWasm();
+  console.timeEnd('wasm');
 
   if (1 == 1) {
     return;
@@ -55,7 +56,6 @@ async function test() {
 
   // hack to get wasm to load
 
-  console.timeEnd('wasm');
 
   const fileSystem = await openFromUrl('/cache209/', [IndexType.CONFIGS, IndexType.MAPS, IndexType.MODELS, IndexType.SPRITES, IndexType.TEXTURES], true);
   // const fileSystem = await openFromUrl('/cache209/', [], true);
@@ -285,7 +285,7 @@ async function test() {
       if (!def) {
         const objectFile = objectArchive.getFile(id);
         if (objectFile) {
-          def = new ObjectDefinition(id, false);
+          def = new ObjectDefinition(id);
           def.decode(objectFile.getDataAsBuffer());
           def.post();
           objects.set(id, def);

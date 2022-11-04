@@ -1,10 +1,10 @@
-import { brightenRgb } from "./Client";
-import { TextureDefinition } from "./fs/definition/TextureDefinition";
-import { IndexSync } from "./fs/Index";
-import { StoreSync } from "./fs/Store";
-import { SpriteLoader } from "./sprite/SpriteLoader";
+import { TextureDefinition } from "../definition/TextureDefinition";
+import { IndexSync } from "../Index";
+import { StoreSync } from "../Store";
+import { SpriteLoader } from "../../sprite/SpriteLoader";
+import { brightenRgb } from "../../util/ColorUtil";
 
-export class TextureProvider {
+export class TextureLoader {
     textureIndex: IndexSync<StoreSync>;
 
     spriteIndex: IndexSync<StoreSync>;
@@ -23,7 +23,7 @@ export class TextureProvider {
         })
     }
 
-    public static load(textureIndex: IndexSync<StoreSync>, spriteIndex: IndexSync<StoreSync>): TextureProvider {
+    public static load(textureIndex: IndexSync<StoreSync>, spriteIndex: IndexSync<StoreSync>): TextureLoader {
         const definitions: Map<number, TextureDefinition> = new Map();
 
         const texturesArchive = textureIndex.getArchive(0);
@@ -36,7 +36,7 @@ export class TextureProvider {
                 }
             });
 
-        return new TextureProvider(textureIndex, spriteIndex, definitions);
+        return new TextureLoader(textureIndex, spriteIndex, definitions);
     }
 
     getTextureIds(): number[] {
@@ -116,7 +116,7 @@ export class TextureProvider {
                         }
                     }
                 } else {
-                    if (sprite.subWidth != 128 || size != 64) {
+                    if (sprite.subWidth !== 128 || size !== 64) {
                         throw new Error('Texture sprite has unexpected size');
                     }
 

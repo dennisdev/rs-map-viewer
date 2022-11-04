@@ -5,8 +5,8 @@ function resizeCanvas(canvas: HTMLCanvasElement) {
     const height = window.innerHeight;
 
     if (canvas.width !== width || canvas.height !== height) {
-        canvas.style.width = width + "px";
-        canvas.style.height = height + "px";
+        // canvas.style.width = width + "px";
+        // canvas.style.height = height + "px";
         canvas.width = width;
         canvas.height = height;
         return true;
@@ -14,6 +14,12 @@ function resizeCanvas(canvas: HTMLCanvasElement) {
 
     return false;
 }
+
+// const worker = new Worker(new URL('./worker', import.meta.url));
+// worker.onmessage = (e: MessageEvent<string>) => {
+//     console.log('Received from worker:', e.data);
+// };
+// worker.postMessage('I love dogs');
 
 const useCanvas = (init: (gl: WebGL2RenderingContext) => void,
     draw: (gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) => void) => {
@@ -25,7 +31,7 @@ const useCanvas = (init: (gl: WebGL2RenderingContext) => void,
         if (!canvas) {
             return;
         }
-        const gl = canvas.getContext('webgl2');
+        const gl = canvas.getContext('webgl2', {antialias: false});
         if (!gl) {
             throw new Error('This browser does not support webgl2');
         }

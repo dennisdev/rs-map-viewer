@@ -94,9 +94,9 @@ export class ObjectDefinition extends Definition {
 
     params!: ParamsMap;
 
-    constructor(id: number, lowDetail: boolean) {
+    constructor(id: number) {
         super(id);
-        this.lowDetail = lowDetail;
+        this.lowDetail = false;
         this.name = "null";
         this.sizeX = 1;
         this.sizeY = 1;
@@ -480,7 +480,7 @@ export class ObjectDefinition extends Definition {
 
         const hasOffset = this.offsetX !== 0 || this.offsetHeight !== 0 || this.offsetY !== 0;
 
-        const copy = ModelData.copyFrom(model, rotation === 0 && !hasResize && !hasOffset, !this.recolorFrom, !this.retextureFrom);
+        const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !this.recolorFrom, !this.retextureFrom);
 
         if (type === 4 && rotation > 3) {
             copy.rotate(256);

@@ -2,24 +2,32 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import WebGLCanvas from './Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
-import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture } from 'picogl';
+import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall } from 'picogl';
 import { MemoryFileSystem, openFromUrl } from './client/fs/FileSystem';
 import { IndexType } from './client/fs/IndexType';
 import { ConfigType } from './client/fs/ConfigType';
 import { UnderlayDefinition } from './client/fs/definition/UnderlayDefinition';
-import { Scene } from './client/Scene';
+import { ObjectSpawn, Scene } from './client/Scene';
 import { OverlayDefinition } from './client/fs/definition/OverlayDefinition';
 import { IndexSync } from './client/fs/Index';
 import { StoreSync } from './client/fs/Store';
 import { TextureDefinition } from './client/fs/definition/TextureDefinition';
-import { HSL_RGB_MAP, brightenRgb } from './client/Client';
+import { } from './client/Client';
 import { Archive } from './client/fs/Archive';
 import { SpriteLoader } from './client/sprite/SpriteLoader';
-import { TextureProvider } from './client/TextureProvider';
+import { TextureLoader } from './client/fs/loader/TextureLoader';
 import { ByteBuffer } from './client/util/ByteBuffer';
 import { ObjectDefinition } from './client/fs/definition/ObjectDefinition';
 import { ModelData } from './client/model/ModelData';
 import { Model } from './client/model/Model';
+import { spawn, Pool, Worker, Transfer, TransferDescriptor, ModuleThread } from "threads";
+import { RegionLoader } from './client/RegionLoader';
+import { HSL_RGB_MAP, brightenRgb, packHsl } from './client/util/ColorUtil';
+import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
+import { CachedOverlayLoader, OverlayLoader } from './client/fs/loader/OverlayLoader';
+import { CachedObjectLoader } from './client/fs/loader/ObjectLoader';
+import { ChunkData, ChunkDataLoader } from './ChunkDataLoader';
+import { MemoryStore } from './client/fs/MemoryStore';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -379,8 +387,120 @@ void main() {
 }
 `.trim();
 
-const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
+const vertexShader2 = `
+#version 300 es
+#extension GL_ANGLE_multi_draw : require
 
+precision highp float;
+
+layout(std140, column_major) uniform;
+
+layout(location = 0) in vec3 a_position;
+layout(location = 1) in vec4 a_color;
+layout(location = 2) in vec2 a_texCoord;
+layout(location = 3) in uint a_texId;
+
+uniform SceneUniforms {
+    mat4 u_viewProjMatrix;
+};
+
+uniform mat4 u_modelMatrix;
+uniform float u_currentTime;
+uniform float u_timeLoaded;
+
+uniform highp usampler2D u_perModelPosTexture;
+uniform highp usampler2DArray u_heightMap;
+
+out vec4 v_color;
+out vec2 v_texCoord;
+flat out int v_texId;
+flat out float v_loadAlpha;
+
+float getHeight(int x, int y, uint plane) {
+    uvec2 heightPacked = texelFetch(u_heightMap, ivec3(x, y, plane), 0).gr;
+
+    int height = int(heightPacked.x) << 8 | int(heightPacked.y);
+
+    return float(height * 8);
+}
+
+float getHeightInterp(float x, float y, uint plane) {
+    int ix = int(x);
+    int iy = int(y);
+
+    float h00 = getHeight(ix, iy, plane);
+    float h10 = getHeight(ix + 1, iy, plane);
+    float h01 = getHeight(ix, iy + 1, plane);
+    float h11 = getHeight(ix + 1, iy + 1, plane);
+    
+    // bilinear interpolation
+    return h00 * (1.0 - mod(x, 1.0)) * (1.0 - mod(y, 1.0)) +
+        h10 * mod(x, 1.0) * (1.0 - mod(y, 1.0)) +
+        h01 * (1.0 - mod(x, 1.0)) * mod(y, 1.0) +
+        h11 * mod(x, 1.0) * mod(y, 1.0);
+}
+
+void main() {
+    v_color = a_color;
+    v_texCoord = a_texCoord;
+    v_texId = int(a_texId);
+    v_loadAlpha = min(u_currentTime - u_timeLoaded, 1.0);
+    
+    uvec2 offsetVec = texelFetch(u_perModelPosTexture, ivec2(gl_DrawID, 0), 0).gr;
+    int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
+
+    uvec4 modelData = texelFetch(u_perModelPosTexture, ivec2(offset + gl_InstanceID, 0), 0);
+
+    uint plane = modelData.g;
+
+    int contourGround = int(modelData.r);
+
+    vec2 tilePos = vec2(modelData.ab) / vec2(2);
+
+    vec3 localPos = a_position + vec3(tilePos.x, 0, tilePos.y);
+    
+    if (gl_DrawID > 1) {
+        if (contourGround == 0) {
+            localPos.y -= getHeightInterp(tilePos.x, tilePos.y, plane) / 128.0;
+        } else {
+            localPos.y -= getHeightInterp(localPos.x, localPos.z, plane) / 128.0;
+        }
+    }
+    
+    gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
+}
+`.trim();
+
+const fragmentShader2 = `
+#version 300 es
+#extension GL_ANGLE_multi_draw : require
+
+precision highp float;
+
+layout(std140, column_major) uniform;
+
+in vec4 v_color;
+in vec2 v_texCoord;
+flat in int v_texId;
+flat in float v_loadAlpha;
+
+uniform highp sampler2DArray u_textures;
+
+out vec4 fragColor;
+
+void main() {
+    fragColor = v_color * vec4(v_loadAlpha);
+    //fragColor = texture(u_textures, vec3(v_texCoord, 1));
+    if (v_texId > 0) {
+        vec4 res = texture(u_textures, vec3(v_texCoord, v_texId - 1));
+        fragColor = vec4(res.bgr, res.a) * v_color * vec4(v_loadAlpha);;
+        //fragColor = vec4(fragColor.rgb, 1.0);
+        //fragColor = v_color;
+    }
+}
+`.trim();
+
+const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
 
 function method5679(var0: number, var1: number) {
     if (var0 == -1) {
@@ -418,26 +538,6 @@ function method3516(var0: number, var1: number) {
 
         return (var0 & 0xFF80) + var1;
     }
-}
-
-function packHsl(hue: number, saturation: number, lightness: number) {
-    if (lightness > 179) {
-        saturation = saturation / 2 | 0;
-    }
-
-    if (lightness > 192) {
-        saturation = saturation / 2 | 0;
-    }
-
-    if (lightness > 217) {
-        saturation = saturation / 2 | 0;
-    }
-
-    if (lightness > 243) {
-        saturation = saturation / 2 | 0;
-    }
-
-    return (saturation / 32 << 7) + (hue / 4 << 10) + (lightness / 2 | 0);
 }
 
 function getSpiralDeltas(radius: number): number[][] {
@@ -569,388 +669,6 @@ function computeTextureCoords(model: Model): number[] | undefined {
     return faceTextureUCoordinates;
 }
 
-class RegionLoader {
-    mapIndex: IndexSync<StoreSync>;
-
-    xteasMap: Map<number, number[]>;
-
-    underlayArchive: Archive;
-
-    overlayArchive: Archive;
-
-    objectArchive: Archive;
-
-    regions: Map<number, Scene> = new Map();
-
-    invalidRegions: Set<number> = new Set();
-
-    underlays: Map<number, UnderlayDefinition> = new Map();
-
-    overlays: Map<number, OverlayDefinition> = new Map();
-
-    objects: Map<number, ObjectDefinition> = new Map();
-
-    blendedUnderlayColors: Map<number, Int32Array[][]> = new Map();
-
-    lightLevels: Map<number, Int32Array[][]> = new Map();
-
-    constructor(mapIndex: IndexSync<StoreSync>, xteasMap: Map<number, number[]>, underlayArchive: Archive, overlayArchive: Archive, objectArchive: Archive) {
-        this.mapIndex = mapIndex;
-        this.xteasMap = xteasMap;
-        this.underlayArchive = underlayArchive;
-        this.overlayArchive = overlayArchive;
-        this.objectArchive = objectArchive;
-    }
-
-    getRegionId(regionX: number, regionY: number): number {
-        return regionX << 8 | regionY;
-    }
-
-    getTerrainArchiveId(regionX: number, regionY: number): number {
-        return this.mapIndex.getArchiveId(`m${regionX}_${regionY}`);
-    }
-
-    getLandscapeArchiveId(regionX: number, regionY: number): number {
-        return this.mapIndex.getArchiveId(`l${regionX}_${regionY}`);
-    }
-
-    getTerrainData(regionX: number, regionY: number): Int8Array | undefined {
-        const archiveId = this.getTerrainArchiveId(regionX, regionY);
-        if (archiveId === -1) {
-            return undefined;
-        }
-        const file = this.mapIndex.getFile(archiveId, 0);
-        return file && file.data;
-    }
-
-    getLandscapeData(regionX: number, regionY: number): Int8Array | undefined {
-        const archiveId = this.getLandscapeArchiveId(regionX, regionY);
-        if (archiveId === -1) {
-            return undefined;
-        }
-        const key = this.xteasMap.get(archiveId);
-        if (!key) {
-            return undefined;
-        }
-        const file = this.mapIndex.getFile(archiveId, 0, key);
-        return file && file.data;
-    }
-
-    getRegion(regionX: number, regionY: number): Scene | undefined {
-        const id = this.getRegionId(regionX, regionY);
-
-        if (this.invalidRegions.has(id)) {
-            return undefined;
-        }
-
-        let region = this.regions.get(id);
-
-        if (!region) {
-            console.log('load region', regionX, regionY);
-            const terrainData = this.getTerrainData(regionX, regionY);
-            if (terrainData) {
-                region = new Scene(209, Scene.MAX_PLANE, Scene.MAP_SIZE, Scene.MAP_SIZE);
-                region.decodeTerrain(terrainData, 0, 0, regionX * 64, regionY * 64);
-
-                this.regions.set(id, region);
-            } else {
-                this.invalidRegions.add(id);
-            }
-        }
-
-        return region;
-    }
-
-    getUnderlayDef(id: number): UnderlayDefinition {
-        let def = this.underlays.get(id);
-        if (!def) {
-            def = new UnderlayDefinition(id);
-            const file = this.underlayArchive.getFile(id);
-            if (file) {
-                def.decode(file.getDataAsBuffer());
-                def.post();
-            }
-            this.underlays.set(id, def);
-        }
-        return def;
-    }
-
-    getOverlayDef(id: number): OverlayDefinition {
-        let def = this.overlays.get(id);
-        if (!def) {
-            def = new OverlayDefinition(id);
-            const file = this.overlayArchive.getFile(id);
-            if (file) {
-                def.decode(file.getDataAsBuffer());
-                def.post();
-            }
-            this.overlays.set(id, def);
-        }
-        return def;
-    }
-
-    getObjectDef(id: number): ObjectDefinition {
-        let def = this.objects.get(id);
-        if (!def) {
-            def = new ObjectDefinition(id, false);
-            const file = this.objectArchive.getFile(id);
-            if (file) {
-                def.decode(file.getDataAsBuffer());
-                def.post();
-            }
-            this.objects.set(id, def);
-        }
-        return def;
-    }
-
-    getHeight(x: number, y: number, plane: number): number {
-        x |= 0;
-        y |= 0;
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
-        if (!region) {
-            return 0;
-        }
-        // added height based on plane to fix zfighting on bridges
-        return region.tileHeights[plane][x % 64][y % 64];// - plane * 0.5;
-    }
-
-    getHeightInterp(x: number, y: number, plane: number): number {
-        const h00 = this.getHeight(x, y, plane);
-        const h10 = this.getHeight(x + 1, y, plane);
-        const h01 = this.getHeight(x, y + 1, plane);
-        const h11 = this.getHeight(x + 1, y + 1, plane);
-
-        // bilinear interpolation
-        return h00 * (1 - x % 1) * (1 - y % 1) +
-            h10 * (x % 1) * (1 - y % 1) +
-            h01 * (1 - x % 1) * (y % 1) +
-            h11 * (x % 1) * (y % 1);
-    }
-
-    getUnderlayId(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
-        if (!region) {
-            return -1;
-        }
-        return region.tileUnderlays[plane][x % 64][y % 64] - 1;
-    }
-
-    getUnderlay(x: number, y: number, plane: number): UnderlayDefinition {
-        return this.getUnderlayDef(this.getUnderlayId(x, y, plane));
-    }
-
-    getUnderlayHsl(x: number, y: number, plane: number): vec4 {
-        const underlay = this.getUnderlay(x, y, plane);
-        return vec4.fromValues(underlay.hue, underlay.saturation, underlay.lightness, underlay.hueMultiplier);
-    }
-
-    getOverlayId(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
-        if (!region) {
-            return -1;
-        }
-        return region.tileOverlays[plane][x % 64][y % 64] - 1;
-    }
-
-    getTileShape(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
-        if (!region) {
-            return -1;
-        }
-        return region.tileShapes[plane][x % 64][y % 64] + 1;
-    }
-
-    getTileRotation(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
-        if (!region) {
-            return -1;
-        }
-        return region.tileRotations[plane][x % 64][y % 64];
-    }
-
-    blendUnderlays(regionX: number, regionY: number, plane: number): Int32Array[] {
-        const BLEND = 5;
-
-        const baseX = regionX * Scene.MAP_SIZE;
-        const baseY = regionY * Scene.MAP_SIZE;
-
-        const colors: Int32Array[] = new Array(Scene.MAP_SIZE);
-        for (let i = 0; i < Scene.MAP_SIZE; i++) {
-            colors[i] = new Int32Array(Scene.MAP_SIZE).fill(-1);
-        }
-
-        const hues = new Array(Scene.MAP_SIZE + BLEND * 2).fill(0);
-        const sats = new Array(hues.length).fill(0);
-        const light = new Array(hues.length).fill(0);
-        const mul = new Array(hues.length).fill(0);
-        const num = new Array(hues.length).fill(0);
-
-        const hasLeftRegion = !!this.getRegion(regionX - 1, regionY);
-        const hasRightRegion = !!this.getRegion(regionX + 1, regionY);
-        const hasUpRegion = !!this.getRegion(regionX, regionY + 1);
-        const hasDownRegion = !!this.getRegion(regionX, regionY - 1);
-
-        for (let xi = (hasLeftRegion ? -BLEND * 2 : -BLEND); xi < Scene.MAP_SIZE + (hasRightRegion ? BLEND * 2 : BLEND); xi++) {
-            for (let yi = (hasDownRegion ? -BLEND : 0); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0); yi++) {
-                const xr = xi + BLEND;
-                if (xr >= (hasLeftRegion ? -BLEND : 0) && xr < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)) {
-                    const underlayId = this.getUnderlayId(baseX + xr, baseY + yi, plane);
-                    if (underlayId != -1) {
-                        const underlay = this.getUnderlayDef(underlayId);
-                        hues[yi + BLEND] += underlay.hue;
-                        sats[yi + BLEND] += underlay.saturation;
-                        light[yi + BLEND] += underlay.lightness;
-                        mul[yi + BLEND] += underlay.hueMultiplier;
-                        num[yi + BLEND]++;
-                    }
-
-                }
-
-                const xl = xi - BLEND;
-                if (xl >= (hasLeftRegion ? -BLEND : 0) && xl < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)) {
-                    const underlayId = this.getUnderlayId(baseX + xl, baseY + yi, plane);
-                    if (underlayId != -1) {
-                        const underlay = this.getUnderlayDef(underlayId);
-                        hues[yi + BLEND] -= underlay.hue;
-                        sats[yi + BLEND] -= underlay.saturation;
-                        light[yi + BLEND] -= underlay.lightness;
-                        mul[yi + BLEND] -= underlay.hueMultiplier;
-                        num[yi + BLEND]--;
-                    }
-
-                }
-            }
-
-
-            if (xi >= 0 && xi < Scene.MAP_SIZE) {
-                let runningHues = 0;
-                let runningSat = 0;
-                let runningLight = 0;
-                let runningMultiplier = 0;
-                let runningNumber = 0;
-
-                for (let yi = (hasDownRegion ? -BLEND * 2 : -BLEND); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND * 2 : BLEND); yi++) {
-                    const yu = yi + BLEND;
-                    if (yu >= (hasDownRegion ? -BLEND : 0) && yu < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)) {
-                        runningHues += hues[yu + BLEND];
-                        runningSat += sats[yu + BLEND];
-                        runningLight += light[yu + BLEND];
-                        runningMultiplier += mul[yu + BLEND];
-                        runningNumber += num[yu + BLEND];
-                    }
-
-                    const yd = yi - BLEND;
-                    if (yd >= (hasDownRegion ? -BLEND : 0) && yd < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)) {
-                        runningHues -= hues[yd + BLEND];
-                        runningSat -= sats[yd + BLEND];
-                        runningLight -= light[yd + BLEND];
-                        runningMultiplier -= mul[yd + BLEND];
-                        runningNumber -= num[yd + BLEND];
-                    }
-
-                    if (yi >= 0 && yi < Scene.MAP_SIZE) {
-                        const underlayId = this.getUnderlayId(baseX + xi, baseY + yi, plane);
-                        if (underlayId != -1) {
-                            const avgHue = (runningHues * 256 / runningMultiplier) | 0;
-                            const avgSat = (runningSat / runningNumber) | 0;
-                            const avgLight = (runningLight / runningNumber) | 0;
-
-                            colors[xi][yi] = packHsl(avgHue, avgSat, avgLight);
-                        }
-                    }
-                }
-            }
-        }
-
-        return colors;
-    }
-
-    getBlendedUnderlayColors(regionX: number, regionY: number): Int32Array[][] {
-        const regionId = this.getRegionId(regionX, regionY);
-
-        let colors = this.blendedUnderlayColors.get(regionId);
-        if (!colors) {
-            colors = new Array(Scene.MAX_PLANE);
-            for (let i = 0; i < Scene.MAX_PLANE; i++) {
-                colors[i] = this.blendUnderlays(regionX, regionY, i);
-            }
-            this.blendedUnderlayColors.set(regionId, colors);
-        }
-        return colors;
-    }
-
-    getBlendedUnderlayColor(x: number, y: number, plane: number): number {
-        const regionX = x / 64 | 0;
-        const regionY = y / 64 | 0;
-
-        let colors = this.getBlendedUnderlayColors(regionX, regionY);
-        return colors[plane][x % 64][y % 64];
-    }
-
-    calculateLightLevels(regionX: number, regionY: number, plane: number): Int32Array[] {
-        const baseX = regionX * Scene.MAP_SIZE;
-        const baseY = regionY * Scene.MAP_SIZE;
-
-        const levels: Int32Array[] = new Array(Scene.MAP_SIZE);
-        for (let i = 0; i < Scene.MAP_SIZE; i++) {
-            levels[i] = new Int32Array(Scene.MAP_SIZE);
-        }
-
-
-        // const var45: Uint8Array[] = new Array(Scene.MAP_SIZE + 2);
-        // for (let x = 0; x < Scene.MAP_SIZE + 2; x++) {
-        //     var45[x] = new Uint8Array(Scene.MAP_SIZE).fill(127);
-        // }
-
-        // LIGHT_X * LIGHT_X + LIGHT_Y * LIGHT_Y + LIGHT_Z * LIGHT_Z
-        const var9 = Math.sqrt(5100.0) | 0;
-        const var10 = var9 * 768 >> 8;
-
-        for (let x = baseX; x < baseX + Scene.MAP_SIZE; x++) {
-            for (let y = baseY; y < baseY + Scene.MAP_SIZE; y++) {
-                const heightDeltaX = this.getHeight(x + 1, y, plane) - this.getHeight(x - 1, y, plane);
-                const heightDeltaY = this.getHeight(x, y + 1, plane) - this.getHeight(x, y - 1, plane);
-                const sqrtHeightDelta = Math.sqrt(heightDeltaY * heightDeltaY + heightDeltaX * heightDeltaX + 65536) | 0;
-                const lightX = (heightDeltaX << 8) / sqrtHeightDelta | 0;
-                const lightY = 65536 / sqrtHeightDelta | 0;
-                const lightZ = (heightDeltaY << 8) / sqrtHeightDelta | 0;
-                const ambient = ((lightZ * -50 + lightX * -50 + lightY * -10) / var10 | 0) + 96;
-                const contrast = (0 >> 2)
-                    + (0 >> 2)
-                    + (0 >> 3)
-                    + (0 >> 3)
-                    + (0 >> 1);
-                levels[x - baseX][y - baseY] = ambient - contrast;
-            }
-        }
-
-        return levels;
-    }
-
-    getLightLevels(regionX: number, regionY: number): Int32Array[][] {
-        const regionId = this.getRegionId(regionX, regionY);
-
-        let levels = this.lightLevels.get(regionId);
-        if (!levels) {
-            // console.log('calc light levels: ', regionX, regionY);
-            levels = new Array(Scene.MAX_PLANE);
-            for (let i = 0; i < Scene.MAX_PLANE; i++) {
-                levels[i] = this.calculateLightLevels(regionX, regionY, i);
-            }
-            this.lightLevels.set(regionId, levels);
-        }
-        return levels;
-    }
-
-    getLightLevel(x: number, y: number, plane: number): number {
-        const regionX = x / 64 | 0;
-        const regionY = y / 64 | 0;
-
-        const levels = this.getLightLevels(regionX, regionY);
-        return levels[plane][x % 64][y % 64];
-    }
-}
-
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
 
@@ -960,10 +678,16 @@ type Terrain = {
     modelMatrix: mat4,
     vertexArray: VertexArray,
     triangleCount: number,
-    heights: Int32Array[][] | undefined,
+    drawRanges: number[][],
+    drawRangesLowDetail: number[][],
+    timeLoaded: number,
+    perModelPosTexture: Texture,
+    heightMapTexture: Texture,
+    drawCall: DrawCall,
+    drawCallLowDetail: DrawCall,
 }
 
-function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: TextureProvider, regionX: number, regionY: number,
+function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: TextureLoader, regionX: number, regionY: number,
     modelIndex: IndexSync<StoreSync>): Terrain {
 
     const baseX = regionX * 64;
@@ -978,6 +702,8 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
     const textureIds: number[] = [];
 
     const region = regionLoader.getRegion(regionX, regionY);
+
+    let terrainVertexOffset = 0;
 
     if (region) {
         const heights = region.tileHeights;
@@ -1067,6 +793,8 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
             }
         }
 
+        terrainVertexOffset = vertices.length;
+
         const landscapeData = regionLoader.getLandscapeData(regionX, regionY);
         if (landscapeData) {
             const uniqueSpawns = new Set<number>();
@@ -1093,6 +821,8 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
             const objectTriangleCounts: Map<number, [number, number]> = new Map();
 
             const spawnTriangleCounts: Map<number, number> = new Map();
+
+            const uniqModels: Map<string, Model> = new Map();
 
             spawns.forEach(({ id, type, rotation, localX, localY, plane }) => {
                 const def = regionLoader.getObjectDef(id);
@@ -1200,10 +930,10 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
                     return;
                 }
 
-                uniqueSpawns.add(type << 16 | id);
+                uniqueSpawns.add(rotation << 24 | type << 16 | id);
                 spawnTriangleCounts.set(type << 16 | id, model.faceCount);
 
-                const copy = ModelData.copyFrom(model, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
+                const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
 
                 // copy.translate(HALF_TILE_SIZE, HALF_TILE_SIZE, 0);
 
@@ -1242,7 +972,7 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
                     copy.resize(def.modelSizeX, def.modelSizeHeight, def.modelSizeY);
                 }
 
-                
+
                 // copy.calculateBounds();
 
                 // if (type >= 0 && type <= 4 || type == 9 || copy.height === 240) {
@@ -1258,12 +988,13 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
                 }
 
                 // if (type === 22) {
-                    // copy.translate(0, -1, 0);
+                // copy.translate(0, -1, 0);
                 // }
 
                 copy.calculateBounds();
 
                 const model2 = copy.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+                uniqModels.set(JSON.stringify(model2), model2);
                 // if (id === 44930) {
                 //     // console.log(copy.normals);
                 //     // const correct = new Int32Array([6932, 6933, 6687, 6687, 6686, 6686, 6686, 6683, 6683, 6928, 6928, 6929, 6928, 6683, 6681, 6690, 6690, 6690, 6687, 6687, 6685, 6685, 6686, 6688, 6685, 6690, 6690, 6686, 6686, 6686, 6690, 6690, 6690, 6690, 6690, 6690, 6690, 6684, 6684, 6680, 6680, 6680, 6680, 6686, 6689, 6686, 6688, 6680, 6680, 6680, 6686, 6686, 6685, 6685, 6685, 6683, 6683, 6686, 6686, 6686, 6686, 6681, 6689, 6685, 6686, 6686, 6680, 6681, 6683, 6685, 6690, 6684, 6681, 6688, 6684, 6680, 6680, 6680, 6682, 6684, 6688, 6690, 6681, 6680, 6690, 6690, 6685, 6686, 6681, 6681, 6680, 7616, 7616, 7616, 7616, 7616, 7616, 7619, 8652, 8652, 8652, 7617, 7617, 7617, 8652, 8652, 8652, 8652, 8652, 7617, 7617, 7617, 8652, 8652, 7617, 7617, 7617, 7617, 7617, 7617, 8652, 8652, 7617, 7617, 7617, 8652, 8652, 7617, 7617, 7617, 8652, 7620, 7617, 7617, 7617, 7618, 7617, 7617, 7617, 7617, 7617, 7617, 8652, 8652, 8652, 8652, 8652, 8652, 8652, 8652, 8652, 7617, 7617, 7617, 7617, 7617, 7617, 7617, 7617, 7617, 7617, 7617, 7618, 7618, 7619, 7617, 7617, 7617, 7619, 7617, 7617, 7616, 7616, 7616, 7616, 7616, 7616, 7618, 7620, 7619, 7619, 7619, 7619, 7619, 7619, 7617, 7617, 6690, 6690, 6684, 6684, 6682, 6681, 6680, 6680, 6684, 6685, 6690, 6690, 6690, 6690, 6690, 6690, 6690, 6690, 6690, 6688, 6689, 6687, 6684, 6680, 6681, 6680, 6680, 6680, 6684, 6684, 6929, 6928, 6932, 6933, 6687, 6687, 6687, 6680, 6680, 6680, 6681, 6927, 6926, 6680, 6681, 6680, 6686, 6686, 6686, 6686, 6686, 6930, 6930, 6686, 6686, 6686, 6685, 6930, 6931, 6688, 6685, 6686, 6687, 6680, 6683, 6684, 6690, 6690, 6690, 6687, 6687, 6690, 6680, 6681, 6681, 6686, 6685, 6690, 6687, 6687, 6687, 6687, 6687, 6687, 6685, 6685, 6684, 6684, 6686, 7478, 7478, 7476, 7478, 7478, 7477, 7478, 7478, 7477, 7477, 7477, 7477, 7479, 7477, 7477, 7476, 7477, 7477, 7477, 7477, 7477, 7477, 7477, 7477, 7477, 7475, 7477, 7477, 7478, 7478]);
@@ -1436,6 +1167,8 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
 
             console.log(Array.from(spawnTriangleCounts.values()).reduce((a, b) => a + b, 0));
             console.log(uniqueSpawns);
+            console.log(uniqModels.size);
+            console.log(Array.from(uniqModels.values()).map(m => m.faceCount).reduce((a, b) => a + b, 0));
         }
     }
 
@@ -1463,12 +1196,19 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
     const modelMatrix = mat4.create();
     mat4.translate(modelMatrix, modelMatrix, [baseX, 0, baseY]);
 
-    console.time('upload');
+    console.time('convert');
+    const verticesTyped = new Float32Array(vertices);
+    const colorsTyped = new Uint8Array(colors);
+    const texCoordsTyped = new Float32Array(texCoords);
+    const textureIdsTyped = new Uint8Array(textureIds);
+    console.timeEnd('convert');
 
-    const positionBuffer = app.createVertexBuffer(PicoGL.FLOAT, 3, new Float32Array(vertices));
-    const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, new Uint8Array(colors));
-    const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, new Float32Array(texCoords));
-    const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, new Uint8Array(textureIds));
+    console.time('upload');
+    // 3 * 4 + 4 + 2 * 4 + 1
+    const positionBuffer = app.createVertexBuffer(PicoGL.FLOAT, 3, verticesTyped);
+    const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, colorsTyped);
+    const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, texCoordsTyped);
+    const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, textureIdsTyped);
 
     const modelMatrixBuffer = app.createVertexBuffer(PicoGL.FLOAT_MAT4, 1, modelMatrix as Float32Array);
     const loadedTimeBuffer = app.createVertexBuffer(PicoGL.FLOAT, 1, new Float32Array([performance.now() * 0.001]));
@@ -1481,19 +1221,775 @@ function loadTerrain(app: PicoApp, regionLoader: RegionLoader, textureProvider: 
         .instanceAttributeBuffer(4, modelMatrixBuffer)
         .instanceAttributeBuffer(8, loadedTimeBuffer);
 
-        console.timeEnd('upload');
+    console.timeEnd('upload');
 
-    return { regionX, regionY, modelMatrix, vertexArray, triangleCount: vertices.length / 3, heights: region && region.tileHeights };
+    return {
+        regionX, regionY, modelMatrix, vertexArray, triangleCount: vertices.length / 3,
+        heights: region && region.tileHeights, drawRanges: [[0, vertices.length / 3, 1]],
+        timeLoaded: performance.now()
+    } as any;
+}
+
+type ModelSpawns = {
+    model: Model,
+    positions: vec3[],
+    mirrored: boolean,
+    def: ObjectDefinition,
+    type: number,
+}
+
+function loadTerrain2(app: PicoApp, regionLoader: RegionLoader, textureProvider: TextureLoader, regionX: number, regionY: number,
+    modelIndex: IndexSync<StoreSync>): Terrain {
+
+    const baseX = regionX * 64;
+    const baseY = regionY * 64;
+
+    const vertices: number[] = [];
+
+    const colors: number[] = [];
+
+    const texCoords: number[] = [];
+
+    const textureIds: number[] = [];
+
+    const region = regionLoader.getRegion(regionX, regionY);
+
+    let terrainVertexOffset = 0;
+
+    const baseModelMatrix = mat4.create();
+    mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
+
+    const matrices: mat4[] = [];
+
+    const drawRanges: number[][] = [];
+
+    const modelPosOffsets: number[] = [];
+
+    const modelPositions: vec4[] = [];
+
+    let floorDecorationDrawOffset: number | undefined = undefined;
+
+    if (region) {
+        const heights = region.tileHeights;
+        const underlayIds = region.tileUnderlays;
+        const overlayIds = region.tileOverlays;
+        const tileShapes = region.tileShapes;
+        const tileRotations = region.tileRotations;
+        const renderFlags = region.tileRenderFlags;
+
+        const blendedColors = regionLoader.getBlendedUnderlayColors(regionX, regionY);
+
+        const lightLevels = regionLoader.getLightLevels(regionX, regionY);
+
+
+
+        for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+            for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                for (let y = 0; y < Scene.MAP_SIZE; y++) {
+                    const underlayId = underlayIds[plane][x][y] - 1;
+
+                    const overlayId = overlayIds[plane][x][y] - 1;
+
+                    if (underlayId == -1 && overlayId == -1) {
+                        continue;
+                    }
+
+                    const heightSw = heights[plane][x][y];
+                    let heightSe: number;
+                    let heightNe: number;
+                    let heightNw: number;
+
+
+                    const lightSw = lightLevels[plane][x][y];
+                    let lightSe: number;
+                    let lightNe: number;
+                    let lightNw: number;
+
+                    if (x === Scene.MAP_SIZE - 1 || y === Scene.MAP_SIZE - 1) {
+                        heightSe = regionLoader.getHeight(baseX + x + 1, baseY + y, plane);
+                        heightNe = regionLoader.getHeight(baseX + x + 1, baseY + y + 1, plane);
+                        heightNw = regionLoader.getHeight(baseX + x, baseY + y + 1, plane);
+
+                        lightSe = regionLoader.getLightLevel(baseX + x + 1, baseY + y, plane);
+                        lightNe = regionLoader.getLightLevel(baseX + x + 1, baseY + y + 1, plane);
+                        lightNw = regionLoader.getLightLevel(baseX + x, baseY + y + 1, plane);
+                    } else {
+                        heightSe = heights[plane][x + 1][y];
+                        heightNe = heights[plane][x + 1][y + 1];
+                        heightNw = heights[plane][x][y + 1];
+
+                        lightSe = lightLevels[plane][x + 1][y];
+                        lightNe = lightLevels[plane][x + 1][y + 1];
+                        lightNw = lightLevels[plane][x][y + 1];
+                    }
+
+                    let underlayHsl = -1;
+                    if (underlayId !== -1) {
+                        underlayHsl = blendedColors[plane][x][y];
+                    }
+
+                    if (overlayId == -1) {
+                        addTileModel(0, 0, -1, x, y, heightSw, heightSe, heightNe, heightNw,
+                            method5679(underlayHsl, lightSw), method5679(underlayHsl, lightSe), method5679(underlayHsl, lightNe), method5679(underlayHsl, lightNw),
+                            0, 0, 0, 0,
+                            vertices, colors, texCoords, textureIds);
+                    } else {
+                        const shape = tileShapes[plane][x][y] + 1;
+                        const rotation = tileRotations[plane][x][y];
+
+                        const overlay = regionLoader.getOverlayDef(overlayId);
+
+                        const textureId = textureProvider.getTextureIndex(overlay.textureId) || -1;
+                        let overlayHsl: number;
+                        if (textureId !== -1) {
+                            overlayHsl = -1;
+                        } else if (overlay.primaryRgb == 0xFF00FF) {
+                            overlayHsl = -2;
+                        } else {
+                            overlayHsl = packHsl(overlay.hue, overlay.saturation, overlay.lightness);
+                        }
+
+                        addTileModel(shape, rotation, textureId, x, y, heightSw, heightSe, heightNe, heightNw,
+                            method5679(underlayHsl, lightSw), method5679(underlayHsl, lightSe), method5679(underlayHsl, lightNe), method5679(underlayHsl, lightNw),
+                            method3516(overlayHsl, lightSw), method3516(overlayHsl, lightSe), method3516(overlayHsl, lightNe), method3516(overlayHsl, lightNw),
+                            vertices, colors, texCoords, textureIds);
+                    }
+                }
+            }
+        }
+
+        terrainVertexOffset = vertices.length;
+
+
+        matrices.push(baseModelMatrix);
+
+        modelPosOffsets.push(modelPositions.length);
+        modelPositions.push([0, 0, 0, 0]);
+        drawRanges.push([0, terrainVertexOffset / 3, 1]);
+
+        const landscapeData = regionLoader.getLandscapeData(regionX, regionY);
+        if (landscapeData) {
+            const uniqueSpawns = new Set<number>();
+
+            const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
+            // const hmm = spawns.map((spawn) => regionLoader.getObjectDef(spawn.id))
+            // .filter(def => def.contouredGround >= 0);
+            // console.log(hmm);
+
+            const models: Map<number, ModelData> = new Map();
+
+            const getModel = (id: number) => {
+                let model = models.get(id);
+                if (!model) {
+                    const file = modelIndex.getFile(id, 0);
+                    if (file) {
+                        model = ModelData.decode(file.data);
+                        // models.set(id, model);
+                    }
+                }
+                return model;
+            }
+
+            const objectTriangleCounts: Map<number, [number, number]> = new Map();
+
+            const spawnTriangleCounts: Map<number, number> = new Map();
+
+            const uniqModels: Map<string, Model> = new Map();
+
+            const regionModelSpawns: Map<string, ModelSpawns> = new Map();
+
+            for (const spawn of spawns) {
+                let { id, type, rotation, localX, localY, plane } = spawn;
+                const def = regionLoader.getObjectDef(id);
+
+                // if (def.name && def.name.toLowerCase().includes('scoreboard')) {
+                //     console.log('stall', id, type, rotation);
+                // }
+
+                const modelIds = [];
+
+                if (type === 22) {
+                    // return;
+                }
+
+                if (def.objectTypes) {
+                    for (let i = 0; i < def.objectTypes.length; i++) {
+                        if (def.objectTypes[i] === type) {
+                            modelIds.push(def.objectModels[i]);
+                            break;
+                        }
+                    }
+                }
+                if (!modelIds.length && def.objectModels) {
+                    modelIds.push(...def.objectModels);
+                }
+
+                if (!modelIds.length) {
+                    continue;
+                }
+
+
+                // if ((renderFlags[plane][localX][localY] & 0x2) != 0) {
+                //     plane--; // bridge, shift down
+                // }
+
+                // if ((renderFlags[plane][localX][localY] & 0x8) != 0) {
+                //     plane = 0; // arch, always render (at the ge for example)
+                // }
+
+                if (localX == 62) {
+                    // console.log(def, type, rotation, localX, localY);
+                }
+
+                let sizeX = def.sizeX;
+                let sizeY = def.sizeY;
+
+                if (rotation == 1 || rotation == 3) {
+                    sizeX = def.sizeY;
+                    sizeY = def.sizeX;
+                }
+
+                const pos = vec2.fromValues(localX + sizeX / 2, localY + sizeY / 2);
+
+                const centerHeight = regionLoader.getHeightInterp(baseX + pos[0], baseY + pos[1], plane) / SCALE;
+
+                const adjustHeight = (x: number, y: number, height: number) => {
+                    if (x > 70 || y > 70) {
+                        console.log(x, y, def);
+                    }
+                    if (def.contouredGround == -1) {
+                        return centerHeight + height;
+                    }
+                    return regionLoader.getHeightInterp(baseX + x, baseY + y, plane) / SCALE + height;
+                };
+
+                let [count, triangleCount] = objectTriangleCounts.get(id) || [1, 0];
+
+                // def.isRotated ^ rotation > 3;
+                const mirrored = def.isRotated != rotation > 3;
+
+                // if (mirrored) {
+                //     return;
+                // }
+
+                const hasResize = def.modelSizeX !== 128 || def.modelSizeHeight !== 128 || def.modelSizeY !== 128;
+
+                const hasOffset = def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
+
+                const models: ModelData[] = [];
+
+                for (let i = 0; i < modelIds.length; i++) {
+                    const model = getModel(modelIds[i]);
+                    if (!model) {
+                        continue;
+                    }
+
+                    if (mirrored) {
+                        model.mirror();
+                    }
+
+                    models.push(model);
+                }
+
+                if (!models.length) {
+                    continue;
+                }
+
+                if (models.length > 1 && mirrored) {
+                    console.log(id, def);
+                }
+
+                const model = models.length === 1 ? models[0] : ModelData.merge(models, models.length);
+
+                if (model.faceCount === 0) {
+                    continue;
+                }
+
+                uniqueSpawns.add(rotation << 24 | type << 16 | id);
+                spawnTriangleCounts.set(type << 16 | id, model.faceCount);
+
+                const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
+
+                // copy.translate(HALF_TILE_SIZE, HALF_TILE_SIZE, 0);
+
+                // if (mirrored) {
+                //     copy.mirror();
+                // }
+
+                if (type == 4 && rotation > 3) {
+                    copy.rotate(256);
+                    copy.translate(45, 0, -45);
+                }
+
+                rotation &= 3;
+                if (rotation == 1) {
+                    copy.rotate90();
+                } else if (rotation == 2) {
+                    copy.rotate180();
+                } else if (rotation == 3) {
+                    copy.rotate270();
+                }
+
+                if (def.recolorFrom) {
+                    for (let var7 = 0; var7 < def.recolorFrom.length; ++var7) {
+                        copy.recolor(def.recolorFrom[var7], def.recolorTo[var7]);
+                    }
+                }
+
+                if (def.retextureFrom) {
+                    for (let var7 = 0; var7 < def.retextureFrom.length; ++var7) {
+                        copy.retexture(def.retextureFrom[var7], def.retextureTo[var7]);
+                    }
+                }
+
+
+                if (hasResize) {
+                    copy.resize(def.modelSizeX, def.modelSizeHeight, def.modelSizeY);
+                }
+
+
+                // copy.calculateBounds();
+
+                // if (type >= 0 && type <= 4 || type == 9 || copy.height === 240) {
+                //     copy.resize(128, 127, 128);
+                // }
+
+                // if (copy.maxX === 128 || copy.minX === -128 || copy.maxZ === 128 || copy.minZ === -128) {
+                //     copy.resize(50, 50, 50);
+                // }
+
+                if (hasOffset) {
+                    copy.translate(def.offsetX, def.offsetHeight, def.offsetY);
+                }
+
+                // if (type === 22) {
+                // copy.translate(0, -1, 0);
+                // }
+
+                copy.calculateBounds();
+
+                const model2 = copy.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+                const modelJson = JSON.stringify(model2);
+                uniqModels.set(modelJson, model2);
+
+                const modelSpawns = regionModelSpawns.get(modelJson) || { model: model2, positions: [], mirrored, def, type };
+                modelSpawns.positions.push([pos[0], pos[1], plane]);
+                regionModelSpawns.set(modelJson, modelSpawns);
+            }
+
+            // let offset = terrainVertexOffset;
+
+            console.log('diff models: ', regionModelSpawns.size);
+
+            const allModelSpawns = Array.from(regionModelSpawns.values());
+
+            allModelSpawns.sort((a, b) => a.type - b.type);
+
+            for (let i = 0; i < allModelSpawns.length; i++) {
+                const modelSpawns = allModelSpawns[i];
+
+                if (floorDecorationDrawOffset === undefined && modelSpawns.type === 22) {
+                    floorDecorationDrawOffset = i;
+                }
+
+                const model = modelSpawns.model;
+                const mirrored = modelSpawns.mirrored;
+
+                const verticesX = model.verticesX;
+                const verticesY = model.verticesY;
+                const verticesZ = model.verticesZ;
+
+                const facesA = model.indices1;
+                const facesB = model.indices2;
+                const facesC = model.indices3;
+
+                const faceAlphas = model.faceAlphas;
+
+                const modelTexCoords = computeTextureCoords(model);
+
+                const offset = vertices.length;
+
+
+                for (let f = 0; f < model.faceCount; f++) {
+                    const fa = facesA[f];
+                    const fb = facesB[f];
+                    const fc = facesC[f];
+
+                    let faceAlpha = (faceAlphas && faceAlphas[f] & 0xFF) || 255;
+
+                    if (faceAlpha === 0 || faceAlpha == 0xfe) {
+                        continue;
+                    }
+
+                    let hslA = model.faceColors1[f];
+                    let hslB = model.faceColors2[f];
+                    let hslC = model.faceColors3[f];
+
+                    if (hslC == -1) {
+                        hslC = hslB = hslA;
+                    } else if (hslC == -2) {
+                        continue;
+                    }
+
+                    const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
+
+                    const textureIndex = textureProvider.getTextureIndex(textureId) || -1;
+
+                    let rgbA = HSL_RGB_MAP[hslA];
+                    let rgbB = HSL_RGB_MAP[hslB];
+                    let rgbC = HSL_RGB_MAP[hslC];
+
+                    // const SCALE = 128;
+
+                    const vxa = verticesX[fa] / SCALE;
+                    const vxb = verticesX[fb] / SCALE;
+                    const vxc = verticesX[fc] / SCALE;
+
+                    const vza = verticesZ[fa] / SCALE;
+                    const vzb = verticesZ[fb] / SCALE;
+                    const vzc = verticesZ[fc] / SCALE;
+
+                    if (mirrored) {
+                        // reverse order for backface culling to work
+                        vertices.push(
+                            vxa, verticesY[fa] / SCALE, vza,
+                            vxb, verticesY[fb] / SCALE, vzb,
+                            vxc, verticesY[fc] / SCALE, vzc,
+                        );
+                    } else {
+                        vertices.push(
+                            vxa, verticesY[fa] / SCALE, vza,
+                            vxb, verticesY[fb] / SCALE, vzb,
+                            vxc, verticesY[fc] / SCALE, vzc,
+                        );
+                    }
+
+                    // colors.push(
+                    //     r, g, b, 1,
+                    //     r, g, b, 1,
+                    //     r, g, b, 1,
+                    // );
+
+                    if (textureIndex !== -1) {
+                        const lightA = (hslA & 127) / 127 * 255;
+                        const lightB = (hslB & 127) / 127 * 255;
+                        const lightC = (hslC & 127) / 127 * 255;
+                        // console.log(lightA, lightB, lightC, overlayHslNe, overlayHslNw, overlayHslSe, overlayHslSw);
+                        colors.push(
+                            lightA, lightA, lightA, 255,
+                            lightB, lightB, lightB, 255,
+                            lightC, lightC, lightC, 255,
+                        );
+                    } else {
+                        colors.push(
+                            (rgbA >> 16) & 0xFF, (rgbA >> 8) & 0xFF, rgbA & 0xFF, faceAlpha,
+                            (rgbB >> 16) & 0xFF, (rgbB >> 8) & 0xFF, rgbB & 0xFF, faceAlpha,
+                            (rgbC >> 16) & 0xFF, (rgbC >> 8) & 0xFF, rgbC & 0xFF, faceAlpha,
+                        );
+                    }
+
+                    if (modelTexCoords) {
+                        const texCoordIdx = f * 6;
+                        texCoords.push(
+                            modelTexCoords[texCoordIdx], modelTexCoords[texCoordIdx + 1],
+                            modelTexCoords[texCoordIdx + 2], modelTexCoords[texCoordIdx + 3],
+                            modelTexCoords[texCoordIdx + 4], modelTexCoords[texCoordIdx + 5],
+                        );
+                    } else {
+                        texCoords.push(
+                            0, 0,
+                            0, 0,
+                            0, 0,
+                        );
+                    }
+
+                    textureIds.push(
+                        textureIndex + 1,
+                        textureIndex + 1,
+                        textureIndex + 1,
+                    );
+                }
+
+                const modelVertexCount = vertices.length - offset;
+
+                modelPosOffsets.push(modelPositions.length);
+
+                modelSpawns.positions.forEach(pos => {
+                    const modelMatrix = mat4.create();
+                    mat4.translate(modelMatrix, modelMatrix, [baseX + pos[0], pos[1], baseY + pos[2]])
+                    matrices.push(modelMatrix);
+
+                    modelPositions.push([pos[0], pos[1], pos[2], modelSpawns.def.contouredGround]);
+                });
+
+                drawRanges.push([offset / 3, modelVertexCount / 3, modelSpawns.positions.length]);
+            }
+
+            console.log(Array.from(objectTriangleCounts.entries()).filter(([id, [count, triangleCount]]) => triangleCount > 5000));
+
+            console.log(Array.from(spawnTriangleCounts.values()).reduce((a, b) => a + b, 0));
+            console.log(uniqueSpawns);
+            console.log(uniqModels.size);
+            console.log(Array.from(uniqModels.values()).map(m => m.faceCount).reduce((a, b) => a + b, 0));
+            // console.log(regionModelSpawns);
+            console.log(matrices.length, spawns.length);
+        }
+    }
+
+    const modelPositionsTextureData = new Int32Array(modelPosOffsets.length + modelPositions.length);
+    modelPosOffsets.forEach((offset, index) => {
+        modelPositionsTextureData[index] = (modelPosOffsets.length + offset);
+    })
+
+    modelPositions.forEach((pos, index) => {
+        if ((pos[0] * 2 - (pos[0] * 2 | 0)) != 0 || (pos[1] * 2 - (pos[1] * 2 | 0)) != 0) {
+            console.log(pos);
+        }
+        const xNormalized = pos[0] / 64 * 255;
+        const yNormalized = pos[1] / 64 * 255;
+        modelPositionsTextureData[modelPosOffsets.length + index] = pos[0] * 2 << 24 | pos[1] * 2 << 16 | pos[2] << 8 | Math.min(pos[3] + 1, 1);
+    });
+
+    const perModelPosTexture = app.createTexture2D(new Uint8Array(modelPositionsTextureData.buffer), modelPositionsTextureData.length, 1,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+
+    const heightMapTextureData = new Int32Array(Scene.MAX_PLANE * 72 * 72).fill(240);
+
+    let dataIndex = 0;
+    for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+        for (let y = 0; y < 72; y++) {
+            for (let x = 0; x < 72; x++) {
+                heightMapTextureData[dataIndex++] = -regionLoader.getHeight(baseX + x, baseY + y, plane) / 8;
+            }
+        }
+    }
+
+    // const heightMapTexture = app.createTextureArray(new Uint8Array(heightMapTextureData.buffer), 72, 72, Scene.MAX_PLANE,
+    //     { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+    const heightMapTexture = app.createTextureArray(new Uint8Array(heightMapTextureData.buffer), 72, 72, Scene.MAX_PLANE,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+
+    console.log('model draws: ', modelPositions.length);
+    console.log('triangles: ', vertices.length / 3);
+
+    // addTile(-0.5, -0.5);
+    // addTile(-0.5, 0);
+    // addTile(-0.5, 0.5);
+    // addTile(0, -0.5);
+    // addTile(0, 0);
+    // addTile(0, 0.5);
+    // addTile(0.5, -0.5);
+    // addTile(0.5, 0);
+    // addTile(0.5, 0.5);
+
+    // const matrices = new Float32Array(1 * 16);
+
+    // for (let i = 0; i < 1; i++) {
+    //     const modelMatrix = mat4.create();
+    //     mat4.translate(modelMatrix, modelMatrix, [baseX, 0, baseY + i * 64]);
+    //     matrices.set(modelMatrix as Float32Array, i * 16);
+    // }
+
+    console.time('convert');
+    const verticesTyped = new Float32Array(vertices);
+    const colorsTyped = new Uint8Array(colors);
+    const texCoordsTyped = new Float32Array(texCoords);
+    const textureIdsTyped = new Uint8Array(textureIds);
+
+
+    const matricesTyped = new Float32Array(matrices.length * 16);
+    matrices.forEach((matrix, index) => {
+        matricesTyped.set(matrix, index * 16);
+    })
+    console.timeEnd('convert');
+
+    console.time('upload');
+    // 3 * 4 + 4 + 2 * 4 + 1
+    const positionBuffer = app.createVertexBuffer(PicoGL.FLOAT, 3, verticesTyped);
+    const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, colorsTyped);
+    const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, texCoordsTyped);
+    const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, textureIdsTyped);
+
+    // const modelMatrixBuffer = app.createVertexBuffer(PicoGL.FLOAT_MAT4, 1, matricesTyped);
+    // const loadedTimeBuffer = app.createVertexBuffer(PicoGL.FLOAT, 1, new Float32Array(matrices.length).fill(performance.now() * 0.001));
+
+    const vertexArray = app.createVertexArray()
+        .vertexAttributeBuffer(0, positionBuffer)
+        .vertexAttributeBuffer(1, colorBuffer, { normalized: true })
+        .vertexAttributeBuffer(2, texCoordBuffer)
+        .vertexAttributeBuffer(3, textureIdBuffer)
+    // .instanceAttributeBuffer(4, modelMatrixBuffer)
+    // .instanceAttributeBuffer(8, loadedTimeBuffer);
+
+    console.timeEnd('upload');
+
+    const drawRangesLowDetail = drawRanges.slice(0, floorDecorationDrawOffset || drawRanges.length);
+
+    return {
+        regionX, regionY, modelMatrix: baseModelMatrix, vertexArray, triangleCount: vertices.length / 3,
+        drawRanges, drawRangesLowDetail, timeLoaded: performance.now(), perModelPosTexture, heightMapTexture
+    } as any;
+}
+
+function loadTerrain3(app: PicoApp, chunkDataLoader: ChunkDataLoader, regionX: number, regionY: number): Terrain {
+    const baseX = regionX * 64;
+    const baseY = regionY * 64;
+
+    const baseModelMatrix = mat4.create();
+    mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
+
+    const chunkData = chunkDataLoader.load(regionX, regionY);
+
+    const positionBuffer = app.createVertexBuffer(PicoGL.FLOAT, 3, chunkData.vertices);
+    const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, chunkData.colors);
+    const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, chunkData.texCoords);
+    const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, chunkData.textureIds);
+
+    const vertexArray = app.createVertexArray()
+        .vertexAttributeBuffer(0, positionBuffer)
+        .vertexAttributeBuffer(1, colorBuffer, { normalized: true })
+        .vertexAttributeBuffer(2, texCoordBuffer)
+        .vertexAttributeBuffer(3, textureIdBuffer);
+
+    const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+    const heightMapTexture = app.createTextureArray(new Uint8Array(chunkData.heightMapTextureData.buffer), 72, 72, Scene.MAX_PLANE,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+    return {
+        regionX,
+        regionY,
+        modelMatrix: baseModelMatrix,
+        vertexArray,
+        triangleCount: chunkData.vertices.length / 3,
+        drawRanges: chunkData.drawRanges,
+        drawRangesLowDetail: chunkData.drawRanges,
+        timeLoaded: performance.now(),
+        perModelPosTexture,
+        heightMapTexture
+    } as any;
+}
+
+
+async function loadTerrain4(app: PicoApp, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>, regionX: number, regionY: number): Promise<Terrain> {
+    const baseX = regionX * 64;
+    const baseY = regionY * 64;
+
+    const baseModelMatrix = mat4.create();
+    mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
+
+    const chunkData = await chunkLoaderWorker.queue(worker => worker.load(regionX, regionY));
+
+    const positionBuffer = app.createVertexBuffer(PicoGL.FLOAT, 3, chunkData.vertices);
+    const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, chunkData.colors);
+    const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, chunkData.texCoords);
+    const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, chunkData.textureIds);
+
+    const vertexArray = app.createVertexArray()
+        .vertexAttributeBuffer(0, positionBuffer)
+        .vertexAttributeBuffer(1, colorBuffer, { normalized: true })
+        .vertexAttributeBuffer(2, texCoordBuffer)
+        .vertexAttributeBuffer(3, textureIdBuffer);
+
+    const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+    const heightMapTexture = app.createTextureArray(new Uint8Array(chunkData.heightMapTextureData.buffer), 72, 72, Scene.MAX_PLANE,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+    return {
+        regionX,
+        regionY,
+        modelMatrix: baseModelMatrix,
+        vertexArray,
+        triangleCount: chunkData.vertices.length / 3,
+        drawRanges: chunkData.drawRanges,
+        drawRangesLowDetail: chunkData.drawRangesLowDetail,
+        timeLoaded: performance.now(),
+        perModelPosTexture,
+        heightMapTexture
+    } as any;
+}
+
+function loadTerrain5(app: PicoApp, chunkData: ChunkData, program: Program, textureArray: Texture, sceneUniformBuffer: UniformBuffer): Terrain {
+    const regionX = chunkData.regionX;
+    const regionY = chunkData.regionY;
+
+    const baseX = regionX * 64;
+    const baseY = regionY * 64;
+
+    const baseModelMatrix = mat4.create();
+    mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
+
+    const positionBuffer = app.createVertexBuffer(PicoGL.FLOAT, 3, chunkData.vertices);
+    const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, chunkData.colors);
+    const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, chunkData.texCoords);
+    const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, chunkData.textureIds);
+
+    const vertexArray = app.createVertexArray()
+        .vertexAttributeBuffer(0, positionBuffer)
+        .vertexAttributeBuffer(1, colorBuffer, { normalized: true })
+        .vertexAttributeBuffer(2, texCoordBuffer)
+        .vertexAttributeBuffer(3, textureIdBuffer);
+
+    const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+    const heightMapTexture = app.createTextureArray(new Uint8Array(chunkData.heightMapTextureData.buffer), 72, 72, Scene.MAX_PLANE,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+    const time = performance.now();
+
+    let drawCall = app.createDrawCall(program, vertexArray)
+        .uniformBlock('SceneUniforms', sceneUniformBuffer)
+        .uniform('u_timeLoaded', time * 0.001)
+        .uniform('u_modelMatrix', baseModelMatrix)
+        .texture('u_textures', textureArray)
+        .texture('u_perModelPosTexture', perModelPosTexture)
+        .texture('u_heightMap', heightMapTexture)
+        .drawRanges(...chunkData.drawRanges);
+
+    let drawCallLowDetail = app.createDrawCall(program, vertexArray)
+        .uniformBlock('SceneUniforms', sceneUniformBuffer)
+        .uniform('u_timeLoaded', time * 0.001)
+        .uniform('u_modelMatrix', baseModelMatrix)
+        .texture('u_textures', textureArray)
+        .texture('u_perModelPosTexture', perModelPosTexture)
+        .texture('u_heightMap', heightMapTexture)
+        .drawRanges(...chunkData.drawRangesLowDetail);
+
+    return {
+        regionX,
+        regionY,
+        modelMatrix: baseModelMatrix,
+        vertexArray,
+        triangleCount: chunkData.vertices.length / 3,
+        drawRanges: chunkData.drawRanges,
+        drawRangesLowDetail: chunkData.drawRangesLowDetail,
+        timeLoaded: time,
+        perModelPosTexture,
+        heightMapTexture,
+        drawCall,
+        drawCallLowDetail
+    };
 }
 
 class Test {
     fileSystem: MemoryFileSystem;
 
+    chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>;
+
     modelIndex: IndexSync<StoreSync>;
 
     regionLoader: RegionLoader;
 
-    textureProvider: TextureProvider;
+    textureProvider: TextureLoader;
+
+    chunkDataLoader: ChunkDataLoader;
 
     app!: PicoApp;
 
@@ -1502,25 +1998,32 @@ class Test {
     timer!: Timer;
 
     program!: Program;
+    program2!: Program;
 
     sceneUniformBuffer!: UniformBuffer;
 
     textureArray!: Texture;
 
-    terrains: Terrain[] = [];
+    terrains: Map<number, Terrain> = new Map();
 
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 40, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+    // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
     projectionMatrix: mat4 = mat4.create();
     viewMatrix: mat4 = mat4.create();
     viewProjMatrix: mat4 = mat4.create();
 
-    constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>) {
+    loadingRegionIds: Set<number> = new Set();
+
+    chunksToLoad: ChunkData[] = [];
+
+    constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>) {
         this.fileSystem = fileSystem;
+        this.chunkLoaderWorker = chunkLoaderWorker;
 
         const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
         const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
@@ -1532,9 +2035,15 @@ class Test {
         const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
         const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
 
-        this.regionLoader = new RegionLoader(mapIndex, xteasMap, underlayArchive, overlayArchive, objectArchive);
+        const underlayLoader = new CachedUnderlayLoader(underlayArchive);
+        const overlayLoader = new CachedOverlayLoader(overlayArchive);
+        const objectLoader = new CachedObjectLoader(objectArchive);
 
-        this.textureProvider = TextureProvider.load(textureIndex, spriteIndex);
+        this.regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
+
+        this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
+
+        this.chunkDataLoader = new ChunkDataLoader(this.regionLoader, this.modelIndex, this.textureProvider);
 
 
         this.init = this.init.bind(this);
@@ -1558,6 +2067,10 @@ class Test {
             state.extensions.multiDrawInstanced = ext;
         }
 
+        console.log(PicoGL.WEBGL_INFO);
+
+        console.log(gl.getParameter(gl.MAX_SAMPLES));
+
         app.enable(gl.CULL_FACE);
         app.enable(gl.DEPTH_TEST);
         app.depthFunc(gl.LEQUAL);
@@ -1570,6 +2083,7 @@ class Test {
         this.timer = app.createTimer();
 
         this.program = app.createProgram(vertexShader, fragmentShader);
+        this.program2 = app.createProgram(vertexShader2, fragmentShader2);
 
         this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4]);
 
@@ -1577,28 +2091,28 @@ class Test {
 
         const textureArrayImage = this.textureProvider.createTextureArrayImage(0.9, TEXTURE_SIZE);
 
-        this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount());
+        this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
+            { maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY });
 
         const radius = 1;
 
         console.time('build');
         for (let x = 0; x < radius; x++) {
             for (let y = 0; y < radius; y++) {
-                const terrain = loadTerrain(app, this.regionLoader, this.textureProvider, 50 + x, 50 + y, this.modelIndex);
-                this.terrains.push(terrain);
+                // const terrain = loadTerrain2(app, this.regionLoader, this.textureProvider, 50 + x, 50 + y, this.modelIndex);
+                // const terrain = loadTerrain3(app, this.chunkDataLoader, 50 + x, 50 + y);
+                // this.terrains.push(terrain);
             }
         }
         console.timeEnd('build');
 
-        const totalTriangles = this.terrains.map(t => t.triangleCount).reduce((a, b) => a + b, 0);
-        console.log('triangles', totalTriangles);
+        // const totalTriangles = this.terrains.map(t => t.triangleCount).reduce((a, b) => a + b, 0);
+        // console.log('triangles', totalTriangles);
 
 
         console.timeEnd('first load');
 
         console.log(this.program);
-
-        console.log(PicoGL.WEBGL_INFO);
 
         console.log(gl.getSupportedExtensions());
 
@@ -1677,7 +2191,7 @@ class Test {
         }
 
         if (this.keys.get('w')) {
-            const delta = vec3.fromValues(-0.5, 0, 0);
+            const delta = vec3.fromValues(-0.5 * 3, 0, 0);
             // vec3.transformMat4(delta, delta, deltaMatrix);
             vec3.rotateY(delta, delta, [0, 0, 0], (512 * 3 - this.yaw) * RS_TO_RADIANS);
 
@@ -1688,17 +2202,15 @@ class Test {
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
-            const totalTriangles = this.terrains.map(t => t.triangleCount).reduce((a, b) => a + b, 0);
+            const totalTriangles = Array.from(this.terrains.values()).map(t => t.triangleCount).reduce((a, b) => a + b, 0);
 
 
-            console.log(this.timer.cpuTime, this.timer.gpuTime, this.terrains.length, 'triangles', totalTriangles);
+            console.log(this.timer.cpuTime, this.timer.gpuTime, this.terrains.size, 'triangles', totalTriangles);
             console.log(time);
         }
 
-        this.timer.start();
-
         if (resized) {
-            gl.viewport(0, 0, canvasWidth, canvasHeight);
+            this.app.resize(canvasWidth, canvasHeight);
 
         }
 
@@ -1707,7 +2219,7 @@ class Test {
 
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
         mat4.identity(this.projectionMatrix);
-        mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0);
+        mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 2048.0);
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
         mat4.identity(this.viewMatrix);
@@ -1735,32 +2247,68 @@ class Test {
             // this.isVisible(this.terrains[0]);
         }
 
-        getSpiralDeltas(1)
-            .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
-            .filter(regionPos => !this.terrains.find(t => t.regionX === regionPos[0] && t.regionY === regionPos[1]))
-            .filter(regionPos => this.isVisible(regionPos))
-            .forEach((regionPos, index) => {
-                if (index == 0) {
-                    this.terrains.push(loadTerrain(this.app, this.regionLoader, this.textureProvider, regionPos[0], regionPos[1], this.modelIndex));
-                }
-            });
+
+        this.timer.start();
 
         this.terrains.forEach(terrain => {
             if (!this.isVisible([terrain.regionX, terrain.regionY])) {
                 return;
             }
-            let drawCall = this.app.createDrawCall(this.program, terrain.vertexArray)
-                .uniformBlock('SceneUniforms', this.sceneUniformBuffer)
-                .uniform('u_currentTime', time * 0.001)
-                // .uniform('u_modelMatrix', terrain.modelMatrix)
-                .texture('u_textures', this.textureArray);
+            const regionDist = Math.max(Math.abs(cameraRegionX - terrain.regionX), Math.abs(cameraRegionY - terrain.regionY));
+
+            const drawCall = regionDist >= 3 ? terrain.drawCallLowDetail : terrain.drawCall;
+
+            drawCall.uniform('u_currentTime', time * 0.001);
+            // debugger;
+
+            // console.log(terrain.drawRanges);
+
+            // console.log(drawCall);
+
+            // console.log((drawCall.numElements as any)[0], (drawCall.numInstances as any)[0], (drawCall as any).offsets[0], (drawCall as any).numDraws)
 
             drawCall.draw();
         });
 
+        getSpiralDeltas(5)
+            .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
+            .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
+            .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
+            .filter(regionPos => this.isVisible(regionPos))
+            .forEach((regionPos, index) => {
+                if (index == 0 || 1) {
+                    // console.time('load terrain');
+                    // this.terrains.push(loadTerrain2(this.app, this.regionLoader, this.textureProvider, regionPos[0], regionPos[1], this.modelIndex));
+                    // this.terrains.push(loadTerrain3(this.app, this.chunkDataLoader, regionPos[0], regionPos[1]));
+                    this.loadingRegionIds.add(this.regionLoader.getRegionId(regionPos[0], regionPos[1]));
+
+                    this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
+                        this.chunksToLoad.push(chunkData);
+                    })
+                    // loadTerrain4(this.app, this.chunkLoaderWorker, regionPos[0], regionPos[1]).then(terrain => {
+                    //     this.terrains.push(terrain);
+                    //     this.loadingRegionIds.delete(this.regionLoader.getRegionId(terrain.regionX, terrain.regionY));
+                    // });
+                    // console.timeEnd('load terrain');
+                }
+            });
+
+        if (this.chunksToLoad.length) {
+            const chunkData = this.chunksToLoad[0];
+            this.terrains.set(this.regionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
+                loadTerrain5(this.app, chunkData, this.program2, this.textureArray, this.sceneUniformBuffer));
+            this.chunksToLoad = this.chunksToLoad.slice(1);
+        }
+
         this.timer.end();
     }
 }
+
+type ChunkLoaderWorker = {
+    init(memoryStore: TransferDescriptor<MemoryStore>, xteasMap: Map<number, number[]>): void,
+
+    load(regionX: number, regionY: number): ChunkData,
+};
 
 function App() {
     const [test, setTest] = useState<Test | undefined>(undefined);
@@ -1771,13 +2319,31 @@ function App() {
     useEffect(() => {
         console.time('first load');
         const load = async () => {
-            const fileSystem = await openFromUrl('/cache209/', [IndexType.CONFIGS, IndexType.MAPS, IndexType.MODELS, IndexType.SPRITES, IndexType.TEXTURES], false);
+            const fileSystem = await openFromUrl('/cache209/', [IndexType.CONFIGS, IndexType.MAPS, IndexType.MODELS, IndexType.SPRITES, IndexType.TEXTURES], true);
 
             const xteas: any[] = await fetch('/cache209/keys.json').then(resp => resp.json());
             const xteasMap: Map<number, number[]> = new Map();
             xteas.forEach(xtea => xteasMap.set(xtea.group, xtea.key));
 
-            setTest(new Test(fileSystem, xteasMap));
+            // const chunkLoaderWorker = await spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any));
+            // chunkLoaderWorker.init(Transfer(fileSystem.store, []), xteasMap);
+
+            // console.log(chunkLoaderWorker);
+
+            // const poolSize = 1;
+            // const poolSize = navigator.hardwareConcurrency;
+            const poolSize = 1;
+
+            const pool = Pool(() => {
+                return spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any)).then(worker => {
+                    worker.init(Transfer(fileSystem.store, []), xteasMap);
+                    return worker;
+                });
+            }, poolSize);
+
+            // await pool.completed();
+
+            setTest(new Test(fileSystem, xteasMap, pool));
         };
 
         load().catch(console.error);

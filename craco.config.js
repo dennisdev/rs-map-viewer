@@ -1,5 +1,7 @@
 const { when, whenDev, addBeforeLoader, loaderByName } = require("@craco/craco");
 
+const ThreadsPlugin = require('threads-plugin');
+
 module.exports = {
   webpack: {
     configure: {
@@ -9,6 +11,9 @@ module.exports = {
         },
       },
     },
+    plugins: [
+      new ThreadsPlugin()
+    ]
   },
   devServer: {
     headers: {

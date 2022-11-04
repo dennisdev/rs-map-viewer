@@ -94,9 +94,9 @@ export class ModelData extends Renderable {
         return model;
     }
 
-    public static copyFrom(model: ModelData, shallowVertices: boolean, shallowColors: boolean, shallowTextures: boolean): ModelData {
+    public static copyFrom(model: ModelData, shallowIndices: boolean, shallowVertices: boolean, shallowColors: boolean, shallowTextures: boolean): ModelData {
         const copy = new ModelData();
-        copy.copyFrom(model, shallowVertices, shallowColors, shallowTextures);
+        copy.copyFrom(model, shallowIndices, shallowVertices, shallowColors, shallowTextures);
         return copy;
     }
 
@@ -1509,10 +1509,27 @@ export class ModelData extends Renderable {
         }
     }
 
-    copyFrom(model: ModelData, shallowVertices: boolean, shallowColors: boolean, shallowTextures: boolean): void {
+    copyFrom(model: ModelData, shallowIndices: boolean, shallowVertices: boolean, shallowColors: boolean, shallowTextures: boolean): void {
         this.verticesCount = model.verticesCount;
         this.faceCount = model.faceCount;
         this.textureTriangleCount = model.textureTriangleCount;
+
+        if (shallowIndices) {
+            this.indices1 = model.indices1;
+            this.indices2 = model.indices2;
+            this.indices3 = model.indices3;
+        } else {
+            this.indices1 = new Int32Array(this.faceCount);
+            this.indices2 = new Int32Array(this.faceCount);
+            this.indices3 = new Int32Array(this.faceCount);
+
+            for (let i = 0; i < this.faceCount; i++) {
+                this.indices1[i] = model.indices1[i];
+                this.indices2[i] = model.indices2[i];
+                this.indices3[i] = model.indices3[i];
+            }
+        }
+
         if (shallowVertices) {
             this.verticesX = model.verticesX;
             this.verticesY = model.verticesY;
@@ -1550,9 +1567,6 @@ export class ModelData extends Renderable {
         }
 
         this.faceAlphas = model.faceAlphas;
-        this.indices1 = model.indices1;
-        this.indices2 = model.indices2;
-        this.indices3 = model.indices3;
         this.faceRenderTypes = model.faceRenderTypes;
         this.faceRenderPriorities = model.faceRenderPriorities;
         this.textureCoords = model.textureCoords;

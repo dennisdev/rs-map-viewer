@@ -31,13 +31,14 @@ export class Compression {
         }
         Compression.inited = true;
 
-        initWasmGzip(wasmGzipUrl).then(output => Compression.wasmGzipLoaded = true);
-        Bzip2.init().then(instance => Compression.wasmBzip2 = instance);
+        const gzipPromise = initWasmGzip(wasmGzipUrl).then(output => Compression.wasmGzipLoaded = true);
+        const bzip2Promise = Bzip2.init().then(instance => Compression.wasmBzip2 = instance);
+        return Promise.all([gzipPromise, bzip2Promise]);
     }
 
     public static decompressGzip(compressed: Uint8Array): Int8Array {
         if (!Compression.wasmGzipLoaded) {
-            console.log('gzip pure')
+            // console.log('gzip pure')
             return new Int8Array(gzip.unzip(compressed));
         }
         // console.log('gzip wasm')
@@ -64,7 +65,7 @@ export class Compression {
         if (Compression.wasmBzip2) {
             return new Int8Array(Compression.wasmBzip2.decompress(compressedBzip, actualSize, { small: false }).buffer);
         }
-        console.log('bzip2 pure');
+        // console.log('bzip2 pure');
         return new Int8Array(bzip2.simple(bzip2.array(compressedBzip)).buffer);
     }
 }
