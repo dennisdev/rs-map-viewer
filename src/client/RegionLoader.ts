@@ -279,11 +279,11 @@ export class RegionLoader {
             colors[i] = new Int32Array(Scene.MAP_SIZE).fill(-1);
         }
 
-        const hues = new Uint16Array(Scene.MAP_SIZE + BLEND * 2);
-        const sats = new Uint16Array(hues.length);
-        const light = new Uint16Array(hues.length);
-        const mul = new Uint16Array(hues.length);
-        const num = new Uint16Array(hues.length);
+        const hues = new Int32Array(Scene.MAP_SIZE + BLEND * 2);
+        const sats = new Int32Array(hues.length);
+        const light = new Int32Array(hues.length);
+        const mul = new Int32Array(hues.length);
+        const num = new Int32Array(hues.length);
 
         console.time(`load regions ${regionX}_${regionY}`);
         const hasLeftRegion = !!this.getRegion(regionX - 1, regionY);

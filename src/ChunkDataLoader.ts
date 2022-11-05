@@ -464,12 +464,20 @@ function newDrawCommand(offset: number, elements: number, instances: number): Dr
     return [offset, elements, instances];
 }
 
+type InstancedDrawCommand = {
+    vertexOffset: number,
+    vertexCount: number,
+    objectDatas: ObjectData[]
+};
+
 type ModelSpawns = {
     model: Model,
     positions: vec3[],
     mirrored: boolean,
     def: ObjectDefinition,
     type: number,
+    objectDatas: ObjectData[],
+    objectDatasLowDetail: ObjectData[],
 }
 
 
@@ -486,7 +494,7 @@ export class ChunkDataLoader {
         this.textureProvider = textureProvider;
     }
 
-    load(regionX: number, regionY: number): ChunkData {
+    load2(regionX: number, regionY: number): ChunkData {
         const baseX = regionX * 64;
         const baseY = regionY * 64;
 
@@ -630,9 +638,9 @@ export class ChunkDataLoader {
                 const getModel = (def: ObjectDefinition, type: number, rotation: number): Model | undefined => {
                     const modelIds = [];
 
-                    if (type === 22) {
-                        // return;
-                    }
+                    // if (type === 22 && def.int1 === 0 && def.clipType != 1 && !def.obstructsGround) {
+                    //     return undefined;
+                    // }
 
                     if (def.objectTypes) {
                         for (let i = 0; i < def.objectTypes.length; i++) {
@@ -686,7 +694,7 @@ export class ChunkDataLoader {
                     if (model.faceCount === 0) {
                         return undefined;
                     }
-                    
+
                     const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
 
                     if (type == 4 && rotation > 3) {
@@ -736,6 +744,16 @@ export class ChunkDataLoader {
                     //     console.log('stall', id, type, rotation);
                     // }
 
+                    // only roofs?
+                    // if (/*(renderFlags[0][localX][localY] & 2) != 0 || */(renderFlags[plane][localX][localY] & 16) == 0) {
+                    //     continue;
+                    // }
+
+
+                    // if ((renderFlags[0][localX][localY] & 2) != 0) {
+                    //     continue;
+                    // }
+
                     let sizeX = def.sizeX;
                     let sizeY = def.sizeY;
 
@@ -766,7 +784,7 @@ export class ChunkDataLoader {
 
                     // uniqModels.set(modelJson, model2);
 
-                    const modelSpawns = regionModelSpawns.get(modelKey) || { model: model, positions: [], mirrored: false, def, type };
+                    const modelSpawns = regionModelSpawns.get(modelKey) || { model: model, positions: [], mirrored: false, def, type, objectDatas: [], objectDatasLowDetail: [] };
                     modelSpawns.positions.push([pos[0], pos[1], plane]);
                     regionModelSpawns.set(modelKey, modelSpawns);
                 }
@@ -909,7 +927,7 @@ export class ChunkDataLoader {
                     modelDataOffsets.push(modelDatas.length);
 
                     modelSpawns.positions.forEach(pos => {
-                        modelDatas.push({localX: pos[0], localY: pos[1], plane: pos[2], contourGround: modelSpawns.def.contouredGround});
+                        modelDatas.push({ localX: pos[0], localY: pos[1], plane: pos[2], contourGround: modelSpawns.def.contouredGround });
                     });
 
                     drawCommands.push(newDrawCommand(offset / 3, modelVertexCount / 3, modelSpawns.positions.length));
@@ -948,6 +966,583 @@ export class ChunkDataLoader {
                 heightMapTextureData,
                 drawRanges: drawCommands,
                 drawRangesLowDetail: drawCommandsLowDetail
+            };
+        } finally {
+            console.timeEnd('convert');
+        }
+    }
+
+    load(regionX: number, regionY: number): ChunkData {
+        const baseX = regionX * 64;
+        const baseY = regionY * 64;
+
+        const vertices: number[] = [];
+
+        const colors: number[] = [];
+
+        const texCoords: number[] = [];
+
+        const textureIds: number[] = [];
+
+        const region = this.regionLoader.getRegion(regionX, regionY);
+
+        const drawCommands: InstancedDrawCommand[] = [];
+
+        const drawCommandsLowDetail: InstancedDrawCommand[] = [];
+
+        let terrainVertexCount = 0;
+
+        let uniqueVertexCount = 0;
+
+        if (region) {
+            const heights = region.tileHeights;
+            const underlayIds = region.tileUnderlays;
+            const overlayIds = region.tileOverlays;
+            const tileShapes = region.tileShapes;
+            const tileRotations = region.tileRotations;
+            const renderFlags = region.tileRenderFlags;
+
+            console.time(`blend region ${regionX}_${regionY}`);
+            const blendedColors = this.regionLoader.getBlendedUnderlayColors(regionX, regionY);
+            console.timeEnd(`blend region ${regionX}_${regionY}`);
+
+            console.time(`light region ${regionX}_${regionY}`);
+            const lightLevels = this.regionLoader.getLightLevels(regionX, regionY);
+            console.timeEnd(`light region ${regionX}_${regionY}`);
+
+            for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+                for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                    for (let y = 0; y < Scene.MAP_SIZE; y++) {
+                        const underlayId = underlayIds[plane][x][y] - 1;
+
+                        const overlayId = overlayIds[plane][x][y] - 1;
+
+                        if (underlayId == -1 && overlayId == -1) {
+                            continue;
+                        }
+
+                        const heightSw = heights[plane][x][y];
+                        let heightSe: number;
+                        let heightNe: number;
+                        let heightNw: number;
+
+
+                        const lightSw = lightLevels[plane][x][y];
+                        let lightSe: number;
+                        let lightNe: number;
+                        let lightNw: number;
+
+                        if (x === Scene.MAP_SIZE - 1 || y === Scene.MAP_SIZE - 1) {
+                            heightSe = this.regionLoader.getHeight(baseX + x + 1, baseY + y, plane);
+                            heightNe = this.regionLoader.getHeight(baseX + x + 1, baseY + y + 1, plane);
+                            heightNw = this.regionLoader.getHeight(baseX + x, baseY + y + 1, plane);
+
+                            lightSe = this.regionLoader.getLightLevel(baseX + x + 1, baseY + y, plane);
+                            lightNe = this.regionLoader.getLightLevel(baseX + x + 1, baseY + y + 1, plane);
+                            lightNw = this.regionLoader.getLightLevel(baseX + x, baseY + y + 1, plane);
+                        } else {
+                            heightSe = heights[plane][x + 1][y];
+                            heightNe = heights[plane][x + 1][y + 1];
+                            heightNw = heights[plane][x][y + 1];
+
+                            lightSe = lightLevels[plane][x + 1][y];
+                            lightNe = lightLevels[plane][x + 1][y + 1];
+                            lightNw = lightLevels[plane][x][y + 1];
+                        }
+
+                        let underlayHsl = -1;
+                        if (underlayId !== -1) {
+                            underlayHsl = blendedColors[plane][x][y];
+                        }
+
+                        if (overlayId == -1) {
+                            addTileModel(0, 0, -1, x, y, heightSw, heightSe, heightNe, heightNw,
+                                method5679(underlayHsl, lightSw), method5679(underlayHsl, lightSe), method5679(underlayHsl, lightNe), method5679(underlayHsl, lightNw),
+                                0, 0, 0, 0,
+                                vertices, colors, texCoords, textureIds);
+                        } else {
+                            const shape = tileShapes[plane][x][y] + 1;
+                            const rotation = tileRotations[plane][x][y];
+
+                            const overlay = this.regionLoader.getOverlayDef(overlayId);
+
+                            const textureId = this.textureProvider.getTextureIndex(overlay.textureId) || -1;
+                            let overlayHsl: number;
+                            if (textureId !== -1) {
+                                overlayHsl = -1;
+                            } else if (overlay.primaryRgb == 0xFF00FF) {
+                                overlayHsl = -2;
+                            } else {
+                                overlayHsl = packHsl(overlay.hue, overlay.saturation, overlay.lightness);
+                            }
+
+                            addTileModel(shape, rotation, textureId, x, y, heightSw, heightSe, heightNe, heightNw,
+                                method5679(underlayHsl, lightSw), method5679(underlayHsl, lightSe), method5679(underlayHsl, lightNe), method5679(underlayHsl, lightNw),
+                                method3516(overlayHsl, lightSw), method3516(overlayHsl, lightSe), method3516(overlayHsl, lightNe), method3516(overlayHsl, lightNw),
+                                vertices, colors, texCoords, textureIds);
+                        }
+                    }
+                }
+            }
+
+            terrainVertexCount = vertices.length;
+
+            drawCommands.push({
+                vertexOffset: 0,
+                vertexCount: vertices.length,
+                objectDatas: [{ localX: 0, localY: 0, plane: 0, contourGround: -1 }],
+            });
+
+            const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
+            if (landscapeData && 1) {
+                const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
+                // const hmm = spawns.map((spawn) => regionLoader.getObjectDef(spawn.id))
+                // .filter(def => def.contouredGround >= 0);
+                // console.log(hmm);
+
+                const models: Map<number, ModelData> = new Map();
+
+                const getModelData = (id: number) => {
+                    let model = models.get(id);
+                    if (!model) {
+                        const file = this.modelIndex.getFile(id, 0);
+                        if (file) {
+                            model = ModelData.decode(file.data);
+                            models.set(id, model);
+                        }
+                    }
+                    return model;
+                }
+
+                const regionModelSpawns: Map<number, ModelSpawns> = new Map();
+
+                const lowDetailOcclusionMap: boolean[][][] = new Array(Scene.MAX_PLANE);
+                for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+                    lowDetailOcclusionMap[plane] = new Array(Scene.MAP_SIZE);
+                    for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                        lowDetailOcclusionMap[plane][x] = new Array(Scene.MAP_SIZE).fill(false);
+                    }
+                }
+
+                for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                    for (let y = 0; y < Scene.MAP_SIZE; y++) {
+                        let occluded = false;
+                        for (let plane = Scene.MAX_PLANE - 1; plane >= 0; plane--) {
+                            lowDetailOcclusionMap[plane][x][y] = occluded;
+                            const underlayId = underlayIds[plane][x][y];
+                            const overlayId = overlayIds[plane][x][y];
+                            if ((renderFlags[plane][x][y] & 16) != 0 || underlayId || overlayId) {
+                                occluded = true;
+                            }
+                        }
+                    }
+                }
+
+                // console.log(lowDetailOcclusionMap);
+
+                const getModel = (def: ObjectDefinition, type: number, rotation: number): Model | undefined => {
+                    const modelIds = [];
+
+                    // if (type === 22 && def.int1 === 0 && def.clipType != 1 && !def.obstructsGround) {
+                    //     return undefined;
+                    // }
+
+                    if (def.objectTypes) {
+                        for (let i = 0; i < def.objectTypes.length; i++) {
+                            if (def.objectTypes[i] === type) {
+                                modelIds.push(def.objectModels[i]);
+                                break;
+                            }
+                        }
+                    }
+                    if (!modelIds.length && def.objectModels) {
+                        modelIds.push(...def.objectModels);
+                    }
+
+                    if (!modelIds.length) {
+                        return undefined;
+                    }
+
+                    // def.isRotated ^ rotation > 3;
+                    const mirrored = def.isRotated != rotation > 3;
+
+                    // if (mirrored) {
+                    //     return;
+                    // }
+
+                    const hasResize = def.modelSizeX !== 128 || def.modelSizeHeight !== 128 || def.modelSizeY !== 128;
+
+                    const hasOffset = def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
+
+                    const models: ModelData[] = [];
+
+                    for (let i = 0; i < modelIds.length; i++) {
+                        let model = getModelData(modelIds[i]);
+                        if (!model) {
+                            continue;
+                        }
+
+                        if (mirrored) {
+                            model = ModelData.copyFrom(model, false, false, true, true);
+                            model.mirror();
+                        }
+
+                        models.push(model);
+                    }
+
+                    if (!models.length) {
+                        return undefined;
+                    }
+
+                    const model = models.length === 1 ? models[0] : ModelData.merge(models, models.length);
+
+                    if (model.faceCount === 0) {
+                        return undefined;
+                    }
+
+                    const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
+
+                    if (type == 4 && rotation > 3) {
+                        copy.rotate(256);
+                        copy.translate(45, 0, -45);
+                    }
+
+                    rotation &= 3;
+                    if (rotation == 1) {
+                        copy.rotate90();
+                    } else if (rotation == 2) {
+                        copy.rotate180();
+                    } else if (rotation == 3) {
+                        copy.rotate270();
+                    }
+
+                    if (def.recolorFrom) {
+                        for (let var7 = 0; var7 < def.recolorFrom.length; ++var7) {
+                            copy.recolor(def.recolorFrom[var7], def.recolorTo[var7]);
+                        }
+                    }
+
+                    if (def.retextureFrom) {
+                        for (let var7 = 0; var7 < def.retextureFrom.length; ++var7) {
+                            copy.retexture(def.retextureFrom[var7], def.retextureTo[var7]);
+                        }
+                    }
+
+                    if (hasResize) {
+                        copy.resize(def.modelSizeX, def.modelSizeHeight, def.modelSizeY);
+                    }
+
+                    if (hasOffset) {
+                        copy.translate(def.offsetX, def.offsetHeight, def.offsetY);
+                    }
+
+                    return copy.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+                };
+
+                const objectModels: Map<number, Model> = new Map();
+
+                const isLowDetail = (type: number, def: ObjectDefinition, localX: number, localY: number, plane: number): boolean => {
+                    if (type === 22 && def.int1 === 0 && def.clipType != 1 && !def.obstructsGround) {
+                        return true;
+                    }
+                    if ((type === 10 || type === 11 || type >= 4 && type <= 8) && def.int1 === 1) {
+                        return lowDetailOcclusionMap[plane][localX | 0][localY | 0];
+                    }
+                    return false;
+                }
+
+                for (const spawn of spawns) {
+                    let { id, type, rotation, localX, localY, plane } = spawn;
+                    const def = this.regionLoader.getObjectDef(id);
+
+                    // if (def.name && def.name.toLowerCase().includes('scoreboard')) {
+                    //     console.log('stall', id, type, rotation);
+                    // }
+
+                    // only roofs?
+                    // if (/*(renderFlags[0][localX][localY] & 2) != 0 || */(renderFlags[plane][localX][localY] & 16) == 0) {
+                    //     continue;
+                    // }
+
+
+                    // if ((renderFlags[0][localX][localY] & 2) != 0) {
+                    //     continue;
+                    // }
+
+                    let sizeX = def.sizeX;
+                    let sizeY = def.sizeY;
+
+                    if (rotation == 1 || rotation == 3) {
+                        sizeX = def.sizeY;
+                        sizeY = def.sizeX;
+                    }
+
+                    const pos = [localX + sizeX / 2, localY + sizeY / 2];
+
+                    const modelKey = rotation << 24 | type << 16 | id;
+
+                    let model = objectModels.get(modelKey);
+
+                    if (!model) {
+                        model = getModel(def, type, rotation);
+                        if (!model) {
+                            continue;
+                        }
+                        objectModels.set(modelKey, model);
+                    }
+
+                    // const model2 = getModel(def, type, rotation);
+
+                    // if (!model) {
+                    //     continue;
+                    // }
+
+                    // uniqModels.set(modelJson, model2);
+
+                    
+
+                    const modelSpawns = regionModelSpawns.get(modelKey) || { model: model, positions: [], mirrored: false, def, type, objectDatas: [], objectDatasLowDetail: [] };
+                    modelSpawns.positions.push([pos[0], pos[1], plane]);
+
+                    const objectData = { localX: pos[0], localY: pos[1], plane: plane, contourGround: def.contouredGround };
+
+                    if (isLowDetail(type, def, localX, localY, plane)) {
+                        modelSpawns.objectDatasLowDetail.push(objectData);
+                    } else {
+                        modelSpawns.objectDatas.push(objectData);
+                    }
+
+                    regionModelSpawns.set(modelKey, modelSpawns);
+                }
+
+                console.log('diff models: ', regionModelSpawns.size);
+
+                const allModelSpawns = Array.from(regionModelSpawns.values());
+
+                // allModelSpawns.sort((a, b) => a.type - b.type);
+
+                for (let i = 0; i < allModelSpawns.length; i++) {
+                    const modelSpawns = allModelSpawns[i];
+
+                    const model = modelSpawns.model;
+
+                    const verticesX = model.verticesX;
+                    const verticesY = model.verticesY;
+                    const verticesZ = model.verticesZ;
+
+                    const facesA = model.indices1;
+                    const facesB = model.indices2;
+                    const facesC = model.indices3;
+
+                    const faceAlphas = model.faceAlphas;
+
+                    const modelTexCoords = computeTextureCoords(model);
+
+                    const offset = vertices.length;
+
+                    const uniqueVertices: Map<string, number> = new Map();
+
+                    for (let f = 0; f < model.faceCount; f++) {
+                        const fa = facesA[f];
+                        const fb = facesB[f];
+                        const fc = facesC[f];
+
+                        let faceAlpha = (faceAlphas && faceAlphas[f] & 0xFF) || 255;
+
+                        if (faceAlpha === 0 || faceAlpha == 0xfe) {
+                            continue;
+                        }
+
+                        let hslA = model.faceColors1[f];
+                        let hslB = model.faceColors2[f];
+                        let hslC = model.faceColors3[f];
+
+                        if (hslC == -1) {
+                            hslC = hslB = hslA;
+                        } else if (hslC == -2) {
+                            continue;
+                        }
+
+                        const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
+
+                        const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
+
+                        let rgbA = HSL_RGB_MAP[hslA];
+                        let rgbB = HSL_RGB_MAP[hslB];
+                        let rgbC = HSL_RGB_MAP[hslC];
+
+                        uniqueVertices.set(JSON.stringify([verticesX[fa], verticesY[fa], verticesZ[fa], rgbA, textureId]), f);
+                        uniqueVertices.set(JSON.stringify([verticesX[fb], verticesY[fb], verticesZ[fb], rgbB, textureId]), f);
+                        uniqueVertices.set(JSON.stringify([verticesX[fc], verticesY[fc], verticesZ[fc], rgbC, textureId]), f);
+
+                        // const SCALE = 128;
+
+                        const vxa = verticesX[fa] / SCALE;
+                        const vxb = verticesX[fb] / SCALE;
+                        const vxc = verticesX[fc] / SCALE;
+
+                        const vza = verticesZ[fa] / SCALE;
+                        const vzb = verticesZ[fb] / SCALE;
+                        const vzc = verticesZ[fc] / SCALE;
+
+                        vertices.push(
+                            vxa, verticesY[fa] / SCALE, vza,
+                            vxb, verticesY[fb] / SCALE, vzb,
+                            vxc, verticesY[fc] / SCALE, vzc,
+                        );
+
+                        // colors.push(
+                        //     r, g, b, 1,
+                        //     r, g, b, 1,
+                        //     r, g, b, 1,
+                        // );
+
+                        if (textureIndex !== -1) {
+                            const lightA = (hslA & 127) / 127 * 255;
+                            const lightB = (hslB & 127) / 127 * 255;
+                            const lightC = (hslC & 127) / 127 * 255;
+                            // console.log(lightA, lightB, lightC, overlayHslNe, overlayHslNw, overlayHslSe, overlayHslSw);
+                            colors.push(
+                                lightA, lightA, lightA, 255,
+                                lightB, lightB, lightB, 255,
+                                lightC, lightC, lightC, 255,
+                            );
+                        } else {
+                            colors.push(
+                                (rgbA >> 16) & 0xFF, (rgbA >> 8) & 0xFF, rgbA & 0xFF, faceAlpha,
+                                (rgbB >> 16) & 0xFF, (rgbB >> 8) & 0xFF, rgbB & 0xFF, faceAlpha,
+                                (rgbC >> 16) & 0xFF, (rgbC >> 8) & 0xFF, rgbC & 0xFF, faceAlpha,
+                            );
+                        }
+
+                        if (modelTexCoords) {
+                            const texCoordIdx = f * 6;
+                            texCoords.push(
+                                modelTexCoords[texCoordIdx], modelTexCoords[texCoordIdx + 1],
+                                modelTexCoords[texCoordIdx + 2], modelTexCoords[texCoordIdx + 3],
+                                modelTexCoords[texCoordIdx + 4], modelTexCoords[texCoordIdx + 5],
+                            );
+                        } else {
+                            texCoords.push(
+                                0, 0,
+                                0, 0,
+                                0, 0,
+                            );
+                        }
+
+                        textureIds.push(
+                            textureIndex + 1,
+                            textureIndex + 1,
+                            textureIndex + 1,
+                        );
+                    }
+
+                    const modelVertexCount = vertices.length - offset;
+
+                    if (modelVertexCount != uniqueVertices.size) {
+                        // console.log(modelVertexCount, uniqueVertices.size);
+                    }
+
+                    uniqueVertexCount += uniqueVertices.size;
+
+                    const objectDatas: ObjectData[] = modelSpawns.objectDatas;
+                    const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
+
+
+                    // modelSpawns.positions.map(pos => {
+                    //     return { localX: pos[0], localY: pos[1], plane: pos[2], contourGround: modelSpawns.def.contouredGround };
+                    // }).forEach(objectData => {
+                    //     if (isLowDetail(modelSpawns.type, modelSpawns.def, objectData.localX, objectData.localY, objectData.plane)) {
+                    //         objectDatasLowDetail.push(objectData);
+                    //     } else {
+                    //         objectDatas.push(objectData);
+                    //     }
+                    // });
+
+                    if (objectDatas.length) {
+                        drawCommands.push({
+                            vertexOffset: offset,
+                            vertexCount: modelVertexCount,
+                            objectDatas
+                        });
+                    }
+                    if (objectDatasLowDetail.length) {
+                        drawCommandsLowDetail.push({
+                            vertexOffset: offset,
+                            vertexCount: modelVertexCount,
+                            objectDatas: objectDatasLowDetail
+                        });
+                    }
+                }
+            }
+        }
+
+        // const perModelTextureData = new Int32Array(modelDataOffsets.length + modelDatas.length);
+        // modelDataOffsets.forEach((offset, index) => {
+        //     perModelTextureData[index] = (modelDataOffsets.length + offset);
+        // })
+
+        // modelDatas.forEach((data, index) => {
+        //     // multiply so we can divide in shader and get the half tile
+        //     // maybe use * 4 if there are 0.25 offsets
+        //     const xEncoded = data.localX * 2;
+        //     const yEncoded = data.localY * 2;
+        //     const contourGround = Math.min(data.contourGround + 1, 1);
+        //     perModelTextureData[modelDataOffsets.length + index] = xEncoded << 24 | yEncoded << 16 | data.plane << 8 | contourGround;
+        // });
+
+        const triangles = drawCommands.map(cmd => cmd.vertexCount / 9 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);
+        const lowDetailTriangles = drawCommandsLowDetail.map(cmd => cmd.vertexCount / 9 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);
+        const totalTriangles = triangles + lowDetailTriangles;
+
+        const indexedVertexCount = uniqueVertexCount + terrainVertexCount / 3;
+
+        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq vert count: ', uniqueVertexCount, 
+            'terrain verts: ', terrainVertexCount / 3, 'total vertices: ', vertices.length / 3, 'indexed: ', indexedVertexCount);
+
+        drawCommands.push(...drawCommandsLowDetail);
+
+        const drawRanges: DrawCommand[] = [];
+
+        const objectDatas = drawCommands.map(cmd => cmd.objectDatas).reduce((a, b) => a.concat(b), []);
+        const objectDataCount = objectDatas.length;
+
+        let objectDataOffset = 0;
+        const perModelTextureData = new Int32Array(drawCommands.length + objectDataCount);
+        drawCommands.forEach((cmd, index) => {
+            perModelTextureData[index] = (drawCommands.length + objectDataOffset);
+
+            drawRanges.push(newDrawCommand(cmd.vertexOffset / 3, cmd.vertexCount / 3, cmd.objectDatas.length));
+
+            objectDataOffset += cmd.objectDatas.length;
+        })
+
+        objectDatas.forEach((data, index) => {
+            // multiply so we can divide in shader and get the half tile
+            // maybe use * 4 if there are 0.25 offsets
+            const xEncoded = data.localX * 2;
+            const yEncoded = data.localY * 2;
+            const contourGround = Math.min(data.contourGround + 1, 1);
+            perModelTextureData[drawCommands.length + index] = xEncoded << 24 | yEncoded << 16 | data.plane << 8 | contourGround;
+        });
+
+        const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);
+
+        const drawRangesLowDetail = drawRanges.slice(0, drawCommands.length - drawCommandsLowDetail.length);
+
+        try {
+            console.time('convert');
+            return {
+                regionX,
+                regionY,
+                vertices: new Float32Array(vertices),
+                colors: new Uint8Array(colors),
+                texCoords: new Float32Array(texCoords),
+                textureIds: new Uint8Array(textureIds),
+                perModelTextureData,
+                heightMapTextureData,
+                drawRanges: drawRanges,
+                drawRangesLowDetail: drawRangesLowDetail
             };
         } finally {
             console.timeEnd('convert');
