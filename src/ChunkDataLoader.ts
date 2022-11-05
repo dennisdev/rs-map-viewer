@@ -187,7 +187,8 @@ function addTileModel(shape: number, rotation: number, textureId: number, x: num
 
 
         vertexX[i] = vertX;
-        vertexY[i] = vertY;
+        // vertexY[i] = vertY;
+        vertexY[i] = 0;
         vertexZ[i] = vertZ;
         underlayHsls[i] = underlayHsl;
         overlayHsls[i] = overlayHsl;
@@ -1011,6 +1012,7 @@ export class ChunkDataLoader {
             console.timeEnd(`light region ${regionX}_${regionY}`);
 
             for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+                const vertexOffset = vertices.length;
                 for (let x = 0; x < Scene.MAP_SIZE; x++) {
                     for (let y = 0; y < Scene.MAP_SIZE; y++) {
                         const underlayId = underlayIds[plane][x][y] - 1;
@@ -1083,15 +1085,21 @@ export class ChunkDataLoader {
                         }
                     }
                 }
+                
+                drawCommands.push({
+                    vertexOffset: vertexOffset,
+                    vertexCount: vertices.length - vertexOffset,
+                    objectDatas: [{ localX: 0, localY: 0, plane: plane, contourGround: 1 }],
+                });
             }
 
             terrainVertexCount = vertices.length;
 
-            drawCommands.push({
-                vertexOffset: 0,
-                vertexCount: vertices.length,
-                objectDatas: [{ localX: 0, localY: 0, plane: 0, contourGround: -1 }],
-            });
+            // drawCommands.push({
+            //     vertexOffset: 0,
+            //     vertexCount: vertices.length,
+            //     objectDatas: [{ localX: 0, localY: 0, plane: 0, contourGround: 1 }],
+            // });
 
             const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
             if (landscapeData && 1) {
@@ -1320,6 +1328,7 @@ export class ChunkDataLoader {
                 const allModelSpawns = Array.from(regionModelSpawns.values());
 
                 // allModelSpawns.sort((a, b) => a.type - b.type);
+                const uniqueVertices: Map<string, number> = new Map();
 
                 for (let i = 0; i < allModelSpawns.length; i++) {
                     const modelSpawns = allModelSpawns[i];
@@ -1336,11 +1345,12 @@ export class ChunkDataLoader {
 
                     const faceAlphas = model.faceAlphas;
 
+                    const priorities = model.faceRenderPriorities;
+
                     const modelTexCoords = computeTextureCoords(model);
 
                     const offset = vertices.length;
 
-                    const uniqueVertices: Map<string, number> = new Map();
 
                     for (let f = 0; f < model.faceCount; f++) {
                         const fa = facesA[f];
@@ -1363,6 +1373,8 @@ export class ChunkDataLoader {
                             continue;
                         }
 
+                        const priority = (priorities && priorities[f]) || -1;
+
                         const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
 
                         const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
@@ -1371,9 +1383,9 @@ export class ChunkDataLoader {
                         let rgbB = HSL_RGB_MAP[hslB];
                         let rgbC = HSL_RGB_MAP[hslC];
 
-                        uniqueVertices.set(JSON.stringify([verticesX[fa], verticesY[fa], verticesZ[fa], rgbA, textureId]), f);
-                        uniqueVertices.set(JSON.stringify([verticesX[fb], verticesY[fb], verticesZ[fb], rgbB, textureId]), f);
-                        uniqueVertices.set(JSON.stringify([verticesX[fc], verticesY[fc], verticesZ[fc], rgbC, textureId]), f);
+                        uniqueVertices.set(JSON.stringify([verticesX[fa], verticesY[fa], verticesZ[fa], rgbA, textureId, priority]), f);
+                        uniqueVertices.set(JSON.stringify([verticesX[fb], verticesY[fb], verticesZ[fb], rgbB, textureId, priority]), f);
+                        uniqueVertices.set(JSON.stringify([verticesX[fc], verticesY[fc], verticesZ[fc], rgbC, textureId, priority]), f);
 
                         // const SCALE = 128;
 
@@ -1443,8 +1455,6 @@ export class ChunkDataLoader {
                         // console.log(modelVertexCount, uniqueVertices.size);
                     }
 
-                    uniqueVertexCount += uniqueVertices.size;
-
                     const objectDatas: ObjectData[] = modelSpawns.objectDatas;
                     const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
 
@@ -1474,6 +1484,8 @@ export class ChunkDataLoader {
                         });
                     }
                 }
+
+                uniqueVertexCount += uniqueVertices.size;
             }
         }
 
@@ -1497,10 +1509,25 @@ export class ChunkDataLoader {
 
         const indexedVertexCount = uniqueVertexCount + terrainVertexCount / 3;
 
-        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq vert count: ', uniqueVertexCount, 
-            'terrain verts: ', terrainVertexCount / 3, 'total vertices: ', vertices.length / 3, 'indexed: ', indexedVertexCount);
-
         drawCommands.push(...drawCommandsLowDetail);
+
+        const bytesPerVertex = 25;
+
+        const uniqTotalTriangles = drawCommands.map(cmd => cmd.vertexCount / 9).reduce((a, b) => a + b, 0);
+
+        const indexBytes = uniqTotalTriangles * 3 * 4;
+
+        const verticesSaved = vertices.length / 3 - uniqueVertexCount;
+
+        const vertexBytesSaved = verticesSaved * bytesPerVertex;
+
+        const bytesSaved = vertexBytesSaved - indexBytes;
+
+        const currentBytes = vertices.length / 3 * bytesPerVertex;
+
+        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq vert count: ', uniqueVertexCount, 
+            'terrain verts: ', terrainVertexCount / 3, 'total vertices: ', vertices.length / 3, 'indexed: ', indexedVertexCount, uniqTotalTriangles, 
+            'bytes saved:', bytesSaved, 'now: ', currentBytes);
 
         const drawRanges: DrawCommand[] = [];
 

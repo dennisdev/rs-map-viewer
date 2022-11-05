@@ -459,14 +459,12 @@ void main() {
 
     vec3 localPos = a_position + vec3(tilePos.x, 0, tilePos.y);
     
-    if (gl_DrawID > 0) {
-        if (contourGround == 0) {
-            localPos.y -= getHeightInterp(tilePos.x, tilePos.y, plane) / 128.0;
-            // localPos.y -= 5.0;
-        } else {
-            localPos.y -= getHeightInterp(localPos.x, localPos.z, plane) / 128.0;
-            // localPos.y -= 5.0;
-        }
+    if (contourGround == 0) {
+        localPos.y -= getHeightInterp(tilePos.x, tilePos.y, plane) / 128.0;
+        // localPos.y -= 5.0;
+    } else {
+        localPos.y -= getHeightInterp(localPos.x, localPos.z, plane) / 128.0;
+        // localPos.y -= 5.0;
     }
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
@@ -1896,6 +1894,8 @@ async function loadTerrain4(app: PicoApp, chunkLoaderWorker: Pool<ModuleThread<C
         .vertexAttributeBuffer(1, colorBuffer, { normalized: true })
         .vertexAttributeBuffer(2, texCoordBuffer)
         .vertexAttributeBuffer(3, textureIdBuffer);
+
+    
 
     const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
