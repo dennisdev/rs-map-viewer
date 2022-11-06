@@ -1,4 +1,4 @@
-function buildPalette(brightness: number, var2: number, var3: number): Int32Array {
+export function buildPalette(brightness: number, var2: number, var3: number): Int32Array {
     const palette = new Int32Array(0xFFFF);
 
     let paletteIndex = var2 * 128;

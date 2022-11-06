@@ -62,7 +62,7 @@ export class MemoryStore extends StoreSync {
 
                 sectorPtr = sector.nextSector * Sector.SIZE;
             } else {
-                data.set(sector.data.slice(0, remaining), sectorCluster.size - remaining);
+                data.set(sector.data.subarray(0, remaining), sectorCluster.size - remaining);
             }
             remaining -= dataSize;
         }

@@ -497,6 +497,24 @@ type ModelSpawns = {
     objectDatasLowDetail: ObjectData[],
 }
 
+function hashNums(ns: number[]): number {
+    let result = 1;
+    for (const n of ns) {
+        result = 31 * result + n;
+        result >>= 0;
+    }
+    return result | 0;
+}
+
+function floatToIntBits(n: number): number {
+    const buf = new ArrayBuffer(4);
+    new Float32Array(buf)[0] = n;
+    return new Int32Array(buf)[0];
+}
+
+function stringify(ns: number[]): string {
+    return ns.join(',');
+}
 
 export class ChunkDataLoader {
     regionLoader: RegionLoader;
@@ -799,6 +817,9 @@ export class ChunkDataLoader {
                     if ((type === 10 || type === 11 || type >= 4 && type <= 8) && def.int1 === 1) {
                         return lowDetailOcclusionMap[plane][localX | 0][localY | 0];
                     }
+                    if (def.animationId !== -1) {
+                        return true;
+                    }
                     return false;
                 }
 
@@ -875,7 +896,7 @@ export class ChunkDataLoader {
 
                 const addVertex = (x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number) => {
                     const vertexIndex = vertices.length / 3;
-                    vertices.push(x, y, z);
+                    vertices.push(x / SCALE, y / SCALE, z / SCALE);
 
                     if (textureId !== -1) {
                         const lightA = (hsl & 127) / 127 * 255;
@@ -974,21 +995,25 @@ export class ChunkDataLoader {
 
                         // const SCALE = 128;
 
-                        const vxa = verticesX[fa] / SCALE;
-                        const vxb = verticesX[fb] / SCALE;
-                        const vxc = verticesX[fc] / SCALE;
+                        const vxa = verticesX[fa];
+                        const vxb = verticesX[fb];
+                        const vxc = verticesX[fc];
 
-                        const vya = verticesY[fa] / SCALE;
-                        const vyb = verticesY[fb] / SCALE;
-                        const vyc = verticesY[fc] / SCALE;
+                        const vya = verticesY[fa];
+                        const vyb = verticesY[fb];
+                        const vyc = verticesY[fc];
 
-                        const vza = verticesZ[fa] / SCALE;
-                        const vzb = verticesZ[fb] / SCALE;
-                        const vzc = verticesZ[fc] / SCALE;
-
-                        const keya = JSON.stringify([vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex])
-                        const keyb = JSON.stringify([vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex])
-                        const keyc = JSON.stringify([vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex])
+                        const vza = verticesZ[fa];
+                        const vzb = verticesZ[fb];
+                        const vzc = verticesZ[fc];
+;
+                        const keya = stringify([vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority]);
+                        const keyb = stringify([vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority]);
+                        const keyc = stringify([vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority]);
+                        
+                        // const keya = hashNums([vxa, vya, vza, rgbA, hslA, faceAlpha, floatToIntBits(u0), floatToIntBits(v0), textureIndex]);
+                        // const keyb = hashNums([vxb, vyb, vzb, rgbB, hslB, faceAlpha, floatToIntBits(u1), floatToIntBits(v1), textureIndex]);
+                        // const keyc = hashNums([vxc, vyc, vzc, rgbC, hslC, faceAlpha, floatToIntBits(u2), floatToIntBits(v2), textureIndex]);
 
                         uniqueVertices.set(keya, f);
                         uniqueVertices.set(keyb, f);
