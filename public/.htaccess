@@ -1,0 +1,4 @@
+<IfModule mod_headers.c>
+    Header append Cross-Origin-Opener-Policy: same-origin
+    Header append Cross-Origin-Embedder-Policy: require-corp
+</IfModule>

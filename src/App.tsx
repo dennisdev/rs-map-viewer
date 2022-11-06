@@ -1931,12 +1931,14 @@ function loadTerrain5(app: PicoApp, chunkData: ChunkData, program: Program, text
     const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, chunkData.colors);
     const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, chunkData.texCoords);
     const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, chunkData.textureIds);
+    const indexBuffer = app.createIndexBuffer(PicoGL.UNSIGNED_INT, chunkData.indices);
 
     const vertexArray = app.createVertexArray()
         .vertexAttributeBuffer(0, positionBuffer)
         .vertexAttributeBuffer(1, colorBuffer, { normalized: true })
         .vertexAttributeBuffer(2, texCoordBuffer)
-        .vertexAttributeBuffer(3, textureIdBuffer);
+        .vertexAttributeBuffer(3, textureIdBuffer)
+        .indexBuffer(indexBuffer);
 
     const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
@@ -2011,7 +2013,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 20, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -2272,7 +2274,7 @@ class Test {
             drawCall.draw();
         });
 
-        getSpiralDeltas(1)
+        getSpiralDeltas(5)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
             .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
