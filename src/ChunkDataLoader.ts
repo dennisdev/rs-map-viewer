@@ -602,6 +602,11 @@ export class ChunkDataLoader {
         const lightLevels = this.regionLoader.getLightLevels(regionX, regionY);
         // console.timeEnd(`light region ${regionX}_${regionY}`);
 
+        const underlayIdSet: Set<number> = new Set();
+        const overlayIdSet: Set<number> = new Set();
+        const heightSet: Set<number> = new Set();
+        const lightSet: Set<number> = new Set();
+
         for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
             const indexOffset = indices.length * 4;
             for (let x = 0; x < Scene.MAP_SIZE; x++) {
@@ -609,6 +614,9 @@ export class ChunkDataLoader {
                     const underlayId = underlayIds[plane][x][y] - 1;
 
                     const overlayId = overlayIds[plane][x][y] - 1;
+
+                    underlayIdSet.add(underlayId);
+                    overlayIdSet.add(overlayId);
 
                     if (underlayId == -1 && overlayId == -1) {
                         continue;
@@ -619,6 +627,7 @@ export class ChunkDataLoader {
                     let heightNe: number;
                     let heightNw: number;
 
+                    heightSet.add(heightSw);
 
                     const lightSw = lightLevels[plane][x][y];
                     let lightSe: number;
@@ -642,6 +651,11 @@ export class ChunkDataLoader {
                         lightNe = lightLevels[plane][x + 1][y + 1];
                         lightNw = lightLevels[plane][x][y + 1];
                     }
+
+                    lightSet.add(lightSw);
+                    lightSet.add(lightSe);
+                    lightSet.add(lightNe);
+                    lightSet.add(lightNw);
 
                     let underlayHsl = -1;
                     if (underlayId !== -1) {
@@ -689,6 +703,16 @@ export class ChunkDataLoader {
         terrainVertexCount = vertexBuf.vertexOffset;
 
         const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
+
+        // check if is empty water region
+        // if (overlayIdSet.size == 2 && overlayIdSet.has(5) 
+        //         && heightSet.size === 1 && heightSet.has(0)
+        //         && lightSet.size === 1 && lightSet.has(84)
+        //         && (!landscapeData || landscapeData.length <= 1)) {
+        //     console.log(underlayIdSet, overlayIdSet, heightSet, lightSet, landscapeData)
+        //     return undefined;
+        // }
+
         if (landscapeData && 1) {
             const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
 

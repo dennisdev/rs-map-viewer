@@ -663,7 +663,7 @@ class Test {
             drawCall.draw();
         });
 
-        getSpiralDeltas(1)
+        getSpiralDeltas(5)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
             .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
