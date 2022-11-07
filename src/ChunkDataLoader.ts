@@ -9,6 +9,7 @@ import { RegionLoader } from "./client/RegionLoader";
 import { Scene } from "./client/Scene";
 import { ByteBuffer } from "./client/util/ByteBuffer";
 import { HSL_RGB_MAP, packHsl } from "./client/util/ColorUtil";
+import xxhash, { XXHashAPI } from "xxhash-wasm";
 
 
 const TILE_SIZE = 128;
@@ -324,7 +325,7 @@ function computeTextureCoords(model: Model): number[] | undefined {
     const textureCoords = model.textureCoords;
 
     const faceCount = model.faceCount;
-    const faceTextureUCoordinates: number[] = new Array(faceCount * 6);
+    const faceTextureUCoordinates: number[] = new Array(faceCount * 6).fill(0);
 
     for (let i = 0; i < faceCount; i++) {
         const trianglePointX = trianglePointsX[i];
@@ -468,9 +469,9 @@ function stringify(ns: number[]): string {
 }
 
 function packFloat16(v: number): number {
-    const exponent = (v | 0) << 10;
-    const mantissa = (v % 1) * 1024 | 0;
-    return exponent + mantissa;
+    const exponent = (v | 0);
+    const mantissa = (v - exponent) * 1024 | 0;
+    return (exponent << 10) + mantissa;
 }
 
 function unpackFloat16(v: number): number {
@@ -479,15 +480,26 @@ function unpackFloat16(v: number): number {
     return exponent + mantissa;
 }
 
+let xxhashApi: XXHashAPI | undefined;
+
+xxhash().then(hasher => {
+    xxhashApi = hasher;
+});
+
 class VertexBuffer {
     public static readonly VERTEX_STRIDE = 16;
 
     view: DataView;
 
+    byteArray: Uint8Array;
+
     vertexOffset: number;
+
+    vertexIndices: Map<bigint, number> = new Map();
 
     constructor(vertexCount: number, vertexOffset: number = 0) {
         this.view = new DataView(new ArrayBuffer(vertexCount * VertexBuffer.VERTEX_STRIDE));
+        this.byteArray = new Uint8Array(this.view.buffer);
         this.vertexOffset = vertexOffset;
     }
 
@@ -496,14 +508,16 @@ class VertexBuffer {
         if (byteOffset + vertexCount * VertexBuffer.VERTEX_STRIDE >= this.view.byteLength) {
             // double buffer size
             const newView = new DataView(new ArrayBuffer(this.view.byteLength * 2));
-            new Uint8Array(newView.buffer).set(new Uint8Array(this.view.buffer), 0);
+            const newByteArray = new Uint8Array(newView.buffer);
+            newByteArray.set(this.byteArray, 0);
             this.view = newView;
+            this.byteArray = newByteArray;
         }
     }
 
     addVertex(x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number) {
         this.ensureSize(1);
-        const vertexBufIndex = this.vertexOffset * 16;
+        const vertexBufIndex = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
         this.view.setInt16(vertexBufIndex, x, true);
         this.view.setInt16(vertexBufIndex + 2, y, true);
@@ -527,6 +541,15 @@ class VertexBuffer {
         this.view.setUint16(vertexBufIndex + 12, packFloat16(v), true);
 
         this.view.setUint8(vertexBufIndex + 14, textureId + 1);
+
+        if (xxhashApi) {
+            const hash = xxhashApi.h64Raw(this.byteArray.subarray(vertexBufIndex, vertexBufIndex + VertexBuffer.VERTEX_STRIDE));
+            const cachedIndex = this.vertexIndices.get(hash);
+            if (cachedIndex) {
+                return cachedIndex;
+            }
+            this.vertexIndices.set(hash, this.vertexOffset);
+        }
 
         return this.vertexOffset++;
     }
@@ -563,8 +586,6 @@ export class ChunkDataLoader {
         const drawCommandsLowDetail: InstancedDrawCommand[] = [];
 
         let terrainVertexCount = 0;
-
-        let uniqueVertexCount = 0;
 
         const heights = region.tileHeights;
         const underlayIds = region.tileUnderlays;
@@ -670,9 +691,6 @@ export class ChunkDataLoader {
         const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
         if (landscapeData && 1) {
             const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
-            // const hmm = spawns.map((spawn) => regionLoader.getObjectDef(spawn.id))
-            // .filter(def => def.contouredGround >= 0);
-            // console.log(hmm);
 
             const models: Map<number, ModelData> = new Map();
 
@@ -866,8 +884,6 @@ export class ChunkDataLoader {
                     objectModels.set(modelKey, model);
                 }
 
-
-
                 const modelSpawns = regionModelSpawns.get(modelKey) || { model: model, positions: [], mirrored: false, def, type, objectDatas: [], objectDatasLowDetail: [] };
                 modelSpawns.positions.push([pos[0], pos[1], plane]);
 
@@ -887,8 +903,6 @@ export class ChunkDataLoader {
             const allModelSpawns = Array.from(regionModelSpawns.values());
 
             // allModelSpawns.sort((a, b) => a.type - b.type);
-
-            const vertexIndices: Map<string, number> = new Map();
 
             for (let i = 0; i < allModelSpawns.length; i++) {
                 const modelSpawns = allModelSpawns[i];
@@ -972,34 +986,10 @@ export class ChunkDataLoader {
                     const vza = verticesZ[fa];
                     const vzb = verticesZ[fb];
                     const vzc = verticesZ[fc];
-                    ;
-                    const keya = stringify([vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority]);
-                    const keyb = stringify([vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority]);
-                    const keyc = stringify([vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority]);
 
-                    // const keya = hashNums([vxa, vya, vza, rgbA, hslA, faceAlpha, floatToIntBits(u0), floatToIntBits(v0), textureIndex]);
-                    // const keyb = hashNums([vxb, vyb, vzb, rgbB, hslB, faceAlpha, floatToIntBits(u1), floatToIntBits(v1), textureIndex]);
-                    // const keyc = hashNums([vxc, vyc, vzc, rgbC, hslC, faceAlpha, floatToIntBits(u2), floatToIntBits(v2), textureIndex]);
-
-                    // uniqueVertices.set(keya, f);
-                    // uniqueVertices.set(keyb, f);
-                    // uniqueVertices.set(keyc, f);
-
-                    let index0 = vertexIndices.get(keya);
-                    if (index0 === undefined) {
-                        index0 = vertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex);
-                        vertexIndices.set(keya, index0);
-                    }
-                    let index1 = vertexIndices.get(keyb);
-                    if (index1 === undefined) {
-                        index1 = vertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex);
-                        vertexIndices.set(keyb, index1);
-                    }
-                    let index2 = vertexIndices.get(keyc);
-                    if (index2 === undefined) {
-                        index2 = vertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex);
-                        vertexIndices.set(keyc, index2);
-                    }
+                    const index0 = vertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex);
+                    const index1 = vertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex);
+                    const index2 = vertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex);
 
                     indices.push(
                         index0,
@@ -1008,13 +998,10 @@ export class ChunkDataLoader {
                     );
                 }
 
-                // const modelVertexCount = vertices.length - offset;
-
                 const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
 
                 const objectDatas: ObjectData[] = modelSpawns.objectDatas;
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
-
 
                 if (objectDatas.length) {
                     drawCommands.push({
@@ -1046,9 +1033,8 @@ export class ChunkDataLoader {
 
         const currentBytes = vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
-        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq vert count: ', uniqueVertexCount,
-            'terrain verts: ', terrainVertexCount / 3, 'total vertices: ', vertexBuf.vertexOffset, uniqTotalTriangles,
-            'now: ', currentBytes);
+        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
+            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes + ', ' + vertexBuf.vertexIndices.size);
 
         const drawRanges: DrawCommand[] = [];
 

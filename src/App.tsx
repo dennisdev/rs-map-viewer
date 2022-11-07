@@ -430,11 +430,11 @@ class Test {
         this.chunkDataLoader = new ChunkDataLoader(this.regionLoader, this.modelIndex, this.textureProvider);
 
         // for (let i = 0; i < 50; i++) {
-        //     // this.chunkDataLoader.load(50, 50);
+        //     this.chunkDataLoader.load(50, 50);
             
-        //     // this.chunkDataLoader.regionLoader.regions.clear();
-        //     // this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
-        //     // this.chunkDataLoader.regionLoader.lightLevels.clear();
+        //     this.chunkDataLoader.regionLoader.regions.clear();
+        //     this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
+        //     this.chunkDataLoader.regionLoader.lightLevels.clear();
         // }
 
         this.init = this.init.bind(this);
