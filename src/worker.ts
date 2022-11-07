@@ -69,15 +69,20 @@ expose({
         const chunkData = chunkDataLoader.load(regionX, regionY);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
 
-        const transferables: Transferable[] = [
-            chunkData.vertices.buffer, chunkData.colors.buffer, chunkData.texCoords.buffer, chunkData.textureIds.buffer, 
-            chunkData.perModelTextureData.buffer, chunkData.heightMapTextureData.buffer
-        ];
-
         chunkDataLoader.regionLoader.regions.clear();
         chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
         chunkDataLoader.regionLoader.lightLevels.clear();
 
-        return Transfer(chunkData, transferables);
+        if (chunkData) {
+            const transferables: Transferable[] = [
+                chunkData.vertices.buffer,
+                chunkData.indices.buffer,
+                chunkData.perModelTextureData.buffer, 
+                chunkData.heightMapTextureData.buffer
+            ];
+            return Transfer(chunkData, transferables);
+        }
+
+        return undefined;
     }
 });

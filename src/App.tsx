@@ -46,6 +46,7 @@ const vertexShader = `
 //#extension GL_ANGLE_multi_draw : require
 
 precision highp float;
+precision highp int;
 
 layout(std140, column_major) uniform;
 
@@ -282,21 +283,38 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
     const baseModelMatrix = mat4.create();
     mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
 
-    // 25 bytes, 3 * 4 + 4 + 2 * 4 + 1
-    // 19 bytes, 3 * 2 + 4 + 2 * 4 + 1
-    // 15 bytes, 3 * 2 + 4 + 2 * 2 + 1
-    const positionBuffer = app.createVertexBuffer(PicoGL.SHORT, 3, chunkData.vertices);
-    const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, chunkData.colors);
-    const texCoordBuffer = app.createVertexBuffer(PicoGL.SHORT, 2, chunkData.texCoords);
-    const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, chunkData.textureIds);
+    const interleavedBuffer = app.createInterleavedBuffer(16, chunkData.vertices);
 
     const indexBuffer = app.createIndexBuffer(PicoGL.UNSIGNED_INT, chunkData.indices);
 
     const vertexArray = app.createVertexArray()
-        .vertexAttributeBuffer(0, positionBuffer)
-        .vertexAttributeBuffer(1, colorBuffer, { normalized: true })
-        .vertexAttributeBuffer(2, texCoordBuffer)
-        .vertexAttributeBuffer(3, textureIdBuffer)
+        .vertexAttributeBuffer(0, interleavedBuffer, {
+            type: PicoGL.SHORT,
+            size: 3,
+            stride: 16,
+            integer: true as any
+        })
+        .vertexAttributeBuffer(1, interleavedBuffer, {
+            type: PicoGL.UNSIGNED_BYTE,
+            size: 4,
+            offset: 6,
+            stride: 16,
+            normalized: true 
+        })
+        .vertexAttributeBuffer(2, interleavedBuffer, {
+            type: PicoGL.SHORT,
+            size: 2,
+            offset: 10,
+            stride: 16,
+            integer: true as any
+        })
+        .vertexAttributeBuffer(3, interleavedBuffer, {
+            type: PicoGL.UNSIGNED_BYTE,
+            size: 1,
+            offset: 14,
+            stride: 16,
+            integer: true as any
+        })
         .indexBuffer(indexBuffer);
 
     const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
@@ -329,8 +347,8 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
         regionX,
         regionY,
         modelMatrix: baseModelMatrix,
-        vertexArray,
-        triangleCount: chunkData.vertices.length / 3,
+        vertexArray: vertexArray,
+        triangleCount: chunkData.indices.length / 3,
         drawRanges: chunkData.drawRanges,
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
         timeLoaded: time,
@@ -340,6 +358,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
         drawCallLowDetail
     };
 }
+
 
 class Test {
     fileSystem: MemoryFileSystem;
@@ -372,7 +391,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -410,6 +429,13 @@ class Test {
 
         this.chunkDataLoader = new ChunkDataLoader(this.regionLoader, this.modelIndex, this.textureProvider);
 
+        // for (let i = 0; i < 50; i++) {
+        //     // this.chunkDataLoader.load(50, 50);
+            
+        //     // this.chunkDataLoader.regionLoader.regions.clear();
+        //     // this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
+        //     // this.chunkDataLoader.regionLoader.lightLevels.clear();
+        // }
 
         this.init = this.init.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -448,7 +474,9 @@ class Test {
         this.timer = app.createTimer();
 
         this.program = app.createProgram(vertexShader, fragmentShader);
+        console.time('compile shader');
         this.program2 = app.createProgram(vertexShader2, fragmentShader2);
+        console.timeEnd('compile shader');
 
         this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4]);
 
@@ -584,7 +612,7 @@ class Test {
 
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
         mat4.identity(this.projectionMatrix);
-        mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0 * 3);
+        mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0 * 4);
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
         mat4.identity(this.viewMatrix);
@@ -648,7 +676,9 @@ class Test {
                     this.loadingRegionIds.add(this.regionLoader.getRegionId(regionPos[0], regionPos[1]));
 
                     this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
-                        this.chunksToLoad.push(chunkData);
+                        if (chunkData) {
+                            this.chunksToLoad.push(chunkData);
+                        }
                     })
                     // loadTerrain4(this.app, this.chunkLoaderWorker, regionPos[0], regionPos[1]).then(terrain => {
                     //     this.terrains.push(terrain);
@@ -672,7 +702,7 @@ class Test {
 type ChunkLoaderWorker = {
     init(memoryStore: TransferDescriptor<MemoryStore>, xteasMap: Map<number, number[]>): void,
 
-    load(regionX: number, regionY: number): ChunkData,
+    load(regionX: number, regionY: number): ChunkData | undefined,
 };
 
 function App() {
@@ -697,7 +727,7 @@ function App() {
 
             // const poolSize = 1;
             // const poolSize = navigator.hardwareConcurrency;
-            const poolSize = Math.min(navigator.hardwareConcurrency, 4);
+            const poolSize = Math.min(navigator.hardwareConcurrency, 8);
 
             const pool = Pool(() => {
                 return spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any)).then(worker => {
