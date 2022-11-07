@@ -245,9 +245,9 @@ function addTileModel(shape: number, rotation: number, textureId: number, x: num
         const vertexIndex = vertices.length / 3;
 
         vertices.push(
-            vertexX[a] / TILE_SIZE, vertexY[a] / TILE_SIZE, vertexZ[a] / TILE_SIZE,
-            vertexX[b] / TILE_SIZE, vertexY[b] / TILE_SIZE, vertexZ[b] / TILE_SIZE,
-            vertexX[c] / TILE_SIZE, vertexY[c] / TILE_SIZE, vertexZ[c] / TILE_SIZE,
+            vertexX[a], vertexY[a], vertexZ[a],
+            vertexX[b], vertexY[b], vertexZ[b],
+            vertexX[c], vertexY[c], vertexZ[c],
         );
 
         let rgbA = HSL_RGB_MAP[hslA];
@@ -283,9 +283,9 @@ function addTileModel(shape: number, rotation: number, textureId: number, x: num
         // );
 
         texCoords.push(
-            (vertexX[a] - tileX) / TILE_SIZE, (vertexZ[a] - tileY) / TILE_SIZE,
-            (vertexX[b] - tileX) / TILE_SIZE, (vertexZ[b] - tileY) / TILE_SIZE,
-            (vertexX[c] - tileX) / TILE_SIZE, (vertexZ[c] - tileY) / TILE_SIZE,
+            packFloat16((vertexX[a] - tileX) / TILE_SIZE), packFloat16((vertexZ[a] - tileY) / TILE_SIZE),
+            packFloat16((vertexX[b] - tileX) / TILE_SIZE), packFloat16((vertexZ[b] - tileY) / TILE_SIZE),
+            packFloat16((vertexX[c] - tileX) / TILE_SIZE), packFloat16((vertexZ[c] - tileY) / TILE_SIZE),
         );
 
         faceTextureId++;
@@ -455,9 +455,9 @@ const SCALE = TILE_SIZE;
 export type ChunkData = {
     regionX: number,
     regionY: number,
-    vertices: Float32Array,
+    vertices: Int16Array,
     colors: Uint8Array,
-    texCoords: Float32Array,
+    texCoords: Uint16Array,
     textureIds: Uint8Array,
     indices: Int32Array,
     perModelTextureData: Int32Array,
@@ -516,6 +516,27 @@ function stringify(ns: number[]): string {
     return ns.join(',');
 }
 
+function packFloat16(v: number): number {
+    const exponent = (v | 0) << 10;
+    const mantissa = (v % 1) * 1024 | 0;
+    return exponent + mantissa;
+}
+
+function unpackFloat16(v: number): number {
+    const exponent = v >> 10;
+    const mantissa = (v & 0x3FF) / 1024;
+    return exponent + mantissa;
+}
+
+// for (let i = 0; i <= 10; i++) {
+//     const v = i * 0.1;
+//     const packed = packFloat16(v);
+//     const unpacked = unpackFloat16(packed);
+//     console.log(v, packed, unpacked);
+// }
+
+// console.log(packFloat16(0.5));
+
 export class ChunkDataLoader {
     regionLoader: RegionLoader;
 
@@ -543,6 +564,10 @@ export class ChunkDataLoader {
 
         const indices: number[] = [];
 
+        const vertexBuffer = new ArrayBuffer(0);
+
+        const vertexView = new DataView(vertexBuffer);
+
         const region = this.regionLoader.getRegion(regionX, regionY);
 
         const drawCommands: InstancedDrawCommand[] = [];
@@ -561,13 +586,13 @@ export class ChunkDataLoader {
             const tileRotations = region.tileRotations;
             const renderFlags = region.tileRenderFlags;
 
-            console.time(`blend region ${regionX}_${regionY}`);
+            // console.time(`blend region ${regionX}_${regionY}`);
             const blendedColors = this.regionLoader.getBlendedUnderlayColors(regionX, regionY);
-            console.timeEnd(`blend region ${regionX}_${regionY}`);
+            // console.timeEnd(`blend region ${regionX}_${regionY}`);
 
-            console.time(`light region ${regionX}_${regionY}`);
+            // console.time(`light region ${regionX}_${regionY}`);
             const lightLevels = this.regionLoader.getLightLevels(regionX, regionY);
-            console.timeEnd(`light region ${regionX}_${regionY}`);
+            // console.timeEnd(`light region ${regionX}_${regionY}`);
 
             for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
                 const vertexOffset = vertices.length;
@@ -896,7 +921,7 @@ export class ChunkDataLoader {
 
                 const addVertex = (x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number) => {
                     const vertexIndex = vertices.length / 3;
-                    vertices.push(x / SCALE, y / SCALE, z / SCALE);
+                    vertices.push(x, y, z);
 
                     if (textureId !== -1) {
                         const lightA = (hsl & 127) / 127 * 255;
@@ -910,7 +935,7 @@ export class ChunkDataLoader {
                     }
 
                     texCoords.push(
-                        u, v,
+                        packFloat16(u), packFloat16(v),
                     );
 
                     textureIds.push(
@@ -1080,7 +1105,7 @@ export class ChunkDataLoader {
                     }
                 }
 
-                console.log(uniqueVertices);
+                // console.log(uniqueVertices);
                 uniqueVertexCount += uniqueVertices.size;
             }
         }
@@ -1158,9 +1183,9 @@ export class ChunkDataLoader {
             return {
                 regionX,
                 regionY,
-                vertices: new Float32Array(vertices),
+                vertices: new Int16Array(vertices),
                 colors: new Uint8Array(colors),
-                texCoords: new Float32Array(texCoords),
+                texCoords: new Uint16Array(texCoords),
                 textureIds: new Uint8Array(textureIds),
                 indices: new Int32Array(indices),
                 perModelTextureData,

@@ -81,7 +81,7 @@ export class RegionLoader {
 
         if (!region) {
             // console.time(`load region ${regionX}_${regionY}`);
-            console.log('load region', regionX, regionY);
+            // console.log('load region', regionX, regionY);
             const terrainData = this.getTerrainData(regionX, regionY);
             if (terrainData) {
                 region = new Scene(209, Scene.MAX_PLANE, Scene.MAP_SIZE, Scene.MAP_SIZE);
@@ -186,12 +186,12 @@ export class RegionLoader {
         const mul = new Array(hues.length).fill(0);
         const num = new Array(hues.length).fill(0);
 
-        console.time(`load regions ${regionX}_${regionY}`);
+        // console.time(`load regions ${regionX}_${regionY}`);
         const hasLeftRegion = !!this.getRegion(regionX - 1, regionY);
         const hasRightRegion = !!this.getRegion(regionX + 1, regionY);
         const hasUpRegion = !!this.getRegion(regionX, regionY + 1);
         const hasDownRegion = !!this.getRegion(regionX, regionY - 1);
-        console.timeEnd(`load regions ${regionX}_${regionY}`);
+        // console.timeEnd(`load regions ${regionX}_${regionY}`);
 
         for (let xi = (hasLeftRegion ? -BLEND * 2 : -BLEND); xi < Scene.MAP_SIZE + (hasRightRegion ? BLEND * 2 : BLEND); xi++) {
             for (let yi = (hasDownRegion ? -BLEND : 0); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0); yi++) {
@@ -285,12 +285,12 @@ export class RegionLoader {
         const mul = new Int32Array(hues.length);
         const num = new Int32Array(hues.length);
 
-        console.time(`load regions ${regionX}_${regionY}`);
+        // console.time(`load regions ${regionX}_${regionY}`);
         const hasLeftRegion = !!this.getRegion(regionX - 1, regionY);
         const hasRightRegion = !!this.getRegion(regionX + 1, regionY);
         const hasUpRegion = !!this.getRegion(regionX, regionY + 1);
         const hasDownRegion = !!this.getRegion(regionX, regionY - 1);
-        console.timeEnd(`load regions ${regionX}_${regionY}`);
+        // console.timeEnd(`load regions ${regionX}_${regionY}`);
 
         for (let xi = (hasLeftRegion ? -BLEND * 2 : -BLEND); xi < Scene.MAP_SIZE + (hasRightRegion ? BLEND * 2 : BLEND); xi++) {
             for (let yi = (hasDownRegion ? -BLEND : 0); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0); yi++) {

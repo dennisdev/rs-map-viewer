@@ -114,9 +114,9 @@ precision highp float;
 
 layout(std140, column_major) uniform;
 
-layout(location = 0) in vec3 a_position;
+layout(location = 0) in ivec3 a_position;
 layout(location = 1) in vec4 a_color;
-layout(location = 2) in vec2 a_texCoord;
+layout(location = 2) in ivec2 a_texCoord;
 layout(location = 3) in uint a_texId;
 
 uniform SceneUniforms {
@@ -159,9 +159,15 @@ float getHeightInterp(float x, float y, uint plane) {
         h11 * mod(x, 1.0) * mod(y, 1.0);
 }
 
+float unpackFloat16(int v) {
+    int exponent = v >> 10;
+    float mantissa = float(v & 0x3FF) / 1024.0;
+    return float(exponent) + mantissa;
+}
+
 void main() {
     v_color = a_color;
-    v_texCoord = a_texCoord;
+    v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y));
     v_texId = int(a_texId);
     v_loadAlpha = min(u_currentTime - u_timeLoaded, 1.0);
     
@@ -176,7 +182,7 @@ void main() {
 
     vec2 tilePos = vec2(modelData.ab) / vec2(2);
 
-    vec3 localPos = a_position + vec3(tilePos.x, 0, tilePos.y);
+    vec3 localPos = vec3(a_position) / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
     
     if (contourGround == 0) {
         localPos.y -= getHeightInterp(tilePos.x, tilePos.y, plane) / 128.0;
@@ -220,44 +226,6 @@ void main() {
 `.trim();
 
 const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
-
-function method5679(var0: number, var1: number) {
-    if (var0 == -1) {
-        return 12345678;
-    } else {
-        var1 = (var0 & 127) * var1 >> 7;
-        if (var1 < 2) {
-            var1 = 2;
-        } else if (var1 > 126) {
-            var1 = 126;
-        }
-
-        return (var0 & 0xFF80) + var1;
-    }
-}
-
-function method3516(var0: number, var1: number) {
-    if (var0 == -2) {
-        return 12345678;
-    } else if (var0 == -1) {
-        if (var1 < 2) {
-            var1 = 2;
-        } else if (var1 > 126) {
-            var1 = 126;
-        }
-
-        return var1;
-    } else {
-        var1 = (var0 & 127) * var1 >> 7;
-        if (var1 < 2) {
-            var1 = 2;
-        } else if (var1 > 126) {
-            var1 = 126;
-        }
-
-        return (var0 & 0xFF80) + var1;
-    }
-}
 
 function getSpiralDeltas(radius: number): number[][] {
     let x = 0;
@@ -314,11 +282,14 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
     const baseModelMatrix = mat4.create();
     mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
 
-    // 25 bytes
-    const positionBuffer = app.createVertexBuffer(PicoGL.FLOAT, 3, chunkData.vertices);
+    // 25 bytes, 3 * 4 + 4 + 2 * 4 + 1
+    // 19 bytes, 3 * 2 + 4 + 2 * 4 + 1
+    // 15 bytes, 3 * 2 + 4 + 2 * 2 + 1
+    const positionBuffer = app.createVertexBuffer(PicoGL.SHORT, 3, chunkData.vertices);
     const colorBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 4, chunkData.colors);
-    const texCoordBuffer = app.createVertexBuffer(PicoGL.FLOAT, 2, chunkData.texCoords);
+    const texCoordBuffer = app.createVertexBuffer(PicoGL.SHORT, 2, chunkData.texCoords);
     const textureIdBuffer = app.createVertexBuffer(PicoGL.UNSIGNED_BYTE, 1, chunkData.textureIds);
+
     const indexBuffer = app.createIndexBuffer(PicoGL.UNSIGNED_INT, chunkData.indices);
 
     const vertexArray = app.createVertexArray()
@@ -401,7 +372,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -434,6 +405,8 @@ class Test {
         this.regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
 
         this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
+
+        console.log('texture count: ', this.textureProvider.definitions.size);
 
         this.chunkDataLoader = new ChunkDataLoader(this.regionLoader, this.modelIndex, this.textureProvider);
 
@@ -662,7 +635,7 @@ class Test {
             drawCall.draw();
         });
 
-        getSpiralDeltas(10)
+        getSpiralDeltas(1)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
             .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
