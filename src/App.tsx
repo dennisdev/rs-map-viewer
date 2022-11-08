@@ -219,17 +219,7 @@ uniform highp sampler2DArray u_textures;
 out vec4 fragColor;
 
 void main() {
-    fragColor = v_color * vec4(v_loadAlpha);
-    //fragColor = texture(u_textures, vec3(v_texCoord, 1));
-    if (v_texId > 0) {
-        vec4 res = texture(u_textures, vec3(v_texCoord, v_texId - 1));
-        fragColor = vec4(res.bgr, res.a) * v_color * vec4(v_loadAlpha);;
-        //fragColor = vec4(fragColor.rgb, 1.0);
-        //fragColor = v_color;
-    }
-    // if (fragColor.a < 0.001) {
-    //     discard;
-    // }
+    fragColor = texture(u_textures, vec3(v_texCoord, v_texId)).bgra * v_color * vec4(v_loadAlpha);
 }
 `.trim();
 
@@ -496,7 +486,7 @@ class Test {
 
         // const textures = textureProvider.getDefinitions();
 
-        const textureArrayImage = this.textureProvider.createTextureArrayImage(0.9, TEXTURE_SIZE);
+        const textureArrayImage = this.textureProvider.createTextureArrayImage(0.9, TEXTURE_SIZE, true);
 
         this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
             { maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY });

@@ -139,15 +139,24 @@ export class TextureLoader {
         return def && this.loadFromDef(def, brightness, size);
     }
 
-    createTextureArrayImage(brightness: number, size: number): Int32Array {
+    createTextureArrayImage(brightness: number, size: number, includeWhiteTexture: boolean): Int32Array {
         const textures = this.getDefinitions();
 
         const pixelCount = size * size;
 
-        const img = new Int32Array(pixelCount * textures.length);
+        let textureCount = textures.length;
+        let pixelOffset = 0;
+        if (includeWhiteTexture) {
+            textureCount++;
+            pixelOffset = pixelCount;
+        }
+
+        const img = new Int32Array(pixelCount * textureCount);
+
+        img.set(new Int32Array(pixelCount).fill(0xFFFFFFFF), 0);
 
         textures.forEach((def, index) => {
-            img.set(this.loadFromDef(def, brightness, size), pixelCount * index);
+            img.set(this.loadFromDef(def, brightness, size), pixelOffset + pixelCount * index);
         });
 
         return img;
