@@ -119,6 +119,7 @@ layout(location = 0) in ivec3 a_position;
 layout(location = 1) in vec4 a_color;
 layout(location = 2) in ivec2 a_texCoord;
 layout(location = 3) in uint a_texId;
+layout(location = 4) in uint a_priority;
 
 uniform SceneUniforms {
     mat4 u_viewProjMatrix;
@@ -177,9 +178,11 @@ void main() {
 
     uvec4 modelData = texelFetch(u_perModelPosTexture, ivec2(offset + gl_InstanceID, 0), 0);
 
-    uint plane = modelData.g;
+    uint plane = modelData.g >> uint(6);
 
-    int contourGround = int(modelData.r);
+    int contourGround = int(modelData.g) >> 5 & 1;
+
+    uint priority = modelData.r;
 
     vec2 tilePos = vec2(modelData.ab) / vec2(2);
 
@@ -194,6 +197,7 @@ void main() {
     }
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
+    gl_Position.z -= float(plane) * 0.025 + float(priority) * 0.001 + float(a_priority) * 0.0001;
 }
 `.trim();
 
@@ -223,6 +227,9 @@ void main() {
         //fragColor = vec4(fragColor.rgb, 1.0);
         //fragColor = v_color;
     }
+    // if (fragColor.a < 0.001) {
+    //     discard;
+    // }
 }
 `.trim();
 
@@ -315,6 +322,13 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
             stride: 16,
             integer: true as any
         })
+        .vertexAttributeBuffer(4, interleavedBuffer, {
+            type: PicoGL.UNSIGNED_BYTE,
+            size: 1,
+            offset: 15,
+            stride: 16,
+            integer: true as any
+        })
         .indexBuffer(indexBuffer);
 
     const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
@@ -391,7 +405,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -663,7 +677,7 @@ class Test {
             drawCall.draw();
         });
 
-        getSpiralDeltas(5)
+        getSpiralDeltas(1)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
             .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))

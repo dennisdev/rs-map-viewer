@@ -253,9 +253,9 @@ function addTileModel(shape: number, rotation: number, textureId: number, x: num
         const v2 = (vertexZ[c] - tileY) / TILE_SIZE;
 
 
-        const index0 = vertexBuf.addVertex(vertexX[a], vertexY[a], vertexZ[a], rgbA, hslA, 0xFF, u0, v0, faceTextureId);
-        const index1 = vertexBuf.addVertex(vertexX[b], vertexY[b], vertexZ[b], rgbB, hslB, 0xFF, u1, v1, faceTextureId);
-        const index2 = vertexBuf.addVertex(vertexX[c], vertexY[c], vertexZ[c], rgbC, hslC, 0xFF, u2, v2, faceTextureId);
+        const index0 = vertexBuf.addVertex(vertexX[a], vertexY[a], vertexZ[a], rgbA, hslA, 0xFF, u0, v0, faceTextureId, 0);
+        const index1 = vertexBuf.addVertex(vertexX[b], vertexY[b], vertexZ[b], rgbB, hslB, 0xFF, u1, v1, faceTextureId, 0);
+        const index2 = vertexBuf.addVertex(vertexX[c], vertexY[c], vertexZ[c], rgbC, hslC, 0xFF, u2, v2, faceTextureId, 0);
 
         indices.push(
             index0,
@@ -423,6 +423,7 @@ type ObjectData = {
     localY: number,
     plane: number,
     contourGround: number,
+    priority: number,
 };
 
 type DrawCommand = [number, number, number];
@@ -515,7 +516,7 @@ class VertexBuffer {
         }
     }
 
-    addVertex(x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number) {
+    addVertex(x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number, priority: number) {
         this.ensureSize(1);
         const vertexBufIndex = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
@@ -541,6 +542,8 @@ class VertexBuffer {
         this.view.setUint16(vertexBufIndex + 12, packFloat16(v), true);
 
         this.view.setUint8(vertexBufIndex + 14, textureId + 1);
+
+        this.view.setUint8(vertexBufIndex + 15, priority);
 
         if (xxhashApi) {
             const hash = xxhashApi.h64Raw(this.byteArray.subarray(vertexBufIndex, vertexBufIndex + VertexBuffer.VERTEX_STRIDE));
@@ -693,11 +696,13 @@ export class ChunkDataLoader {
 
             const planeVertexCount = (indices.length * 4 - indexOffset) / 4;
 
-            drawCommands.push({
-                vertexOffset: indexOffset,
-                vertexCount: planeVertexCount,
-                objectDatas: [{ localX: 0, localY: 0, plane: plane, contourGround: 1 }],
-            });
+            if (planeVertexCount > 0) {
+                drawCommands.push({
+                    vertexOffset: indexOffset,
+                    vertexCount: planeVertexCount,
+                    objectDatas: [{ localX: 0, localY: 0, plane: plane, contourGround: 1, priority: 0 }],
+                });
+            }
         }
 
         terrainVertexCount = vertexBuf.vertexOffset;
@@ -911,7 +916,15 @@ export class ChunkDataLoader {
                 const modelSpawns = regionModelSpawns.get(modelKey) || { model: model, positions: [], mirrored: false, def, type, objectDatas: [], objectDatasLowDetail: [] };
                 modelSpawns.positions.push([pos[0], pos[1], plane]);
 
-                const objectData = { localX: pos[0], localY: pos[1], plane: plane, contourGround: def.contouredGround };
+                let priority = 1;
+                if (type >= 0 && type <= 2 || type == 9) {
+                    // priority = 3;
+                } else 
+                if (type >= 4 && type <= 8) {
+                    // priority = 6;
+                }
+
+                const objectData = { localX: pos[0], localY: pos[1], plane: plane, contourGround: def.contouredGround, priority };
 
                 if (isLowDetail(type, def, localX, localY, plane)) {
                     modelSpawns.objectDatasLowDetail.push(objectData);
@@ -949,6 +962,10 @@ export class ChunkDataLoader {
 
                 const indexOffset = indices.length * 4;
 
+                // if (model.faceTextures) {
+                //     console.log(model.faceTextures)
+                // }
+
                 for (let f = 0; f < model.faceCount; f++) {
                     const fa = facesA[f];
                     const fb = facesB[f];
@@ -970,7 +987,7 @@ export class ChunkDataLoader {
                         continue;
                     }
 
-                    const priority = (priorities && priorities[f]) || -1;
+                    const priority = (priorities && priorities[f]) || 0;
 
                     const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
 
@@ -1011,9 +1028,9 @@ export class ChunkDataLoader {
                     const vzb = verticesZ[fb];
                     const vzc = verticesZ[fc];
 
-                    const index0 = vertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex);
-                    const index1 = vertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex);
-                    const index2 = vertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex);
+                    const index0 = vertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority + 1);
+                    const index1 = vertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority + 1);
+                    const index2 = vertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority + 1);
 
                     indices.push(
                         index0,
@@ -1023,6 +1040,10 @@ export class ChunkDataLoader {
                 }
 
                 const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
+
+                if (modelVertexCount == 0) {
+                    continue;
+                }
 
                 const objectDatas: ObjectData[] = modelSpawns.objectDatas;
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
@@ -1081,7 +1102,7 @@ export class ChunkDataLoader {
             const xEncoded = data.localX * 2;
             const yEncoded = data.localY * 2;
             const contourGround = Math.min(data.contourGround + 1, 1);
-            perModelTextureData[drawCommands.length + index] = xEncoded << 24 | yEncoded << 16 | data.plane << 8 | contourGround;
+            perModelTextureData[drawCommands.length + index] = xEncoded << 24 | yEncoded << 16 | data.plane << 14 | contourGround << 13 | data.priority;
         });
 
         const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);
