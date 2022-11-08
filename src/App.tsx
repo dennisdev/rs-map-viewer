@@ -197,7 +197,7 @@ void main() {
     localPos.y -= getHeightInterp(interpPos.x, interpPos.y, plane) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
-    gl_Position.z -= float(plane) * 0.025 + float(priority) * 0.001 + float(a_priority) * 0.0001;
+    gl_Position.z -= float(plane) * 0.003 + float(priority) * 0.001 + float(a_priority) * 0.0001;
 }
 `.trim();
 
