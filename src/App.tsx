@@ -179,7 +179,7 @@ void main() {
     v_color = a_color;
     v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y));
     v_texId = int(a_texId);
-    v_loadAlpha = min(u_currentTime - u_timeLoaded, 1.0);
+    v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded) * 0.7, 1.0));
     
     uvec2 offsetVec = texelFetch(u_perModelPosTexture, ivec2(gl_DrawID, 0), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
@@ -395,7 +395,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -667,7 +667,7 @@ class Test {
             drawCall.draw();
         });
 
-        getSpiralDeltas(1)
+        getSpiralDeltas(10)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
             .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
