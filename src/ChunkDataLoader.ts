@@ -413,7 +413,7 @@ export type ChunkData = {
     vertices: Uint8Array,
     indices: Int32Array,
     perModelTextureData: Int32Array,
-    heightMapTextureData: Int32Array,
+    heightMapTextureData: Float32Array,
     drawRanges: DrawCommand[];
     drawRangesLowDetail: DrawCommand[];
 };
@@ -1128,8 +1128,8 @@ export class ChunkDataLoader {
         }
     }
 
-    loadHeightMapTextureData(regionX: number, regionY: number): Int32Array {
-        const heightMapTextureData = new Int32Array(Scene.MAX_PLANE * 72 * 72);
+    loadHeightMapTextureData(regionX: number, regionY: number): Float32Array {
+        const heightMapTextureData = new Float32Array(Scene.MAX_PLANE * 72 * 72);
 
         const baseX = regionX * 64;
         const baseY = regionY * 64;
@@ -1138,7 +1138,7 @@ export class ChunkDataLoader {
         for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
             for (let y = 0; y < 72; y++) {
                 for (let x = 0; x < 72; x++) {
-                    heightMapTextureData[dataIndex++] = -this.regionLoader.getHeight(baseX + x, baseY + y, plane) / 8;
+                    heightMapTextureData[dataIndex++] = (-this.regionLoader.getHeight(baseX + x, baseY + y, plane) / 8) | 0;
                 }
             }
         }

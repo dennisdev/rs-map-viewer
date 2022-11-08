@@ -130,35 +130,19 @@ uniform float u_currentTime;
 uniform float u_timeLoaded;
 
 uniform highp usampler2D u_perModelPosTexture;
-uniform highp usampler2DArray u_heightMap;
+uniform mediump sampler2DArray u_heightMap;
 
 out vec4 v_color;
 out vec2 v_texCoord;
 flat out int v_texId;
 flat out float v_loadAlpha;
 
-float getHeight(int x, int y, uint plane) {
-    uvec2 heightPacked = texelFetch(u_heightMap, ivec3(x, y, plane), 0).gr;
+float getHeightInterp(vec2 pos, uint plane) {
+    vec2 uv = (pos + vec2(0.5)) / vec2(72.0);
 
-    int height = int(heightPacked.x) << 8 | int(heightPacked.y);
+    float height = texture(u_heightMap, vec3(uv, plane)).r;
 
-    return float(height * 8);
-}
-
-float getHeightInterp(float x, float y, uint plane) {
-    int ix = int(x);
-    int iy = int(y);
-
-    float h00 = getHeight(ix, iy, plane);
-    float h10 = getHeight(ix + 1, iy, plane);
-    float h01 = getHeight(ix, iy + 1, plane);
-    float h11 = getHeight(ix + 1, iy + 1, plane);
-    
-    // bilinear interpolation
-    return h00 * (1.0 - mod(x, 1.0)) * (1.0 - mod(y, 1.0)) +
-        h10 * mod(x, 1.0) * (1.0 - mod(y, 1.0)) +
-        h01 * (1.0 - mod(x, 1.0)) * mod(y, 1.0) +
-        h11 * mod(x, 1.0) * mod(y, 1.0);
+    return height * 8.0;
 }
 
 float unpackFloat16(int v) {
@@ -200,7 +184,7 @@ void main() {
     vec3 localPos = vec3(a_position) / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
 
     vec2 interpPos = tilePos * vec2(when_eq(contourGround, 0.0)) + localPos.xz * vec2(when_neq(contourGround, 0.0));
-    localPos.y -= getHeightInterp(interpPos.x, interpPos.y, plane) / 128.0;
+    localPos.y -= getHeightInterp(interpPos, plane) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
     gl_Position.z -= float(plane) * 0.003 + float(priority) * 0.001 + float(a_priority) * 0.0001;
@@ -302,7 +286,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
             size: 4,
             offset: 6,
             stride: 16,
-            normalized: true 
+            normalized: true
         })
         .vertexAttributeBuffer(2, interleavedBuffer, {
             type: PicoGL.SHORT,
@@ -330,8 +314,11 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
     const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), 16, chunkData.perModelTextureData.length / 16,
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
 
-    const heightMapTexture = app.createTextureArray(new Uint8Array(chunkData.heightMapTextureData.buffer), 72, 72, Scene.MAX_PLANE,
-        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+    const heightMapTexture = app.createTextureArray(chunkData.heightMapTextureData, 72, 72, Scene.MAX_PLANE,
+        {
+            internalFormat: PicoGL.R32F, minFilter: PicoGL.LINEAR, magFilter: PicoGL.LINEAR, type: PicoGL.FLOAT,
+            wrapS: PicoGL.CLAMP_TO_EDGE, wrapT: PicoGL.CLAMP_TO_EDGE
+        });
 
     const time = performance.now();
 
@@ -449,7 +436,7 @@ class Test {
 
         // for (let i = 0; i < 50; i++) {
         //     this.chunkDataLoader.load(50, 50);
-            
+
         //     this.chunkDataLoader.regionLoader.regions.clear();
         //     this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
         //     this.chunkDataLoader.regionLoader.lightLevels.clear();
