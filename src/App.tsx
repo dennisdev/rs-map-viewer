@@ -167,6 +167,14 @@ float unpackFloat16(int v) {
     return float(exponent) + mantissa;
 }
 
+float when_eq(float x, float y) {
+    return 1.0 - abs(sign(x - y));
+}
+
+float when_neq(float x, float y) {
+  return abs(sign(x - y));
+}
+
 void main() {
     v_color = a_color;
     v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y));
@@ -179,22 +187,14 @@ void main() {
     uvec4 modelData = texelFetch(u_perModelPosTexture, ivec2(offset + gl_InstanceID, 0), 0);
 
     uint plane = modelData.g >> uint(6);
-
-    int contourGround = int(modelData.g) >> 5 & 1;
-
+    float contourGround = float(int(modelData.g) >> 5 & 1);
     uint priority = modelData.r;
-
     vec2 tilePos = vec2(modelData.ab) / vec2(2);
 
     vec3 localPos = vec3(a_position) / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
-    
-    if (contourGround == 0) {
-        localPos.y -= getHeightInterp(tilePos.x, tilePos.y, plane) / 128.0;
-        // localPos.y -= 5.0;
-    } else {
-        localPos.y -= getHeightInterp(localPos.x, localPos.z, plane) / 128.0;
-        // localPos.y -= 5.0;
-    }
+
+    vec2 interpPos = tilePos * vec2(when_eq(contourGround, 0.0)) + localPos.xz * vec2(when_neq(contourGround, 0.0));
+    localPos.y -= getHeightInterp(interpPos.x, interpPos.y, plane) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
     gl_Position.z -= float(plane) * 0.025 + float(priority) * 0.001 + float(a_priority) * 0.0001;
