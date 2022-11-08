@@ -175,8 +175,14 @@ float when_neq(float x, float y) {
   return abs(sign(x - y));
 }
 
+ivec2 getDataTexCoordFromIndex(int index) {
+    int x = index % 16;
+    int y = index / 16;
+    return ivec2(x, y);
+}
+
 void main() {
-    uvec2 offsetVec = texelFetch(u_perModelPosTexture, ivec2(gl_DrawID, 0), 0).gr;
+    uvec2 offsetVec = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(gl_DrawID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
     v_color = a_color;
@@ -184,7 +190,7 @@ void main() {
     v_texId = int(a_texId);
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded) * 0.7, 1.0));
 
-    uvec4 modelData = texelFetch(u_perModelPosTexture, ivec2(offset + gl_InstanceID, 0), 0);
+    uvec4 modelData = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
 
     uint plane = modelData.g >> uint(6);
     float contourGround = float(int(modelData.g) >> 5 & 1);
@@ -321,7 +327,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
         })
         .indexBuffer(indexBuffer);
 
-    const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), chunkData.perModelTextureData.length, 1,
+    const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), 16, chunkData.perModelTextureData.length / 16,
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
 
     const heightMapTexture = app.createTextureArray(new Uint8Array(chunkData.heightMapTextureData.buffer), 72, 72, Scene.MAX_PLANE,

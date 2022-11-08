@@ -1078,16 +1078,14 @@ export class ChunkDataLoader {
 
         const currentBytes = vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
-        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
-            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes + ', ' + vertexBuf.vertexIndices.size);
-
         const drawRanges: DrawCommand[] = [];
 
         const objectDatas = drawCommands.map(cmd => cmd.objectDatas).reduce((a, b) => a.concat(b), []);
         const objectDataCount = objectDatas.length;
 
+        const paddedModelDataLength = ((drawCommands.length + objectDataCount) / 16 + 1) * 16;
         let objectDataOffset = 0;
-        const perModelTextureData = new Int32Array(drawCommands.length + objectDataCount);
+        const perModelTextureData = new Int32Array(paddedModelDataLength);
         drawCommands.forEach((cmd, index) => {
             perModelTextureData[index] = (drawCommands.length + objectDataOffset);
 
@@ -1104,6 +1102,10 @@ export class ChunkDataLoader {
             const contourGround = Math.min(data.contourGround + 1, 1);
             perModelTextureData[drawCommands.length + index] = xEncoded << 24 | yEncoded << 16 | data.plane << 14 | contourGround << 13 | data.priority;
         });
+
+        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
+            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes, 
+            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length);
 
         const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);
 
