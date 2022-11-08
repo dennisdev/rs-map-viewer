@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactHTMLElement } from 'react';
 import './App.css';
 import WebGLCanvas from './Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
@@ -176,13 +176,13 @@ float when_neq(float x, float y) {
 }
 
 void main() {
+    uvec2 offsetVec = texelFetch(u_perModelPosTexture, ivec2(gl_DrawID, 0), 0).gr;
+    int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
+
     v_color = a_color;
     v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y));
     v_texId = int(a_texId);
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded) * 0.7, 1.0));
-    
-    uvec2 offsetVec = texelFetch(u_perModelPosTexture, ivec2(gl_DrawID, 0), 0).gr;
-    int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
     uvec4 modelData = texelFetch(u_perModelPosTexture, ivec2(offset + gl_InstanceID, 0), 0);
 
@@ -205,7 +205,7 @@ const fragmentShader2 = `
 #version 300 es
 #extension GL_ANGLE_multi_draw : require
 
-precision highp float;
+precision mediump float;
 
 layout(std140, column_major) uniform;
 
@@ -395,7 +395,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 60, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -406,6 +406,14 @@ class Test {
     loadingRegionIds: Set<number> = new Set();
 
     chunksToLoad: ChunkData[] = [];
+
+    frameCount: number = 0;
+
+    fps: number = 0;
+
+    lastFrameTime: number = 0;
+
+    fpsListener?: (fps: number) => void;
 
     constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>) {
         this.fileSystem = fileSystem;
@@ -567,6 +575,15 @@ class Test {
     }
 
     render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
+        time *= 0.001;
+        const deltaTime = time - this.lastFrameTime;
+        this.lastFrameTime = time;
+        this.fps = 1 / deltaTime;
+
+        if (this.fpsListener) {
+            this.fpsListener(this.fps);
+        }
+
         const canvasWidth = gl.canvas.width;
         const canvasHeight = gl.canvas.height;
 
@@ -655,7 +672,7 @@ class Test {
 
             const drawCall = regionDist >= 3 ? terrain.drawCallLowDetail : terrain.drawCall;
 
-            drawCall.uniform('u_currentTime', time * 0.001);
+            drawCall.uniform('u_currentTime', time);
             // debugger;
 
             // console.log(terrain.drawRanges);
@@ -700,6 +717,8 @@ class Test {
         }
 
         this.timer.end();
+
+        this.frameCount++;
     }
 }
 
@@ -711,6 +730,7 @@ type ChunkLoaderWorker = {
 
 function App() {
     const [test, setTest] = useState<Test | undefined>(undefined);
+    const [fps, setFps] = useState<number>(0);
 
 
     // const test = new Test();
@@ -742,14 +762,24 @@ function App() {
 
             // await pool.completed();
 
-            setTest(new Test(fileSystem, xteasMap, pool));
+            const mapViewer = new Test(fileSystem, xteasMap, pool);
+            mapViewer.fpsListener = (fps: number) => {
+                setFps(fps);
+            };
+
+            setTest(mapViewer);
         };
 
         load().catch(console.error);
     }, []);
 
+    let view: JSX.Element | undefined = undefined;
+    if (test) {
+        view = (<div className='fps-counter'>{fps.toFixed(1)}</div>);
+    }
     return (
         <div className="App">
+            {view}
             {test && <WebGLCanvas init={test.init} draw={test.render}></WebGLCanvas>}
         </div>
     );

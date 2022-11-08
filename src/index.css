@@ -14,3 +14,12 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+canvas { 
+  outline: none; 
+  border: none; 
+}
+
+.fps-counter {
+  color: white;
+}
