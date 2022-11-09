@@ -1,3 +1,4 @@
+import { TextureLoader } from "../fs/loader/TextureLoader";
 import { Renderable } from "../Renderable";
 
 export class Model extends Renderable {
@@ -343,5 +344,20 @@ export class Model extends Renderable {
         } else {
             return this;
         }
+    }
+
+    hasAlpha(textureLoader: TextureLoader): boolean {
+        if (this.faceAlphas) {
+            return true;
+        }
+        if (this.faceTextures) {
+            for (let i = 0; i < this.faceCount; i++) {
+                const textureId = this.faceTextures[i];
+                if (textureId !== -1 && textureLoader.hasAlpha(textureId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

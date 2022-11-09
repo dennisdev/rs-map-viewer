@@ -443,8 +443,7 @@ type InstancedDrawCommand = {
 
 type ModelSpawns = {
     model: Model,
-    positions: vec3[],
-    mirrored: boolean,
+    hasAlpha: boolean,
     def: ObjectDefinition,
     type: number,
     objectDatas: ObjectData[],
@@ -909,9 +908,8 @@ export class ChunkDataLoader {
 
                 let modelSpawns = regionModelSpawns.get(modelKey);
                 if (!modelSpawns) {
-                    modelSpawns = { model: model, positions: [], mirrored: false, def, type, objectDatas: [], objectDatasLowDetail: [] };
+                    modelSpawns = { model: model, hasAlpha: model.hasAlpha(this.textureProvider), def, type, objectDatas: [], objectDatasLowDetail: [] };
                 }
-                modelSpawns.positions.push([pos[0], pos[1], plane]);
 
                 let priority = 1;
                 if (type >= 0 && type <= 2 || type == 9) {
@@ -936,7 +934,7 @@ export class ChunkDataLoader {
             const allModelSpawns = Array.from(regionModelSpawns.values());
 
             // draw transparent objects last
-            // allModelSpawns.sort((a, b) => (a.model.faceAlphas ? 1 : 0) - (b.model.faceAlphas ? 1 : 0));
+            allModelSpawns.sort((a, b) => (a.hasAlpha ? 1 : 0) - (b.hasAlpha ? 1 : 0));
 
             // allModelSpawns.sort((a, b) => a.type - b.type);
 

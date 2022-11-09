@@ -13,6 +13,8 @@ export class TextureLoader {
 
     idIndexMap: Map<number, number>;
 
+    idAlphaMap: Map<number, boolean>;
+
     constructor(textureIndex: IndexSync<StoreSync>, spriteIndex: IndexSync<StoreSync>, definitions: Map<number, TextureDefinition>) {
         this.textureIndex = textureIndex;
         this.spriteIndex = spriteIndex;
@@ -20,7 +22,8 @@ export class TextureLoader {
         this.idIndexMap = new Map();
         this.getDefinitions().forEach((def, index) => {
             this.idIndexMap.set(def.id, index);
-        })
+        });
+        this.idAlphaMap = new Map();
     }
 
     public static load(textureIndex: IndexSync<StoreSync>, spriteIndex: IndexSync<StoreSync>): TextureLoader {
@@ -59,6 +62,18 @@ export class TextureLoader {
         return this.definitions.get(id);
     }
 
+    hasAlpha(id: number): boolean {
+        let hasAlpha = this.idAlphaMap.get(id);
+        if (hasAlpha === undefined) {
+            const def = this.getDefinition(id);
+            if (def) {
+                this.loadFromDef(def, 1.0, 128);
+            }
+            return !!this.idAlphaMap.get(id);
+        }
+        return hasAlpha;
+    }
+
     loadFromDef(def: TextureDefinition, brightness: number, size: number): Int32Array {
         const pixelCount = size * size;
         const pixels = new Int32Array(pixelCount);
@@ -92,10 +107,17 @@ export class TextureLoader {
                 }
             }
 
+            let hasAlpha: boolean = false;
             for (let pi = 0; pi < palette.length; pi++) {
-                const alpha = palette[pi] === 0 ? 0 : 0xFF;
+                let alpha = 0xFF;
+                if (palette[pi] === 0) {
+                    alpha = 0;
+                    hasAlpha = true;
+                }
                 palette[pi] = alpha << 24 | brightenRgb(palette[pi], brightness);
             }
+
+            this.idAlphaMap.set(def.id, hasAlpha);
 
             let index = 0;
             if (i > 0 && def.spriteTypes) {
