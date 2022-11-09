@@ -524,13 +524,22 @@ class Test {
     }
 
     onKeyDown(event: KeyboardEvent) {
-        console.log(event.key);
+        console.log('down', event.key, event.shiftKey);
         this.keys.set(event.key, true);
+        if (event.shiftKey) {
+            this.keys.set('Shift', true);
+        }
         event.preventDefault();
     }
 
     onKeyUp(event: KeyboardEvent) {
+        console.log('up', event.key, event.shiftKey);
         this.keys.set(event.key, false);
+        this.keys.set(event.key.toUpperCase(), false);
+        this.keys.set(event.key.toLowerCase(), false);
+        // if (event.shiftKey) {
+        //     this.keys.set('Shift', false);
+        // }
         event.preventDefault();
     }
 
@@ -567,6 +576,14 @@ class Test {
         return false;
     }
 
+    moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
+        const delta = vec3.fromValues(deltaX, deltaY, deltaZ);
+        
+        vec3.rotateY(delta, delta, [0, 0, 0], (512 * 3 - this.yaw) * RS_TO_RADIANS);
+
+        vec3.add(this.cameraPos, this.cameraPos, delta);
+    }
+
     render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
         time *= 0.001;
         const deltaTime = time - this.lastFrameTime;
@@ -580,32 +597,42 @@ class Test {
         const canvasWidth = gl.canvas.width;
         const canvasHeight = gl.canvas.height;
 
+        let cameraSpeedMult = 1.0;
+        if (this.keys.get('Shift')) {
+            cameraSpeedMult = 3.0;
+        }
+
+        const deltaPitch = 64 * 3 * deltaTime;
+        const deltaYaw = 64 * 5 * deltaTime;
+
         if (this.keys.get('ArrowUp')) {
-            this.pitch = clamp(this.pitch + 1, 0, 512);
+            this.pitch = clamp(this.pitch + deltaPitch, 0, 512);
         }
         if (this.keys.get('ArrowDown')) {
-            this.pitch = clamp(this.pitch - 1, 0, 512);
+            this.pitch = clamp(this.pitch - deltaPitch, 0, 512);
         }
         if (this.keys.get('ArrowRight')) {
-            this.yaw = this.yaw + 2 % 2048;
+            this.yaw = this.yaw + deltaYaw % 2048;
         }
         if (this.keys.get('ArrowLeft')) {
-            this.yaw = this.yaw - 2;
+            this.yaw = this.yaw - deltaYaw;
             if (this.yaw < 0) {
                 this.yaw = 2048 - this.yaw;
             }
             // console.log(this.pitch, this.yaw);
         }
 
-        if (this.keys.get('w')) {
-            const delta = vec3.fromValues(-0.5 * 3, 0, 0);
-            // vec3.transformMat4(delta, delta, deltaMatrix);
-            vec3.rotateY(delta, delta, [0, 0, 0], (512 * 3 - this.yaw) * RS_TO_RADIANS);
-
-            // console.log(delta);
-
-            // vec3.transformMat4(this.cameraPos, this.cameraPos, deltaMatrix);
-            vec3.add(this.cameraPos, this.cameraPos, delta);
+        if (this.keys.get('w') || this.keys.get('W')) {
+            this.moveCamera(-100 * cameraSpeedMult * deltaTime, 0, 0);
+        }
+        if (this.keys.get('a') || this.keys.get('A')) {
+            this.moveCamera(0, 0, -100 * cameraSpeedMult * deltaTime);
+        }
+        if (this.keys.get('s') || this.keys.get('S')) {
+            this.moveCamera(100 * cameraSpeedMult * deltaTime, 0, 0);
+        }
+        if (this.keys.get('d') || this.keys.get('D')) {
+            this.moveCamera(0, 0, 100 * cameraSpeedMult * deltaTime);
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
@@ -614,6 +641,14 @@ class Test {
 
             console.log(this.timer.cpuTime, this.timer.gpuTime, this.terrains.size, 'triangles', totalTriangles);
             console.log(time);
+        }
+
+        
+        if (this.keys.get('r') && this.timer.ready()) {
+            this.app.enable(PicoGL.RASTERIZER_DISCARD);
+        }
+        if (this.keys.get('f') && this.timer.ready()) {
+            this.app.disable(PicoGL.RASTERIZER_DISCARD);
         }
 
         if (resized) {
