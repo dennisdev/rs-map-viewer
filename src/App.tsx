@@ -155,7 +155,7 @@ void main() {
     v_color = a_color;
     v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y));
     v_texId = int(a_texId);
-    v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded) * 0.7, 1.0));
+    v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
     uvec4 modelData = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
 
@@ -304,11 +304,11 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
             wrapS: PicoGL.CLAMP_TO_EDGE, wrapT: PicoGL.CLAMP_TO_EDGE
         });
 
-    const time = performance.now();
+    const time = performance.now() * 0.001;
 
     let drawCall = app.createDrawCall(program, vertexArray)
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
-        .uniform('u_timeLoaded', time * 0.001)
+        .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
         .texture('u_textures', textureArray)
         .texture('u_perModelPosTexture', perModelPosTexture)
@@ -317,7 +317,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
 
     let drawCallLowDetail = app.createDrawCall(program, vertexArray)
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
-        .uniform('u_timeLoaded', time * 0.001)
+        .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
         .texture('u_textures', textureArray)
         .texture('u_perModelPosTexture', perModelPosTexture)
@@ -372,7 +372,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 60, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 40, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -391,6 +391,8 @@ class Test {
     lastFrameTime: number = 0;
 
     fpsListener?: (fps: number) => void;
+
+    lastViewDistanceRegionIds: Set<number> = new Set();
 
     constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>) {
         this.fileSystem = fileSystem;
@@ -572,11 +574,11 @@ class Test {
 
         let cameraSpeedMult = 1.0;
         if (this.keys.get('Shift')) {
-            cameraSpeedMult = 3.0;
+            cameraSpeedMult = 4.0;
         }
 
         const deltaPitch = 64 * 3 * deltaTime;
-        const deltaYaw = 64 * 4 * deltaTime;
+        const deltaYaw = 64 * 5 * deltaTime;
 
         if (this.keys.get('ArrowUp')) {
             this.pitch = clamp(this.pitch + deltaPitch, 0, 512);
@@ -596,21 +598,20 @@ class Test {
         }
 
         if (this.keys.get('w') || this.keys.get('W')) {
-            this.moveCamera(-100 * cameraSpeedMult * deltaTime, 0, 0);
+            this.moveCamera(-64 * cameraSpeedMult * deltaTime, 0, 0);
         }
         if (this.keys.get('a') || this.keys.get('A')) {
-            this.moveCamera(0, 0, -100 * cameraSpeedMult * deltaTime);
+            this.moveCamera(0, 0, -64 * cameraSpeedMult * deltaTime);
         }
         if (this.keys.get('s') || this.keys.get('S')) {
-            this.moveCamera(100 * cameraSpeedMult * deltaTime, 0, 0);
+            this.moveCamera(64 * cameraSpeedMult * deltaTime, 0, 0);
         }
         if (this.keys.get('d') || this.keys.get('D')) {
-            this.moveCamera(0, 0, 100 * cameraSpeedMult * deltaTime);
+            this.moveCamera(0, 0, 64 * cameraSpeedMult * deltaTime);
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
             const totalTriangles = Array.from(this.terrains.values()).map(t => t.triangleCount).reduce((a, b) => a + b, 0);
-
 
             console.log(this.timer.cpuTime, this.timer.gpuTime, this.terrains.size, 'triangles', totalTriangles);
             console.log(time);
@@ -659,24 +660,43 @@ class Test {
 
         this.timer.start();
 
-        this.terrains.forEach(terrain => {
-            if (!this.isVisible([terrain.regionX, terrain.regionY]) || (this.frameCount - terrain.frameLoaded) < 4) {
-                return;
+
+        const regionPositions = getSpiralDeltas(11)
+            .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2);
+
+        const viewDistanceRegionIds: Set<number> = new Set();
+
+        for (let i = regionPositions.length - 1; i >= 0; i--) {
+            const pos = regionPositions[i];
+            const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
+            const terrain = this.terrains.get(regionId);
+            viewDistanceRegionIds.add(regionId);
+            if (!terrain || !this.isVisible([terrain.regionX, terrain.regionY]) || (this.frameCount - terrain.frameLoaded) < 4) {
+                continue;
             }
+
             const regionDist = Math.max(Math.abs(cameraRegionX - terrain.regionX), Math.abs(cameraRegionY - terrain.regionY));
 
             const drawCall = regionDist >= 3 ? terrain.drawCallLowDetail : terrain.drawCall;
 
+            // fade in chunks even if it loaded a while ago
+            if (!this.lastViewDistanceRegionIds.has(regionId)) {
+                terrain.timeLoaded = time;
+            }
+
             drawCall.uniform('u_currentTime', time);
+            drawCall.uniform('u_timeLoaded', terrain.timeLoaded)
 
             drawCall.draw();
-        });
+        }
 
-        getSpiralDeltas(10)
-            .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
-            .filter(regionPos => !this.loadingRegionIds.has(RegionLoader.getRegionId(regionPos[0], regionPos[1])))
-            .filter(regionPos => !this.terrains.has(RegionLoader.getRegionId(regionPos[0], regionPos[1])))
-            .filter(regionPos => this.isVisible(regionPos))
+        this.lastViewDistanceRegionIds = viewDistanceRegionIds;
+
+        regionPositions
+            .filter(regionPos => {
+                const regionId = RegionLoader.getRegionId(regionPos[0], regionPos[1]);
+                return !this.loadingRegionIds.has(regionId) && !this.terrains.has(regionId) && this.isVisible(regionPos)
+            })
             .forEach(regionPos => {
                 this.loadingRegionIds.add(RegionLoader.getRegionId(regionPos[0], regionPos[1]));
 
