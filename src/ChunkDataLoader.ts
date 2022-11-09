@@ -891,7 +891,16 @@ export class ChunkDataLoader {
                 let model = objectModels.get(modelKey);
 
                 if (!model) {
-                    model = getModel(this.modelLoader, def, type, rotation);
+                    // corner walls
+                    if (type == 2) {
+                        const wall0 = getModel(this.modelLoader, def, type, rotation + 1 & 3);
+                        const wall1 = getModel(this.modelLoader, def, type, rotation + 4);
+                        if (wall0 && wall1) {
+                            model = Model.merge([wall0, wall1], 2);
+                        }
+                    } else {
+                        model = getModel(this.modelLoader, def, type, rotation);
+                    }
                     if (!model) {
                         continue;
                     }
