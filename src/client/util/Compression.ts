@@ -19,21 +19,22 @@ export enum CompressionType {
 }
 
 export class Compression {
-    private static inited: boolean;
-
     private static wasmGzipLoaded: boolean;
 
     private static wasmBzip2: Bzip2;
 
+    private static wasmPromise?: Promise<[boolean, Bzip2]>;
+
     public static initWasm() {
-        if (Compression.inited) {
-            return;
+        if (Compression.wasmPromise) {
+            return Compression.wasmPromise;
         }
-        Compression.inited = true;
 
         const gzipPromise = initWasmGzip(wasmGzipUrl).then(output => Compression.wasmGzipLoaded = true);
         const bzip2Promise = Bzip2.init().then(instance => Compression.wasmBzip2 = instance);
-        return Promise.all([gzipPromise, bzip2Promise]);
+
+        Compression.wasmPromise = Promise.all([gzipPromise, bzip2Promise]);
+        return Compression.wasmPromise;
     }
 
     public static decompressGzip(compressed: Uint8Array): Int8Array {

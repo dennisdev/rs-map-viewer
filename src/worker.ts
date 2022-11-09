@@ -21,13 +21,6 @@ type MemoryStoreProperties = {
     metaFile: ArrayBuffer
 };
 
-/*
-    const verticesTyped = new Float32Array(vertices);
-    const colorsTyped = new Uint8Array(colors);
-    const texCoordsTyped = new Float32Array(texCoords);
-    const textureIdsTyped = new Uint8Array(textureIds);
-*/
-
 let chunkDataLoader: ChunkDataLoader | undefined;
 
 const wasmCompressionPromise = Compression.initWasm();
