@@ -254,13 +254,14 @@ type Terrain = {
     drawRanges: number[][],
     drawRangesLowDetail: number[][],
     timeLoaded: number,
+    frameLoaded: number,
     perModelPosTexture: Texture,
     heightMapTexture: Texture,
     drawCall: DrawCall,
     drawCallLowDetail: DrawCall,
 }
 
-function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, sceneUniformBuffer: UniformBuffer, chunkData: ChunkData): Terrain {
+function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, sceneUniformBuffer: UniformBuffer, chunkData: ChunkData, frame: number): Terrain {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
@@ -349,6 +350,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
         drawRanges: chunkData.drawRanges,
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
         timeLoaded: time,
+        frameLoaded: frame,
         perModelPosTexture,
         heightMapTexture,
         drawCall,
@@ -578,7 +580,7 @@ class Test {
 
     moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
         const delta = vec3.fromValues(deltaX, deltaY, deltaZ);
-        
+
         vec3.rotateY(delta, delta, [0, 0, 0], (512 * 3 - this.yaw) * RS_TO_RADIANS);
 
         vec3.add(this.cameraPos, this.cameraPos, delta);
@@ -643,7 +645,7 @@ class Test {
             console.log(time);
         }
 
-        
+
         if (this.keys.get('r') && this.timer.ready()) {
             this.app.enable(PicoGL.RASTERIZER_DISCARD);
         }
@@ -693,7 +695,7 @@ class Test {
         this.timer.start();
 
         this.terrains.forEach(terrain => {
-            if (!this.isVisible([terrain.regionX, terrain.regionY])) {
+            if (!this.isVisible([terrain.regionX, terrain.regionY]) || (this.frameCount - terrain.frameLoaded) < 4) {
                 return;
             }
             const regionDist = Math.max(Math.abs(cameraRegionX - terrain.regionX), Math.abs(cameraRegionY - terrain.regionY));
@@ -717,30 +719,21 @@ class Test {
             .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => this.isVisible(regionPos))
-            .forEach((regionPos, index) => {
-                if (index == 0 || 1) {
-                    // console.time('load terrain');
-                    // this.terrains.push(loadTerrain2(this.app, this.regionLoader, this.textureProvider, regionPos[0], regionPos[1], this.modelIndex));
-                    // this.terrains.push(loadTerrain3(this.app, this.chunkDataLoader, regionPos[0], regionPos[1]));
-                    this.loadingRegionIds.add(this.regionLoader.getRegionId(regionPos[0], regionPos[1]));
+            .forEach(regionPos => {
+                this.loadingRegionIds.add(this.regionLoader.getRegionId(regionPos[0], regionPos[1]));
 
-                    this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
-                        if (chunkData) {
-                            this.chunksToLoad.push(chunkData);
-                        }
-                    })
-                    // loadTerrain4(this.app, this.chunkLoaderWorker, regionPos[0], regionPos[1]).then(terrain => {
-                    //     this.terrains.push(terrain);
-                    //     this.loadingRegionIds.delete(this.regionLoader.getRegionId(terrain.regionX, terrain.regionY));
-                    // });
-                    // console.timeEnd('load terrain');
-                }
+                this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
+                    if (chunkData) {
+                        this.chunksToLoad.push(chunkData);
+                    }
+                });
             });
 
-        if (this.chunksToLoad.length) {
+        // TODO upload x bytes per frame
+        if (this.chunksToLoad.length && this.frameCount % 30) {
             const chunkData = this.chunksToLoad[0];
             this.terrains.set(this.regionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
-                loadTerrain(this.app, this.program2, this.textureArray, this.sceneUniformBuffer, chunkData));
+                loadTerrain(this.app, this.program2, this.textureArray, this.sceneUniformBuffer, chunkData, this.frameCount));
             this.chunksToLoad = this.chunksToLoad.slice(1);
         }
 
