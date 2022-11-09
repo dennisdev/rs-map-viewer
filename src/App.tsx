@@ -94,6 +94,8 @@ const vertexShader2 = `
 #version 300 es
 #extension GL_ANGLE_multi_draw : require
 
+#define TEXTURE_ANIM_UNIT (1.0f / 128.0f)
+
 precision highp float;
 
 layout(std140, column_major) uniform;
@@ -104,6 +106,10 @@ layout(location = 2) in ivec2 a_texCoord;
 layout(location = 3) in uint a_texId;
 layout(location = 4) in uint a_priority;
 
+uniform TextureUniforms {
+    vec2 textureAnimations[128];
+};
+
 uniform SceneUniforms {
     mat4 u_viewProjMatrix;
 };
@@ -111,6 +117,7 @@ uniform SceneUniforms {
 uniform mat4 u_modelMatrix;
 uniform float u_currentTime;
 uniform float u_timeLoaded;
+uniform float u_deltaTime;
 
 uniform highp usampler2D u_perModelPosTexture;
 uniform mediump sampler2DArray u_heightMap;
@@ -153,7 +160,7 @@ void main() {
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
     v_color = a_color;
-    v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y));
+    v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y)) + (u_currentTime / 0.020) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
     v_texId = int(a_texId);
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
@@ -244,7 +251,8 @@ type Terrain = {
     drawCallLowDetail: DrawCall,
 }
 
-function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, sceneUniformBuffer: UniformBuffer, chunkData: ChunkData, frame: number): Terrain {
+function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer, 
+        chunkData: ChunkData, frame: number): Terrain {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
@@ -302,11 +310,13 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
         {
             internalFormat: PicoGL.R32F, minFilter: PicoGL.LINEAR, magFilter: PicoGL.LINEAR, type: PicoGL.FLOAT,
             wrapS: PicoGL.CLAMP_TO_EDGE, wrapT: PicoGL.CLAMP_TO_EDGE
-        });
+        }
+    );
 
     const time = performance.now() * 0.001;
 
     let drawCall = app.createDrawCall(program, vertexArray)
+        .uniformBlock('TextureUniforms', textureUniformBuffer)
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
         .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
@@ -316,6 +326,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, scen
         .drawRanges(...chunkData.drawRanges);
 
     let drawCallLowDetail = app.createDrawCall(program, vertexArray)
+        .uniformBlock('TextureUniforms', textureUniformBuffer)
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
         .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
@@ -363,6 +374,7 @@ class Test {
 
     program?: Program;
 
+    textureUniformBuffer!: UniformBuffer;
     sceneUniformBuffer!: UniformBuffer;
 
     textureArray!: Texture;
@@ -472,6 +484,7 @@ class Test {
             this.program = program;
         });
 
+        this.textureUniformBuffer = app.createUniformBuffer(new Array(128 * 2).fill(PicoGL.FLOAT_VEC2));
         this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4]);
 
         console.time('load texture array');
@@ -481,6 +494,23 @@ class Test {
         this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
             { maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY });
 
+        const textureAnimDirectionUvs = [
+            vec2.fromValues(0.0, 0.0),
+            vec2.fromValues(0.0, -1.0),
+            vec2.fromValues(-1.0, 0.0),
+            vec2.fromValues(0.0, 1.0),
+            vec2.fromValues(1.0, 0.0)
+        ];
+        const textures = this.textureProvider.getDefinitions();
+        for (let i = 0; i < textures.length; i++) {
+            const texture = textures[i];
+
+            const uv = vec2.mul(vec2.create(), textureAnimDirectionUvs[texture.animationDirection], [texture.animationSpeed, texture.animationSpeed]);
+
+            this.textureUniformBuffer.set((i + 1) * 2, uv as Float32Array);
+        }
+
+        this.textureUniformBuffer.update();
 
         console.timeEnd('first load');
 
@@ -686,7 +716,8 @@ class Test {
             }
 
             drawCall.uniform('u_currentTime', time);
-            drawCall.uniform('u_timeLoaded', terrain.timeLoaded)
+            drawCall.uniform('u_timeLoaded', terrain.timeLoaded);
+            drawCall.uniform('u_deltaTime', deltaTime);
 
             drawCall.draw();
         }
@@ -712,7 +743,7 @@ class Test {
         if (this.chunksToLoad.length && this.frameCount % 30) {
             const chunkData = this.chunksToLoad[0];
             this.terrains.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
-                loadTerrain(this.app, this.program, this.textureArray, this.sceneUniformBuffer, chunkData, this.frameCount));
+                loadTerrain(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
             this.chunksToLoad = this.chunksToLoad.slice(1);
         }
 

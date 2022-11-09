@@ -988,10 +988,6 @@ export class ChunkDataLoader {
 
                 }
 
-                if (modelSpawns.def.name.toLowerCase().includes('oak')) {
-                    console.log(modelSpawns.def, model.faceRenderPriorities);
-                }
-
                 // sort on priority, has alpha, texture id, face index
                 faces.sort((a, b) => a.priority - b.priority
                     || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
