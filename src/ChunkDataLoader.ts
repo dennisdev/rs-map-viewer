@@ -663,6 +663,13 @@ function isLowDetail(type: number, def: ObjectDefinition, localX: number, localY
     return false;
 }
 
+type ModelFace = {
+    index: number,
+    alpha: number,
+    priority: number,
+    textureId: number
+};
+
 export class ChunkDataLoader {
     regionLoader: RegionLoader;
 
@@ -891,14 +898,16 @@ export class ChunkDataLoader {
                     objectModels.set(modelKey, model);
                 }
 
-                const modelSpawns = regionModelSpawns.get(modelKey) || { model: model, positions: [], mirrored: false, def, type, objectDatas: [], objectDatasLowDetail: [] };
+                let modelSpawns = regionModelSpawns.get(modelKey);
+                if (!modelSpawns) {
+                    modelSpawns = { model: model, positions: [], mirrored: false, def, type, objectDatas: [], objectDatasLowDetail: [] };
+                }
                 modelSpawns.positions.push([pos[0], pos[1], plane]);
 
                 let priority = 1;
                 if (type >= 0 && type <= 2 || type == 9) {
                     // priority = 3;
-                } else 
-                if (type >= 4 && type <= 8) {
+                } else if (type >= 4 && type <= 8) {
                     // priority = 6;
                 }
 
@@ -916,6 +925,9 @@ export class ChunkDataLoader {
             console.log('diff models: ', regionModelSpawns.size);
 
             const allModelSpawns = Array.from(regionModelSpawns.values());
+
+            // draw transparent objects last
+            // allModelSpawns.sort((a, b) => (a.model.faceAlphas ? 1 : 0) - (b.model.faceAlphas ? 1 : 0));
 
             // allModelSpawns.sort((a, b) => a.type - b.type);
 
@@ -944,16 +956,44 @@ export class ChunkDataLoader {
                 //     console.log(model.faceTextures)
                 // }
 
-                for (let f = 0; f < model.faceCount; f++) {
-                    const fa = facesA[f];
-                    const fb = facesB[f];
-                    const fc = facesC[f];
+                const faces: ModelFace[] = [];
 
+                for (let f = 0; f < model.faceCount; f++) {
                     let faceAlpha = (faceAlphas && faceAlphas[f] & 0xFF) || 255;
 
                     if (faceAlpha === 0 || faceAlpha == 0xfe) {
                         continue;
                     }
+
+                    let hslC = model.faceColors3[f];
+
+                    if (hslC == -2) {
+                        continue;
+                    }
+
+                    const priority = (priorities && priorities[f]) || 0;
+
+                    const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
+
+                    faces.push({ index: f, alpha: faceAlpha, priority, textureId });
+
+                }
+
+                if (modelSpawns.def.name.toLowerCase().includes('oak')) {
+                    console.log(modelSpawns.def, model.faceRenderPriorities);
+                }
+
+                // sort on priority, has alpha, texture id, face index
+                faces.sort((a, b) => a.priority - b.priority
+                    || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
+                    || a.textureId - b.textureId
+                    || b.index - a.index);
+
+                for (const face of faces) {
+                    const f = face.index;
+                    const faceAlpha = face.alpha;
+                    const priority = face.priority;
+                    const textureId = face.textureId;
 
                     let hslA = model.faceColors1[f];
                     let hslB = model.faceColors2[f];
@@ -961,13 +1001,7 @@ export class ChunkDataLoader {
 
                     if (hslC == -1) {
                         hslC = hslB = hslA;
-                    } else if (hslC == -2) {
-                        continue;
                     }
-
-                    const priority = (priorities && priorities[f]) || 0;
-
-                    const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
 
                     const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
 
@@ -993,6 +1027,9 @@ export class ChunkDataLoader {
                     let rgbC = HSL_RGB_MAP[hslC];
 
                     // const SCALE = 128;
+                    const fa = facesA[f];
+                    const fb = facesB[f];
+                    const fc = facesC[f];
 
                     const vxa = verticesX[fa];
                     const vxb = verticesX[fb];
@@ -1082,7 +1119,7 @@ export class ChunkDataLoader {
         });
 
         console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
-            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes, 
+            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes,
             'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length);
 
         const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);

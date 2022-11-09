@@ -372,7 +372,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 40, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -666,6 +666,7 @@ class Test {
 
         const viewDistanceRegionIds: Set<number> = new Set();
 
+        // TODO: regions within x distance back to front, the rest front to back
         for (let i = regionPositions.length - 1; i >= 0; i--) {
             const pos = regionPositions[i];
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
