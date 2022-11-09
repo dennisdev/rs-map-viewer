@@ -14,6 +14,7 @@ import { Compression } from "./client/util/Compression";
 import { Scene } from "./client/Scene";
 import { packHsl } from "./client/util/ColorUtil";
 import { ChunkDataLoader } from "./ChunkDataLoader";
+import { CachedModelLoader } from "./client/fs/loader/ModelLoader";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,
@@ -49,9 +50,11 @@ expose({
 
         const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
 
+        const modelLoader = new CachedModelLoader(modelIndex);
+
         const textureProvider = TextureLoader.load(textureIndex, spriteIndex);
 
-        chunkDataLoader = new ChunkDataLoader(regionLoader, modelIndex, textureProvider);
+        chunkDataLoader = new ChunkDataLoader(regionLoader, modelLoader, textureProvider);
         console.log('init worker', fileSystem);
     },
     load(regionX: number, regionY: number) {
@@ -65,6 +68,8 @@ expose({
         chunkDataLoader.regionLoader.regions.clear();
         chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
         chunkDataLoader.regionLoader.lightLevels.clear();
+
+        chunkDataLoader.modelLoader.cache.clear();
 
         if (chunkData) {
             const transferables: Transferable[] = [

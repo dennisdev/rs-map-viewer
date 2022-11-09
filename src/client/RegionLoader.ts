@@ -28,16 +28,16 @@ export class RegionLoader {
 
     lightLevels: Map<number, Int32Array[][]> = new Map();
 
+    static getRegionId(regionX: number, regionY: number): number {
+        return regionX << 8 | regionY;
+    }
+
     constructor(mapIndex: IndexSync<StoreSync>, underlayLoader: UnderlayLoader, overlayLoader: OverlayLoader, objectLoader: ObjectLoader, xteasMap: Map<number, number[]>) {
         this.mapIndex = mapIndex;
         this.underlayLoader = underlayLoader;
         this.overlayLoader = overlayLoader;
         this.objectLoader = objectLoader;
         this.xteasMap = xteasMap;
-    }
-
-    getRegionId(regionX: number, regionY: number): number {
-        return regionX << 8 | regionY;
     }
 
     getTerrainArchiveId(regionX: number, regionY: number): number {
@@ -71,7 +71,7 @@ export class RegionLoader {
     }
 
     getRegion(regionX: number, regionY: number): Scene | undefined {
-        const id = this.getRegionId(regionX, regionY);
+        const id = RegionLoader.getRegionId(regionX, regionY);
 
         if (this.invalidRegions.has(id)) {
             return undefined;
@@ -180,105 +180,6 @@ export class RegionLoader {
             colors[i] = new Int32Array(Scene.MAP_SIZE).fill(-1);
         }
 
-        const hues = new Array(Scene.MAP_SIZE + BLEND * 2).fill(0);
-        const sats = new Array(hues.length).fill(0);
-        const light = new Array(hues.length).fill(0);
-        const mul = new Array(hues.length).fill(0);
-        const num = new Array(hues.length).fill(0);
-
-        // console.time(`load regions ${regionX}_${regionY}`);
-        const hasLeftRegion = !!this.getRegion(regionX - 1, regionY);
-        const hasRightRegion = !!this.getRegion(regionX + 1, regionY);
-        const hasUpRegion = !!this.getRegion(regionX, regionY + 1);
-        const hasDownRegion = !!this.getRegion(regionX, regionY - 1);
-        // console.timeEnd(`load regions ${regionX}_${regionY}`);
-
-        for (let xi = (hasLeftRegion ? -BLEND * 2 : -BLEND); xi < Scene.MAP_SIZE + (hasRightRegion ? BLEND * 2 : BLEND); xi++) {
-            for (let yi = (hasDownRegion ? -BLEND : 0); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0); yi++) {
-                const xr = xi + BLEND;
-                if (xr >= (hasLeftRegion ? -BLEND : 0) && xr < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)) {
-                    const underlayId = this.getUnderlayId(baseX + xr, baseY + yi, plane);
-                    if (underlayId != -1) {
-                        const underlay = this.getUnderlayDef(underlayId);
-                        hues[yi + BLEND] += underlay.hue;
-                        sats[yi + BLEND] += underlay.saturation;
-                        light[yi + BLEND] += underlay.lightness;
-                        mul[yi + BLEND] += underlay.hueMultiplier;
-                        num[yi + BLEND]++;
-                    }
-
-                }
-
-                const xl = xi - BLEND;
-                if (xl >= (hasLeftRegion ? -BLEND : 0) && xl < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)) {
-                    const underlayId = this.getUnderlayId(baseX + xl, baseY + yi, plane);
-                    if (underlayId != -1) {
-                        const underlay = this.getUnderlayDef(underlayId);
-                        hues[yi + BLEND] -= underlay.hue;
-                        sats[yi + BLEND] -= underlay.saturation;
-                        light[yi + BLEND] -= underlay.lightness;
-                        mul[yi + BLEND] -= underlay.hueMultiplier;
-                        num[yi + BLEND]--;
-                    }
-
-                }
-            }
-
-
-            if (xi >= 0 && xi < Scene.MAP_SIZE) {
-                let runningHues = 0;
-                let runningSat = 0;
-                let runningLight = 0;
-                let runningMultiplier = 0;
-                let runningNumber = 0;
-
-                for (let yi = (hasDownRegion ? -BLEND * 2 : -BLEND); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND * 2 : BLEND); yi++) {
-                    const yu = yi + BLEND;
-                    if (yu >= (hasDownRegion ? -BLEND : 0) && yu < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)) {
-                        runningHues += hues[yu + BLEND];
-                        runningSat += sats[yu + BLEND];
-                        runningLight += light[yu + BLEND];
-                        runningMultiplier += mul[yu + BLEND];
-                        runningNumber += num[yu + BLEND];
-                    }
-
-                    const yd = yi - BLEND;
-                    if (yd >= (hasDownRegion ? -BLEND : 0) && yd < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)) {
-                        runningHues -= hues[yd + BLEND];
-                        runningSat -= sats[yd + BLEND];
-                        runningLight -= light[yd + BLEND];
-                        runningMultiplier -= mul[yd + BLEND];
-                        runningNumber -= num[yd + BLEND];
-                    }
-
-                    if (yi >= 0 && yi < Scene.MAP_SIZE) {
-                        const underlayId = this.getUnderlayId(baseX + xi, baseY + yi, plane);
-                        if (underlayId != -1) {
-                            const avgHue = (runningHues * 256 / runningMultiplier) | 0;
-                            const avgSat = (runningSat / runningNumber) | 0;
-                            const avgLight = (runningLight / runningNumber) | 0;
-
-                            colors[xi][yi] = packHsl(avgHue, avgSat, avgLight);
-                        }
-                    }
-                }
-            }
-        }
-
-        return colors;
-    }
-    
-    blendUnderlays2(regionX: number, regionY: number, plane: number): Int32Array[] {
-        const BLEND = 5;
-
-        const baseX = regionX * Scene.MAP_SIZE;
-        const baseY = regionY * Scene.MAP_SIZE;
-
-        const colors: Int32Array[] = new Array(Scene.MAP_SIZE);
-        for (let i = 0; i < Scene.MAP_SIZE; i++) {
-            colors[i] = new Int32Array(Scene.MAP_SIZE).fill(-1);
-        }
-
         const hues = new Int32Array(Scene.MAP_SIZE + BLEND * 2);
         const sats = new Int32Array(hues.length);
         const light = new Int32Array(hues.length);
@@ -368,13 +269,13 @@ export class RegionLoader {
     }
 
     getBlendedUnderlayColors(regionX: number, regionY: number): Int32Array[][] {
-        const regionId = this.getRegionId(regionX, regionY);
+        const regionId = RegionLoader.getRegionId(regionX, regionY);
 
         let colors = this.blendedUnderlayColors.get(regionId);
         if (!colors) {
             colors = new Array(Scene.MAX_PLANE);
             for (let i = 0; i < Scene.MAX_PLANE; i++) {
-                colors[i] = this.blendUnderlays2(regionX, regionY, i);
+                colors[i] = this.blendUnderlays(regionX, regionY, i);
             }
             this.blendedUnderlayColors.set(regionId, colors);
         }
@@ -430,7 +331,7 @@ export class RegionLoader {
     }
 
     getLightLevels(regionX: number, regionY: number): Int32Array[][] {
-        const regionId = this.getRegionId(regionX, regionY);
+        const regionId = RegionLoader.getRegionId(regionX, regionY);
 
         let levels = this.lightLevels.get(regionId);
         if (!levels) {

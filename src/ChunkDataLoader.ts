@@ -10,6 +10,7 @@ import { Scene } from "./client/Scene";
 import { ByteBuffer } from "./client/util/ByteBuffer";
 import { HSL_RGB_MAP, packHsl } from "./client/util/ColorUtil";
 import xxhash, { XXHashAPI } from "xxhash-wasm";
+import { CachedModelLoader, ModelLoader } from "./client/fs/loader/ModelLoader";
 
 
 const TILE_SIZE = 128;
@@ -450,15 +451,6 @@ type ModelSpawns = {
     objectDatasLowDetail: ObjectData[],
 }
 
-function hashNums(ns: number[]): number {
-    let result = 1;
-    for (const n of ns) {
-        result = 31 * result + n;
-        result >>= 0;
-    }
-    return result | 0;
-}
-
 function floatToIntBits(n: number): number {
     const buf = new ArrayBuffer(4);
     new Float32Array(buf)[0] = n;
@@ -558,16 +550,129 @@ class VertexBuffer {
     }
 }
 
+function getModel(modelLoader: ModelLoader, def: ObjectDefinition, type: number, rotation: number): Model | undefined {
+    const modelIds = [];
+
+    // if (type === 22 && def.int1 === 0 && def.clipType != 1 && !def.obstructsGround) {
+    //     return undefined;
+    // }
+
+    if (def.objectTypes) {
+        for (let i = 0; i < def.objectTypes.length; i++) {
+            if (def.objectTypes[i] === type) {
+                modelIds.push(def.objectModels[i]);
+                break;
+            }
+        }
+    }
+    if (!modelIds.length && def.objectModels) {
+        modelIds.push(...def.objectModels);
+    }
+
+    if (!modelIds.length) {
+        return undefined;
+    }
+
+    // def.isRotated ^ rotation > 3;
+    const mirrored = def.isRotated != rotation > 3;
+
+    // if (mirrored) {
+    //     return;
+    // }
+
+    const hasResize = def.modelSizeX !== 128 || def.modelSizeHeight !== 128 || def.modelSizeY !== 128;
+
+    const hasOffset = def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
+
+    const models: ModelData[] = [];
+
+    for (let i = 0; i < modelIds.length; i++) {
+        let model = modelLoader.getModel(modelIds[i]);
+        if (!model) {
+            continue;
+        }
+
+        if (mirrored) {
+            model = ModelData.copyFrom(model, false, false, true, true);
+            model.mirror();
+        }
+
+        models.push(model);
+    }
+
+    if (!models.length) {
+        return undefined;
+    }
+
+    const model = models.length === 1 ? models[0] : ModelData.merge(models, models.length);
+
+    if (model.faceCount === 0) {
+        return undefined;
+    }
+
+    const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
+
+    if (type == 4 && rotation > 3) {
+        copy.rotate(256);
+        copy.translate(45, 0, -45);
+    }
+
+    rotation &= 3;
+    if (rotation == 1) {
+        copy.rotate90();
+    } else if (rotation == 2) {
+        copy.rotate180();
+    } else if (rotation == 3) {
+        copy.rotate270();
+    }
+
+    if (def.recolorFrom) {
+        for (let var7 = 0; var7 < def.recolorFrom.length; ++var7) {
+            copy.recolor(def.recolorFrom[var7], def.recolorTo[var7]);
+        }
+    }
+
+    if (def.retextureFrom) {
+        for (let var7 = 0; var7 < def.retextureFrom.length; ++var7) {
+            copy.retexture(def.retextureFrom[var7], def.retextureTo[var7]);
+        }
+    }
+
+    if (hasResize) {
+        copy.resize(def.modelSizeX, def.modelSizeHeight, def.modelSizeY);
+    }
+
+    if (hasOffset) {
+        copy.translate(def.offsetX, def.offsetHeight, def.offsetY);
+    }
+
+    return copy.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+};
+
+function isLowDetail(type: number, def: ObjectDefinition, localX: number, localY: number, plane: number, occlusionMap: boolean[][][]): boolean {
+    // floor decorations
+    if (type === 22 && def.int1 === 0 && def.clipType != 1 && !def.obstructsGround) {
+        return true;
+    }
+    if ((type === 10 || type === 11 || type >= 4 && type <= 8) && def.int1 === 1) {
+        return occlusionMap[plane][localX | 0][localY | 0];
+    }
+    if (def.animationId !== -1) {
+        return true;
+    }
+    return false;
+}
+
 export class ChunkDataLoader {
     regionLoader: RegionLoader;
 
-    modelIndex: IndexSync<StoreSync>;
+    modelLoader: CachedModelLoader;
 
     textureProvider: TextureLoader;
 
-    constructor(regionLoader: RegionLoader, modelIndex: IndexSync<StoreSync>, textureProvider: TextureLoader) {
+    constructor(regionLoader: RegionLoader, modelLoader: CachedModelLoader, textureProvider: TextureLoader) {
         this.regionLoader = regionLoader;
-        this.modelIndex = modelIndex;
+        this.modelLoader = modelLoader;
         this.textureProvider = textureProvider;
     }
 
@@ -721,20 +826,6 @@ export class ChunkDataLoader {
         if (landscapeData && 1) {
             const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
 
-            const models: Map<number, ModelData> = new Map();
-
-            const getModelData = (id: number) => {
-                let model = models.get(id);
-                if (!model) {
-                    const file = this.modelIndex.getFile(id, 0);
-                    if (file) {
-                        model = ModelData.decode(file.data);
-                        models.set(id, model);
-                    }
-                }
-                return model;
-            }
-
             const regionModelSpawns: Map<number, ModelSpawns> = new Map();
 
             const lowDetailOcclusionMap: boolean[][][] = new Array(Scene.MAX_PLANE);
@@ -762,120 +853,7 @@ export class ChunkDataLoader {
 
             // console.log(lowDetailOcclusionMap);
 
-            const getModel = (def: ObjectDefinition, type: number, rotation: number): Model | undefined => {
-                const modelIds = [];
-
-                // if (type === 22 && def.int1 === 0 && def.clipType != 1 && !def.obstructsGround) {
-                //     return undefined;
-                // }
-
-                if (def.objectTypes) {
-                    for (let i = 0; i < def.objectTypes.length; i++) {
-                        if (def.objectTypes[i] === type) {
-                            modelIds.push(def.objectModels[i]);
-                            break;
-                        }
-                    }
-                }
-                if (!modelIds.length && def.objectModels) {
-                    modelIds.push(...def.objectModels);
-                }
-
-                if (!modelIds.length) {
-                    return undefined;
-                }
-
-                // def.isRotated ^ rotation > 3;
-                const mirrored = def.isRotated != rotation > 3;
-
-                // if (mirrored) {
-                //     return;
-                // }
-
-                const hasResize = def.modelSizeX !== 128 || def.modelSizeHeight !== 128 || def.modelSizeY !== 128;
-
-                const hasOffset = def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
-
-                const models: ModelData[] = [];
-
-                for (let i = 0; i < modelIds.length; i++) {
-                    let model = getModelData(modelIds[i]);
-                    if (!model) {
-                        continue;
-                    }
-
-                    if (mirrored) {
-                        model = ModelData.copyFrom(model, false, false, true, true);
-                        model.mirror();
-                    }
-
-                    models.push(model);
-                }
-
-                if (!models.length) {
-                    return undefined;
-                }
-
-                const model = models.length === 1 ? models[0] : ModelData.merge(models, models.length);
-
-                if (model.faceCount === 0) {
-                    return undefined;
-                }
-
-                const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
-
-                if (type == 4 && rotation > 3) {
-                    copy.rotate(256);
-                    copy.translate(45, 0, -45);
-                }
-
-                rotation &= 3;
-                if (rotation == 1) {
-                    copy.rotate90();
-                } else if (rotation == 2) {
-                    copy.rotate180();
-                } else if (rotation == 3) {
-                    copy.rotate270();
-                }
-
-                if (def.recolorFrom) {
-                    for (let var7 = 0; var7 < def.recolorFrom.length; ++var7) {
-                        copy.recolor(def.recolorFrom[var7], def.recolorTo[var7]);
-                    }
-                }
-
-                if (def.retextureFrom) {
-                    for (let var7 = 0; var7 < def.retextureFrom.length; ++var7) {
-                        copy.retexture(def.retextureFrom[var7], def.retextureTo[var7]);
-                    }
-                }
-
-                if (hasResize) {
-                    copy.resize(def.modelSizeX, def.modelSizeHeight, def.modelSizeY);
-                }
-
-                if (hasOffset) {
-                    copy.translate(def.offsetX, def.offsetHeight, def.offsetY);
-                }
-
-                return copy.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
-            };
-
             const objectModels: Map<number, Model> = new Map();
-
-            const isLowDetail = (type: number, def: ObjectDefinition, localX: number, localY: number, plane: number): boolean => {
-                // floor decorations
-                if (type === 22 && def.int1 === 0 && def.clipType != 1 && !def.obstructsGround) {
-                    return true;
-                }
-                if ((type === 10 || type === 11 || type >= 4 && type <= 8) && def.int1 === 1) {
-                    return lowDetailOcclusionMap[plane][localX | 0][localY | 0];
-                }
-                if (def.animationId !== -1) {
-                    return true;
-                }
-                return false;
-            }
 
             for (const spawn of spawns) {
                 let { id, type, rotation, localX, localY, plane } = spawn;
@@ -906,7 +884,7 @@ export class ChunkDataLoader {
                 let model = objectModels.get(modelKey);
 
                 if (!model) {
-                    model = getModel(def, type, rotation);
+                    model = getModel(this.modelLoader, def, type, rotation);
                     if (!model) {
                         continue;
                     }
@@ -926,7 +904,7 @@ export class ChunkDataLoader {
 
                 const objectData = { localX: pos[0], localY: pos[1], plane: plane, contourGround: def.contouredGround, priority };
 
-                if (isLowDetail(type, def, localX, localY, plane)) {
+                if (isLowDetail(type, def, localX, localY, plane, lowDetailOcclusionMap)) {
                     modelSpawns.objectDatasLowDetail.push(objectData);
                 } else {
                     modelSpawns.objectDatas.push(objectData);

@@ -1,31 +1,14 @@
-import { useState, useEffect, ReactHTMLElement } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import WebGLCanvas from './Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
 import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall } from 'picogl';
-import { MemoryFileSystem, openFromUrl } from './client/fs/FileSystem';
+import { MemoryFileSystem, fetchMemoryStore, loadFromStore } from './client/fs/FileSystem';
 import { IndexType } from './client/fs/IndexType';
-import { ConfigType } from './client/fs/ConfigType';
-import { UnderlayDefinition } from './client/fs/definition/UnderlayDefinition';
-import { ObjectSpawn, Scene } from './client/Scene';
-import { OverlayDefinition } from './client/fs/definition/OverlayDefinition';
-import { IndexSync } from './client/fs/Index';
-import { StoreSync } from './client/fs/Store';
-import { TextureDefinition } from './client/fs/definition/TextureDefinition';
-import { } from './client/Client';
-import { Archive } from './client/fs/Archive';
-import { SpriteLoader } from './client/sprite/SpriteLoader';
+import { Scene } from './client/Scene';
 import { TextureLoader } from './client/fs/loader/TextureLoader';
-import { ByteBuffer } from './client/util/ByteBuffer';
-import { ObjectDefinition } from './client/fs/definition/ObjectDefinition';
-import { ModelData } from './client/model/ModelData';
-import { Model } from './client/model/Model';
 import { spawn, Pool, Worker, Transfer, TransferDescriptor, ModuleThread } from "threads";
 import { RegionLoader } from './client/RegionLoader';
-import { HSL_RGB_MAP, brightenRgb, packHsl } from './client/util/ColorUtil';
-import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
-import { CachedOverlayLoader, OverlayLoader } from './client/fs/loader/OverlayLoader';
-import { CachedObjectLoader } from './client/fs/loader/ObjectLoader';
 import { ChunkData, ChunkDataLoader } from './ChunkDataLoader';
 import { MemoryStore } from './client/fs/MemoryStore';
 
@@ -364,13 +347,13 @@ class Test {
 
     chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>;
 
-    modelIndex: IndexSync<StoreSync>;
+    // modelIndex: IndexSync<StoreSync>;
 
-    regionLoader: RegionLoader;
+    // regionLoader: RegionLoader;
 
     textureProvider: TextureLoader;
 
-    chunkDataLoader: ChunkDataLoader;
+    // chunkDataLoader: ChunkDataLoader;
 
     app!: PicoApp;
 
@@ -378,8 +361,7 @@ class Test {
 
     timer!: Timer;
 
-    program!: Program;
-    program2!: Program;
+    program?: Program;
 
     sceneUniformBuffer!: UniformBuffer;
 
@@ -414,27 +396,31 @@ class Test {
         this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
 
-        const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
-        const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
+        // const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
+        // const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
         const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
         const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
-        this.modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
+        // this.modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
 
-        const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
-        const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
-        const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+        // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
+        // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
+        // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
 
-        const underlayLoader = new CachedUnderlayLoader(underlayArchive);
-        const overlayLoader = new CachedOverlayLoader(overlayArchive);
-        const objectLoader = new CachedObjectLoader(objectArchive);
+        // console.time('region loader');
+        // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
+        // const overlayLoader = new CachedOverlayLoader(overlayArchive);
+        // const objectLoader = new CachedObjectLoader(objectArchive);
 
-        this.regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
+        // this.regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
+        // console.timeEnd('region loader');
 
+        console.time('load textures');
         this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
+        console.timeEnd('load textures');
 
-        console.log('texture count: ', this.textureProvider.definitions.size);
+        // console.log('texture count: ', this.textureProvider.definitions.size);
 
-        this.chunkDataLoader = new ChunkDataLoader(this.regionLoader, this.modelIndex, this.textureProvider);
+        // this.chunkDataLoader = new ChunkDataLoader(this.regionLoader, this.modelIndex, this.textureProvider);
 
         // for (let i = 0; i < 50; i++) {
         //     this.chunkDataLoader.load(50, 50);
@@ -480,49 +466,23 @@ class Test {
 
         this.timer = app.createTimer();
 
-        this.program = app.createProgram(vertexShader, fragmentShader);
-        console.time('compile shader');
-        this.program2 = app.createProgram(vertexShader2, fragmentShader2);
-        console.timeEnd('compile shader');
+        app.createPrograms([vertexShader2, fragmentShader2]).then(([program]) => {
+            this.program = program;
+        });
 
         this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4]);
 
-        // const textures = textureProvider.getDefinitions();
-
+        console.time('load texture array');
         const textureArrayImage = this.textureProvider.createTextureArrayImage(0.9, TEXTURE_SIZE, true);
+        console.timeEnd('load texture array');
 
         this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
             { maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY });
 
-        const radius = 1;
-
-        console.time('build');
-        for (let x = 0; x < radius; x++) {
-            for (let y = 0; y < radius; y++) {
-                // const terrain = loadTerrain2(app, this.regionLoader, this.textureProvider, 50 + x, 50 + y, this.modelIndex);
-                // const terrain = loadTerrain3(app, this.chunkDataLoader, 50 + x, 50 + y);
-                // this.terrains.push(terrain);
-            }
-        }
-        console.timeEnd('build');
-
-        // const totalTriangles = this.terrains.map(t => t.triangleCount).reduce((a, b) => a + b, 0);
-        // console.log('triangles', totalTriangles);
-
 
         console.timeEnd('first load');
 
-        console.log(this.program);
-
         console.log(gl.getSupportedExtensions());
-
-        // const program = createProgramFromSources(gl, [vertexShader, fragmentShader]);
-        // console.log(program);
-        // const settingsBlock = UniformBlock.create(gl, program, "Settings", 0, ["u_projViewMatrix"]);
-
-        // gl.enable(gl.DEPTH_TEST);
-
-        // gl.clearColor(0, 0, 0, 1);
     }
 
     onKeyDown(event: KeyboardEvent) {
@@ -599,13 +559,24 @@ class Test {
         const canvasWidth = gl.canvas.width;
         const canvasHeight = gl.canvas.height;
 
+        if (resized) {
+            this.app.resize(canvasWidth, canvasHeight);
+        }
+
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        if (!this.program) {
+            console.warn('program not compiled yet');
+            return;
+        }
+
         let cameraSpeedMult = 1.0;
         if (this.keys.get('Shift')) {
             cameraSpeedMult = 3.0;
         }
 
         const deltaPitch = 64 * 3 * deltaTime;
-        const deltaYaw = 64 * 5 * deltaTime;
+        const deltaYaw = 64 * 4 * deltaTime;
 
         if (this.keys.get('ArrowUp')) {
             this.pitch = clamp(this.pitch + deltaPitch, 0, 512);
@@ -653,12 +624,6 @@ class Test {
             this.app.disable(PicoGL.RASTERIZER_DISCARD);
         }
 
-        if (resized) {
-            this.app.resize(canvasWidth, canvasHeight);
-
-        }
-
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
@@ -703,24 +668,17 @@ class Test {
             const drawCall = regionDist >= 3 ? terrain.drawCallLowDetail : terrain.drawCall;
 
             drawCall.uniform('u_currentTime', time);
-            // debugger;
-
-            // console.log(terrain.drawRanges);
-
-            // console.log(drawCall);
-
-            // console.log((drawCall.numElements as any)[0], (drawCall.numInstances as any)[0], (drawCall as any).offsets[0], (drawCall as any).numDraws)
 
             drawCall.draw();
         });
 
         getSpiralDeltas(10)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2)
-            .filter(regionPos => !this.loadingRegionIds.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
-            .filter(regionPos => !this.terrains.has(this.regionLoader.getRegionId(regionPos[0], regionPos[1])))
+            .filter(regionPos => !this.loadingRegionIds.has(RegionLoader.getRegionId(regionPos[0], regionPos[1])))
+            .filter(regionPos => !this.terrains.has(RegionLoader.getRegionId(regionPos[0], regionPos[1])))
             .filter(regionPos => this.isVisible(regionPos))
             .forEach(regionPos => {
-                this.loadingRegionIds.add(this.regionLoader.getRegionId(regionPos[0], regionPos[1]));
+                this.loadingRegionIds.add(RegionLoader.getRegionId(regionPos[0], regionPos[1]));
 
                 this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
                     if (chunkData) {
@@ -729,11 +687,11 @@ class Test {
                 });
             });
 
-        // TODO upload x bytes per frame
+        // TODO: upload x bytes per frame
         if (this.chunksToLoad.length && this.frameCount % 30) {
             const chunkData = this.chunksToLoad[0];
-            this.terrains.set(this.regionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
-                loadTerrain(this.app, this.program2, this.textureArray, this.sceneUniformBuffer, chunkData, this.frameCount));
+            this.terrains.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
+                loadTerrain(this.app, this.program, this.textureArray, this.sceneUniformBuffer, chunkData, this.frameCount));
             this.chunksToLoad = this.chunksToLoad.slice(1);
         }
 
@@ -759,29 +717,26 @@ function App() {
     useEffect(() => {
         console.time('first load');
         const load = async () => {
-            const fileSystem = await openFromUrl('/cache209/', [IndexType.CONFIGS, IndexType.MAPS, IndexType.MODELS, IndexType.SPRITES, IndexType.TEXTURES], true);
+            const store = await fetchMemoryStore('/cache209/', [IndexType.CONFIGS, IndexType.MAPS, IndexType.MODELS, IndexType.SPRITES, IndexType.TEXTURES], true);
 
+            console.time('load xteas');
             const xteas: any[] = await fetch('/cache209/keys.json').then(resp => resp.json());
             const xteasMap: Map<number, number[]> = new Map();
             xteas.forEach(xtea => xteasMap.set(xtea.group, xtea.key));
-
-            // const chunkLoaderWorker = await spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any));
-            // chunkLoaderWorker.init(Transfer(fileSystem.store, []), xteasMap);
-
-            // console.log(chunkLoaderWorker);
+            console.timeEnd('load xteas');
 
             // const poolSize = 1;
             // const poolSize = navigator.hardwareConcurrency;
-            const poolSize = Math.min(navigator.hardwareConcurrency, 8);
+            const poolSize = Math.min(navigator.hardwareConcurrency, 4);
 
             const pool = Pool(() => {
                 return spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any)).then(worker => {
-                    worker.init(Transfer(fileSystem.store, []), xteasMap);
+                    worker.init(Transfer(store, []), xteasMap);
                     return worker;
                 });
             }, poolSize);
 
-            // await pool.completed();
+            const fileSystem = loadFromStore(store);
 
             const mapViewer = new Test(fileSystem, xteasMap, pool);
             mapViewer.fpsListener = (fps: number) => {
