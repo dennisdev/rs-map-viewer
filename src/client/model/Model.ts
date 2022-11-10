@@ -46,9 +46,9 @@ export class Model extends Renderable {
 
     faceLabelsAlpha!: Int32Array[];
 
-    animayaGroups!: Int32Array[];
+    animMayaGroups!: Int32Array[];
 
-    animayaScales!: Int32Array[];
+    animMayaScales!: Int32Array[];
 
     isClickable: boolean;
 

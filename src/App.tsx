@@ -11,6 +11,7 @@ import { spawn, Pool, Worker, Transfer, TransferDescriptor, ModuleThread } from 
 import { RegionLoader } from './client/RegionLoader';
 import { ChunkData, ChunkDataLoader } from './ChunkDataLoader';
 import { MemoryStore } from './client/fs/MemoryStore';
+import { Skeleton } from './client/model/Skeleton';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -251,8 +252,8 @@ type Terrain = {
     drawCallLowDetail: DrawCall,
 }
 
-function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer, 
-        chunkData: ChunkData, frame: number): Terrain {
+function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer,
+    chunkData: ChunkData, frame: number): Terrain {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
@@ -769,7 +770,15 @@ function App() {
     useEffect(() => {
         console.time('first load');
         const load = async () => {
-            const store = await fetchMemoryStore('/cache209/', [IndexType.CONFIGS, IndexType.MAPS, IndexType.MODELS, IndexType.SPRITES, IndexType.TEXTURES], true);
+            const store = await fetchMemoryStore('/cache209/', [
+                IndexType.ANIMATIONS,
+                IndexType.SKELETONS,
+                IndexType.CONFIGS,
+                IndexType.MAPS,
+                IndexType.MODELS,
+                IndexType.SPRITES,
+                IndexType.TEXTURES
+            ], true);
 
             console.time('load xteas');
             const xteas: any[] = await fetch('/cache209/keys.json').then(resp => resp.json());
@@ -789,6 +798,46 @@ function App() {
             }, poolSize);
 
             const fileSystem = loadFromStore(store);
+
+            // const animIndex = fileSystem.getIndex(IndexType.ANIMATIONS);
+            // const skeletonIndex = fileSystem.getIndex(IndexType.SKELETONS);
+            // console.log('anim archive count: ', animIndex.getArchiveCount());
+            // console.log('skeleton archive count: ', skeletonIndex.getArchiveCount());
+
+            // const skeletons: Map<number, Skeleton> = new Map();
+
+            // const getSkeleton = (id: number) => {
+            //     const file = skeletonIndex.getFile(id, 0);
+            //     if (!file) {
+            //         throw new Error('Invalid skeleton file: ' + id);
+            //     }
+            //     return new Skeleton(id, file.data);
+            // };
+
+            // const getSkeletonCached = (id: number) => {
+            //     let skeleton = skeletons.get(id);
+            //     if (!skeleton) {
+            //         skeleton = getSkeleton(id);
+            //         skeletons.set(id, skeleton);
+            //     }
+            //     return skeleton;
+            // }
+
+            // console.time('load anim archives');
+            // let fileCount = 0;
+            // const skeletonIds: Set<number> = new Set();
+            // for (const id of animIndex.getArchiveIds()) {
+            //     const archive = animIndex.getArchive(id);
+            //     for (const file of archive.files) {
+            //         fileCount++;
+            //         const animData = file.data;
+            //         const skeletonId = (animData[0] & 0xFF) << 8 | (animData[1] & 0xFF);
+            //         getSkeletonCached(skeletonId);
+            //         skeletonIds.add(skeletonId);
+            //     }
+            // }
+            // console.timeEnd('load anim archives');
+            // console.log(fileCount, skeletonIds);
 
             const mapViewer = new Test(fileSystem, xteasMap, pool);
             mapViewer.fpsListener = (fps: number) => {

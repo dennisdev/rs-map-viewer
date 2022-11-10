@@ -56,9 +56,9 @@ export class ModelData extends Renderable {
 
     faceLabelsAlpha!: Int32Array[];
 
-    animayaGroups!: Int32Array[];
+    animMayaGroups!: Int32Array[];
 
-    animayaScales!: Int32Array[];
+    animMayaScales!: Int32Array[];
 
     faceNormals?: FaceNormal[];
 
@@ -179,7 +179,7 @@ export class ModelData extends Renderable {
                 hasSkins ||= !!model.faceSkins;
                 hasTextures ||= !!model.faceTextures;
                 hasTextureCoords ||= !!model.textureCoords;
-                hasUnknown ||= !!model.animayaGroups;
+                hasUnknown ||= !!model.animMayaGroups;
             }
         }
 
@@ -215,8 +215,8 @@ export class ModelData extends Renderable {
         }
 
         if (hasUnknown) {
-            this.animayaGroups = new Array(this.verticesCount);
-            this.animayaScales = new Array(this.verticesCount);
+            this.animMayaGroups = new Array(this.verticesCount);
+            this.animMayaScales = new Array(this.verticesCount);
         }
 
         this.faceColors = new Int16Array(this.faceCount);
@@ -314,9 +314,9 @@ export class ModelData extends Renderable {
                 this.vertexSkins[this.verticesCount] = model.vertexSkins[index];
             }
 
-            if (model.animayaGroups) {
-                this.animayaGroups[this.verticesCount] = model.animayaGroups[index];
-                this.animayaScales[this.verticesCount] = model.animayaScales[index];
+            if (model.animMayaGroups) {
+                this.animMayaGroups[this.verticesCount] = model.animMayaGroups[index];
+                this.animMayaScales[this.verticesCount] = model.animMayaScales[index];
             }
 
             newVertexCount = this.verticesCount++;
@@ -480,8 +480,8 @@ export class ModelData extends Renderable {
         }
 
         if (var18 === 1) {
-            this.animayaGroups = new Array(vertexCount);
-            this.animayaScales = new Array(vertexCount);
+            this.animMayaGroups = new Array(vertexCount);
+            this.animMayaScales = new Array(vertexCount);
         }
 
         this.faceColors = new Int16Array(faceCount);
@@ -531,12 +531,12 @@ export class ModelData extends Renderable {
         if (var18 === 1) {
             for (let i = 0; i < vertexCount; i++) {
                 const var54 = buf5.readUnsignedByte();
-                this.animayaGroups[i] = new Int32Array(var54);
-                this.animayaScales[i] = new Int32Array(var54);
+                this.animMayaGroups[i] = new Int32Array(var54);
+                this.animMayaScales[i] = new Int32Array(var54);
 
                 for (let j = 0; j < var54; j++) {
-                    this.animayaGroups[i][j] = buf5.readUnsignedByte();
-                    this.animayaScales[i][j] = buf5.readUnsignedByte();
+                    this.animMayaGroups[i][j] = buf5.readUnsignedByte();
+                    this.animMayaScales[i][j] = buf5.readUnsignedByte();
                 }
             }
         }
@@ -754,8 +754,8 @@ export class ModelData extends Renderable {
         }
 
         if (var17 === 1) {
-            this.animayaGroups = new Array(vertexCount);
-            this.animayaScales = new Array(vertexCount);
+            this.animMayaGroups = new Array(vertexCount);
+            this.animMayaScales = new Array(vertexCount);
         }
 
         this.faceColors = new Int16Array(faceCount);
@@ -799,12 +799,12 @@ export class ModelData extends Renderable {
         if (var17 === 1) {
             for (let i = 0; i < vertexCount; i++) {
                 const var41 = buf5.readUnsignedByte();
-                this.animayaGroups[i] = new Int32Array(var41);
-                this.animayaScales[i] = new Int32Array(var41);
+                this.animMayaGroups[i] = new Int32Array(var41);
+                this.animMayaScales[i] = new Int32Array(var41);
 
                 for (let j = 0; j < var41; j++) {
-                    this.animayaGroups[i][j] = buf5.readUnsignedByte();
-                    this.animayaScales[i][j] = buf5.readUnsignedByte();
+                    this.animMayaGroups[i][j] = buf5.readUnsignedByte();
+                    this.animMayaScales[i][j] = buf5.readUnsignedByte();
                 }
             }
         }
@@ -1582,8 +1582,8 @@ export class ModelData extends Renderable {
         this.normals = model.normals;
         this.faceNormals = model.faceNormals;
         this.mergedNormals = model.mergedNormals;
-        this.animayaGroups = model.animayaGroups;
-        this.animayaScales = model.animayaScales;
+        this.animMayaGroups = model.animMayaGroups;
+        this.animMayaScales = model.animMayaScales;
         this.ambient = model.ambient;
         this.contrast = model.contrast;
     }
@@ -1890,7 +1890,7 @@ export class ModelData extends Renderable {
                     var14 = 1;
                 }
 
-                
+
                 // if (this.faceCount === 306 && var2 ==0) {
                 //     console.log('normal', var14, var11, var12, var13, var11 * 256 / var14, var12 * 256 / var14, var13 * 256 / var14);
                 // }
@@ -2082,7 +2082,7 @@ export class ModelData extends Renderable {
                         model.faceColors1[i] = ModelData.addLightness(this.faceColors[i] & 0xFFFF, var14);
                         model.faceColors3[i] = -1;
 
-                        
+
                         // if (this.faceCount === 306 && i === 13) {
                         //     console.log(normal, var14, var7, (lightY * normal.y + lightZ * normal.z + lightX * normal.x), (var7 / 2 + var7),
                         //     (lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 / 2 + var7),
@@ -2129,7 +2129,7 @@ export class ModelData extends Renderable {
                     var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 * normal.magnitude) | 0) + ambient | 0;
                     model.faceColors3[i] = ModelData.addLightness(color, var14);
 
-                    
+
                     // if (this.faceCount === 306 && i === 13) {
 
                     //     console.log(this.faceCount, type, color, model.faceColors1[i]);
@@ -2188,8 +2188,8 @@ export class ModelData extends Renderable {
         model.vertexLabels = this.vertexLabels;
         model.faceLabelsAlpha = this.faceLabelsAlpha;
         model.faceTextures = this.faceTextures;
-        model.animayaGroups = this.animayaGroups;
-        model.animayaScales = this.animayaScales;
+        model.animMayaGroups = this.animMayaGroups;
+        model.animMayaScales = this.animMayaScales;
         return model;
     }
 }

@@ -865,6 +865,10 @@ export class ChunkDataLoader {
                 let { id, type, rotation, localX, localY, plane } = spawn;
                 const def = this.regionLoader.getObjectDef(id);
 
+                // if (def.animationId !== -1) {
+                //     continue;
+                // }
+
                 // only roofs?
                 // if (/*(renderFlags[0][localX][localY] & 2) != 0 || */(renderFlags[plane][localX][localY] & 16) == 0) {
                 //     continue;
