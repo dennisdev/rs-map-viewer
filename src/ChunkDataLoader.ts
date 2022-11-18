@@ -1315,7 +1315,9 @@ export class ChunkDataLoader {
         // }
 
         if (landscapeData && 1) {
-            const scene = new Scene2(4, 64, 64, region.tileHeights);
+            const heightMap = this.loadHeightMap(regionX, regionY, 72);
+
+            const scene = new Scene2(4, 64, 64, heightMap);
             scene.decodeLandscape(this.regionLoader, objectModelLoader, landscapeData);
 
             scene.applyLighting(-50, -10, -50);
@@ -1370,7 +1372,7 @@ export class ChunkDataLoader {
                                 const priority = 1;
 
                                 const objectData = { localX: tile.floorDecoration.sceneX, localY: tile.floorDecoration.sceneY, plane: plane, contourGround: def.contouredGround, priority };
-                                
+
                                 if (isLowDetail(tile.floorDecoration.type, def, tileX, tileY, plane, lowDetailOcclusionMap)) {
                                     modelSpawns.objectDatasLowDetail.push(objectData);
                                 } else {
@@ -1432,7 +1434,7 @@ export class ChunkDataLoader {
 
                                 const sceneX = (tile.wallDecoration.sceneX + tile.wallDecoration.offsetX);
                                 const sceneY = (tile.wallDecoration.sceneY + tile.wallDecoration.offsetY);
-                                
+
 
                                 const objectData = { localX: sceneX, localY: sceneY, plane: plane, contourGround: def.contouredGround, priority };
                                 modelSpawns.objectDatas.push(objectData);
@@ -1449,12 +1451,12 @@ export class ChunkDataLoader {
 
                                 const priority = 2;
 
-                                
+
                                 const sceneX = (tile.wallDecoration.sceneX);
                                 const sceneY = (tile.wallDecoration.sceneY);
 
                                 const objectData = { localX: sceneX, localY: sceneY, plane: plane, contourGround: def.contouredGround, priority };
-                                
+
                                 if (isLowDetail(tile.wallDecoration.type, def, tileX, tileY, plane, lowDetailOcclusionMap)) {
                                     modelSpawns.objectDatasLowDetail.push(objectData);
                                 } else {
@@ -1482,7 +1484,7 @@ export class ChunkDataLoader {
                                 const priority = 1;
 
                                 const objectData = { localX: gameObject.sceneX, localY: gameObject.sceneY, plane: plane, contourGround: def.contouredGround, priority };
-                                
+
                                 if (isLowDetail(gameObject.type, def, tileX, tileY, plane, lowDetailOcclusionMap)) {
                                     modelSpawns.objectDatasLowDetail.push(objectData);
                                 } else {
@@ -1491,7 +1493,7 @@ export class ChunkDataLoader {
 
                                 regionModelSpawns.set(key, modelSpawns);
 
-                                
+
                                 gameObjects.add(gameObject);
                             }
                         }
@@ -1613,8 +1615,8 @@ export class ChunkDataLoader {
             for (let i = 0; i < allModelSpawns.length; i++) {
                 const modelSpawns = allModelSpawns[i];
 
-                
-                
+
+
                 const model = modelSpawns.model;
 
                 const verticesX = model.verticesX;
@@ -1766,7 +1768,7 @@ export class ChunkDataLoader {
                     count++;
                     modelHashCounts.set(hash, count);
 
-                    
+
                     let ucount = modelUniqueVertexCounts.get(hash);
                     if (ucount === undefined) {
                         ucount = 0;
@@ -1885,6 +1887,25 @@ export class ChunkDataLoader {
         } finally {
             console.timeEnd('convert');
         }
+    }
+
+    loadHeightMap(regionX: number, regionY: number, size: number): Int32Array[][] {
+        const heightMap: Int32Array[][] = new Array(Scene.MAX_PLANE);
+
+        const baseX = regionX * 64;
+        const baseY = regionY * 64;
+
+        for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+            heightMap[plane] = new Array(size);
+            for (let x = 0; x < size; x++) {
+                heightMap[plane][x] = new Int32Array(size);
+                for (let y = 0; y < size; y++) {
+                    heightMap[plane][x][y] = this.regionLoader.getHeight(baseX + x, baseY + y, plane);
+                }
+            }
+        }
+
+        return heightMap;
     }
 
     loadHeightMapTextureData(regionX: number, regionY: number): Float32Array {

@@ -263,7 +263,7 @@ export class Model extends Renderable {
         this.xMidOffset = -1;
     }
 
-    contourGround(heightMap: number[][], tileX: number, tileHeight: number, tileY: number, var5: boolean, clipType: number): Model {
+    contourGround(heightMap: Int32Array[], tileX: number, tileHeight: number, tileY: number, var5: boolean, clipType: number): Model {
         this.calculateBoundsCylinder();
         let var7 = tileX - this.xzRadius;
         let var8 = tileX + this.xzRadius;

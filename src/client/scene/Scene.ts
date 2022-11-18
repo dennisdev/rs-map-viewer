@@ -288,7 +288,8 @@ export class ObjectModelLoader {
         return copy;
     }
 
-    getObjectModel(def: ObjectDefinition, type: number, rotation: number): Model | ModelData | undefined {
+    getObjectModel(def: ObjectDefinition, type: number, rotation: number, heightMap: Int32Array[], 
+        sceneX: number, sceneHeight: number, sceneY: number): Model | ModelData | undefined {
         let key: number;
         if (def.objectTypes) {
             key = rotation + (type << 3) + (def.id << 10);
@@ -318,6 +319,14 @@ export class ObjectModelLoader {
 
         if (def.mergeNormals) {
             model = (model as ModelData).copy();
+        }
+        
+        if (def.contouredGround >= 0) {
+            if (model instanceof Model) {
+                // model = (model as Model).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
+            } else if (model instanceof ModelData) {
+                model = (model as ModelData).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
+            }
         }
 
         return model;
@@ -462,10 +471,32 @@ export class Scene2 {
         if (rotation == 1 || rotation == 3) {
             sizeX = def.sizeY;
             sizeY = def.sizeX;
+        }         
+
+        const heightMapSize = this.tileHeights[0].length;
+
+        let startX: number;
+        let endX: number;
+        if (sizeX + tileX < heightMapSize) {
+           startX = (sizeX >> 1) + tileX;
+           endX = (sizeX + 1 >> 1) + tileX;
+        } else {
+           startX = tileX;
+           endX = tileX + 1;
+        }
+
+        let startY: number;
+        let endY: number;
+        if (sizeY + tileY < heightMapSize) {
+           startY = (sizeY >> 1) + tileY;
+           endY = tileY + (sizeY + 1 >> 1);
+        } else {
+           startY = tileY;
+           endY = tileY + 1;
         }
 
         const heightMap = this.tileHeights[plane];
-
+        const centerHeight = heightMap[endX][endY] + heightMap[startX][endY] + heightMap[startX][startY] + heightMap[endX][startY] >> 2;
         const sceneX = (tileX << 7) + (sizeX << 6);
         const sceneY = (tileY << 7) + (sizeY << 6);
 
@@ -478,17 +509,17 @@ export class Scene2 {
 
 
         if (type === ObjectType.FLOOR_DECORATION) {
-            const model = modelLoader.getObjectModel(def, type, rotation);
+            const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
             this.newFloorDecoration(plane, tileX, tileY, model, tag, type, def);
         } else if (type !== ObjectType.OBJECT && type !== ObjectType.OBJECT_DIAGIONAL) {
             // roofs
             if (type >= ObjectType.ROOF_SLOPED) {
-                const model = modelLoader.getObjectModel(def, type, rotation);
+                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newGameObject(plane, tileX, tileY, 1, 1, model, tag, type, def);
             } else if (type === ObjectType.WALL) {
-                const model = modelLoader.getObjectModel(def, type, rotation);
+                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, model, undefined, tag, type, def);
 
@@ -496,12 +527,12 @@ export class Scene2 {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                 }
             } else if (type === ObjectType.WALL_TRI_CORNER) {
-                const model = modelLoader.getObjectModel(def, type, rotation);
+                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, model, undefined, tag, type, def);
             } else if (type === ObjectType.WALL_CORNER) {
-                const model0 = modelLoader.getObjectModel(def, type, rotation + 4);
-                const model1 = modelLoader.getObjectModel(def, type, rotation + 1 & 3);
+                const model0 = modelLoader.getObjectModel(def, type, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                const model1 = modelLoader.getObjectModel(def, type, rotation + 1 & 3, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, model0, model1, tag, type, def);
 
@@ -509,11 +540,11 @@ export class Scene2 {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                 }
             } else if (type === ObjectType.WALL_RECT_CORNER) {
-                const model = modelLoader.getObjectModel(def, type, rotation);
+                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, model, undefined, tag, type, def);
             } else if (type === ObjectType.WALL_DIAGONAL) {
-                const model = modelLoader.getObjectModel(def, type, rotation);
+                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newGameObject(plane, tileX, tileY, 1, 1, model, tag, type, def);
 
@@ -521,7 +552,7 @@ export class Scene2 {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                 }
             } else if (type === ObjectType.WALL_DECORATION_INSIDE) {
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation);
+                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWallDecoration(plane, tileX, tileY, model, undefined, 0, 0, tag, type, def);
 
@@ -535,7 +566,7 @@ export class Scene2 {
                     displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement;
                 }
 
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation);
+                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 const displacementX = displacement * Scene2.displacementX[rotation];
                 const displacementY = displacement * Scene2.displacementY[rotation];
@@ -548,7 +579,7 @@ export class Scene2 {
                     displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement / 2;
                 }
 
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4);
+                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
                 const displacementX = displacement * Scene2.diagonalDisplacementX[rotation];
                 const displacementY = displacement * Scene2.diagonalDisplacementY[rotation];
@@ -557,7 +588,7 @@ export class Scene2 {
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_INSIDE) {
                 const insideRotation = rotation + 2 & 3;
 
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4);
+                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWallDecoration(plane, tileX, tileY, model, undefined, 0, 0, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_DOUBLE) {
@@ -569,8 +600,8 @@ export class Scene2 {
 
                 const insideRotation = rotation + 2 & 3;
 
-                const model0 = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4);
-                const model1 = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4);
+                const model0 = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                const model1 = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
                 const displacementX = displacement * Scene2.diagonalDisplacementX[rotation];
                 const displacementY = displacement * Scene2.diagonalDisplacementY[rotation];
@@ -578,7 +609,7 @@ export class Scene2 {
                 this.newWallDecoration(plane, tileX, tileY, model0, model1, displacementX, displacementY, tag, type, def);
             }
         } else {
-            const model = modelLoader.getObjectModel(def, ObjectType.OBJECT, rotation);
+            const model = modelLoader.getObjectModel(def, ObjectType.OBJECT, rotation, heightMap, sceneX, centerHeight, sceneY);
 
             if (model && this.newGameObject(plane, tileX, tileY, sizeX, sizeY, model, tag, type, def) && def.clipped) {
                 let lightOcclusion = 15;
@@ -682,15 +713,17 @@ export class Scene2 {
                     }
                     const wall = tile.wallObject;
                     if (wall && wall.model0 instanceof ModelData) {
-                        this.mergeLargeObjectNormals(wall.model0, plane, tileX, tileY, 1, 1);
+                        const model0 = wall.model0;
+                        this.mergeLargeObjectNormals(model0, plane, tileX, tileY, 1, 1);
 
                         if (wall.model1 instanceof ModelData) {
-                            this.mergeLargeObjectNormals(wall.model1, plane, tileX, tileY, 1, 1);
-                            ModelData.mergeNormals(wall.model0, wall.model1, 0, 0, 0, false);
-                            wall.model1 = wall.model1.light(wall.model1.ambient, wall.model1.contrast, lightX, lightY, lightZ);
+                            const model1 = wall.model1;
+                            this.mergeLargeObjectNormals(model1, plane, tileX, tileY, 1, 1);
+                            ModelData.mergeNormals(model0, model1, 0, 0, 0, false);
+                            wall.model1 = model1.light(model1.ambient, model1.contrast, lightX, lightY, lightZ);
                         }
 
-                        wall.model0 = wall.model0.light(wall.model0.ambient, wall.model0.contrast, lightX, lightY, lightZ);
+                        wall.model0 = model0.light(model0.ambient, model0.contrast, lightX, lightY, lightZ);
                     }
 
                     for (const gameObject of tile.gameObjects) {

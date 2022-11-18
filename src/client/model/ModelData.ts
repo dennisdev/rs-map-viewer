@@ -21,6 +21,8 @@ export class ModelData extends Renderable {
 
     verticesZ!: Int32Array;
 
+    preContourVerticesY?: Int32Array;
+
     faceCount: number;
 
     indices1!: Int32Array;
@@ -1729,7 +1731,7 @@ export class ModelData extends Renderable {
         return model;
     }
 
-    contourGround(heightMap: number[][], tileX: number, tileHeight: number, tileY: number, var5: boolean, clipType: number): ModelData {
+    contourGround(heightMap: Int32Array[], tileX: number, tileHeight: number, tileY: number, var5: boolean, contourGround: number): ModelData {
         this.calculateBounds();
         let var7 = tileX + this.minX;
         let var8 = tileX + this.maxX;
@@ -1769,8 +1771,9 @@ export class ModelData extends Renderable {
                 model.faceLabelsAlpha = this.faceLabelsAlpha;
                 model.ambient = this.ambient;
                 model.contrast = this.contrast;
+                model.preContourVerticesY = this.verticesY;
                 model.verticesY = new Int32Array(model.verticesCount);
-                if (clipType == 0) {
+                if (contourGround == 0) {
                     for (let i = 0; i < model.verticesCount; i++) {
                         const var13 = tileX + this.verticesX[i];
                         const var14 = tileY + this.verticesZ[i];
@@ -1786,7 +1789,7 @@ export class ModelData extends Renderable {
                 } else {
                     for (let i = 0; i < model.verticesCount; i++) {
                         const var13 = (-this.verticesY[i] << 16) / this.height;
-                        if (var13 < clipType) {
+                        if (var13 < contourGround) {
                             const var14 = tileX + this.verticesX[i];
                             const var15 = tileY + this.verticesZ[i];
                             const var16 = var14 & 127;
@@ -1796,7 +1799,7 @@ export class ModelData extends Renderable {
                             const var20 = heightMap[var18][var19] * (128 - var16) + heightMap[var18 + 1][var19] * var16 >> 7;
                             const var21 = heightMap[var18][var19 + 1] * (128 - var16) + var16 * heightMap[var18 + 1][var19 + 1] >> 7;
                             const var22 = var20 * (128 - var17) + var21 * var17 >> 7;
-                            model.verticesY[i] = (clipType - var13) * (var22 - tileHeight) / clipType + this.verticesY[i];
+                            model.verticesY[i] = (contourGround - var13) * (var22 - tileHeight) / contourGround + this.verticesY[i];
                         }
                     }
                 }
@@ -2277,7 +2280,7 @@ export class ModelData extends Renderable {
         this.computeAnimationTables();
         model.verticesCount = this.verticesCount;
         model.verticesX = this.verticesX;
-        model.verticesY = this.verticesY;
+        model.verticesY = this.preContourVerticesY || this.verticesY;
         model.verticesZ = this.verticesZ;
         model.faceCount = this.faceCount;
         model.indices1 = this.indices1;

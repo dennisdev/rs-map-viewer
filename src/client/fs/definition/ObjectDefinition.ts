@@ -328,7 +328,7 @@ export class ObjectDefinition extends Definition {
         }
     }
 
-    getRenderable(objectManager: ObjectManager, modelManager: ModelManager, type: number, rotation: number, heightMap: number[][], tileX: number, tileHeight: number, tileY: number): ModelData | Model | undefined {
+    getRenderable(objectManager: ObjectManager, modelManager: ModelManager, type: number, rotation: number, heightMap: Int32Array[], tileX: number, tileHeight: number, tileY: number): ModelData | Model | undefined {
         let key;
         if (!this.objectTypes) {
             key = rotation + (this.id << 10);
@@ -370,7 +370,7 @@ export class ObjectDefinition extends Definition {
         return model;
     }
 
-    getModel(objectManager: ObjectManager, modelManager: ModelManager, type: number, rotation: number, heightMap: number[][], tileX: number, tileHeight: number, tileY: number): Model | undefined {
+    getModel(objectManager: ObjectManager, modelManager: ModelManager, type: number, rotation: number, heightMap: Int32Array[], tileX: number, tileHeight: number, tileY: number): Model | undefined {
         let key;
         if (!this.objectTypes) {
             key = rotation + (this.id << 10);
