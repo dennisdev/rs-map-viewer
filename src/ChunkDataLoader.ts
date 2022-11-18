@@ -451,6 +451,15 @@ type ModelSpawns = {
     objectDatasLowDetail: ObjectData[],
 }
 
+type ModelSpawns2 = {
+    vertexOffset: number,
+    vertexCount: number,
+    model: Model,
+    faces: ModelFace[],
+    objectDatas: ObjectData[],
+    objectDatasLowDetail: ObjectData[],
+}
+
 function floatToIntBits(n: number): number {
     const buf = new ArrayBuffer(4);
     new Float32Array(buf)[0] = n;
@@ -1178,7 +1187,7 @@ export class ChunkDataLoader {
 
         const vertexBuf = new VertexBuffer(100000);
 
-        const indices: number[] = [];
+        let indices: number[] = [];
 
         const drawCommands: InstancedDrawCommand[] = [];
 
@@ -1207,7 +1216,7 @@ export class ChunkDataLoader {
         const lightSet: Set<number> = new Set();
 
         for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
-            const indexOffset = indices.length * 4;
+            const indexByteOffset = indices.length * 4;
             for (let x = 0; x < Scene.MAP_SIZE; x++) {
                 for (let y = 0; y < Scene.MAP_SIZE; y++) {
                     const underlayId = underlayIds[plane][x][y] - 1;
@@ -1290,13 +1299,13 @@ export class ChunkDataLoader {
                 }
             }
 
-            const planeVertexCount = (indices.length * 4 - indexOffset) / 4;
+            const planeVertexCount = (indices.length * 4 - indexByteOffset) / 4;
 
             if (planeVertexCount > 0) {
                 drawCommands.push({
-                    vertexOffset: indexOffset,
+                    vertexOffset: indexByteOffset,
                     vertexCount: planeVertexCount,
-                    objectDatas: [{ localX: 0, localY: 0, plane: plane, contourGround: 1, priority: 0 }],
+                    objectDatas: [{ localX: 0, localY: 0, plane: plane, contourGround: 0, priority: 0 }],
                 });
             }
         }
@@ -1612,12 +1621,18 @@ export class ChunkDataLoader {
 
             const uniqueModels: Map<bigint, Model> = new Map();
 
+            const models: Model[] = [];
+            
+            const modelSpawns2: Map<bigint, ModelSpawns2> = new Map();
+
             for (let i = 0; i < allModelSpawns.length; i++) {
                 const modelSpawns = allModelSpawns[i];
 
 
 
                 const model = modelSpawns.model;
+
+                models.push(model);
 
                 const verticesX = model.verticesX;
                 const verticesY = model.verticesY;
@@ -1777,22 +1792,62 @@ export class ChunkDataLoader {
                     modelUniqueVertexCounts.set(hash, ucount);
 
                     uniqueModels.set(hash, model);
+
+                    let spawns2 = modelSpawns2.get(hash);
+                    if (!spawns2) {
+                        spawns2 = {
+                            vertexOffset: indexOffset, 
+                            vertexCount: modelVertexCount,
+                            model: model,
+                            faces: faces,
+                            objectDatas: [],
+                            objectDatasLowDetail: [],
+                        };
+                    } else {
+                        indices.length -= hashData.length;
+                    }
+
+                    spawns2.objectDatas.push(...modelSpawns.objectDatas);
+                    spawns2.objectDatasLowDetail.push(...modelSpawns.objectDatasLowDetail);
+
+                    modelSpawns2.set(hash, spawns2);
                 }
 
+                // const objectDatas: ObjectData[] = modelSpawns.objectDatas;
+                // const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
+
+                // if (objectDatas.length) {
+                //     drawCommands.push({
+                //         vertexOffset: indexOffset,
+                //         vertexCount: modelVertexCount,
+                //         objectDatas
+                //     });
+                // }
+                // if (objectDatasLowDetail.length) {
+                //     drawCommandsLowDetail.push({
+                //         vertexOffset: indexOffset,
+                //         vertexCount: modelVertexCount,
+                //         objectDatas: objectDatasLowDetail
+                //     });
+                // }
+            }
+
+            for (const [hash, modelSpawns] of modelSpawns2) {
+                
                 const objectDatas: ObjectData[] = modelSpawns.objectDatas;
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
 
-                if (objectDatas.length) {
+                if (objectDatas.length === 1) {
                     drawCommands.push({
-                        vertexOffset: indexOffset,
-                        vertexCount: modelVertexCount,
+                        vertexOffset: modelSpawns.vertexOffset,
+                        vertexCount: modelSpawns.vertexCount,
                         objectDatas
                     });
                 }
-                if (objectDatasLowDetail.length) {
+                if (objectDatasLowDetail.length === 1) {
                     drawCommandsLowDetail.push({
-                        vertexOffset: indexOffset,
-                        vertexCount: modelVertexCount,
+                        vertexOffset: modelSpawns.vertexOffset,
+                        vertexCount: modelSpawns.vertexCount,
                         objectDatas: objectDatasLowDetail
                     });
                 }
@@ -1807,21 +1862,36 @@ export class ChunkDataLoader {
             let uniqueVertexCounts = 0;
 
             let uniqueModelCount = 0;
+
+            let instancedVertexCounts = 0;
+            let instancedVertexCounts2 = 0;
             for (const [hash, count] of modelHashCounts) {
+                const model = uniqueModels.get(hash);
                 if (count === 1) {
                     uniqueModelCount++;
                     uniqueVertexCounts += modelUniqueVertexCounts.get(hash) || 0;
 
-                    const model = uniqueModels.get(hash);
                     if (model) {
                         uniqueVertexCounts2 += model.verticesCount;
+                    }
+                } else {
+                    if (model) {
+                        instancedVertexCounts += model.verticesCount * count;
+                        instancedVertexCounts2 += model.verticesCount;
                     }
                 }
             }
 
-            console.log(uniqueModelCount, modelHashCounts);
+            let totalVertices = 0;
+            models.forEach(model => {
+                totalVertices += model.verticesCount;
+            })
+
+            console.log('um', uniqueModelCount, modelHashCounts);
 
             console.log('u', uniqueVertexCounts, uniqueVertexCounts2);
+
+            console.log('ivc', instancedVertexCounts, totalVertices, instancedVertexCounts2);
 
             // console.log(uniqueVertices);
         }

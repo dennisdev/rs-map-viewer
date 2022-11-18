@@ -644,10 +644,10 @@ class Test {
             this.moveCamera(0, 0, 16 * cameraSpeedMult * deltaTime);
         }
         if (this.keys.get('e') || this.keys.get('E')) {
-            this.moveCamera(0, 1 * deltaTime, 0);
+            this.moveCamera(0, 4 * deltaTime, 0);
         }
         if (this.keys.get('c') || this.keys.get('C')) {
-            this.moveCamera(0, -1 * deltaTime, 0);
+            this.moveCamera(0, -4 * deltaTime, 0);
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
