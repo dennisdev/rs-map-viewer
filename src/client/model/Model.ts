@@ -10,6 +10,8 @@ export class Model extends Renderable {
 
     verticesZ!: Int32Array;
 
+    contourVerticesY?: Int32Array;
+
     faceCount: number;
 
     indices1!: Int32Array;
@@ -302,10 +304,11 @@ export class Model extends Renderable {
                     model.vertexLabels = this.vertexLabels;
                     model.faceLabelsAlpha = this.faceLabelsAlpha;
                     model.isClickable = this.isClickable;
-                    model.verticesY = new Int32Array(model.verticesCount);
+                    model.verticesY = this.verticesY;
                 } else {
                     model = this;
                 }
+                model.contourVerticesY = new Int32Array(model.verticesCount);
 
                 if (clipType == 0) {
                     for (let i = 0; i < model.verticesCount; i++) {
@@ -318,7 +321,7 @@ export class Model extends Renderable {
                         const var19 = heightMap[var17][var18] * (128 - var15) + heightMap[var17 + 1][var18] * var15 >> 7;
                         const var20 = heightMap[var17][var18 + 1] * (128 - var15) + var15 * heightMap[var17 + 1][var18 + 1] >> 7;
                         const var21 = var19 * (128 - var16) + var20 * var16 >> 7;
-                        model.verticesY[i] = var21 + this.verticesY[i] - tileHeight;
+                        model.contourVerticesY[i] = var21 + this.verticesY[i] - tileHeight;
                     }
                 } else {
                     for (let i = 0; i < model.verticesCount; i++) {
@@ -333,7 +336,7 @@ export class Model extends Renderable {
                             const var20 = heightMap[var18][var19] * (128 - var16) + heightMap[var18 + 1][var19] * var16 >> 7;
                             const var21 = heightMap[var18][var19 + 1] * (128 - var16) + var16 * heightMap[var18 + 1][var19 + 1] >> 7;
                             const var22 = var20 * (128 - var17) + var21 * var17 >> 7;
-                            model.verticesY[i] = (clipType - var13) * (var22 - tileHeight) / clipType + this.verticesY[i];
+                            model.contourVerticesY[i] = (clipType - var13) * (var22 - tileHeight) / clipType + this.verticesY[i];
                         }
                     }
                 }

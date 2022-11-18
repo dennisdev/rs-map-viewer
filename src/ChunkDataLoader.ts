@@ -1838,13 +1838,21 @@ export class ChunkDataLoader {
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
 
                 if ((objectDatas.length === 1 && objectDatasLowDetail.length === 0) || (objectDatas.length === 0 && objectDatasLowDetail.length === 1)) {
+                    let objectData: ObjectData;
+                    if (objectDatas.length === 1) {
+                        objectData = objectDatas[0];
+                    } else {
+                        objectData = objectDatasLowDetail[0];
+                    }
 
+                    const sceneX = objectData.localX;
+                    const sceneY = objectData.localY;
 
                     const model = modelSpawns.model;
                     const faces = modelSpawns.faces;
 
                     const verticesX = model.verticesX;
-                    const verticesY = model.verticesY;
+                    const verticesY = model.contourVerticesY || model.verticesY;
                     const verticesZ = model.verticesZ;
 
                     const facesA = model.indices1;
@@ -1856,6 +1864,8 @@ export class ChunkDataLoader {
                     const priorities = model.faceRenderPriorities;
 
                     const modelTexCoords = computeTextureCoords(model);
+
+                    const vbuff = modelVertexBuf;
 
                     for (const face of faces) {
 
@@ -1900,23 +1910,23 @@ export class ChunkDataLoader {
                         const fb = facesB[f];
                         const fc = facesC[f];
 
-                        const vxa = verticesX[fa];
-                        const vxb = verticesX[fb];
-                        const vxc = verticesX[fc];
+                        const vxa = sceneX + verticesX[fa];
+                        const vxb = sceneX + verticesX[fb];
+                        const vxc = sceneX + verticesX[fc];
 
                         const vya = verticesY[fa];
                         const vyb = verticesY[fb];
                         const vyc = verticesY[fc];
 
-                        const vza = verticesZ[fa];
-                        const vzb = verticesZ[fb];
-                        const vzc = verticesZ[fc];
+                        const vza = sceneY + verticesZ[fa];
+                        const vzb = sceneY + verticesZ[fb];
+                        const vzc = sceneY + verticesZ[fc];
 
-                        const faceStartVertexOffset = modelVertexBuf.vertexOffset;
+                        const faceStartVertexOffset = vbuff.vertexOffset;
 
-                        const index0 = modelVertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority + 1);
-                        const index1 = modelVertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority + 1);
-                        const index2 = modelVertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority + 1);
+                        const index0 = vbuff.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority + 1);
+                        const index1 = vbuff.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority + 1);
+                        const index2 = vbuff.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority + 1);
                     }
                 }
 
@@ -1980,8 +1990,6 @@ export class ChunkDataLoader {
 
             // console.log(uniqueVertices);
         }
-
-        console.log(this.textureProvider.idAlphaMap);
 
         const triangles = drawCommands.map(cmd => cmd.vertexCount / 3 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);
         const lowDetailTriangles = drawCommandsLowDetail.map(cmd => cmd.vertexCount / 3 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);

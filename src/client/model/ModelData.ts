@@ -21,7 +21,7 @@ export class ModelData extends Renderable {
 
     verticesZ!: Int32Array;
 
-    preContourVerticesY?: Int32Array;
+    contourVerticesY?: Int32Array;
 
     faceCount: number;
 
@@ -153,6 +153,9 @@ export class ModelData extends Renderable {
 
         ModelData.mergeModelNormalsCount++;
 
+        const verticesY0 = model0.contourVerticesY || model0.verticesY;
+        const verticesY1 = model1.contourVerticesY || model1.verticesY;
+
         let mergedCount = 0;
 
         for (let v0 = 0; v0 < model0.verticesCount; v0++) {
@@ -160,7 +163,7 @@ export class ModelData extends Renderable {
             if (normal0.magnitude === 0) {
                 continue;
             }
-            const y = model0.verticesY[v0] - offsetY;
+            const y = verticesY0[v0] - offsetY;
             if (y > model1.minHeight) {
                 continue;
             }
@@ -175,7 +178,7 @@ export class ModelData extends Renderable {
 
             for (let v1 = 0; v1 < model1.verticesCount; v1++) {
                 const normal1 = model1.normals[v1];
-                if (x != model1.verticesX[v1] || z != model1.verticesZ[v1] || y != model1.verticesY[v1] || normal1.magnitude === 0) {
+                if (x != model1.verticesX[v1] || z != model1.verticesZ[v1] || y != verticesY1[v1] || normal1.magnitude === 0) {
                     continue;
                 }
 
@@ -1771,8 +1774,8 @@ export class ModelData extends Renderable {
                 model.faceLabelsAlpha = this.faceLabelsAlpha;
                 model.ambient = this.ambient;
                 model.contrast = this.contrast;
-                model.preContourVerticesY = this.verticesY;
-                model.verticesY = new Int32Array(model.verticesCount);
+                model.verticesY = this.verticesY;
+                model.contourVerticesY = new Int32Array(model.verticesCount);
                 if (contourGround == 0) {
                     for (let i = 0; i < model.verticesCount; i++) {
                         const var13 = tileX + this.verticesX[i];
@@ -1784,7 +1787,7 @@ export class ModelData extends Renderable {
                         const var19 = heightMap[var17][var18] * (128 - var15) + heightMap[var17 + 1][var18] * var15 >> 7;
                         const var20 = heightMap[var17][var18 + 1] * (128 - var15) + var15 * heightMap[var17 + 1][var18 + 1] >> 7;
                         const var21 = var19 * (128 - var16) + var20 * var16 >> 7;
-                        model.verticesY[i] = var21 + this.verticesY[i] - tileHeight;
+                        model.contourVerticesY[i] = var21 + this.verticesY[i] - tileHeight;
                     }
                 } else {
                     for (let i = 0; i < model.verticesCount; i++) {
@@ -1799,7 +1802,7 @@ export class ModelData extends Renderable {
                             const var20 = heightMap[var18][var19] * (128 - var16) + heightMap[var18 + 1][var19] * var16 >> 7;
                             const var21 = heightMap[var18][var19 + 1] * (128 - var16) + var16 * heightMap[var18 + 1][var19 + 1] >> 7;
                             const var22 = var20 * (128 - var17) + var21 * var17 >> 7;
-                            model.verticesY[i] = (contourGround - var13) * (var22 - tileHeight) / contourGround + this.verticesY[i];
+                            model.contourVerticesY[i] = (contourGround - var13) * (var22 - tileHeight) / contourGround + this.verticesY[i];
                         }
                     }
                 }
@@ -1969,15 +1972,17 @@ export class ModelData extends Renderable {
                 this.normals[i] = new VertexNormal();
             }
 
+            const verticesY = this.contourVerticesY || this.verticesY;
+
             for (let i = 0; i < this.faceCount; i++) {
                 const var2 = this.indices1[i];
                 const var3 = this.indices2[i];
                 const var4 = this.indices3[i];
                 const var5 = this.verticesX[var3] - this.verticesX[var2];
-                const var6 = this.verticesY[var3] - this.verticesY[var2];
+                const var6 = verticesY[var3] - verticesY[var2];
                 const var7 = this.verticesZ[var3] - this.verticesZ[var2];
                 const var8 = this.verticesX[var4] - this.verticesX[var2];
-                const var9 = this.verticesY[var4] - this.verticesY[var2];
+                const var9 = verticesY[var4] - verticesY[var2];
                 const var10 = this.verticesZ[var4] - this.verticesZ[var2];
                 let var11 = var6 * var10 - var9 * var7;
                 let var12 = var7 * var8 - var10 * var5;
@@ -2055,9 +2060,11 @@ export class ModelData extends Renderable {
             this.maxZ = -99999;
             this.minZ = 99999;
 
+            const verticesY = this.contourVerticesY || this.verticesY;
+
             for (let i = 0; i < this.verticesCount; i++) {
                 const vertX = this.verticesX[i];
-                const vertY = this.verticesY[i];
+                const vertY = verticesY[i];
                 const vertZ = this.verticesZ[i];
                 if (vertX < this.minX) {
                     this.minX = vertX;
@@ -2280,8 +2287,9 @@ export class ModelData extends Renderable {
         this.computeAnimationTables();
         model.verticesCount = this.verticesCount;
         model.verticesX = this.verticesX;
-        model.verticesY = this.preContourVerticesY || this.verticesY;
+        model.verticesY = this.verticesY;
         model.verticesZ = this.verticesZ;
+        model.contourVerticesY = this.contourVerticesY;
         model.faceCount = this.faceCount;
         model.indices1 = this.indices1;
         model.indices2 = this.indices2;

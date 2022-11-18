@@ -323,7 +323,7 @@ export class ObjectModelLoader {
         
         if (def.contouredGround >= 0) {
             if (model instanceof Model) {
-                // model = (model as Model).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
+                model = (model as Model).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
             } else if (model instanceof ModelData) {
                 model = (model as ModelData).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
             }
