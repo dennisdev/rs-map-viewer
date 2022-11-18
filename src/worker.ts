@@ -7,14 +7,12 @@ import { CachedObjectLoader } from "./client/fs/loader/ObjectLoader";
 import { CachedOverlayLoader } from "./client/fs/loader/OverlayLoader";
 import { CachedUnderlayLoader } from "./client/fs/loader/UnderlayLoader";
 import { MemoryStore } from "./client/fs/MemoryStore";
-import { StoreSync } from "./client/fs/Store";
 import { RegionLoader } from "./client/RegionLoader";
 import { TextureLoader } from "./client/fs/loader/TextureLoader";
 import { Compression } from "./client/util/Compression";
-import { Scene } from "./client/Scene";
-import { packHsl } from "./client/util/ColorUtil";
 import { ChunkDataLoader } from "./ChunkDataLoader";
-import { CachedModelLoader } from "./client/fs/loader/ModelLoader";
+import { CachedModelLoader, IndexModelLoader } from "./client/fs/loader/ModelLoader";
+import { ObjectModelLoader, Scene2 } from "./client/scene/Scene";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,
@@ -62,8 +60,29 @@ expose({
             throw new Error('ChunkLoaderWorker not initialized');
         }
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = chunkDataLoader.load(regionX, regionY);
+        const chunkData = chunkDataLoader.load2(regionX, regionY);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
+
+
+        // const regionLoader = chunkDataLoader.regionLoader;
+        // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(chunkDataLoader.modelLoader.modelIndex));
+
+        // const region = regionLoader.getRegion(regionX, regionY);
+
+
+        // const landscapeData = regionLoader.getLandscapeData(regionX, regionY);
+        // if (landscapeData && region) {
+        //     const scene = new Scene2(4, 64, 64, region.tileHeights);
+        //     console.time('scenetile');
+        //     scene.decodeLandscape(regionLoader, objectModelLoader, landscapeData);
+
+        //     scene.applyLighting(-50, -10, -50);
+
+        //     console.timeEnd('scenetile');
+        //     console.log(scene);
+        // }
+
+
 
         chunkDataLoader.regionLoader.regions.clear();
         chunkDataLoader.regionLoader.blendedUnderlayColors.clear();

@@ -2,7 +2,11 @@ import { ModelData } from "../../model/ModelData";
 import { IndexSync } from "../Index";
 import { StoreSync } from "../Store";
 
-export class ModelLoader {
+export interface ModelLoader {
+    getModel(id: number): ModelData | undefined;
+}
+
+export class IndexModelLoader implements ModelLoader {
     modelIndex: IndexSync<StoreSync>;
 
     constructor(modelIndex: IndexSync<StoreSync>) {
@@ -15,7 +19,7 @@ export class ModelLoader {
     }
 }
 
-export class CachedModelLoader extends ModelLoader {
+export class CachedModelLoader extends IndexModelLoader {
     cache: Map<number, ModelData>;
 
     constructor(modelIndex: IndexSync<StoreSync>) {

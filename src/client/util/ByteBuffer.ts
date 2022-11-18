@@ -144,30 +144,6 @@ export class ByteBuffer {
         this._data[offset++] = v;
     }
 
-    decodeXtea(keys: number[], start: number = 5, end: number = this.length) {
-        const oldOffset = this.offset;
-        this.offset = start;
-        const i1 = (end - start) / 8 | 0;
-
-        for(let j1 = 0; j1 < i1; ++j1) {
-            let k1 = this.readInt();
-            let l1 = this.readInt();
-            let sum = -957401312;
-            const delta = -1640531527;
-
-            for(let var11 = 32; var11-- > 0; k1 -= (l1 >>> 5 ^ l1 << 4) + l1 ^ keys[sum & 3] + sum) {
-                l1 -= keys[(sum & 7300) >>> 11] + sum ^ (k1 >>> 5 ^ k1 << 4) + k1;
-                sum -= delta;
-            }
-
-            this.offset -= 8;
-            this.writeInt(k1);
-            this.writeInt(l1);
-        }
-
-        this.offset = oldOffset;
-    }
-
     get length(): number {
         return this._data.length;
     }

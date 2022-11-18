@@ -10,7 +10,8 @@ import { Scene } from "./client/Scene";
 import { ByteBuffer } from "./client/util/ByteBuffer";
 import { HSL_RGB_MAP, packHsl } from "./client/util/ColorUtil";
 import xxhash, { XXHashAPI } from "xxhash-wasm";
-import { CachedModelLoader, ModelLoader } from "./client/fs/loader/ModelLoader";
+import { CachedModelLoader, IndexModelLoader, ModelLoader } from "./client/fs/loader/ModelLoader";
+import { GameObject, ObjectModelLoader, Scene2 } from "./client/scene/Scene";
 
 
 const TILE_SIZE = 128;
@@ -626,13 +627,13 @@ function getModel(modelLoader: ModelLoader, def: ObjectDefinition, type: number,
     }
 
     if (def.recolorFrom) {
-        for (let var7 = 0; var7 < def.recolorFrom.length; ++var7) {
+        for (let var7 = 0; var7 < def.recolorFrom.length; var7++) {
             copy.recolor(def.recolorFrom[var7], def.recolorTo[var7]);
         }
     }
 
     if (def.retextureFrom) {
-        for (let var7 = 0; var7 < def.retextureFrom.length; ++var7) {
+        for (let var7 = 0; var7 < def.retextureFrom.length; var7++) {
             copy.retexture(def.retextureFrom[var7], def.retextureTo[var7]);
         }
     }
@@ -869,6 +870,18 @@ export class ChunkDataLoader {
                 //     continue;
                 // }
 
+                if (def.mergeNormals) {
+                    // continue;
+                }
+
+                if (def.contouredGround >= 0) {
+                    // continue;
+                }
+
+                if (type !== 5 && 1) {
+                    // continue;
+                }
+
                 // only roofs?
                 // if (/*(renderFlags[0][localX][localY] & 2) != 0 || */(renderFlags[plane][localX][localY] & 16) == 0) {
                 //     continue;
@@ -889,7 +902,7 @@ export class ChunkDataLoader {
 
                 const pos = [localX + sizeX / 2, localY + sizeY / 2];
 
-                const modelKey = rotation << 24 | type << 16 | id;
+                let modelKey = rotation << 24 | type << 16 | id;
 
                 let model = objectModels.get(modelKey);
 
@@ -1098,7 +1111,8 @@ export class ChunkDataLoader {
 
         const uniqTotalTriangles = drawCommands.map(cmd => cmd.vertexCount / 3).reduce((a, b) => a + b, 0);
 
-        const currentBytes = vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE;
+        const indexBufferBytes = indices.length * 4;
+        const currentBytes = vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE + indexBufferBytes;
 
         const drawRanges: DrawCommand[] = [];
 
@@ -1119,15 +1133,738 @@ export class ChunkDataLoader {
         objectDatas.forEach((data, index) => {
             // multiply so we can divide in shader and get the half tile
             // maybe use * 4 if there are 0.25 offsets
-            const xEncoded = data.localX * 2;
-            const yEncoded = data.localY * 2;
+            const xEncoded = data.localX * 32;
+            const yEncoded = data.localY * 32;
             const contourGround = Math.min(data.contourGround + 1, 1);
-            perModelTextureData[drawCommands.length + index] = xEncoded << 24 | yEncoded << 16 | data.plane << 14 | contourGround << 13 | data.priority;
+            perModelTextureData[drawCommands.length + index] = xEncoded << 20 | yEncoded << 8 | data.plane << 6 | contourGround << 5 | data.priority;
         });
 
         console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
-            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes,
-            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length);
+            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes, currentBytes - indexBufferBytes,
+            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length, 'draw calls: ', drawRanges.length);
+
+        const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);
+
+        const drawRangesLowDetail = drawRanges.slice(0, drawCommands.length - drawCommandsLowDetail.length);
+
+        try {
+            console.time('convert');
+            return {
+                regionX,
+                regionY,
+                vertices: new Uint8Array(vertexBuf.view.buffer).subarray(0, vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE),
+                indices: new Int32Array(indices),
+                perModelTextureData,
+                heightMapTextureData,
+                drawRanges: drawRanges,
+                drawRangesLowDetail: drawRangesLowDetail
+            };
+        } finally {
+            console.timeEnd('convert');
+        }
+    }
+
+    load2(regionX: number, regionY: number): ChunkData | undefined {
+        const baseX = regionX * 64;
+        const baseY = regionY * 64;
+
+        const region = this.regionLoader.getRegion(regionX, regionY);
+        if (!region) {
+            return undefined;
+        }
+
+
+        const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(this.modelLoader.modelIndex));
+
+        const vertexBuf = new VertexBuffer(100000);
+
+        const indices: number[] = [];
+
+        const drawCommands: InstancedDrawCommand[] = [];
+
+        const drawCommandsLowDetail: InstancedDrawCommand[] = [];
+
+        let terrainVertexCount = 0;
+
+        const heights = region.tileHeights;
+        const underlayIds = region.tileUnderlays;
+        const overlayIds = region.tileOverlays;
+        const tileShapes = region.tileShapes;
+        const tileRotations = region.tileRotations;
+        const renderFlags = region.tileRenderFlags;
+
+        // console.time(`blend region ${regionX}_${regionY}`);
+        const blendedColors = this.regionLoader.getBlendedUnderlayColors(regionX, regionY);
+        // console.timeEnd(`blend region ${regionX}_${regionY}`);
+
+        // console.time(`light region ${regionX}_${regionY}`);
+        const lightLevels = this.regionLoader.getLightLevels(regionX, regionY);
+        // console.timeEnd(`light region ${regionX}_${regionY}`);
+
+        const underlayIdSet: Set<number> = new Set();
+        const overlayIdSet: Set<number> = new Set();
+        const heightSet: Set<number> = new Set();
+        const lightSet: Set<number> = new Set();
+
+        for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+            const indexOffset = indices.length * 4;
+            for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                for (let y = 0; y < Scene.MAP_SIZE; y++) {
+                    const underlayId = underlayIds[plane][x][y] - 1;
+
+                    const overlayId = overlayIds[plane][x][y] - 1;
+
+                    underlayIdSet.add(underlayId);
+                    overlayIdSet.add(overlayId);
+
+                    if (underlayId == -1 && overlayId == -1) {
+                        continue;
+                    }
+
+                    const heightSw = heights[plane][x][y];
+                    let heightSe: number;
+                    let heightNe: number;
+                    let heightNw: number;
+
+                    heightSet.add(heightSw);
+
+                    const lightSw = lightLevels[plane][x][y];
+                    let lightSe: number;
+                    let lightNe: number;
+                    let lightNw: number;
+
+                    if (x === Scene.MAP_SIZE - 1 || y === Scene.MAP_SIZE - 1) {
+                        heightSe = this.regionLoader.getHeight(baseX + x + 1, baseY + y, plane);
+                        heightNe = this.regionLoader.getHeight(baseX + x + 1, baseY + y + 1, plane);
+                        heightNw = this.regionLoader.getHeight(baseX + x, baseY + y + 1, plane);
+
+                        lightSe = this.regionLoader.getLightLevel(baseX + x + 1, baseY + y, plane);
+                        lightNe = this.regionLoader.getLightLevel(baseX + x + 1, baseY + y + 1, plane);
+                        lightNw = this.regionLoader.getLightLevel(baseX + x, baseY + y + 1, plane);
+                    } else {
+                        heightSe = heights[plane][x + 1][y];
+                        heightNe = heights[plane][x + 1][y + 1];
+                        heightNw = heights[plane][x][y + 1];
+
+                        lightSe = lightLevels[plane][x + 1][y];
+                        lightNe = lightLevels[plane][x + 1][y + 1];
+                        lightNw = lightLevels[plane][x][y + 1];
+                    }
+
+                    lightSet.add(lightSw);
+                    lightSet.add(lightSe);
+                    lightSet.add(lightNe);
+                    lightSet.add(lightNw);
+
+                    let underlayHsl = -1;
+                    if (underlayId !== -1) {
+                        underlayHsl = blendedColors[plane][x][y];
+                    }
+
+                    if (overlayId == -1) {
+                        addTileModel(0, 0, -1, x, y, heightSw, heightSe, heightNe, heightNw,
+                            method5679(underlayHsl, lightSw), method5679(underlayHsl, lightSe), method5679(underlayHsl, lightNe), method5679(underlayHsl, lightNw),
+                            0, 0, 0, 0,
+                            vertexBuf, indices);
+                    } else {
+                        const shape = tileShapes[plane][x][y] + 1;
+                        const rotation = tileRotations[plane][x][y];
+
+                        const overlay = this.regionLoader.getOverlayDef(overlayId);
+
+                        const textureId = this.textureProvider.getTextureIndex(overlay.textureId) || -1;
+                        let overlayHsl: number;
+                        if (textureId !== -1) {
+                            overlayHsl = -1;
+                        } else if (overlay.primaryRgb == 0xFF00FF) {
+                            overlayHsl = -2;
+                        } else {
+                            overlayHsl = packHsl(overlay.hue, overlay.saturation, overlay.lightness);
+                        }
+
+                        addTileModel(shape, rotation, textureId, x, y, heightSw, heightSe, heightNe, heightNw,
+                            method5679(underlayHsl, lightSw), method5679(underlayHsl, lightSe), method5679(underlayHsl, lightNe), method5679(underlayHsl, lightNw),
+                            method3516(overlayHsl, lightSw), method3516(overlayHsl, lightSe), method3516(overlayHsl, lightNe), method3516(overlayHsl, lightNw),
+                            vertexBuf, indices);
+                    }
+                }
+            }
+
+            const planeVertexCount = (indices.length * 4 - indexOffset) / 4;
+
+            if (planeVertexCount > 0) {
+                drawCommands.push({
+                    vertexOffset: indexOffset,
+                    vertexCount: planeVertexCount,
+                    objectDatas: [{ localX: 0, localY: 0, plane: plane, contourGround: 1, priority: 0 }],
+                });
+            }
+        }
+
+        terrainVertexCount = vertexBuf.vertexOffset;
+
+        const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
+
+        // check if is empty water region
+        // if (overlayIdSet.size == 2 && overlayIdSet.has(5) 
+        //         && heightSet.size === 1 && heightSet.has(0)
+        //         && lightSet.size === 1 && lightSet.has(84)
+        //         && (!landscapeData || landscapeData.length <= 1)) {
+        //     console.log(underlayIdSet, overlayIdSet, heightSet, lightSet, landscapeData)
+        //     return undefined;
+        // }
+
+        if (landscapeData && 1) {
+            const scene = new Scene2(4, 64, 64, region.tileHeights);
+            scene.decodeLandscape(this.regionLoader, objectModelLoader, landscapeData);
+
+            scene.applyLighting(-50, -10, -50);
+
+            const lowDetailOcclusionMap: boolean[][][] = new Array(Scene.MAX_PLANE);
+            for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+                lowDetailOcclusionMap[plane] = new Array(Scene.MAP_SIZE);
+                for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                    lowDetailOcclusionMap[plane][x] = new Array(Scene.MAP_SIZE).fill(false);
+                }
+            }
+
+            for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                for (let y = 0; y < Scene.MAP_SIZE; y++) {
+                    let occluded = false;
+                    for (let plane = Scene.MAX_PLANE - 1; plane >= 0; plane--) {
+                        lowDetailOcclusionMap[plane][x][y] = occluded;
+                        const underlayId = underlayIds[plane][x][y];
+                        const overlayId = overlayIds[plane][x][y];
+                        // everything below a roof or tile can be occluded
+                        if ((renderFlags[plane][x][y] & 16) != 0 || underlayId || overlayId) {
+                            occluded = true;
+                        }
+                    }
+                }
+            }
+
+            const regionModelSpawns: Map<number, ModelSpawns> = new Map();
+
+            const gameObjects: Set<GameObject> = new Set();
+            let gameObjectCount = 0;
+
+            for (let plane = 0; plane < scene.planes; plane++) {
+                for (let tileX = 0; tileX < scene.sizeX; tileX++) {
+                    for (let tileY = 0; tileY < scene.sizeY; tileY++) {
+                        const tile = scene.tiles[plane][tileX][tileY];
+                        if (!tile) {
+                            continue;
+                        }
+
+                        if (tile.floorDecoration) {
+                            const def = tile.floorDecoration.def;
+
+                            if (tile.floorDecoration.model instanceof Model) {
+                                const model = tile.floorDecoration.model;
+                                const key = Math.random();
+                                const modelSpawns: ModelSpawns = {
+                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    type: tile.floorDecoration.type, objectDatas: [], objectDatasLowDetail: []
+                                };
+
+                                const priority = 1;
+
+                                const objectData = { localX: tile.floorDecoration.sceneX, localY: tile.floorDecoration.sceneY, plane: plane, contourGround: def.contouredGround, priority };
+                                
+                                if (isLowDetail(tile.floorDecoration.type, def, tileX, tileY, plane, lowDetailOcclusionMap)) {
+                                    modelSpawns.objectDatasLowDetail.push(objectData);
+                                } else {
+                                    modelSpawns.objectDatas.push(objectData);
+                                }
+
+                                regionModelSpawns.set(key, modelSpawns);
+                            }
+                        }
+
+                        if (tile.wallObject) {
+                            const def = tile.wallObject.def;
+
+                            if (tile.wallObject.model0 instanceof Model) {
+                                const model = tile.wallObject.model0;
+                                const key = Math.random();
+                                const modelSpawns: ModelSpawns = {
+                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    type: tile.wallObject.type, objectDatas: [], objectDatasLowDetail: []
+                                };
+
+                                const priority = 1;
+
+                                const objectData = { localX: tile.wallObject.sceneX, localY: tile.wallObject.sceneY, plane: plane, contourGround: def.contouredGround, priority };
+                                modelSpawns.objectDatas.push(objectData)
+
+                                regionModelSpawns.set(key, modelSpawns);
+                            }
+
+                            if (tile.wallObject.model1 instanceof Model) {
+                                const model = tile.wallObject.model1;
+                                const key = Math.random();
+                                const modelSpawns: ModelSpawns = {
+                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    type: tile.wallObject.type, objectDatas: [], objectDatasLowDetail: []
+                                };
+
+                                const priority = 1;
+
+                                const objectData = { localX: tile.wallObject.sceneX, localY: tile.wallObject.sceneY, plane: plane, contourGround: def.contouredGround, priority };
+                                modelSpawns.objectDatas.push(objectData)
+
+                                regionModelSpawns.set(key, modelSpawns);
+                            }
+                        }
+
+                        if (tile.wallDecoration) {
+                            const def = tile.wallDecoration.def;
+
+                            if (tile.wallDecoration.model0 instanceof Model) {
+                                const model = tile.wallDecoration.model0;
+                                const key = Math.random();
+                                const modelSpawns: ModelSpawns = {
+                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    type: tile.wallDecoration.type, objectDatas: [], objectDatasLowDetail: []
+                                };
+
+                                const priority = 2;
+
+                                const sceneX = (tile.wallDecoration.sceneX + tile.wallDecoration.offsetX);
+                                const sceneY = (tile.wallDecoration.sceneY + tile.wallDecoration.offsetY);
+                                
+
+                                const objectData = { localX: sceneX, localY: sceneY, plane: plane, contourGround: def.contouredGround, priority };
+                                modelSpawns.objectDatas.push(objectData);
+
+                                regionModelSpawns.set(key, modelSpawns);
+                            }
+                            if (tile.wallDecoration.model1 instanceof Model) {
+                                const model = tile.wallDecoration.model1;
+                                const key = Math.random();
+                                const modelSpawns: ModelSpawns = {
+                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    type: tile.wallDecoration.type, objectDatas: [], objectDatasLowDetail: []
+                                };
+
+                                const priority = 2;
+
+                                
+                                const sceneX = (tile.wallDecoration.sceneX);
+                                const sceneY = (tile.wallDecoration.sceneY);
+
+                                const objectData = { localX: sceneX, localY: sceneY, plane: plane, contourGround: def.contouredGround, priority };
+                                
+                                if (isLowDetail(tile.wallDecoration.type, def, tileX, tileY, plane, lowDetailOcclusionMap)) {
+                                    modelSpawns.objectDatasLowDetail.push(objectData);
+                                } else {
+                                    modelSpawns.objectDatas.push(objectData);
+                                }
+
+                                regionModelSpawns.set(key, modelSpawns);
+                            }
+                        }
+
+                        for (const gameObject of tile.gameObjects) {
+                            // gameObjects.add(gameObject);
+                            // gameObjectCount++;
+                            const model = gameObject.model;
+
+                            const def = gameObject.def;
+
+                            const key = Math.random();
+                            if (model instanceof Model && !gameObjects.has(gameObject)) {
+                                const modelSpawns: ModelSpawns = {
+                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    type: gameObject.type, objectDatas: [], objectDatasLowDetail: []
+                                };
+
+                                const priority = 1;
+
+                                const objectData = { localX: gameObject.sceneX, localY: gameObject.sceneY, plane: plane, contourGround: def.contouredGround, priority };
+                                
+                                if (isLowDetail(gameObject.type, def, tileX, tileY, plane, lowDetailOcclusionMap)) {
+                                    modelSpawns.objectDatasLowDetail.push(objectData);
+                                } else {
+                                    modelSpawns.objectDatas.push(objectData);
+                                }
+
+                                regionModelSpawns.set(key, modelSpawns);
+
+                                
+                                gameObjects.add(gameObject);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // console.log(gameObjectCount, gameObjects);
+
+            // console.log(lowDetailOcclusionMap);
+
+            const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
+
+            const objectModels: Map<number, Model> = new Map();
+
+            for (const spawn of spawns) {
+                let { id, type, rotation, localX, localY, plane } = spawn;
+                const def = this.regionLoader.getObjectDef(id);
+
+                // if (def.animationId !== -1) {
+                //     continue;
+                // }
+
+                if (def.mergeNormals) {
+                    // continue;
+                }
+
+                if (def.contouredGround >= 0) {
+                    // continue;
+                }
+
+                if (type !== 5 && 1) {
+                    // continue;
+                }
+
+                // only roofs?
+                // if (/*(renderFlags[0][localX][localY] & 2) != 0 || */(renderFlags[plane][localX][localY] & 16) == 0) {
+                //     continue;
+                // }
+
+
+                // if ((renderFlags[0][localX][localY] & 2) != 0) {
+                //     continue;
+                // }
+
+                let sizeX = def.sizeX;
+                let sizeY = def.sizeY;
+
+                if (rotation == 1 || rotation == 3) {
+                    sizeX = def.sizeY;
+                    sizeY = def.sizeX;
+                }
+
+                const pos = [localX + sizeX / 2, localY + sizeY / 2];
+
+                let modelKey = rotation << 24 | type << 16 | id;
+
+                let model = objectModels.get(modelKey);
+
+                // if (!model) {
+                //     // corner walls
+                //     if (type == 2) {
+                //         const wall0 = getModel(this.modelLoader, def, type, rotation + 1 & 3);
+                //         const wall1 = getModel(this.modelLoader, def, type, rotation + 4);
+                //         if (wall0 && wall1) {
+                //             model = Model.merge([wall0, wall1], 2);
+                //         }
+                //     } else {
+                //         model = getModel(this.modelLoader, def, type, rotation);
+                //     }
+                //     if (!model) {
+                //         continue;
+                //     }
+                //     objectModels.set(modelKey, model);
+                // }
+
+                // let modelSpawns = regionModelSpawns.get(modelKey);
+                // if (!modelSpawns) {
+                //     modelSpawns = { model: model, hasAlpha: model.hasAlpha(this.textureProvider), def, type, objectDatas: [], objectDatasLowDetail: [] };
+                // }
+
+                // let priority = 1;
+                // if (type >= 0 && type <= 2 || type == 9) {
+                //     // priority = 3;
+                // } else if (type >= 4 && type <= 8) {
+                //     // priority = 6;
+                // }
+
+                // const objectData = { localX: pos[0], localY: pos[1], plane: plane, contourGround: def.contouredGround, priority };
+
+                // if (isLowDetail(type, def, localX, localY, plane, lowDetailOcclusionMap)) {
+                //     modelSpawns.objectDatasLowDetail.push(objectData);
+                // } else {
+                //     modelSpawns.objectDatas.push(objectData);
+                // }
+
+                // regionModelSpawns.set(modelKey, modelSpawns);
+            }
+
+            console.log('diff models: ', regionModelSpawns.size);
+
+            const allModelSpawns = Array.from(regionModelSpawns.values());
+
+            // draw transparent objects last
+            allModelSpawns.sort((a, b) => (a.hasAlpha ? 1 : 0) - (b.hasAlpha ? 1 : 0));
+
+            // allModelSpawns.sort((a, b) => a.type - b.type);
+
+            const modelHashes: Set<bigint> = new Set();
+            const modelHashCounts: Map<bigint, number> = new Map();
+
+            const modelHashes2: Set<string> = new Set();
+            const modelHashCounts2: Map<string, number> = new Map();
+
+            const modelUniqueVertexCounts: Map<bigint, number> = new Map();
+
+            const uniqueModels: Map<bigint, Model> = new Map();
+
+            for (let i = 0; i < allModelSpawns.length; i++) {
+                const modelSpawns = allModelSpawns[i];
+
+                
+                
+                const model = modelSpawns.model;
+
+                const verticesX = model.verticesX;
+                const verticesY = model.verticesY;
+                const verticesZ = model.verticesZ;
+
+                const facesA = model.indices1;
+                const facesB = model.indices2;
+                const facesC = model.indices3;
+
+                const faceAlphas = model.faceAlphas;
+
+                const priorities = model.faceRenderPriorities;
+
+                const modelTexCoords = computeTextureCoords(model);
+
+                const indexOffset = indices.length * 4;
+
+                // if (model.faceTextures) {
+                //     console.log(model.faceTextures)
+                // }
+
+                const faces: ModelFace[] = [];
+
+                for (let f = 0; f < model.faceCount; f++) {
+                    let faceAlpha = (faceAlphas && faceAlphas[f] & 0xFF) || 255;
+
+                    if (faceAlpha === 0 || faceAlpha == 0xfe) {
+                        continue;
+                    }
+
+                    let hslC = model.faceColors3[f];
+
+                    if (hslC == -2) {
+                        continue;
+                    }
+
+                    const priority = (priorities && priorities[f]) || 0;
+
+                    const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
+
+                    faces.push({ index: f, alpha: faceAlpha, priority, textureId });
+
+                }
+
+                // sort on priority, has alpha, texture id, face index
+                faces.sort((a, b) => a.priority - b.priority
+                    || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
+                    || a.textureId - b.textureId
+                    || b.index - a.index);
+
+                const modelStartIndices = indices.length;
+
+                let uniqueVertexCount = 0;
+
+                for (const face of faces) {
+                    const f = face.index;
+                    const faceAlpha = face.alpha;
+                    const priority = face.priority;
+                    const textureId = face.textureId;
+
+                    let hslA = model.faceColors1[f];
+                    let hslB = model.faceColors2[f];
+                    let hslC = model.faceColors3[f];
+
+                    if (hslC == -1) {
+                        hslC = hslB = hslA;
+                    }
+
+                    const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
+
+                    let u0: number = 0;
+                    let v0: number = 0;
+                    let u1: number = 0;
+                    let v1: number = 0;
+                    let u2: number = 0;
+                    let v2: number = 0;
+
+                    if (modelTexCoords) {
+                        const texCoordIdx = f * 6;
+                        u0 = modelTexCoords[texCoordIdx];
+                        v0 = modelTexCoords[texCoordIdx + 1];
+                        u1 = modelTexCoords[texCoordIdx + 2];
+                        v1 = modelTexCoords[texCoordIdx + 3];
+                        u2 = modelTexCoords[texCoordIdx + 4];
+                        v2 = modelTexCoords[texCoordIdx + 5];
+                    }
+
+                    let rgbA = HSL_RGB_MAP[hslA];
+                    let rgbB = HSL_RGB_MAP[hslB];
+                    let rgbC = HSL_RGB_MAP[hslC];
+
+                    // const SCALE = 128;
+                    const fa = facesA[f];
+                    const fb = facesB[f];
+                    const fc = facesC[f];
+
+                    const vxa = verticesX[fa];
+                    const vxb = verticesX[fb];
+                    const vxc = verticesX[fc];
+
+                    const vya = verticesY[fa];
+                    const vyb = verticesY[fb];
+                    const vyc = verticesY[fc];
+
+                    const vza = verticesZ[fa];
+                    const vzb = verticesZ[fb];
+                    const vzc = verticesZ[fc];
+
+                    const faceStartVertexOffset = vertexBuf.vertexOffset;
+
+                    const index0 = vertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority + 1);
+                    const index1 = vertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority + 1);
+                    const index2 = vertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority + 1);
+
+                    const faceEndVertexOffset = vertexBuf.vertexOffset;
+
+                    uniqueVertexCount += faceEndVertexOffset - faceStartVertexOffset;
+
+                    indices.push(
+                        index0,
+                        index1,
+                        index2,
+                    );
+                }
+
+                const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
+
+                const modelEndIndices = indices.length;
+
+                if (modelVertexCount == 0) {
+                    continue;
+                }
+
+                if (xxhashApi) {
+                    // const modelStart = (vertexBuf.vertexOffset - modelVertexCount) * VertexBuffer.VERTEX_STRIDE;
+                    // const modelEnd = modelStart + modelVertexCount * VertexBuffer.VERTEX_STRIDE;
+                    // const modelStart = modelStartVertexOffset * VertexBuffer.VERTEX_STRIDE;
+                    // const modelEnd = modelEndVertexOffset * VertexBuffer.VERTEX_STRIDE;
+                    // console.log(modelStart, modelEnd);
+                    const hashData = new Int32Array(indices.slice(modelStartIndices, modelEndIndices));
+                    const hash = xxhashApi.h64Raw(new Uint8Array(hashData.buffer));
+                    modelHashes.add(hash);
+
+                    let count = modelHashCounts.get(hash);
+                    if (count === undefined) {
+                        count = 0;
+                    }
+                    count++;
+                    modelHashCounts.set(hash, count);
+
+                    
+                    let ucount = modelUniqueVertexCounts.get(hash);
+                    if (ucount === undefined) {
+                        ucount = 0;
+                    }
+                    ucount += uniqueVertexCount;
+                    modelUniqueVertexCounts.set(hash, ucount);
+
+                    uniqueModels.set(hash, model);
+                }
+
+                const objectDatas: ObjectData[] = modelSpawns.objectDatas;
+                const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
+
+                if (objectDatas.length) {
+                    drawCommands.push({
+                        vertexOffset: indexOffset,
+                        vertexCount: modelVertexCount,
+                        objectDatas
+                    });
+                }
+                if (objectDatasLowDetail.length) {
+                    drawCommandsLowDetail.push({
+                        vertexOffset: indexOffset,
+                        vertexCount: modelVertexCount,
+                        objectDatas: objectDatasLowDetail
+                    });
+                }
+            }
+
+            console.log('hashes: ', modelHashes.size, modelHashes);
+
+            console.log(modelUniqueVertexCounts);
+
+            let uniqueVertexCounts2 = 0;
+
+            let uniqueVertexCounts = 0;
+
+            let uniqueModelCount = 0;
+            for (const [hash, count] of modelHashCounts) {
+                if (count === 1) {
+                    uniqueModelCount++;
+                    uniqueVertexCounts += modelUniqueVertexCounts.get(hash) || 0;
+
+                    const model = uniqueModels.get(hash);
+                    if (model) {
+                        uniqueVertexCounts2 += model.verticesCount;
+                    }
+                }
+            }
+
+            console.log(uniqueModelCount, modelHashCounts);
+
+            console.log('u', uniqueVertexCounts, uniqueVertexCounts2);
+
+            // console.log(uniqueVertices);
+        }
+
+
+
+        const triangles = drawCommands.map(cmd => cmd.vertexCount / 3 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);
+        const lowDetailTriangles = drawCommandsLowDetail.map(cmd => cmd.vertexCount / 3 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);
+        const totalTriangles = triangles + lowDetailTriangles;
+
+        drawCommands.push(...drawCommandsLowDetail);
+
+        const uniqTotalTriangles = drawCommands.map(cmd => cmd.vertexCount / 3).reduce((a, b) => a + b, 0);
+
+        const indexBufferBytes = indices.length * 4;
+        const currentBytes = vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE + indexBufferBytes;
+
+        const drawRanges: DrawCommand[] = [];
+
+        const objectDatas = drawCommands.map(cmd => cmd.objectDatas).reduce((a, b) => a.concat(b), []);
+        const objectDataCount = objectDatas.length;
+
+        const paddedModelDataLength = ((drawCommands.length + objectDataCount) / 16 + 1) * 16;
+        let objectDataOffset = 0;
+        const perModelTextureData = new Int32Array(paddedModelDataLength);
+        drawCommands.forEach((cmd, index) => {
+            perModelTextureData[index] = (drawCommands.length + objectDataOffset);
+
+            drawRanges.push(newDrawCommand(cmd.vertexOffset, cmd.vertexCount, cmd.objectDatas.length));
+
+            objectDataOffset += cmd.objectDatas.length;
+        })
+
+        objectDatas.forEach((data, index) => {
+            // multiply so we can divide in shader and get the half tile
+            // maybe use * 4 if there are 0.25 offsets
+            const xEncoded = (data.localX / 4) | 0;
+            const yEncoded = (data.localY / 4) | 0;
+            const contourGround = Math.min(data.contourGround + 1, 1);
+            perModelTextureData[drawCommands.length + index] = xEncoded << 20 | yEncoded << 8 | data.plane << 6 | contourGround << 5 | data.priority;
+        });
+
+        console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
+            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes, currentBytes - indexBufferBytes,
+            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length, 'draw calls: ', drawRanges.length);
 
         const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);
 

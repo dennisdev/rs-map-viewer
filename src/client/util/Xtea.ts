@@ -15,7 +15,6 @@ export class Xtea {
         const n = Math.floor((end - start) / 8);
         for (let i = 0; i < n; i++) {
             const offset = start + i * 8;
-            // console.log('offset', offset);
             let sum = Xtea.INITIAL_SUM;
             let v0 = buf.getInt(offset);
             let v1 = buf.getInt(offset + 4);

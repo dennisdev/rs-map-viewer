@@ -6,6 +6,11 @@ import { Model } from "./Model";
 import { VertexNormal } from "./VertexNormal";
 
 export class ModelData extends Renderable {
+    private static mergeModelNormalsCount: number = 0;
+
+    private static mergedNormalsModel0Cache: Int32Array = new Int32Array(10000);
+    private static mergedNormalsModel1Cache: Int32Array = new Int32Array(10000);
+
     version: number;
 
     verticesCount: number;
@@ -132,6 +137,102 @@ export class ModelData extends Renderable {
             lightness = 126;
         }
         return lightness;
+    }
+
+    public static mergeNormals(model0: ModelData, model1: ModelData, offsetX: number, offsetY: number, offsetZ: number, hideOccludedFaces: boolean): void {
+        model0.calculateBounds();
+        model0.calculateVertexNormals();
+        model1.calculateBounds();
+        model1.calculateVertexNormals();
+
+        if (!model0.normals || !model1.normals) {
+            return;
+        }
+
+        ModelData.mergeModelNormalsCount++;
+
+        let mergedCount = 0;
+
+        for (let v0 = 0; v0 < model0.verticesCount; v0++) {
+            const normal0 = model0.normals[v0];
+            if (normal0.magnitude === 0) {
+                continue;
+            }
+            const y = model0.verticesY[v0] - offsetY;
+            if (y > model1.minHeight) {
+                continue;
+            }
+            const x = model0.verticesX[v0] - offsetX;
+            if (x < model1.minX || x > model1.maxX) {
+                continue;
+            }
+            const z = model0.verticesZ[v0] - offsetZ;
+            if (z < model1.minZ || z > model1.maxZ) {
+                continue;
+            }
+
+            for (let v1 = 0; v1 < model1.verticesCount; v1++) {
+                const normal1 = model1.normals[v1];
+                if (x != model1.verticesX[v1] || z != model1.verticesZ[v1] || y != model1.verticesY[v1] || normal1.magnitude === 0) {
+                    continue;
+                }
+
+                if (!model0.mergedNormals) {
+                    model0.mergedNormals = new Array(model0.verticesCount);
+                }
+                if (!model1.mergedNormals) {
+                    model1.mergedNormals = new Array(model1.verticesCount);
+                }
+
+                let mergedNormal0 = model0.mergedNormals[v0];
+                if (!mergedNormal0) {
+                    mergedNormal0 = model0.mergedNormals[v0] = VertexNormal.copy(normal0);
+                }
+                let mergedNormal1 = model1.mergedNormals[v1];
+                if (!mergedNormal1) {
+                    mergedNormal1 = model1.mergedNormals[v1] = VertexNormal.copy(normal1);
+                }
+
+                mergedNormal0.x += normal1.x;
+                mergedNormal0.y += normal1.y;
+                mergedNormal0.z += normal1.z;
+                mergedNormal0.magnitude += normal1.magnitude;
+                mergedNormal1.x += normal0.x;
+                mergedNormal1.y += normal0.y;
+                mergedNormal1.z += normal0.z;
+                mergedNormal1.magnitude += normal0.magnitude;
+
+                mergedCount++;
+
+                ModelData.mergedNormalsModel0Cache[v0] = ModelData.mergeModelNormalsCount;
+                ModelData.mergedNormalsModel1Cache[v1] = ModelData.mergeModelNormalsCount;
+            }
+        }
+
+        if (mergedCount >= 3 && hideOccludedFaces) {
+            for (let i = 0; i < model0.faceCount; i++) {
+                if (ModelData.mergedNormalsModel0Cache[model0.indices1[i]] == ModelData.mergeModelNormalsCount 
+                    && ModelData.mergedNormalsModel0Cache[model0.indices2[i]] == ModelData.mergeModelNormalsCount 
+                    && ModelData.mergedNormalsModel0Cache[model0.indices3[i]] == ModelData.mergeModelNormalsCount) {
+                    if (!model0.faceRenderTypes) {
+                       model0.faceRenderTypes = new Int8Array(model0.faceCount);
+                    }
+     
+                    model0.faceRenderTypes[i] = 2;
+                }
+            }
+            for (let i = 0; i < model1.faceCount; i++) {
+                if (ModelData.mergedNormalsModel1Cache[model1.indices1[i]] == ModelData.mergeModelNormalsCount 
+                    && ModelData.mergedNormalsModel1Cache[model1.indices2[i]] == ModelData.mergeModelNormalsCount 
+                    && ModelData.mergedNormalsModel1Cache[model1.indices3[i]] == ModelData.mergeModelNormalsCount) {
+                    if (!model1.faceRenderTypes) {
+                       model1.faceRenderTypes = new Int8Array(model1.faceCount);
+                    }
+     
+                    model1.faceRenderTypes[i] = 2;
+                }
+            }
+        }
     }
 
     constructor() {
@@ -1711,7 +1812,7 @@ export class ModelData extends Renderable {
     computeAnimationTables(): void {
         let var4;
         if (this.vertexSkins) {
-            const var1 = new Array(256);
+            const var1: number[] = new Array(256);
             let var2 = 0;
 
             for (let i = 0; i < this.verticesCount; i++) {
@@ -1737,7 +1838,7 @@ export class ModelData extends Renderable {
         }
 
         if (this.faceSkins) {
-            const var1 = new Array(256);
+            const var1: number[] = new Array(256);
             let var2 = 0;
 
             for (let i = 0; i < this.faceCount; i++) {

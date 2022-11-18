@@ -6,6 +6,8 @@ import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition, ParamsMap } from "./Definition";
 
 export class ObjectDefinition extends Definition {
+    public static readonly DEFAULT_DECOR_DISPLACEMENT: number = 16;
+
     lowDetail: boolean;
 
     objectModels!: number[];
@@ -34,7 +36,7 @@ export class ObjectDefinition extends Definition {
 
     contouredGround: number;
 
-    nonFlatShading: boolean;
+    mergeNormals: boolean;
 
     modelClipped: boolean;
 
@@ -74,7 +76,7 @@ export class ObjectDefinition extends Definition {
 
     supportItems: number;
 
-    transforms!: number[];
+    transforms?: number[];
 
     transformVarbit: number;
 
@@ -104,10 +106,10 @@ export class ObjectDefinition extends Definition {
         this.blocksProjectile = true;
         this.int1 = -1;
         this.contouredGround = -1;
-        this.nonFlatShading = false;
+        this.mergeNormals = false;
         this.modelClipped = false;
         this.animationId = -1;
-        this.decorDisplacement = 16;
+        this.decorDisplacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT;
         this.ambient = 0;
         this.contrast = 0;
         this.actions = new Array(5);
@@ -179,7 +181,7 @@ export class ObjectDefinition extends Definition {
         } else if (opcode === 21) {
             this.contouredGround = 0;
         } else if (opcode === 22) {
-            this.nonFlatShading = true;
+            this.mergeNormals = true;
         } else if (opcode === 23) {
             this.modelClipped = true;
         } else if (opcode === 24) {
@@ -341,7 +343,7 @@ export class ObjectDefinition extends Definition {
                 return undefined;
             }
 
-            if (!this.nonFlatShading) {
+            if (!this.mergeNormals) {
                 model = modelData.light(this.ambient + 64, this.contrast + 768, -50, -10, -50);
             } else {
                 modelData.ambient = this.ambient + 64;
@@ -353,15 +355,15 @@ export class ObjectDefinition extends Definition {
             objectManager.modelTypeCache.set(key, model);
         }
 
-        if (this.nonFlatShading) {
+        if (this.mergeNormals) {
             model = (model as ModelData).copy();
         }
 
-        if (this.clipType >= 0) {
+        if (this.contouredGround >= 0) {
             if (model instanceof Model) {
-                model = (model as Model).contourGround(heightMap, tileX, tileHeight, tileY, true, this.clipType);
+                model = (model as Model).contourGround(heightMap, tileX, tileHeight, tileY, true, this.contouredGround);
             } else if (model instanceof ModelData) {
-                model = (model as ModelData).contourGround(heightMap, tileX, tileHeight, tileY, true, this.clipType);
+                model = (model as ModelData).contourGround(heightMap, tileX, tileHeight, tileY, true, this.contouredGround);
             }
         }
 
@@ -387,8 +389,8 @@ export class ObjectDefinition extends Definition {
             objectManager.modelCache.set(key, model);
         }
 
-        if (this.clipType >= 0) {
-            model = model.contourGround(heightMap, tileX, tileHeight, tileY, true, this.clipType);
+        if (this.contouredGround >= 0) {
+            model = model.contourGround(heightMap, tileX, tileHeight, tileY, true, this.contouredGround);
         }
 
         return model;
@@ -516,6 +518,6 @@ export class ObjectDefinition extends Definition {
             copy.translate(this.offsetX, this.offsetHeight, this.offsetY);
         }
 
-        return undefined;
+        return copy;
     }
 }

@@ -161,16 +161,19 @@ void main() {
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
     v_color = a_color;
-    v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y)) + (u_currentTime / 0.020) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
+    v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y)) + (u_currentTime / 0.02) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
     v_texId = int(a_texId);
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
     uvec4 modelData = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
 
-    uint plane = modelData.g >> uint(6);
-    float contourGround = float(int(modelData.g) >> 5 & 1);
-    uint priority = modelData.r;
-    vec2 tilePos = vec2(modelData.ab) / vec2(2);
+    uint plane = modelData.r >> uint(6);
+    float contourGround = float(int(modelData.r) >> 5 & 1);
+    uint priority = (modelData.r & uint(0xF));
+
+    uint tilePosPacked = (modelData.a << uint(16)) | modelData.b << uint(8) | modelData.g;
+    
+    vec2 tilePos = vec2(float(tilePosPacked >> uint(12)), float(tilePosPacked & uint(0xFFF))) / vec2(32);
 
     vec3 localPos = vec3(a_position) / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
 
@@ -605,7 +608,7 @@ class Test {
 
         let cameraSpeedMult = 1.0;
         if (this.keys.get('Shift')) {
-            cameraSpeedMult = 4.0;
+            cameraSpeedMult = 10.0;
         }
 
         const deltaPitch = 64 * 3 * deltaTime;
@@ -629,16 +632,22 @@ class Test {
         }
 
         if (this.keys.get('w') || this.keys.get('W')) {
-            this.moveCamera(-64 * cameraSpeedMult * deltaTime, 0, 0);
+            this.moveCamera(-16 * cameraSpeedMult * deltaTime, 0, 0);
         }
         if (this.keys.get('a') || this.keys.get('A')) {
-            this.moveCamera(0, 0, -64 * cameraSpeedMult * deltaTime);
+            this.moveCamera(0, 0, -16 * cameraSpeedMult * deltaTime);
         }
         if (this.keys.get('s') || this.keys.get('S')) {
-            this.moveCamera(64 * cameraSpeedMult * deltaTime, 0, 0);
+            this.moveCamera(16 * cameraSpeedMult * deltaTime, 0, 0);
         }
         if (this.keys.get('d') || this.keys.get('D')) {
-            this.moveCamera(0, 0, 64 * cameraSpeedMult * deltaTime);
+            this.moveCamera(0, 0, 16 * cameraSpeedMult * deltaTime);
+        }
+        if (this.keys.get('e') || this.keys.get('E')) {
+            this.moveCamera(0, 1 * deltaTime, 0);
+        }
+        if (this.keys.get('c') || this.keys.get('C')) {
+            this.moveCamera(0, -1 * deltaTime, 0);
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
@@ -692,7 +701,7 @@ class Test {
         this.timer.start();
 
 
-        const regionPositions = getSpiralDeltas(11)
+        const regionPositions = getSpiralDeltas(1)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2);
 
         const viewDistanceRegionIds: Set<number> = new Set();

@@ -360,4 +360,9 @@ export class Model extends Renderable {
         }
         return false;
     }
+
+    getXZRadius(): number {
+        this.calculateBoundsCylinder();
+        return this.xzRadius;
+    }
 }
