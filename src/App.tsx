@@ -168,7 +168,7 @@ void main() {
     uvec4 modelData = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
 
     uint plane = modelData.r >> uint(6);
-    float contourGround = float(int(modelData.r) >> 5 & 1);
+    float contourGround = float(int(modelData.r) >> 4 & 0x3);
     uint priority = (modelData.r & uint(0xF));
 
     uint tilePosPacked = (modelData.a << uint(16)) | modelData.b << uint(8) | modelData.g;
@@ -177,11 +177,11 @@ void main() {
 
     vec3 localPos = vec3(a_position) / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
 
-    vec2 interpPos = tilePos * vec2(when_eq(contourGround, 0.0)) + localPos.xz * vec2(when_neq(contourGround, 0.0));
-    localPos.y -= getHeightInterp(interpPos, plane) / 128.0;
+    vec2 interpPos = tilePos * vec2(when_eq(contourGround, 0.0)) + localPos.xz * vec2(when_eq(contourGround, 1.0));
+    localPos.y -= getHeightInterp(interpPos, plane) * when_neq(contourGround, 2.0) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
-    gl_Position.z -= float(plane) * 0.003 + float(priority) * 0.001 + float(a_priority) * 0.0001;
+    gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(a_priority) * 0.0001;
 }
 `.trim();
 
@@ -644,10 +644,10 @@ class Test {
             this.moveCamera(0, 0, 16 * cameraSpeedMult * deltaTime);
         }
         if (this.keys.get('e') || this.keys.get('E')) {
-            this.moveCamera(0, 4 * deltaTime, 0);
+            this.moveCamera(0, 8 * cameraSpeedMult * deltaTime, 0);
         }
         if (this.keys.get('c') || this.keys.get('C')) {
-            this.moveCamera(0, -4 * deltaTime, 0);
+            this.moveCamera(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
 
         if (this.keys.get('t') && this.timer.ready()) {

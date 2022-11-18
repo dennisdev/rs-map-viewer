@@ -32,6 +32,7 @@ class FloorDecoration {
     constructor(
         public sceneX: number,
         public sceneY: number,
+        public sceneHeight: number,
         public model: Model | ModelData,
         public tag: bigint,
         public type: number,
@@ -45,6 +46,7 @@ class WallObject {
     constructor(
         public sceneX: number,
         public sceneY: number,
+        public sceneHeight: number,
         public model0: Model | ModelData | undefined,
         public model1: Model | ModelData | undefined,
         public tag: bigint,
@@ -59,6 +61,7 @@ class WallDecoration {
     constructor(
         public sceneX: number,
         public sceneY: number,
+        public sceneHeight: number,
         public model0: Model | ModelData,
         public model1: Model | ModelData | undefined,
         public offsetX: number,
@@ -91,6 +94,7 @@ export class GameObject {
         public plane: number,
         public sceneX: number,
         public sceneY: number,
+        public sceneHeight: number,
         public model: Model | ModelData,
         public startX: number,
         public startY: number,
@@ -377,13 +381,13 @@ export class Scene2 {
         }
     }
 
-    newFloorDecoration(plane: number, tileX: number, tileY: number, model: Model | ModelData | undefined, tag: bigint, 
+    newFloorDecoration(plane: number, tileX: number, tileY: number, sceneHeight: number, model: Model | ModelData | undefined, tag: bigint, 
         type: number, def: ObjectDefinition) {
         if (model) {
             const sceneX = tileX * 128 + 64;
             const sceneY = tileY * 128 + 64;
 
-            const floorDec = new FloorDecoration(sceneX, sceneY, model, tag, type, def);
+            const floorDec = new FloorDecoration(sceneX, sceneY, sceneHeight, model, tag, type, def);
 
             this.ensureTileExists(plane, plane, tileX, tileY);
 
@@ -391,13 +395,13 @@ export class Scene2 {
         }
     }
 
-    newWall(plane: number, tileX: number, tileY: number, model0: Model | ModelData | undefined, model1: Model | ModelData | undefined, tag: bigint, 
+    newWall(plane: number, tileX: number, tileY: number, sceneHeight: number, model0: Model | ModelData | undefined, model1: Model | ModelData | undefined, tag: bigint, 
         type: number, def: ObjectDefinition) {
         if (model0 || model1) {
             const sceneX = tileX * 128 + 64;
             const sceneY = tileY * 128 + 64;
 
-            const wall = new WallObject(sceneX, sceneY, model0, model1, tag, type, def);
+            const wall = new WallObject(sceneX, sceneY, sceneHeight, model0, model1, tag, type, def);
 
             this.ensureTileExists(0, plane, tileX, tileY);
 
@@ -405,13 +409,13 @@ export class Scene2 {
         }
     }
 
-    newWallDecoration(plane: number, tileX: number, tileY: number, model0: Model | ModelData | undefined, model1: Model | ModelData | undefined,
+    newWallDecoration(plane: number, tileX: number, tileY: number, sceneHeight: number, model0: Model | ModelData | undefined, model1: Model | ModelData | undefined,
         offsetX: number, offsetY: number, tag: bigint, type: number, def: ObjectDefinition) {
         if (model0) {
             const sceneX = tileX * 128 + 64;
             const sceneY = tileY * 128 + 64;
 
-            const wallDecoration = new WallDecoration(sceneX, sceneY, model0, model1, offsetX, offsetY, tag, type, def);
+            const wallDecoration = new WallDecoration(sceneX, sceneY, sceneHeight, model0, model1, offsetX, offsetY, tag, type, def);
 
             this.ensureTileExists(0, plane, tileX, tileY);
 
@@ -419,7 +423,7 @@ export class Scene2 {
         }
     }
 
-    newGameObject(plane: number, tileX: number, tileY: number, sizeX: number, sizeY: number, model: Model | ModelData | undefined, tag: bigint, 
+    newGameObject(plane: number, tileX: number, tileY: number, sceneHeight: number, sizeX: number, sizeY: number, model: Model | ModelData | undefined, tag: bigint, 
         type: number, def: ObjectDefinition): boolean {
         if (!model) {
             return true;
@@ -432,7 +436,7 @@ export class Scene2 {
         const endX = tileX + sizeX - 1;
         const endY = tileY + sizeY - 1;
 
-        const gameObject = new GameObject(plane, sceneX, sceneY, model, startX, startY, endX, endY, tag, type, def);
+        const gameObject = new GameObject(plane, sceneX, sceneY, sceneHeight, model, startX, startY, endX, endY, tag, type, def);
 
         for (let x = tileX; x < tileX + sizeX; x++) {
             for (let y = tileY; y < tileY + sizeY; y++) {
@@ -511,17 +515,17 @@ export class Scene2 {
         if (type === ObjectType.FLOOR_DECORATION) {
             const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-            this.newFloorDecoration(plane, tileX, tileY, model, tag, type, def);
+            this.newFloorDecoration(plane, tileX, tileY, centerHeight, model, tag, type, def);
         } else if (type !== ObjectType.OBJECT && type !== ObjectType.OBJECT_DIAGIONAL) {
             // roofs
             if (type >= ObjectType.ROOF_SLOPED) {
                 const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newGameObject(plane, tileX, tileY, 1, 1, model, tag, type, def);
+                this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
             } else if (type === ObjectType.WALL) {
                 const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, model, undefined, tag, type, def);
+                this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
 
                 if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
@@ -529,12 +533,12 @@ export class Scene2 {
             } else if (type === ObjectType.WALL_TRI_CORNER) {
                 const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, model, undefined, tag, type, def);
+                this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
             } else if (type === ObjectType.WALL_CORNER) {
                 const model0 = modelLoader.getObjectModel(def, type, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
                 const model1 = modelLoader.getObjectModel(def, type, rotation + 1 & 3, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, model0, model1, tag, type, def);
+                this.newWall(plane, tileX, tileY, centerHeight, model0, model1, tag, type, def);
 
                 if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
@@ -542,11 +546,11 @@ export class Scene2 {
             } else if (type === ObjectType.WALL_RECT_CORNER) {
                 const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, model, undefined, tag, type, def);
+                this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
             } else if (type === ObjectType.WALL_DIAGONAL) {
                 const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newGameObject(plane, tileX, tileY, 1, 1, model, tag, type, def);
+                this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
 
                 if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
@@ -554,7 +558,7 @@ export class Scene2 {
             } else if (type === ObjectType.WALL_DECORATION_INSIDE) {
                 const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWallDecoration(plane, tileX, tileY, model, undefined, 0, 0, tag, type, def);
+                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
 
                 if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
@@ -571,7 +575,7 @@ export class Scene2 {
                 const displacementX = displacement * Scene2.displacementX[rotation];
                 const displacementY = displacement * Scene2.displacementY[rotation];
 
-                this.newWallDecoration(plane, tileX, tileY, model, undefined, displacementX, displacementY, tag, type, def);
+                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_OUTSIDE) {
                 let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
                 const wallTag = this.getWallObjectTag(plane, tileX, tileY);
@@ -584,13 +588,13 @@ export class Scene2 {
                 const displacementX = displacement * Scene2.diagonalDisplacementX[rotation];
                 const displacementY = displacement * Scene2.diagonalDisplacementY[rotation];
 
-                this.newWallDecoration(plane, tileX, tileY, model, undefined, displacementX, displacementY, tag, type, def);
+                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_INSIDE) {
                 const insideRotation = rotation + 2 & 3;
 
                 const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWallDecoration(plane, tileX, tileY, model, undefined, 0, 0, tag, type, def);
+                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_DOUBLE) {
                 let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
                 const wallTag = this.getWallObjectTag(plane, tileX, tileY);
@@ -606,12 +610,12 @@ export class Scene2 {
                 const displacementX = displacement * Scene2.diagonalDisplacementX[rotation];
                 const displacementY = displacement * Scene2.diagonalDisplacementY[rotation];
 
-                this.newWallDecoration(plane, tileX, tileY, model0, model1, displacementX, displacementY, tag, type, def);
+                this.newWallDecoration(plane, tileX, tileY, centerHeight, model0, model1, displacementX, displacementY, tag, type, def);
             }
         } else {
             const model = modelLoader.getObjectModel(def, ObjectType.OBJECT, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-            if (model && this.newGameObject(plane, tileX, tileY, sizeX, sizeY, model, tag, type, def) && def.clipped) {
+            if (model && this.newGameObject(plane, tileX, tileY, centerHeight, sizeX, sizeY, model, tag, type, def) && def.clipped) {
                 let lightOcclusion = 15;
                 if (model instanceof Model) {
                     lightOcclusion = model.getXZRadius() / 4 | 0;
