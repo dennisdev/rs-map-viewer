@@ -1186,6 +1186,7 @@ export class ChunkDataLoader {
         const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(this.modelLoader.modelIndex));
 
         const vertexBuf = new VertexBuffer(100000);
+        const modelVertexBuf = new VertexBuffer(100000);
 
         let indices: number[] = [];
 
@@ -1622,7 +1623,7 @@ export class ChunkDataLoader {
             const uniqueModels: Map<bigint, Model> = new Map();
 
             const models: Model[] = [];
-            
+
             const modelSpawns2: Map<bigint, ModelSpawns2> = new Map();
 
             for (let i = 0; i < allModelSpawns.length; i++) {
@@ -1657,9 +1658,9 @@ export class ChunkDataLoader {
                 const faces: ModelFace[] = [];
 
                 for (let f = 0; f < model.faceCount; f++) {
-                    let faceAlpha = (faceAlphas && faceAlphas[f] & 0xFF) || 255;
+                    let faceAlpha = (faceAlphas && (0xFF - (faceAlphas[f] & 0xFF))) || 0xFF;
 
-                    if (faceAlpha === 0 || faceAlpha == 0xfe) {
+                    if (faceAlpha === 0 || faceAlpha == 0x1) {
                         continue;
                     }
 
@@ -1796,7 +1797,7 @@ export class ChunkDataLoader {
                     let spawns2 = modelSpawns2.get(hash);
                     if (!spawns2) {
                         spawns2 = {
-                            vertexOffset: indexOffset, 
+                            vertexOffset: indexOffset,
                             vertexCount: modelVertexCount,
                             model: model,
                             faces: faces,
@@ -1833,18 +1834,100 @@ export class ChunkDataLoader {
             }
 
             for (const [hash, modelSpawns] of modelSpawns2) {
-                
                 const objectDatas: ObjectData[] = modelSpawns.objectDatas;
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
 
-                if (objectDatas.length === 1) {
+                if ((objectDatas.length === 1 && objectDatasLowDetail.length === 0) || (objectDatas.length === 0 && objectDatasLowDetail.length === 1)) {
+
+
+                    const model = modelSpawns.model;
+                    const faces = modelSpawns.faces;
+
+                    const verticesX = model.verticesX;
+                    const verticesY = model.verticesY;
+                    const verticesZ = model.verticesZ;
+
+                    const facesA = model.indices1;
+                    const facesB = model.indices2;
+                    const facesC = model.indices3;
+
+                    const faceAlphas = model.faceAlphas;
+
+                    const priorities = model.faceRenderPriorities;
+
+                    const modelTexCoords = computeTextureCoords(model);
+
+                    for (const face of faces) {
+
+                        const f = face.index;
+                        const faceAlpha = face.alpha;
+                        const priority = face.priority;
+                        const textureId = face.textureId;
+
+                        let hslA = model.faceColors1[f];
+                        let hslB = model.faceColors2[f];
+                        let hslC = model.faceColors3[f];
+
+                        if (hslC == -1) {
+                            hslC = hslB = hslA;
+                        }
+
+                        const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
+
+                        let u0: number = 0;
+                        let v0: number = 0;
+                        let u1: number = 0;
+                        let v1: number = 0;
+                        let u2: number = 0;
+                        let v2: number = 0;
+
+                        if (modelTexCoords) {
+                            const texCoordIdx = f * 6;
+                            u0 = modelTexCoords[texCoordIdx];
+                            v0 = modelTexCoords[texCoordIdx + 1];
+                            u1 = modelTexCoords[texCoordIdx + 2];
+                            v1 = modelTexCoords[texCoordIdx + 3];
+                            u2 = modelTexCoords[texCoordIdx + 4];
+                            v2 = modelTexCoords[texCoordIdx + 5];
+                        }
+
+                        let rgbA = HSL_RGB_MAP[hslA];
+                        let rgbB = HSL_RGB_MAP[hslB];
+                        let rgbC = HSL_RGB_MAP[hslC];
+
+                        // const SCALE = 128;
+                        const fa = facesA[f];
+                        const fb = facesB[f];
+                        const fc = facesC[f];
+
+                        const vxa = verticesX[fa];
+                        const vxb = verticesX[fb];
+                        const vxc = verticesX[fc];
+
+                        const vya = verticesY[fa];
+                        const vyb = verticesY[fb];
+                        const vyc = verticesY[fc];
+
+                        const vza = verticesZ[fa];
+                        const vzb = verticesZ[fb];
+                        const vzc = verticesZ[fc];
+
+                        const faceStartVertexOffset = modelVertexBuf.vertexOffset;
+
+                        const index0 = modelVertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority + 1);
+                        const index1 = modelVertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority + 1);
+                        const index2 = modelVertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority + 1);
+                    }
+                }
+
+                if (objectDatas.length) {
                     drawCommands.push({
                         vertexOffset: modelSpawns.vertexOffset,
                         vertexCount: modelSpawns.vertexCount,
                         objectDatas
                     });
                 }
-                if (objectDatasLowDetail.length === 1) {
+                if (objectDatasLowDetail.length) {
                     drawCommandsLowDetail.push({
                         vertexOffset: modelSpawns.vertexOffset,
                         vertexCount: modelSpawns.vertexCount,
@@ -1852,6 +1935,8 @@ export class ChunkDataLoader {
                     });
                 }
             }
+
+            console.log('combined vertices: ', modelVertexBuf.vertexOffset);
 
             console.log('hashes: ', modelHashes.size, modelHashes);
 
@@ -1896,7 +1981,7 @@ export class ChunkDataLoader {
             // console.log(uniqueVertices);
         }
 
-
+        console.log(this.textureProvider.idAlphaMap);
 
         const triangles = drawCommands.map(cmd => cmd.vertexCount / 3 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);
         const lowDetailTriangles = drawCommandsLowDetail.map(cmd => cmd.vertexCount / 3 * cmd.objectDatas.length).reduce((a, b) => a + b, 0);

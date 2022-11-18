@@ -78,6 +78,8 @@ export class TextureLoader {
         const pixelCount = size * size;
         const pixels = new Int32Array(pixelCount);
 
+        let hasAlpha: boolean = false;
+
         for (let i = 0; i < def.spriteIds.length; i++) {
             const sprite = SpriteLoader.loadIntoIndexedSprite(this.spriteIndex, def.spriteIds[i]);
             if (!sprite) {
@@ -107,17 +109,16 @@ export class TextureLoader {
                 }
             }
 
-            let hasAlpha: boolean = false;
+            const alphaPaletteIndices: Set<number> = new Set();
             for (let pi = 0; pi < palette.length; pi++) {
                 let alpha = 0xFF;
                 if (palette[pi] === 0) {
                     alpha = 0;
-                    hasAlpha = true;
+                    alphaPaletteIndices.add(pi);
                 }
                 palette[pi] = alpha << 24 | brightenRgb(palette[pi], brightness);
             }
 
-            this.idAlphaMap.set(def.id, hasAlpha);
 
             let index = 0;
             if (i > 0 && def.spriteTypes) {
@@ -127,14 +128,22 @@ export class TextureLoader {
             if (index === 0) {
                 if (size == sprite.subWidth) {
                     for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
-                        pixels[pixelIndex] = palette[palettePixels[pixelIndex]];
+                        const paletteIndex = palettePixels[pixelIndex];
+                        if (!hasAlpha && alphaPaletteIndices.has(paletteIndex)) {
+                            hasAlpha = true;
+                        }
+                        pixels[pixelIndex] = palette[paletteIndex];
                     }
                 } else if (sprite.subWidth == 64 && size == 128) {
                     let pixelIndex = 0;
 
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
-                            pixels[pixelIndex++] = palette[palettePixels[(x >> 1 << 6) + (y >> 1)]];
+                            const paletteIndex = palettePixels[(x >> 1 << 6) + (y >> 1)];
+                            if (!hasAlpha && alphaPaletteIndices.has(paletteIndex)) {
+                                hasAlpha = true;
+                            }
+                            pixels[pixelIndex++] = palette[paletteIndex];
                         }
                     }
                 } else {
@@ -146,12 +155,18 @@ export class TextureLoader {
 
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
-                            pixels[pixelIndex++] = palette[palettePixels[(y << 1) + (x << 1 << 7)]];
+                            const paletteIndex = palettePixels[(y << 1) + (x << 1 << 7)];
+                            if (!hasAlpha && alphaPaletteIndices.has(paletteIndex)) {
+                                hasAlpha = true;
+                            }
+                            pixels[pixelIndex++] = palette[paletteIndex];
                         }
                     }
                 }
             }
         }
+
+        this.idAlphaMap.set(def.id, hasAlpha);
 
         return pixels;
     }
