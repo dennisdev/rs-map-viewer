@@ -39,7 +39,7 @@ export class ModelData extends Renderable {
 
     textureCoords?: Int8Array;
 
-    faceColors!: Int16Array;
+    faceColors!: Uint16Array;
 
     faceTextures?: Int16Array;
 
@@ -325,7 +325,7 @@ export class ModelData extends Renderable {
             this.animMayaScales = new Array(this.verticesCount);
         }
 
-        this.faceColors = new Int16Array(this.faceCount);
+        this.faceColors = new Uint16Array(this.faceCount);
         if (this.textureTriangleCount > 0) {
             this.textureRenderTypes = new Int8Array(this.textureTriangleCount);
             this.texTriangleX = new Int16Array(this.textureTriangleCount);
@@ -590,7 +590,7 @@ export class ModelData extends Renderable {
             this.animMayaScales = new Array(vertexCount);
         }
 
-        this.faceColors = new Int16Array(faceCount);
+        this.faceColors = new Uint16Array(faceCount);
         if (texTriangleCount > 0) {
             this.texTriangleX = new Int16Array(texTriangleCount);
             this.texTriangleY = new Int16Array(texTriangleCount);
@@ -864,7 +864,7 @@ export class ModelData extends Renderable {
             this.animMayaScales = new Array(vertexCount);
         }
 
-        this.faceColors = new Int16Array(faceCount);
+        this.faceColors = new Uint16Array(faceCount);
         buf1.offset = var23;
         buf2.offset = var34;
         buf3.offset = var35;
@@ -1189,7 +1189,7 @@ export class ModelData extends Renderable {
             this.textureCoords = new Int8Array(faceCount);
         }
 
-        this.faceColors = new Int16Array(faceCount);
+        this.faceColors = new Uint16Array(faceCount);
         if (texTriangleCount > 0) {
             this.texTriangleX = new Int16Array(texTriangleCount);
             this.texTriangleY = new Int16Array(texTriangleCount);
@@ -1446,7 +1446,7 @@ export class ModelData extends Renderable {
             this.faceSkins = new Int32Array(faceCount);
         }
 
-        this.faceColors = new Int16Array(faceCount);
+        this.faceColors = new Uint16Array(faceCount);
         buf1.offset = var21;
         buf2.offset = var32;
         buf3.offset = var33;
@@ -1655,7 +1655,7 @@ export class ModelData extends Renderable {
         if (shallowColors) {
             this.faceColors = model.faceColors;
         } else {
-            this.faceColors = new Int16Array(this.faceCount);
+            this.faceColors = new Uint16Array(this.faceCount);
 
             for (let i = 0; i < this.faceCount; i++) {
                 this.faceColors[i] = model.faceColors[i];

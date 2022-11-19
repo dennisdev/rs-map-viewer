@@ -1676,7 +1676,7 @@ export class ChunkDataLoader {
                 for (let f = 0; f < model.faceCount; f++) {
                     let faceAlpha = (faceAlphas && (0xFF - (faceAlphas[f] & 0xFF))) || 0xFF;
 
-                    if (faceAlpha === 0 || faceAlpha == 0x1) {
+                    if (faceAlpha === 0 || faceAlpha === 0x1) {
                         continue;
                     }
 

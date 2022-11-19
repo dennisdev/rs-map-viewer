@@ -811,7 +811,7 @@ class Test {
         this.timer.start();
 
 
-        const regionPositions = getSpiralDeltas(5)
+        const regionPositions = getSpiralDeltas(11)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2);
 
         const viewDistanceRegionIds: Set<number> = new Set();
