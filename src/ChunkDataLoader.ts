@@ -529,17 +529,12 @@ class VertexBuffer {
         this.view.setInt16(vertexBufIndex + 4, z, true);
 
         if (textureId !== -1) {
+            // normalize 0-127 lightness to 0-255 
             const lightA = (hsl & 127) / 127 * 255;
 
-            this.view.setUint8(vertexBufIndex + 6, lightA);
-            this.view.setUint8(vertexBufIndex + 7, lightA);
-            this.view.setUint8(vertexBufIndex + 8, lightA);
-            this.view.setUint8(vertexBufIndex + 9, 255);
+            this.view.setUint32(vertexBufIndex + 6, lightA << 24 | lightA << 16 | lightA << 8 | faceAlpha, false);
         } else {
-            this.view.setUint8(vertexBufIndex + 6, (rgb >> 16) & 0xFF);
-            this.view.setUint8(vertexBufIndex + 7, (rgb >> 8) & 0xFF);
-            this.view.setUint8(vertexBufIndex + 8, rgb & 0xFF);
-            this.view.setUint8(vertexBufIndex + 9, faceAlpha);
+            this.view.setUint32(vertexBufIndex + 6, rgb << 8 | faceAlpha, false);
         }
 
         this.view.setUint16(vertexBufIndex + 10, packFloat16(u), true);
@@ -552,7 +547,7 @@ class VertexBuffer {
         if (xxhashApi && reuseVertex) {
             const hash = xxhashApi.h64Raw(this.byteArray.subarray(vertexBufIndex, vertexBufIndex + VertexBuffer.VERTEX_STRIDE));
             const cachedIndex = this.vertexIndices.get(hash);
-            if (cachedIndex) {
+            if (cachedIndex !== undefined) {
                 return cachedIndex;
             } else {
                 this.vertexIndices.set(hash, this.vertexOffset);
@@ -774,6 +769,8 @@ type ModelFace = {
 };
 
 const modelVertexBuf = new VertexBuffer(5000);
+
+let modelData = new Int32Array(5000);
 
 export class ChunkDataLoader {
     regionLoader: RegionLoader;
@@ -1653,6 +1650,7 @@ export class ChunkDataLoader {
 
             console.time('models phase 1');
 
+
             for (let i = 0; i < allModelSpawns.length; i++) {
                 const modelSpawns = allModelSpawns[i];
 
@@ -1670,30 +1668,55 @@ export class ChunkDataLoader {
                 //     console.log(model.faceTextures)
                 // }
 
+                const textureIds = (model.faceTextures && new Int32Array(model.faceTextures)) || new Int32Array(0);
+
+                const datas = [model.faceColors1, model.faceColors2, model.faceColors3, model.verticesX, model.verticesY, model.verticesZ, textureIds];
+                let dataLength = 0;
+                for (const data of datas) {
+                    dataLength += data.length;
+                }
+
+                if (dataLength > modelData.length) {
+                    modelData = new Int32Array(dataLength * 2);
+                }
+                let modelDataOffset = 0;
+                for (const data of datas) {
+                    modelData.set(data, modelDataOffset);
+                    modelDataOffset += data.length;
+                }
+
+                // const modelData = new Int32Array(model.faceCount * 3 + model.verticesCount * 3);
+                // modelData.set(model.faceColors1, 0);
+                // modelData.set(model.faceColors2, model.faceCount);
+                // modelData.set(model.faceColors3, model.faceCount * 2);
+                // modelData.set(model.verticesX, model.faceCount * 3);
+                // modelData.set(model.verticesY, model.faceCount * 3 + model.verticesCount);
+                // modelData.set(model.verticesZ, model.faceCount * 3 + model.verticesCount * 2);
+
                 const faces: ModelFace[] = [];
 
-                for (let f = 0; f < model.faceCount; f++) {
-                    let faceAlpha = (faceAlphas && (0xFF - (faceAlphas[f] & 0xFF))) || 0xFF;
+                // for (let f = 0; f < model.faceCount; f++) {
+                //     let faceAlpha = (faceAlphas && (0xFF - (faceAlphas[f] & 0xFF))) || 0xFF;
 
-                    if (faceAlpha === 0 || faceAlpha === 0x1) {
-                        continue;
-                    }
+                //     if (faceAlpha === 0 || faceAlpha === 0x1) {
+                //         continue;
+                //     }
 
-                    let hslC = model.faceColors3[f];
+                //     let hslC = model.faceColors3[f];
 
-                    if (hslC == -2) {
-                        continue;
-                    }
+                //     if (hslC == -2) {
+                //         continue;
+                //     }
 
-                    const priority = (priorities && priorities[f]) || 0;
+                //     const priority = (priorities && priorities[f]) || 0;
 
-                    const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
+                //     const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
 
-                    const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
+                //     const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
 
-                    faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
+                //     faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
 
-                }
+                // }
 
                 const modelStartIndices = indices.length;
 
@@ -1701,13 +1724,13 @@ export class ChunkDataLoader {
 
                 modelVertexBuf.vertexOffset = 0;
 
-                addModel(modelVertexBuf, undefined, model, faces, undefined, false);
+                // addModel(modelVertexBuf, undefined, model, faces, undefined, false);
 
                 const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
 
                 const modelEndIndices = indices.length;
 
-                if (modelVertexBuf.vertexOffset == 0) {
+                if (model.faceCount === 0) {
                     continue;
                 }
 
@@ -1719,7 +1742,10 @@ export class ChunkDataLoader {
                     // console.log(modelStart, modelEnd);
                     // const hashData = new Int32Array(indices.slice(modelStartIndices, modelEndIndices));
                     // const hash = xxhashApi.h64Raw(new Uint8Array(hashData.buffer));
-                    const hash = xxhashApi.h64Raw(modelVertexBuf.byteArray.subarray(0, modelVertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE));
+                    // const hashData = modelVertexBuf.byteArray.subarray(0, modelVertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE);
+                    const hashData = new Uint8Array(modelData.buffer).subarray(0, modelDataOffset * 4);
+                    let hash = xxhashApi.h64Raw(hashData);
+                    // hash = BigInt(Math.random() * 2147000000 | 0);
                     // modelHashes.add(hash);
 
                     // let count = modelHashCounts.get(hash);
@@ -1806,10 +1832,42 @@ export class ChunkDataLoader {
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
 
                 const model = modelSpawns.model;
-                const faces = modelSpawns.faces;
+                // const faces = modelSpawns.faces;
                 const hasAlpha = model.hasAlpha(this.textureProvider);
 
                 const isUnique = (objectDatas.length === 1 && objectDatasLowDetail.length === 0) || (objectDatas.length === 0 && objectDatasLowDetail.length === 1);
+
+                const faces: ModelFace[] = [];
+
+                const faceAlphas = model.faceAlphas;
+
+                const priorities = model.faceRenderPriorities;
+
+                for (let f = 0; f < model.faceCount; f++) {
+                    let faceAlpha = (faceAlphas && (0xFF - (faceAlphas[f] & 0xFF))) || 0xFF;
+
+                    if (faceAlpha === 0 || faceAlpha === 0x1) {
+                        continue;
+                    }
+
+                    let hslC = model.faceColors3[f];
+
+                    if (hslC == -2) {
+                        continue;
+                    }
+
+                    const priority = (priorities && priorities[f]) || 0;
+
+                    const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
+
+                    const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
+
+                    faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
+                }
+
+                if (faces.length === 0) {
+                    continue;
+                }
 
                 if (isUnique) {
                     uniqueModelCount++;
