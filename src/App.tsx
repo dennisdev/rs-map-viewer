@@ -361,6 +361,13 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
     };
 }
 
+function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
+    var rect = container.getBoundingClientRect();
+    return [
+        event.clientX - rect.left,
+        event.clientY - rect.top
+    ];
+}
 
 class Test {
     fileSystem: MemoryFileSystem;
@@ -393,7 +400,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -414,6 +421,15 @@ class Test {
     fpsListener?: (fps: number) => void;
 
     lastViewDistanceRegionIds: Set<number> = new Set();
+
+    currentMouseX: number = 0;
+    currentMouseY: number = 0;
+
+    startMouseX: number = -1;
+    startMouseY: number = -1;
+
+    startPitch: number = -1;
+    startYaw: number = -1;
 
     constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>) {
         this.fileSystem = fileSystem;
@@ -457,12 +473,28 @@ class Test {
         this.init = this.init.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
         this.onKeyUp = this.onKeyUp.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        this.onMouseDown = this.onMouseDown.bind(this);
+        this.onMouseUp = this.onMouseUp.bind(this);
+        this.onMouseLeave = this.onMouseLeave.bind(this);
+        this.onTouchStart = this.onTouchStart.bind(this);
+        this.onTouchMove = this.onTouchMove.bind(this);
+        this.onTouchEnd = this.onTouchEnd.bind(this);
+        this.onFocusOut = this.onFocusOut.bind(this);
         this.render = this.render.bind(this);
     }
 
     init(gl: WebGL2RenderingContext) {
         gl.canvas.addEventListener('keydown', this.onKeyDown);
         gl.canvas.addEventListener('keyup', this.onKeyUp);
+        gl.canvas.addEventListener('mousemove', this.onMouseMove);
+        gl.canvas.addEventListener('mousedown', this.onMouseDown);
+        gl.canvas.addEventListener('mouseup', this.onMouseUp);
+        gl.canvas.addEventListener('mouseleave', this.onMouseLeave);
+        gl.canvas.addEventListener('touchstart', this.onTouchStart);
+        gl.canvas.addEventListener('touchmove', this.onTouchMove);
+        gl.canvas.addEventListener('touchend', this.onTouchEnd);
+        gl.canvas.addEventListener('focusout', this.onFocusOut);
         gl.canvas.focus();
 
         const app = this.app = PicoGL.createApp(gl as any);
@@ -547,6 +579,63 @@ class Test {
         event.preventDefault();
     }
 
+    onMouseMove(event: MouseEvent) {
+        const [x, y] = getMousePos(this.app.canvas, event);
+        this.currentMouseX = x;
+        this.currentMouseY = y;
+    }
+
+    onMouseDown(event: MouseEvent) {
+        const [x, y] = getMousePos(this.app.canvas, event);
+        this.startMouseX = x;
+        this.startMouseY = y;
+        this.startPitch = this.pitch;
+        this.startYaw = this.yaw;
+    }
+
+    onTouchStart(event: TouchEvent) {
+        const [x, y] = getMousePos(this.app.canvas, event.touches[0]);
+        this.startMouseX = x;
+        this.startMouseY = y;
+        this.currentMouseX = x;
+        this.currentMouseY = y;
+        this.startPitch = this.pitch;
+        this.startYaw = this.yaw;
+    }
+
+    onTouchMove(event: TouchEvent) {
+        const [x, y] = getMousePos(this.app.canvas, event.touches[0]);
+        this.currentMouseX = x;
+        this.currentMouseY = y;
+        // console.log(this.currentMouseX, this.currentMouseY);
+    }
+
+    onTouchEnd(event: TouchEvent) {
+        this.resetMouseEvents();
+    }
+
+    onMouseUp(event: MouseEvent) {
+        this.resetMouseEvents();
+    }
+
+    onMouseLeave(event: MouseEvent) {
+        this.resetMouseEvents();
+    }
+
+    onFocusOut(event: FocusEvent) {
+        this.resetKeyEvents();
+        this.resetMouseEvents();
+    }
+
+    resetKeyEvents() {
+        this.keys.clear();
+    }
+
+    resetMouseEvents() {
+        this.startMouseX = -1;
+        this.startMouseY = -1;
+    }
+
     private setProjection(offsetX: number, offsetY: number, width: number, height: number, centerX: number, centerY: number, zoom: number): mat4 {
         const left = (offsetX - centerX << 9) / zoom;
         const right = (offsetX + width - centerX << 9) / zoom;
@@ -578,6 +667,14 @@ class Test {
             }
         }
         return false;
+    }
+
+    updatePitch(pitch: number, deltaPitch: number): void {
+        this.pitch = clamp(pitch + deltaPitch, 0, 512);
+    }
+
+    updateYaw(yaw: number, deltaYaw: number): void {
+        this.yaw = yaw + deltaYaw;
     }
 
     moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
@@ -620,23 +717,30 @@ class Test {
         const deltaPitch = 64 * 3 * deltaTime;
         const deltaYaw = 64 * 5 * deltaTime;
 
+        // camera direction controls
         if (this.keys.get('ArrowUp')) {
-            this.pitch = clamp(this.pitch + deltaPitch, 0, 512);
+            this.updatePitch(this.pitch, deltaPitch);
         }
         if (this.keys.get('ArrowDown')) {
-            this.pitch = clamp(this.pitch - deltaPitch, 0, 512);
+            this.updatePitch(this.pitch, -deltaPitch);
         }
         if (this.keys.get('ArrowRight')) {
-            this.yaw = this.yaw + deltaYaw % 2048;
+            this.updateYaw(this.yaw, deltaYaw);
         }
         if (this.keys.get('ArrowLeft')) {
-            this.yaw = this.yaw - deltaYaw;
-            if (this.yaw < 0) {
-                this.yaw = 2048 - this.yaw;
-            }
-            // console.log(this.pitch, this.yaw);
+            this.updateYaw(this.yaw, -deltaYaw);
         }
 
+        // mouse/touch controls
+        if (this.startMouseX !== -1 && this.startMouseY !== -1) {
+            const deltaMouseX = this.startMouseX - this.currentMouseX;
+            const deltaMouseY = this.startMouseY - this.currentMouseY;
+            // console.log(deltaMouseX);
+            this.updatePitch(this.startPitch, deltaMouseY * 0.6);
+            this.updateYaw(this.startYaw, deltaMouseX * -0.9);
+        }
+
+        // camera position controls
         if (this.keys.get('w') || this.keys.get('W')) {
             this.moveCamera(-16 * cameraSpeedMult * deltaTime, 0, 0);
         }
@@ -707,7 +811,7 @@ class Test {
         this.timer.start();
 
 
-        const regionPositions = getSpiralDeltas(1)
+        const regionPositions = getSpiralDeltas(5)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2);
 
         const viewDistanceRegionIds: Set<number> = new Set();

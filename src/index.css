@@ -22,4 +22,5 @@ canvas {
 
 .fps-counter {
   color: white;
+  position: absolute;
 }
