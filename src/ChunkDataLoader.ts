@@ -1246,7 +1246,8 @@ export class ChunkDataLoader {
 
         console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
             'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes, currentBytes - indexBufferBytes,
-            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length, 'draw calls: ', drawRanges.length);
+            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length, 'draw calls: ', drawRanges.length, 
+            'indices: ', indices.length);
 
         const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);
 
@@ -1664,10 +1665,6 @@ export class ChunkDataLoader {
 
                 const indexOffset = indices.length * 4;
 
-                // if (model.faceTextures) {
-                //     console.log(model.faceTextures)
-                // }
-
                 const textureIds = (model.faceTextures && new Int32Array(model.faceTextures)) || new Int32Array(0);
 
                 const datas = [model.faceColors1, model.faceColors2, model.faceColors3, model.verticesX, model.verticesY, model.verticesZ, textureIds];
@@ -1858,9 +1855,15 @@ export class ChunkDataLoader {
 
                     const priority = (priorities && priorities[f]) || 0;
 
-                    const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
+                    let textureId = -1;
+                    if (model.faceTextures) {
+                        textureId = model.faceTextures[f];   
+                    }
 
-                    const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
+                    let textureIndex = this.textureProvider.getTextureIndex(textureId);
+                    if (textureIndex === undefined) {
+                        textureIndex = -1;
+                    }
 
                     faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
                 }
@@ -2066,7 +2069,8 @@ export class ChunkDataLoader {
 
         console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
             'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes, currentBytes - indexBufferBytes,
-            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length, 'draw calls: ', drawRanges.length);
+            'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', perModelTextureData.length, 'draw calls: ', drawRanges.length, 
+            'indices: ', indices.length);
 
         const heightMapTextureData = this.loadHeightMapTextureData(regionX, regionY);
 

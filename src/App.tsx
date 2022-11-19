@@ -431,6 +431,8 @@ class Test {
     startPitch: number = -1;
     startYaw: number = -1;
 
+    chunkDataLoader: ChunkDataLoader;
+
     constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>) {
         this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
@@ -460,15 +462,7 @@ class Test {
 
         // console.log('texture count: ', this.textureProvider.definitions.size);
 
-        const chunkDataLoader = new ChunkDataLoader(regionLoader, modelLoader, this.textureProvider);
-
-        for (let i = 0; i < 10; i++) {
-            // chunkDataLoader.load2(50, 50);
-
-            // chunkDataLoader.regionLoader.regions.clear();
-            // chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
-            // chunkDataLoader.regionLoader.lightLevels.clear();
-        }
+        this.chunkDataLoader = new ChunkDataLoader(regionLoader, modelLoader, this.textureProvider);
 
         this.init = this.init.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -777,6 +771,20 @@ class Test {
         }
         if (this.keys.get('f') && this.timer.ready()) {
             this.app.disable(PicoGL.RASTERIZER_DISCARD);
+        }
+
+        if (this.keys.get('p')) {
+            for (let i = 0; i < 20; i++) {
+                this.chunkDataLoader.load2(50, 50);
+
+                this.chunkDataLoader.regionLoader.regions.clear();
+                this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
+                this.chunkDataLoader.regionLoader.lightLevels.clear();
+
+                this.chunkDataLoader.modelLoader.cache.clear();
+                this.chunkDataLoader.objectModelLoader.modelDataCache.clear();
+                this.chunkDataLoader.objectModelLoader.modelCache.clear();
+            }
         }
 
 
