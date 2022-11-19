@@ -12,6 +12,11 @@ import { RegionLoader } from './client/RegionLoader';
 import { ChunkData, ChunkDataLoader } from './ChunkDataLoader';
 import { MemoryStore } from './client/fs/MemoryStore';
 import { Skeleton } from './client/model/Skeleton';
+import { ConfigType } from './client/fs/ConfigType';
+import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
+import { CachedOverlayLoader } from './client/fs/loader/OverlayLoader';
+import { CachedObjectLoader } from './client/fs/loader/ObjectLoader';
+import { CachedModelLoader } from './client/fs/loader/ModelLoader';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -414,22 +419,23 @@ class Test {
         this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
 
-        // const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
-        // const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
+        const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
+        const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
         const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
         const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
-        // this.modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
+        const modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
 
-        // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
-        // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
-        // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+        const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
+        const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
+        const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
 
         // console.time('region loader');
-        // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
-        // const overlayLoader = new CachedOverlayLoader(overlayArchive);
-        // const objectLoader = new CachedObjectLoader(objectArchive);
+        const underlayLoader = new CachedUnderlayLoader(underlayArchive);
+        const overlayLoader = new CachedOverlayLoader(overlayArchive);
+        const objectLoader = new CachedObjectLoader(objectArchive);
+        const modelLoader = new CachedModelLoader(modelIndex);
 
-        // this.regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
+        const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
         // console.timeEnd('region loader');
 
         console.time('load textures');
@@ -438,15 +444,15 @@ class Test {
 
         // console.log('texture count: ', this.textureProvider.definitions.size);
 
-        // this.chunkDataLoader = new ChunkDataLoader(this.regionLoader, this.modelIndex, this.textureProvider);
+        const chunkDataLoader = new ChunkDataLoader(regionLoader, modelLoader, this.textureProvider);
 
-        // for (let i = 0; i < 50; i++) {
-        //     this.chunkDataLoader.load(50, 50);
+        for (let i = 0; i < 10; i++) {
+            // chunkDataLoader.load2(50, 50);
 
-        //     this.chunkDataLoader.regionLoader.regions.clear();
-        //     this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
-        //     this.chunkDataLoader.regionLoader.lightLevels.clear();
-        // }
+            // chunkDataLoader.regionLoader.regions.clear();
+            // chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
+            // chunkDataLoader.regionLoader.lightLevels.clear();
+        }
 
         this.init = this.init.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);

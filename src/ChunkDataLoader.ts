@@ -6,7 +6,7 @@ import { StoreSync } from "./client/fs/Store";
 import { Model } from "./client/model/Model";
 import { ModelData } from "./client/model/ModelData";
 import { RegionLoader } from "./client/RegionLoader";
-import { Scene } from "./client/Scene";
+import { ObjectSpawn, Scene } from "./client/Scene";
 import { ByteBuffer } from "./client/util/ByteBuffer";
 import { HSL_RGB_MAP, packHsl } from "./client/util/ColorUtil";
 import xxhash, { XXHashAPI } from "xxhash-wasm";
@@ -518,7 +518,8 @@ class VertexBuffer {
         }
     }
 
-    addVertex(x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number, priority: number) {
+    addVertex(x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number, priority: number, 
+        reuseVertex: boolean = true) {
         this.ensureSize(1);
         const vertexBufIndex = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
@@ -547,13 +548,14 @@ class VertexBuffer {
 
         this.view.setUint8(vertexBufIndex + 15, priority);
 
-        if (xxhashApi) {
+        if (xxhashApi && reuseVertex) {
             const hash = xxhashApi.h64Raw(this.byteArray.subarray(vertexBufIndex, vertexBufIndex + VertexBuffer.VERTEX_STRIDE));
             const cachedIndex = this.vertexIndices.get(hash);
             if (cachedIndex) {
                 return cachedIndex;
+            } else {
+                this.vertexIndices.set(hash, this.vertexOffset);
             }
-            this.vertexIndices.set(hash, this.vertexOffset);
         }
 
         return this.vertexOffset++;
@@ -673,6 +675,96 @@ function isLowDetail(type: number, def: ObjectDefinition, localX: number, localY
     return false;
 }
 
+
+function addModel(buf: VertexBuffer, indices: number[] | undefined, model: Model, faces: ModelFace[], objectData: ObjectData | undefined, reuseVertices: boolean) {
+    const verticesX = model.verticesX;
+    let verticesY = model.verticesY;
+    const verticesZ = model.verticesZ;
+
+    let sceneX = 0;
+    let sceneY = 0;
+    let sceneHeight = 0;
+    if (objectData) {
+        sceneX = objectData.localX;
+        sceneY = objectData.localY;
+        sceneHeight = objectData.sceneHeight;
+        if (model.contourVerticesY) {
+            verticesY = model.contourVerticesY;
+        }
+    }
+
+    const facesA = model.indices1;
+    const facesB = model.indices2;
+    const facesC = model.indices3;
+
+    const modelTexCoords = computeTextureCoords(model);
+
+    for (const face of faces) {
+        const f = face.index;
+        const faceAlpha = face.alpha;
+        const priority = face.priority;
+        const textureId = face.textureId;
+
+        let hslA = model.faceColors1[f];
+        let hslB = model.faceColors2[f];
+        let hslC = model.faceColors3[f];
+
+        if (hslC == -1) {
+            hslC = hslB = hslA;
+        }
+
+        let u0: number = 0;
+        let v0: number = 0;
+        let u1: number = 0;
+        let v1: number = 0;
+        let u2: number = 0;
+        let v2: number = 0;
+
+        if (modelTexCoords) {
+            const texCoordIdx = f * 6;
+            u0 = modelTexCoords[texCoordIdx];
+            v0 = modelTexCoords[texCoordIdx + 1];
+            u1 = modelTexCoords[texCoordIdx + 2];
+            v1 = modelTexCoords[texCoordIdx + 3];
+            u2 = modelTexCoords[texCoordIdx + 4];
+            v2 = modelTexCoords[texCoordIdx + 5];
+        }
+
+        let rgbA = HSL_RGB_MAP[hslA];
+        let rgbB = HSL_RGB_MAP[hslB];
+        let rgbC = HSL_RGB_MAP[hslC];
+
+        // const SCALE = 128;
+        const fa = facesA[f];
+        const fb = facesB[f];
+        const fc = facesC[f];
+
+        const vxa = sceneX + verticesX[fa];
+        const vxb = sceneX + verticesX[fb];
+        const vxc = sceneX + verticesX[fc];
+
+        const vya = sceneHeight + verticesY[fa];
+        const vyb = sceneHeight + verticesY[fb];
+        const vyc = sceneHeight + verticesY[fc];
+
+        const vza = sceneY + verticesZ[fa];
+        const vzb = sceneY + verticesZ[fb];
+        const vzc = sceneY + verticesZ[fc];
+
+        const index0 = buf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureId, priority + 1, reuseVertices);
+        const index1 = buf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureId, priority + 1, reuseVertices);
+        const index2 = buf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureId, priority + 1, reuseVertices);
+
+        if (indices) {
+            indices.push(
+                index0,
+                index1,
+                index2,
+            );
+        }
+    }
+}
+
 type ModelFace = {
     index: number,
     alpha: number,
@@ -680,16 +772,21 @@ type ModelFace = {
     textureId: number
 };
 
+const modelVertexBuf = new VertexBuffer(5000);
+
 export class ChunkDataLoader {
     regionLoader: RegionLoader;
 
     modelLoader: CachedModelLoader;
+
+    objectModelLoader: ObjectModelLoader;
 
     textureProvider: TextureLoader;
 
     constructor(regionLoader: RegionLoader, modelLoader: CachedModelLoader, textureProvider: TextureLoader) {
         this.regionLoader = regionLoader;
         this.modelLoader = modelLoader;
+        this.objectModelLoader = new ObjectModelLoader(new IndexModelLoader(this.modelLoader.modelIndex));
         this.textureProvider = textureProvider;
     }
 
@@ -1183,11 +1280,7 @@ export class ChunkDataLoader {
             return undefined;
         }
 
-
-        const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(this.modelLoader.modelIndex));
-
         const vertexBuf = new VertexBuffer(100000);
-        const modelVertexBuf = new VertexBuffer(100000);
 
         let indices: number[] = [];
 
@@ -1216,6 +1309,8 @@ export class ChunkDataLoader {
         const overlayIdSet: Set<number> = new Set();
         const heightSet: Set<number> = new Set();
         const lightSet: Set<number> = new Set();
+
+        console.time('terrain');
 
         for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
             const indexByteOffset = indices.length * 4;
@@ -1312,6 +1407,8 @@ export class ChunkDataLoader {
             }
         }
 
+        console.timeEnd('terrain');
+
         terrainVertexCount = vertexBuf.vertexOffset;
 
         const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
@@ -1326,12 +1423,14 @@ export class ChunkDataLoader {
         // }
 
         if (landscapeData && 1) {
+            console.time('create scene');
             const heightMap = this.loadHeightMap(regionX, regionY, 72);
 
             const scene = new Scene2(4, 64, 64, heightMap);
-            scene.decodeLandscape(this.regionLoader, objectModelLoader, landscapeData);
+            scene.decodeLandscape(this.regionLoader, this.objectModelLoader, landscapeData);
 
             scene.applyLighting(-50, -10, -50);
+            console.timeEnd('create scene');
 
             const lowDetailOcclusionMap: boolean[][][] = new Array(Scene.MAX_PLANE);
             for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
@@ -1360,6 +1459,10 @@ export class ChunkDataLoader {
 
             const gameObjects: Set<GameObject> = new Set();
             let gameObjectCount = 0;
+
+            const allModelSpawns: ModelSpawns[] = [];
+
+            console.time('iterate tiles');
 
             for (let plane = 0; plane < scene.planes; plane++) {
                 for (let tileX = 0; tileX < scene.sizeX; tileX++) {
@@ -1391,7 +1494,7 @@ export class ChunkDataLoader {
                                     modelSpawns.objectDatas.push(objectData);
                                 }
 
-                                regionModelSpawns.set(key, modelSpawns);
+                                allModelSpawns.push(modelSpawns);
                             }
                         }
 
@@ -1412,7 +1515,7 @@ export class ChunkDataLoader {
                                     plane: plane, contourGround: Math.min(def.contouredGround + 1, 1), priority };
                                 modelSpawns.objectDatas.push(objectData)
 
-                                regionModelSpawns.set(key, modelSpawns);
+                                allModelSpawns.push(modelSpawns);
                             }
 
                             if (tile.wallObject.model1 instanceof Model) {
@@ -1429,7 +1532,7 @@ export class ChunkDataLoader {
                                     plane: plane, contourGround: Math.min(def.contouredGround + 1, 1), priority };
                                 modelSpawns.objectDatas.push(objectData)
 
-                                regionModelSpawns.set(key, modelSpawns);
+                                allModelSpawns.push(modelSpawns);
                             }
                         }
 
@@ -1454,7 +1557,7 @@ export class ChunkDataLoader {
                                     plane: plane, contourGround: Math.min(def.contouredGround + 1, 1), priority };
                                 modelSpawns.objectDatas.push(objectData);
 
-                                regionModelSpawns.set(key, modelSpawns);
+                                allModelSpawns.push(modelSpawns);
                             }
                             if (tile.wallDecoration.model1 instanceof Model) {
                                 const model = tile.wallDecoration.model1;
@@ -1479,7 +1582,7 @@ export class ChunkDataLoader {
                                     modelSpawns.objectDatas.push(objectData);
                                 }
 
-                                regionModelSpawns.set(key, modelSpawns);
+                                allModelSpawns.push(modelSpawns);
                             }
                         }
 
@@ -1508,7 +1611,7 @@ export class ChunkDataLoader {
                                     modelSpawns.objectDatas.push(objectData);
                                 }
 
-                                regionModelSpawns.set(key, modelSpawns);
+                                allModelSpawns.push(modelSpawns);
 
 
                                 gameObjects.add(gameObject);
@@ -1518,101 +1621,17 @@ export class ChunkDataLoader {
                 }
             }
 
+            console.timeEnd('iterate tiles');
+
             // console.log(gameObjectCount, gameObjects);
 
             // console.log(lowDetailOcclusionMap);
 
-            const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
-
-            const objectModels: Map<number, Model> = new Map();
-
-            for (const spawn of spawns) {
-                let { id, type, rotation, localX, localY, plane } = spawn;
-                const def = this.regionLoader.getObjectDef(id);
-
-                // if (def.animationId !== -1) {
-                //     continue;
-                // }
-
-                if (def.mergeNormals) {
-                    // continue;
-                }
-
-                if (def.contouredGround >= 0) {
-                    // continue;
-                }
-
-                if (type !== 5 && 1) {
-                    // continue;
-                }
-
-                // only roofs?
-                // if (/*(renderFlags[0][localX][localY] & 2) != 0 || */(renderFlags[plane][localX][localY] & 16) == 0) {
-                //     continue;
-                // }
-
-
-                // if ((renderFlags[0][localX][localY] & 2) != 0) {
-                //     continue;
-                // }
-
-                let sizeX = def.sizeX;
-                let sizeY = def.sizeY;
-
-                if (rotation == 1 || rotation == 3) {
-                    sizeX = def.sizeY;
-                    sizeY = def.sizeX;
-                }
-
-                const pos = [localX + sizeX / 2, localY + sizeY / 2];
-
-                let modelKey = rotation << 24 | type << 16 | id;
-
-                let model = objectModels.get(modelKey);
-
-                // if (!model) {
-                //     // corner walls
-                //     if (type == 2) {
-                //         const wall0 = getModel(this.modelLoader, def, type, rotation + 1 & 3);
-                //         const wall1 = getModel(this.modelLoader, def, type, rotation + 4);
-                //         if (wall0 && wall1) {
-                //             model = Model.merge([wall0, wall1], 2);
-                //         }
-                //     } else {
-                //         model = getModel(this.modelLoader, def, type, rotation);
-                //     }
-                //     if (!model) {
-                //         continue;
-                //     }
-                //     objectModels.set(modelKey, model);
-                // }
-
-                // let modelSpawns = regionModelSpawns.get(modelKey);
-                // if (!modelSpawns) {
-                //     modelSpawns = { model: model, hasAlpha: model.hasAlpha(this.textureProvider), def, type, objectDatas: [], objectDatasLowDetail: [] };
-                // }
-
-                // let priority = 1;
-                // if (type >= 0 && type <= 2 || type == 9) {
-                //     // priority = 3;
-                // } else if (type >= 4 && type <= 8) {
-                //     // priority = 6;
-                // }
-
-                // const objectData = { localX: pos[0], localY: pos[1], plane: plane, contourGround: def.contouredGround, priority };
-
-                // if (isLowDetail(type, def, localX, localY, plane, lowDetailOcclusionMap)) {
-                //     modelSpawns.objectDatasLowDetail.push(objectData);
-                // } else {
-                //     modelSpawns.objectDatas.push(objectData);
-                // }
-
-                // regionModelSpawns.set(modelKey, modelSpawns);
-            }
+            // const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
 
             console.log('diff models: ', regionModelSpawns.size);
 
-            const allModelSpawns = Array.from(regionModelSpawns.values());
+            // const allModelSpawns = Array.from(regionModelSpawns.values());
 
             // draw transparent objects last
             allModelSpawns.sort((a, b) => (a.hasAlpha ? 1 : 0) - (b.hasAlpha ? 1 : 0));
@@ -1629,32 +1648,22 @@ export class ChunkDataLoader {
 
             const uniqueModels: Map<bigint, Model> = new Map();
 
-            const models: Model[] = [];
+            // const models: Model[] = [];
 
             const modelSpawns2: Map<bigint, ModelSpawns2> = new Map();
+
+            console.time('models phase 1');
 
             for (let i = 0; i < allModelSpawns.length; i++) {
                 const modelSpawns = allModelSpawns[i];
 
-
-
                 const model = modelSpawns.model;
 
-                models.push(model);
-
-                const verticesX = model.verticesX;
-                const verticesY = model.verticesY;
-                const verticesZ = model.verticesZ;
-
-                const facesA = model.indices1;
-                const facesB = model.indices2;
-                const facesC = model.indices3;
+                // models.push(model);
 
                 const faceAlphas = model.faceAlphas;
 
                 const priorities = model.faceRenderPriorities;
-
-                const modelTexCoords = computeTextureCoords(model);
 
                 const indexOffset = indices.length * 4;
 
@@ -1681,7 +1690,9 @@ export class ChunkDataLoader {
 
                     const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
 
-                    faces.push({ index: f, alpha: faceAlpha, priority, textureId });
+                    const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
+
+                    faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
 
                 }
 
@@ -1695,82 +1706,15 @@ export class ChunkDataLoader {
 
                 let uniqueVertexCount = 0;
 
-                for (const face of faces) {
-                    const f = face.index;
-                    const faceAlpha = face.alpha;
-                    const priority = face.priority;
-                    const textureId = face.textureId;
+                modelVertexBuf.vertexOffset = 0;
 
-                    let hslA = model.faceColors1[f];
-                    let hslB = model.faceColors2[f];
-                    let hslC = model.faceColors3[f];
-
-                    if (hslC == -1) {
-                        hslC = hslB = hslA;
-                    }
-
-                    const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
-
-                    let u0: number = 0;
-                    let v0: number = 0;
-                    let u1: number = 0;
-                    let v1: number = 0;
-                    let u2: number = 0;
-                    let v2: number = 0;
-
-                    if (modelTexCoords) {
-                        const texCoordIdx = f * 6;
-                        u0 = modelTexCoords[texCoordIdx];
-                        v0 = modelTexCoords[texCoordIdx + 1];
-                        u1 = modelTexCoords[texCoordIdx + 2];
-                        v1 = modelTexCoords[texCoordIdx + 3];
-                        u2 = modelTexCoords[texCoordIdx + 4];
-                        v2 = modelTexCoords[texCoordIdx + 5];
-                    }
-
-                    let rgbA = HSL_RGB_MAP[hslA];
-                    let rgbB = HSL_RGB_MAP[hslB];
-                    let rgbC = HSL_RGB_MAP[hslC];
-
-                    // const SCALE = 128;
-                    const fa = facesA[f];
-                    const fb = facesB[f];
-                    const fc = facesC[f];
-
-                    const vxa = verticesX[fa];
-                    const vxb = verticesX[fb];
-                    const vxc = verticesX[fc];
-
-                    const vya = verticesY[fa];
-                    const vyb = verticesY[fb];
-                    const vyc = verticesY[fc];
-
-                    const vza = verticesZ[fa];
-                    const vzb = verticesZ[fb];
-                    const vzc = verticesZ[fc];
-
-                    const faceStartVertexOffset = modelVertexBuf.vertexOffset;
-
-                    const index0 = modelVertexBuf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority + 1);
-                    const index1 = modelVertexBuf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority + 1);
-                    const index2 = modelVertexBuf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority + 1);
-
-                    const faceEndVertexOffset = modelVertexBuf.vertexOffset;
-
-                    uniqueVertexCount += faceEndVertexOffset - faceStartVertexOffset;
-
-                    indices.push(
-                        index0,
-                        index1,
-                        index2,
-                    );
-                }
+                addModel(modelVertexBuf, undefined, model, faces, undefined, false);
 
                 const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
 
                 const modelEndIndices = indices.length;
 
-                if (modelVertexCount == 0) {
+                if (modelVertexBuf.vertexOffset == 0) {
                     continue;
                 }
 
@@ -1781,7 +1725,8 @@ export class ChunkDataLoader {
                     // const modelEnd = modelEndVertexOffset * VertexBuffer.VERTEX_STRIDE;
                     // console.log(modelStart, modelEnd);
                     const hashData = new Int32Array(indices.slice(modelStartIndices, modelEndIndices));
-                    const hash = xxhashApi.h64Raw(new Uint8Array(hashData.buffer));
+                    // const hash = xxhashApi.h64Raw(new Uint8Array(hashData.buffer));
+                    const hash = xxhashApi.h64Raw(modelVertexBuf.byteArray.subarray(0, modelVertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE));
                     modelHashes.add(hash);
 
                     let count = modelHashCounts.get(hash);
@@ -1811,9 +1756,9 @@ export class ChunkDataLoader {
                             objectDatas: [],
                             objectDatasLowDetail: [],
                         };
-                        indices.length -= hashData.length;
+                        // indices.length -= hashData.length;
                     } else {
-                        indices.length -= hashData.length;
+                        // indices.length -= hashData.length;
                     }
 
                     spawns2.objectDatas.push(...modelSpawns.objectDatas);
@@ -1841,102 +1786,7 @@ export class ChunkDataLoader {
                 // }
             }
 
-            const addModel = (model: Model, faces: ModelFace[], objectData?: ObjectData) => {
-                const verticesX = model.verticesX;
-                let verticesY = model.verticesY;
-                const verticesZ = model.verticesZ;
-
-                let sceneX = 0;
-                let sceneY = 0;
-                let sceneHeight = 0;
-                if (objectData) {
-                    sceneX = objectData.localX;
-                    sceneY = objectData.localY;
-                    sceneHeight = objectData.sceneHeight;
-                    if (model.contourVerticesY) {
-                        verticesY = model.contourVerticesY;
-                    }
-                }
-
-                const facesA = model.indices1;
-                const facesB = model.indices2;
-                const facesC = model.indices3;
-
-                const faceAlphas = model.faceAlphas;
-
-                const priorities = model.faceRenderPriorities;
-
-                const modelTexCoords = computeTextureCoords(model);
-
-                const vbuff = vertexBuf;
-
-                for (const face of faces) {
-                    const f = face.index;
-                    const faceAlpha = face.alpha;
-                    const priority = face.priority;
-                    const textureId = face.textureId;
-
-                    let hslA = model.faceColors1[f];
-                    let hslB = model.faceColors2[f];
-                    let hslC = model.faceColors3[f];
-
-                    if (hslC == -1) {
-                        hslC = hslB = hslA;
-                    }
-
-                    const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
-
-                    let u0: number = 0;
-                    let v0: number = 0;
-                    let u1: number = 0;
-                    let v1: number = 0;
-                    let u2: number = 0;
-                    let v2: number = 0;
-
-                    if (modelTexCoords) {
-                        const texCoordIdx = f * 6;
-                        u0 = modelTexCoords[texCoordIdx];
-                        v0 = modelTexCoords[texCoordIdx + 1];
-                        u1 = modelTexCoords[texCoordIdx + 2];
-                        v1 = modelTexCoords[texCoordIdx + 3];
-                        u2 = modelTexCoords[texCoordIdx + 4];
-                        v2 = modelTexCoords[texCoordIdx + 5];
-                    }
-
-                    let rgbA = HSL_RGB_MAP[hslA];
-                    let rgbB = HSL_RGB_MAP[hslB];
-                    let rgbC = HSL_RGB_MAP[hslC];
-
-                    // const SCALE = 128;
-                    const fa = facesA[f];
-                    const fb = facesB[f];
-                    const fc = facesC[f];
-
-                    const vxa = sceneX + verticesX[fa];
-                    const vxb = sceneX + verticesX[fb];
-                    const vxc = sceneX + verticesX[fc];
-
-                    const vya = sceneHeight + verticesY[fa];
-                    const vyb = sceneHeight + verticesY[fb];
-                    const vyc = sceneHeight + verticesY[fc];
-
-                    const vza = sceneY + verticesZ[fa];
-                    const vzb = sceneY + verticesZ[fb];
-                    const vzc = sceneY + verticesZ[fc];
-
-                    const faceStartVertexOffset = vbuff.vertexOffset;
-
-                    const index0 = vbuff.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureIndex, priority + 1);
-                    const index1 = vbuff.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureIndex, priority + 1);
-                    const index2 = vbuff.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureIndex, priority + 1);
-
-                    indices.push(
-                        index0,
-                        index1,
-                        index2,
-                    );
-                }
-            };
+            console.timeEnd('models phase 1');
 
             const modelGroup: ModelGroup = {models: [], plane: 0, lowDetail: false};
 
@@ -1947,6 +1797,7 @@ export class ChunkDataLoader {
                 modelGroupPlanesLowDetail[i] = {models: [], plane: i, lowDetail: true};
             }
 
+            console.time('create model groups');
             for (const [hash, modelSpawns] of modelSpawns2) {
                 const objectDatas: ObjectData[] = modelSpawns.objectDatas;
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
@@ -1972,11 +1823,11 @@ export class ChunkDataLoader {
 
                     const indexOffset = indices.length * 4;
 
-                    addModel(model, faces);
+                    addModel(vertexBuf, indices, model, faces, undefined, true);
         
                     const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
 
-                    if (modelVertexCount ==- 0) {
+                    if (modelVertexCount === 0) {
                         continue;
                     }
 
@@ -2003,12 +1854,17 @@ export class ChunkDataLoader {
             modelGroups.push(...modelGroupPlanes);
             modelGroups.push(...modelGroupPlanesLowDetail);
 
+            console.timeEnd('create model groups');
 
+            const vertexIndices = vertexBuf.vertexIndices;
+
+            console.time('create model groups models');
             for (const modelGroup of modelGroups) {
                 const indexOffset = indices.length * 4;
 
                 for (const {model, faces, objectData} of modelGroup.models) {
-                    addModel(model, faces, objectData);
+                    vertexBuf.vertexIndices = new Map();
+                    addModel(vertexBuf, indices, model, faces, objectData, true);
                 }
     
                 const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
@@ -2025,6 +1881,7 @@ export class ChunkDataLoader {
                     objectDatas: [{ localX: 0, localY: 0, sceneHeight: 0, plane: modelGroup.plane, contourGround: 2, priority: 1 }],
                 });
             }
+            console.timeEnd('create model groups models');
 
             console.log('combined vertices: ', modelVertexBuf.vertexOffset);
 
@@ -2057,16 +1914,16 @@ export class ChunkDataLoader {
                 }
             }
 
-            let totalVertices = 0;
-            models.forEach(model => {
-                totalVertices += model.verticesCount;
-            })
+            // let totalVertices = 0;
+            // models.forEach(model => {
+            //     totalVertices += model.verticesCount;
+            // })
 
             console.log('um', uniqueModelCount, modelHashCounts);
 
             console.log('u', uniqueVertexCounts, uniqueVertexCounts2);
 
-            console.log('ivc', instancedVertexCounts, totalVertices, instancedVertexCounts2);
+            // console.log('ivc', instancedVertexCounts, totalVertices, instancedVertexCounts2);
 
             // console.log(uniqueVertices);
         }
