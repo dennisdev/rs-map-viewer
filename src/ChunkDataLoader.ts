@@ -1659,9 +1659,9 @@ export class ChunkDataLoader {
 
                 // models.push(model);
 
-                const faceAlphas = model.faceAlphas;
+                // const faceAlphas = model.faceAlphas;
 
-                const priorities = model.faceRenderPriorities;
+                // const priorities = model.faceRenderPriorities;
 
                 const indexOffset = indices.length * 4;
 
@@ -1681,14 +1681,6 @@ export class ChunkDataLoader {
                     modelData.set(data, modelDataOffset);
                     modelDataOffset += data.length;
                 }
-
-                // const modelData = new Int32Array(model.faceCount * 3 + model.verticesCount * 3);
-                // modelData.set(model.faceColors1, 0);
-                // modelData.set(model.faceColors2, model.faceCount);
-                // modelData.set(model.faceColors3, model.faceCount * 2);
-                // modelData.set(model.verticesX, model.faceCount * 3);
-                // modelData.set(model.verticesY, model.faceCount * 3 + model.verticesCount);
-                // modelData.set(model.verticesZ, model.faceCount * 3 + model.verticesCount * 2);
 
                 const faces: ModelFace[] = [];
 

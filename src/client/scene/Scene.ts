@@ -196,6 +196,10 @@ export class ObjectModelLoader {
 
     getObjectModelData(def: ObjectDefinition, type: number, rotation: number): ModelData | undefined {
         let model: ModelData | undefined;
+        const isDiagonalObject = type === ObjectType.OBJECT_DIAGIONAL;
+        if (isDiagonalObject) {
+            type = ObjectType.OBJECT;
+        }
         if (!def.objectTypes) {
             if (type !== ObjectType.OBJECT) {
                 return undefined;
@@ -253,11 +257,13 @@ export class ObjectModelLoader {
 
         const hasOffset = def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
 
-        const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset, !def.recolorFrom, !def.retextureFrom);
+        const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset && !isDiagonalObject, !def.recolorFrom, !def.retextureFrom);
 
         if (type === ObjectType.WALL_DECORATION_INSIDE && rotation > 3) {
             copy.rotate(256);
             copy.translate(45, 0, -45);
+        } else if (isDiagonalObject) {
+            copy.rotate(256);
         }
 
         rotation &= 3;
@@ -613,7 +619,7 @@ export class Scene2 {
                 this.newWallDecoration(plane, tileX, tileY, centerHeight, model0, model1, displacementX, displacementY, tag, type, def);
             }
         } else {
-            const model = modelLoader.getObjectModel(def, ObjectType.OBJECT, rotation, heightMap, sceneX, centerHeight, sceneY);
+            const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
             if (model && this.newGameObject(plane, tileX, tileY, centerHeight, sizeX, sizeY, model, tag, type, def) && def.clipped) {
                 let lightOcclusion = 15;
