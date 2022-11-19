@@ -1424,14 +1424,18 @@ export class ChunkDataLoader {
         // }
 
         if (landscapeData && 1) {
-            console.time('create scene');
+            console.time('load heightmap');
             const heightMap = this.loadHeightMap(regionX, regionY, 72);
+            console.timeEnd('load heightmap');
 
+            console.time('load landscape');
             const scene = new Scene2(4, 64, 64, heightMap);
             scene.decodeLandscape(this.regionLoader, this.objectModelLoader, landscapeData);
+            console.timeEnd('load landscape');
 
+            console.time('light scene');
             scene.applyLighting(-50, -10, -50);
-            console.timeEnd('create scene');
+            console.timeEnd('light scene');
 
             const lowDetailOcclusionMap: boolean[][][] = new Array(Scene.MAX_PLANE);
             for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
@@ -1478,9 +1482,8 @@ export class ChunkDataLoader {
 
                             if (tile.floorDecoration.model instanceof Model) {
                                 const model = tile.floorDecoration.model;
-                                const key = Math.random();
                                 const modelSpawns: ModelSpawns = {
-                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    model, hasAlpha: false, def,
                                     type: tile.floorDecoration.type, objectDatas: [], objectDatasLowDetail: []
                                 };
 
@@ -1504,9 +1507,8 @@ export class ChunkDataLoader {
 
                             if (tile.wallObject.model0 instanceof Model) {
                                 const model = tile.wallObject.model0;
-                                const key = Math.random();
                                 const modelSpawns: ModelSpawns = {
-                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    model, hasAlpha: false, def,
                                     type: tile.wallObject.type, objectDatas: [], objectDatasLowDetail: []
                                 };
 
@@ -1521,9 +1523,8 @@ export class ChunkDataLoader {
 
                             if (tile.wallObject.model1 instanceof Model) {
                                 const model = tile.wallObject.model1;
-                                const key = Math.random();
                                 const modelSpawns: ModelSpawns = {
-                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    model, hasAlpha: false, def,
                                     type: tile.wallObject.type, objectDatas: [], objectDatasLowDetail: []
                                 };
 
@@ -1542,9 +1543,8 @@ export class ChunkDataLoader {
 
                             if (tile.wallDecoration.model0 instanceof Model) {
                                 const model = tile.wallDecoration.model0;
-                                const key = Math.random();
                                 const modelSpawns: ModelSpawns = {
-                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    model, hasAlpha: false, def,
                                     type: tile.wallDecoration.type, objectDatas: [], objectDatasLowDetail: []
                                 };
 
@@ -1562,9 +1562,8 @@ export class ChunkDataLoader {
                             }
                             if (tile.wallDecoration.model1 instanceof Model) {
                                 const model = tile.wallDecoration.model1;
-                                const key = Math.random();
                                 const modelSpawns: ModelSpawns = {
-                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    model, hasAlpha: false, def,
                                     type: tile.wallDecoration.type, objectDatas: [], objectDatasLowDetail: []
                                 };
 
@@ -1594,10 +1593,9 @@ export class ChunkDataLoader {
 
                             const def = gameObject.def;
 
-                            const key = Math.random();
                             if (model instanceof Model && !gameObjects.has(gameObject)) {
                                 const modelSpawns: ModelSpawns = {
-                                    model, hasAlpha: model.hasAlpha(this.textureProvider), def,
+                                    model, hasAlpha: false, def,
                                     type: gameObject.type, objectDatas: [], objectDatasLowDetail: []
                                 };
 
@@ -1697,12 +1695,6 @@ export class ChunkDataLoader {
 
                 }
 
-                // sort on priority, has alpha, texture id, face index
-                faces.sort((a, b) => a.priority - b.priority
-                    || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
-                    || a.textureId - b.textureId
-                    || b.index - a.index);
-
                 const modelStartIndices = indices.length;
 
                 let uniqueVertexCount = 0;
@@ -1725,27 +1717,27 @@ export class ChunkDataLoader {
                     // const modelStart = modelStartVertexOffset * VertexBuffer.VERTEX_STRIDE;
                     // const modelEnd = modelEndVertexOffset * VertexBuffer.VERTEX_STRIDE;
                     // console.log(modelStart, modelEnd);
-                    const hashData = new Int32Array(indices.slice(modelStartIndices, modelEndIndices));
+                    // const hashData = new Int32Array(indices.slice(modelStartIndices, modelEndIndices));
                     // const hash = xxhashApi.h64Raw(new Uint8Array(hashData.buffer));
                     const hash = xxhashApi.h64Raw(modelVertexBuf.byteArray.subarray(0, modelVertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE));
-                    modelHashes.add(hash);
+                    // modelHashes.add(hash);
 
-                    let count = modelHashCounts.get(hash);
-                    if (count === undefined) {
-                        count = 0;
-                    }
-                    count++;
-                    modelHashCounts.set(hash, count);
+                    // let count = modelHashCounts.get(hash);
+                    // if (count === undefined) {
+                    //     count = 0;
+                    // }
+                    // count++;
+                    // modelHashCounts.set(hash, count);
 
 
-                    let ucount = modelUniqueVertexCounts.get(hash);
-                    if (ucount === undefined) {
-                        ucount = 0;
-                    }
-                    ucount += uniqueVertexCount;
-                    modelUniqueVertexCounts.set(hash, ucount);
+                    // let ucount = modelUniqueVertexCounts.get(hash);
+                    // if (ucount === undefined) {
+                    //     ucount = 0;
+                    // }
+                    // ucount += uniqueVertexCount;
+                    // modelUniqueVertexCounts.set(hash, ucount);
 
-                    uniqueModels.set(hash, model);
+                    // uniqueModels.set(hash, model);
 
                     let spawns2 = modelSpawns2.get(hash);
                     if (!spawns2) {
@@ -1806,6 +1798,8 @@ export class ChunkDataLoader {
                 modelGroupPlanesLowDetailAlpha[i] = {models: [], plane: i, lowDetail: true};
             }
 
+            let uniqueModelCount = 0;
+
             console.time('create model groups');
             for (const modelSpawns of modelSpawns2.values()) {
                 const objectDatas: ObjectData[] = modelSpawns.objectDatas;
@@ -1813,10 +1807,12 @@ export class ChunkDataLoader {
 
                 const model = modelSpawns.model;
                 const faces = modelSpawns.faces;
+                const hasAlpha = model.hasAlpha(this.textureProvider);
 
                 const isUnique = (objectDatas.length === 1 && objectDatasLowDetail.length === 0) || (objectDatas.length === 0 && objectDatasLowDetail.length === 1);
 
                 if (isUnique) {
+                    uniqueModelCount++;
                     let objectData: ObjectData;
                     if (objectDatas.length === 1) {
                         objectData = objectDatas[0];
@@ -1827,13 +1823,13 @@ export class ChunkDataLoader {
                     let modelGroups: ModelGroup[];
 
                     if (objectDatas.length === 1) {
-                        if (modelSpawns.hasAlpha) {
+                        if (hasAlpha) {
                             modelGroups = modelGroupPlanesAlpha;
                         } else {
                             modelGroups = modelGroupPlanes;
                         }
                     } else {
-                        if (modelSpawns.hasAlpha) {
+                        if (hasAlpha) {
                             modelGroups = modelGroupPlanesLowDetailAlpha;
                         } else {
                             modelGroups = modelGroupPlanesLowDetail;
@@ -1843,6 +1839,11 @@ export class ChunkDataLoader {
                 } else {
                     const indexOffset = indices.length * 4;
 
+                    // sort on priority, has alpha, texture id, face index
+                    faces.sort((a, b) => a.priority - b.priority
+                        || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
+                        || a.textureId - b.textureId
+                        || b.index - a.index);
                     addModel(vertexBuf, indices, model, faces, undefined, true);
         
                     const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
@@ -1852,7 +1853,7 @@ export class ChunkDataLoader {
                     }
 
                     if (objectDatas.length) {
-                        const commands = modelSpawns.hasAlpha ? modelDrawCommandsAlpha : modelDrawCommands;
+                        const commands = hasAlpha ? modelDrawCommandsAlpha : modelDrawCommands;
                         commands.push({
                             vertexOffset: indexOffset,
                             vertexCount: modelVertexCount,
@@ -1860,7 +1861,7 @@ export class ChunkDataLoader {
                         });
                     }
                     if (objectDatasLowDetail.length) {
-                        const commands = modelSpawns.hasAlpha ? modelDrawCommandsLowDetailAlpha : modelDrawCommandsLowDetail;
+                        const commands = hasAlpha ? modelDrawCommandsLowDetailAlpha : modelDrawCommandsLowDetail;
                         commands.push({
                             vertexOffset: indexOffset,
                             vertexCount: modelVertexCount,
@@ -1880,6 +1881,11 @@ export class ChunkDataLoader {
 
                 for (const {model, faces, objectData} of modelGroup.models) {
                     vertexBuf.vertexIndices = new Map();
+                    // sort on priority, has alpha, texture id, face index
+                    faces.sort((a, b) => a.priority - b.priority
+                        || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
+                        || a.textureId - b.textureId
+                        || b.index - a.index);
                     addModel(vertexBuf, indices, model, faces, objectData, true);
                 }
     
@@ -1923,39 +1929,41 @@ export class ChunkDataLoader {
 
             console.log(modelUniqueVertexCounts);
 
-            let uniqueVertexCounts2 = 0;
+            // let uniqueVertexCounts2 = 0;
 
-            let uniqueVertexCounts = 0;
+            // let uniqueVertexCounts = 0;
 
-            let uniqueModelCount = 0;
+            // let uniqueModelCount = 0;
 
-            let instancedVertexCounts = 0;
-            let instancedVertexCounts2 = 0;
-            for (const [hash, count] of modelHashCounts) {
-                const model = uniqueModels.get(hash);
-                if (count === 1) {
-                    uniqueModelCount++;
-                    uniqueVertexCounts += modelUniqueVertexCounts.get(hash) || 0;
+            // let instancedVertexCounts = 0;
+            // let instancedVertexCounts2 = 0;
+            // for (const [hash, count] of modelHashCounts) {
+            //     const model = uniqueModels.get(hash);
+            //     if (count === 1) {
+            //         uniqueModelCount++;
+            //         uniqueVertexCounts += modelUniqueVertexCounts.get(hash) || 0;
 
-                    if (model) {
-                        uniqueVertexCounts2 += model.verticesCount;
-                    }
-                } else {
-                    if (model) {
-                        instancedVertexCounts += model.verticesCount * count;
-                        instancedVertexCounts2 += model.verticesCount;
-                    }
-                }
-            }
+            //         if (model) {
+            //             uniqueVertexCounts2 += model.verticesCount;
+            //         }
+            //     } else {
+            //         if (model) {
+            //             instancedVertexCounts += model.verticesCount * count;
+            //             instancedVertexCounts2 += model.verticesCount;
+            //         }
+            //     }
+            // }
 
             // let totalVertices = 0;
             // models.forEach(model => {
             //     totalVertices += model.verticesCount;
             // })
 
-            console.log('um', uniqueModelCount, modelHashCounts);
+            console.log('um', uniqueModelCount);
 
-            console.log('u', uniqueVertexCounts, uniqueVertexCounts2);
+            // console.log('um', uniqueModelCount, modelHashCounts);
+
+            // console.log('u', uniqueVertexCounts, uniqueVertexCounts2);
 
             // console.log('ivc', instancedVertexCounts, totalVertices, instancedVertexCounts2);
 

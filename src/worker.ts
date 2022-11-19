@@ -51,6 +51,9 @@ expose({
         const modelLoader = new CachedModelLoader(modelIndex);
 
         const textureProvider = TextureLoader.load(textureIndex, spriteIndex);
+        for (const texture of textureProvider.definitions.values()) {
+            textureProvider.loadFromDef(texture, 1.0, 128);
+        }
 
         chunkDataLoader = new ChunkDataLoader(regionLoader, modelLoader, textureProvider);
         console.log('init worker', fileSystem);
@@ -62,6 +65,7 @@ expose({
         console.time(`load chunk ${regionX}_${regionY}`);
         const chunkData = chunkDataLoader.load2(regionX, regionY);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
+        console.log('model caches: ', chunkDataLoader.objectModelLoader.modelDataCache.size, chunkDataLoader.objectModelLoader.modelCache.size)
 
 
         // const regionLoader = chunkDataLoader.regionLoader;
@@ -89,6 +93,8 @@ expose({
         chunkDataLoader.regionLoader.lightLevels.clear();
 
         chunkDataLoader.modelLoader.cache.clear();
+        chunkDataLoader.objectModelLoader.modelDataCache.clear();
+        chunkDataLoader.objectModelLoader.modelCache.clear();
 
         if (chunkData) {
             const transferables: Transferable[] = [
