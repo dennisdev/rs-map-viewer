@@ -457,6 +457,7 @@ type ModelSpawns2 = {
     vertexCount: number,
     model: Model,
     faces: ModelFace[],
+    hasAlpha: boolean,
     objectDatas: ObjectData[],
     objectDatasLowDetail: ObjectData[],
 }
@@ -1634,7 +1635,7 @@ export class ChunkDataLoader {
             // const allModelSpawns = Array.from(regionModelSpawns.values());
 
             // draw transparent objects last
-            allModelSpawns.sort((a, b) => (a.hasAlpha ? 1 : 0) - (b.hasAlpha ? 1 : 0));
+            // allModelSpawns.sort((a, b) => (a.hasAlpha ? 1 : 0) - (b.hasAlpha ? 1 : 0));
 
             // allModelSpawns.sort((a, b) => a.type - b.type);
 
@@ -1753,6 +1754,7 @@ export class ChunkDataLoader {
                             vertexCount: modelVertexCount,
                             model: model,
                             faces: faces,
+                            hasAlpha: modelSpawns.hasAlpha,
                             objectDatas: [],
                             objectDatasLowDetail: [],
                         };
@@ -1788,24 +1790,33 @@ export class ChunkDataLoader {
 
             console.timeEnd('models phase 1');
 
-            const modelGroup: ModelGroup = {models: [], plane: 0, lowDetail: false};
+            const modelDrawCommands: InstancedDrawCommand[] = [];
+            const modelDrawCommandsLowDetail: InstancedDrawCommand[] = [];
+            const modelDrawCommandsAlpha: InstancedDrawCommand[] = [];
+            const modelDrawCommandsLowDetailAlpha: InstancedDrawCommand[] = [];
 
             const modelGroupPlanes: ModelGroup[] = new Array(Scene.MAX_PLANE);
+            const modelGroupPlanesAlpha: ModelGroup[] = new Array(Scene.MAX_PLANE);
             const modelGroupPlanesLowDetail: ModelGroup[] = new Array(Scene.MAX_PLANE);
+            const modelGroupPlanesLowDetailAlpha: ModelGroup[] = new Array(Scene.MAX_PLANE);
             for (let i = 0; i < modelGroupPlanes.length; i++) {
                 modelGroupPlanes[i] = {models: [], plane: i, lowDetail: false};
+                modelGroupPlanesAlpha[i] = {models: [], plane: i, lowDetail: false};
                 modelGroupPlanesLowDetail[i] = {models: [], plane: i, lowDetail: true};
+                modelGroupPlanesLowDetailAlpha[i] = {models: [], plane: i, lowDetail: true};
             }
 
             console.time('create model groups');
-            for (const [hash, modelSpawns] of modelSpawns2) {
+            for (const modelSpawns of modelSpawns2.values()) {
                 const objectDatas: ObjectData[] = modelSpawns.objectDatas;
                 const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
 
                 const model = modelSpawns.model;
                 const faces = modelSpawns.faces;
 
-                if ((objectDatas.length === 1 && objectDatasLowDetail.length === 0) || (objectDatas.length === 0 && objectDatasLowDetail.length === 1)) {
+                const isUnique = (objectDatas.length === 1 && objectDatasLowDetail.length === 0) || (objectDatas.length === 0 && objectDatasLowDetail.length === 1);
+
+                if (isUnique) {
                     let objectData: ObjectData;
                     if (objectDatas.length === 1) {
                         objectData = objectDatas[0];
@@ -1813,14 +1824,23 @@ export class ChunkDataLoader {
                         objectData = objectDatasLowDetail[0];
                     }
 
+                    let modelGroups: ModelGroup[];
 
                     if (objectDatas.length === 1) {
-                        modelGroupPlanes[objectData.plane].models.push({model, faces, objectData});
+                        if (modelSpawns.hasAlpha) {
+                            modelGroups = modelGroupPlanesAlpha;
+                        } else {
+                            modelGroups = modelGroupPlanes;
+                        }
                     } else {
-                        modelGroupPlanesLowDetail[objectData.plane].models.push({model, faces, objectData});
+                        if (modelSpawns.hasAlpha) {
+                            modelGroups = modelGroupPlanesLowDetailAlpha;
+                        } else {
+                            modelGroups = modelGroupPlanesLowDetail;
+                        }
                     }
+                    modelGroups[objectData.plane].models.push({model, faces, objectData});
                 } else {
-
                     const indexOffset = indices.length * 4;
 
                     addModel(vertexBuf, indices, model, faces, undefined, true);
@@ -1832,14 +1852,16 @@ export class ChunkDataLoader {
                     }
 
                     if (objectDatas.length) {
-                        drawCommands.push({
+                        const commands = modelSpawns.hasAlpha ? modelDrawCommandsAlpha : modelDrawCommands;
+                        commands.push({
                             vertexOffset: indexOffset,
                             vertexCount: modelVertexCount,
                             objectDatas
                         });
                     }
                     if (objectDatasLowDetail.length) {
-                        drawCommandsLowDetail.push({
+                        const commands = modelSpawns.hasAlpha ? modelDrawCommandsLowDetailAlpha : modelDrawCommandsLowDetail;
+                        commands.push({
                             vertexOffset: indexOffset,
                             vertexCount: modelVertexCount,
                             objectDatas: objectDatasLowDetail
@@ -1849,17 +1871,11 @@ export class ChunkDataLoader {
 
             }
 
-            const modelGroups: ModelGroup[] = [];
-
-            modelGroups.push(...modelGroupPlanes);
-            modelGroups.push(...modelGroupPlanesLowDetail);
-
             console.timeEnd('create model groups');
 
-            const vertexIndices = vertexBuf.vertexIndices;
+            // const vertexIndices = vertexBuf.vertexIndices;
 
-            console.time('create model groups models');
-            for (const modelGroup of modelGroups) {
+            const addModelGroup = (modelGroup: ModelGroup) => {
                 const indexOffset = indices.length * 4;
 
                 for (const {model, faces, objectData} of modelGroup.models) {
@@ -1870,7 +1886,7 @@ export class ChunkDataLoader {
                 const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
 
                 if (modelVertexCount === 0) {
-                    continue;
+                    return;
                 }
 
                 const commands = modelGroup.lowDetail ? drawCommandsLowDetail : drawCommands;
@@ -1880,6 +1896,24 @@ export class ChunkDataLoader {
                     vertexCount: modelVertexCount,
                     objectDatas: [{ localX: 0, localY: 0, sceneHeight: 0, plane: modelGroup.plane, contourGround: 2, priority: 1 }],
                 });
+            };
+
+            console.time('create model groups models');
+            drawCommands.push(...modelDrawCommands);
+            for (const modelGroup of modelGroupPlanes) {
+                addModelGroup(modelGroup);
+            }
+            drawCommands.push(...modelDrawCommandsAlpha);
+            for (const modelGroup of modelGroupPlanesAlpha) {
+                addModelGroup(modelGroup);
+            }
+            drawCommandsLowDetail.push(...modelDrawCommandsLowDetail);
+            for (const modelGroup of modelGroupPlanesLowDetail) {
+                addModelGroup(modelGroup);
+            }
+            drawCommandsLowDetail.push(...modelDrawCommandsLowDetailAlpha);
+            for (const modelGroup of modelGroupPlanesLowDetailAlpha) {
+                addModelGroup(modelGroup);
             }
             console.timeEnd('create model groups models');
 

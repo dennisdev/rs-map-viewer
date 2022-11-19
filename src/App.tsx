@@ -400,7 +400,7 @@ class Test {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -586,6 +586,9 @@ class Test {
     }
 
     onMouseDown(event: MouseEvent) {
+        if (event.button !== 0) {
+            return;
+        }
         const [x, y] = getMousePos(this.app.canvas, event);
         this.startMouseX = x;
         this.startMouseY = y;
@@ -811,7 +814,7 @@ class Test {
         this.timer.start();
 
 
-        const regionPositions = getSpiralDeltas(11)
+        const regionPositions = getSpiralDeltas(1)
             .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2);
 
         const viewDistanceRegionIds: Set<number> = new Set();
