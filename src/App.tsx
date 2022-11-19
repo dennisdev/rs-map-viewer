@@ -592,6 +592,8 @@ class Test {
         const [x, y] = getMousePos(this.app.canvas, event);
         this.startMouseX = x;
         this.startMouseY = y;
+        this.currentMouseX = x;
+        this.currentMouseY = y;
         this.startPitch = this.pitch;
         this.startYaw = this.yaw;
     }
@@ -738,7 +740,6 @@ class Test {
         if (this.startMouseX !== -1 && this.startMouseY !== -1) {
             const deltaMouseX = this.startMouseX - this.currentMouseX;
             const deltaMouseY = this.startMouseY - this.currentMouseY;
-            // console.log(deltaMouseX);
             this.updatePitch(this.startPitch, deltaMouseY * 0.6);
             this.updateYaw(this.startYaw, deltaMouseX * -0.9);
         }
