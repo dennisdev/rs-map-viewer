@@ -17,6 +17,7 @@ import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
 import { CachedOverlayLoader } from './client/fs/loader/OverlayLoader';
 import { CachedObjectLoader } from './client/fs/loader/ObjectLoader';
 import { CachedModelLoader } from './client/fs/loader/ModelLoader';
+import Denque from 'denque';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -410,7 +411,7 @@ class Test {
 
     loadingRegionIds: Set<number> = new Set();
 
-    chunksToLoad: ChunkData[] = [];
+    chunksToLoad: Denque<ChunkData> = new Denque();
 
     frameCount: number = 0;
 
@@ -854,7 +855,7 @@ class Test {
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const terrain = this.terrains.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!terrain || !this.isVisible([terrain.regionX, terrain.regionY]) || (this.frameCount - terrain.frameLoaded) < 4) {
+            if (!terrain || !this.isVisible(pos) || (this.frameCount - terrain.frameLoaded) < 4) {
                 continue;
             }
 
@@ -888,11 +889,12 @@ class Test {
         }
 
         // TODO: upload x bytes per frame
-        if (this.chunksToLoad.length && this.frameCount % 30) {
-            const chunkData = this.chunksToLoad[0];
-            this.terrains.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
+        if (this.frameCount % 30) {
+            const chunkData = this.chunksToLoad.shift();
+            if (chunkData) {
+                this.terrains.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
                 loadTerrain(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
-            this.chunksToLoad = this.chunksToLoad.slice(1);
+            }
         }
 
         this.timer.end();
