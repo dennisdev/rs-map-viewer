@@ -370,6 +370,12 @@ function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     ];
 }
 
+function getRegionDistance(x: number, y: number, region: vec2): number {
+    const dx = Math.max(Math.abs(x - (region[0] * 64 + 32)) - 32, 0);
+    const dy = Math.max(Math.abs(y - (region[1] * 64 + 32)) - 32, 0);
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
 class Test {
     fileSystem: MemoryFileSystem;
 
@@ -410,6 +416,7 @@ class Test {
     viewProjMatrix: mat4 = mat4.create();
 
     loadingRegionIds: Set<number> = new Set();
+    invalidRegionIds: Set<number> = new Set();
 
     chunksToLoad: Denque<ChunkData> = new Denque();
 
@@ -433,6 +440,9 @@ class Test {
     startYaw: number = -1;
 
     chunkDataLoader: ChunkDataLoader;
+
+    lastCameraX: number = -1;
+    lastCameraY: number = -1;
 
     lastCameraRegionX: number = -1;
     lastCameraRegionY: number = -1;
@@ -464,6 +474,18 @@ class Test {
 
         const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
         // console.timeEnd('region loader');
+
+        // console.log(regionLoader.getTerrainArchiveId(50, 50));
+
+        console.time('check invalid regions');
+        for (let x = 0; x < 100; x++) {
+            for (let y = 0; y < 200; y++) {
+                if (regionLoader.getTerrainArchiveId(x, y) === -1) {
+                    this.invalidRegionIds.add(RegionLoader.getRegionId(x, y));
+                }
+            }
+        }
+        console.timeEnd('check invalid regions');
 
         console.time('load textures');
         this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
@@ -824,34 +846,56 @@ class Test {
             .set(0, this.viewProjMatrix as Float32Array)
             .update();
 
-        const cameraRegionX = -this.cameraPos[0] / 64 | 0;
-        const cameraRegionY = -this.cameraPos[2] / 64 | 0;
+        const cameraX = -this.cameraPos[0];
+        const cameraY = -this.cameraPos[2];
+
+        const cameraRegionX = cameraX / 64 | 0;
+        const cameraRegionY = cameraY / 64 | 0;
 
         if (this.keys.get('c')) {
             // this.isVisible(this.terrains[0]);
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            this.regionPositions = getSpiralDeltas(1);
-            for (const pos of this.regionPositions) {
-                pos[0] += cameraRegionX;
-                pos[1] += cameraRegionY;
+            const regionViewDistance = 15;
+            
+            this.regionPositions.length = 0;
+            for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
+                for (let y = -(regionViewDistance - 1); y < regionViewDistance; y++) {
+                    const regionX = cameraRegionX + x;
+                    const regionY = cameraRegionY + y;
+                    if (regionX < 0 || regionX >= 100 || regionY < 0 || regionY >= 200) {
+                        continue;
+                    }
+                    const regionId = RegionLoader.getRegionId(regionX, regionY);
+                    if (this.invalidRegionIds.has(regionId)) {
+                        continue;
+                    }
+                    this.regionPositions.push([regionX, regionY]);
+                }
             }
         }
 
 
         this.timer.start();
 
-        const regionPositions = this.regionPositions;
+        if (this.lastCameraX != cameraX || this.lastCameraY != cameraY) {
+            // sort front to back
+            this.regionPositions.sort((a, b) => {
+                const regionDistA = getRegionDistance(cameraX, cameraY, a);
+                const regionDistB = getRegionDistance(cameraX, cameraY, b);
+                return regionDistA - regionDistB;
+            });
+        }
 
         const viewDistanceRegionIds = this.viewDistanceRegionIds[this.frameCount % 2];
         const lastViewDistanceRegionIds = this.viewDistanceRegionIds[(this.frameCount + 1) % 2];
 
         viewDistanceRegionIds.clear();
 
-        // TODO: regions within x distance back to front, the rest front to back
-        for (let i = regionPositions.length - 1; i >= 0; i--) {
-            const pos = regionPositions[i];
+        // draw back to front
+        for (let i = this.regionPositions.length - 1; i >= 0; i--) {
+            const pos = this.regionPositions[i];
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const terrain = this.terrains.get(regionId);
             viewDistanceRegionIds.add(regionId);
@@ -900,6 +944,11 @@ class Test {
         this.timer.end();
 
         this.frameCount++;
+
+        this.lastCameraX = cameraX;
+        this.lastCameraY = cameraY;
+        this.lastCameraRegionX = cameraRegionX;
+        this.lastCameraRegionY = cameraRegionY;
     }
 }
 
