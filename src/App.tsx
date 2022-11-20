@@ -214,12 +214,12 @@ void main() {
 
 const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
 
-function getSpiralDeltas(radius: number): number[][] {
+function getSpiralDeltas(radius: number): vec2[] {
     let x = 0;
     let y = 0;
     let delta = [0, -1];
 
-    const deltas: number[][] = [];
+    const deltas: vec2[] = [];
 
     for (let i = Math.pow(Math.max(radius, radius), 2); i > 0; i--) {
         if ((-radius / 2 < x && x <= radius / 2)
@@ -420,7 +420,7 @@ class Test {
 
     fpsListener?: (fps: number) => void;
 
-    lastViewDistanceRegionIds: Set<number> = new Set();
+    viewDistanceRegionIds: Set<number>[] = [new Set(), new Set()];
 
     currentMouseX: number = 0;
     currentMouseY: number = 0;
@@ -432,6 +432,14 @@ class Test {
     startYaw: number = -1;
 
     chunkDataLoader: ChunkDataLoader;
+
+    lastCameraRegionX: number = -1;
+    lastCameraRegionY: number = -1;
+
+    regionPositions: vec2[] = [];
+
+    isVisiblePos: vec3 = [0, 0, 0];
+    moveCameraRotOrigin: vec3 = [0, 0, 0];
 
     constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>) {
         this.fileSystem = fileSystem;
@@ -660,7 +668,10 @@ class Test {
         const baseY = regionPos[1] * Scene.MAP_SIZE;
         for (let x = 0; x <= 8; x++) {
             for (let y = 0; y <= 8; y++) {
-                if (this.isPositionVisible([baseX + x * 8, 0, baseY + y * 8])) {
+                this.isVisiblePos[0] = baseX + x * 8;
+                this.isVisiblePos[1] = 0;
+                this.isVisiblePos[2] = baseY + y * 8;
+                if (this.isPositionVisible(this.isVisiblePos)) {
                     return true;
                 }
             }
@@ -679,7 +690,7 @@ class Test {
     moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
         const delta = vec3.fromValues(deltaX, deltaY, deltaZ);
 
-        vec3.rotateY(delta, delta, [0, 0, 0], (512 * 3 - this.yaw) * RS_TO_RADIANS);
+        vec3.rotateY(delta, delta, this.moveCameraRotOrigin, (512 * 3 - this.yaw) * RS_TO_RADIANS);
 
         vec3.add(this.cameraPos, this.cameraPos, delta);
     }
@@ -819,14 +830,23 @@ class Test {
             // this.isVisible(this.terrains[0]);
         }
 
+        if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
+            this.regionPositions = getSpiralDeltas(1);
+            for (const pos of this.regionPositions) {
+                pos[0] += cameraRegionX;
+                pos[1] += cameraRegionY;
+            }
+        }
+
 
         this.timer.start();
 
+        const regionPositions = this.regionPositions;
 
-        const regionPositions = getSpiralDeltas(1)
-            .map(delta => [cameraRegionX + delta[0], cameraRegionY + delta[1]] as vec2);
+        const viewDistanceRegionIds = this.viewDistanceRegionIds[this.frameCount % 2];
+        const lastViewDistanceRegionIds = this.viewDistanceRegionIds[(this.frameCount + 1) % 2];
 
-        const viewDistanceRegionIds: Set<number> = new Set();
+        viewDistanceRegionIds.clear();
 
         // TODO: regions within x distance back to front, the rest front to back
         for (let i = regionPositions.length - 1; i >= 0; i--) {
@@ -843,7 +863,7 @@ class Test {
             const drawCall = regionDist >= 3 ? terrain.drawCallLowDetail : terrain.drawCall;
 
             // fade in chunks even if it loaded a while ago
-            if (!this.lastViewDistanceRegionIds.has(regionId)) {
+            if (!lastViewDistanceRegionIds.has(regionId)) {
                 terrain.timeLoaded = time;
             }
 
@@ -854,22 +874,18 @@ class Test {
             drawCall.draw();
         }
 
-        this.lastViewDistanceRegionIds = viewDistanceRegionIds;
-
-        regionPositions
-            .filter(regionPos => {
-                const regionId = RegionLoader.getRegionId(regionPos[0], regionPos[1]);
-                return !this.loadingRegionIds.has(regionId) && !this.terrains.has(regionId) && this.isVisible(regionPos)
-            })
-            .forEach(regionPos => {
-                this.loadingRegionIds.add(RegionLoader.getRegionId(regionPos[0], regionPos[1]));
+        for (const regionPos of this.regionPositions) {
+            const regionId = RegionLoader.getRegionId(regionPos[0], regionPos[1]);
+            if (!this.loadingRegionIds.has(regionId) && !this.terrains.has(regionId) && this.isVisible(regionPos)) {
+                this.loadingRegionIds.add(regionId);
 
                 this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
                     if (chunkData) {
                         this.chunksToLoad.push(chunkData);
                     }
                 });
-            });
+            }
+        }
 
         // TODO: upload x bytes per frame
         if (this.chunksToLoad.length && this.frameCount % 30) {
