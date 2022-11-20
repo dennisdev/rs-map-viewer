@@ -1897,6 +1897,7 @@ export class ChunkDataLoader {
                         || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
                         || a.textureId - b.textureId
                         || b.index - a.index);
+                    // vertexBuf.vertexIndices = new Map();
                     addModel(vertexBuf, indices, model, faces, undefined, true);
         
                     const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
@@ -1933,7 +1934,7 @@ export class ChunkDataLoader {
                 const indexOffset = indices.length * 4;
 
                 for (const {model, faces, objectData} of modelGroup.models) {
-                    vertexBuf.vertexIndices = new Map();
+                    // vertexBuf.vertexIndices = new Map();
                     // sort on priority, has alpha, texture id, face index
                     faces.sort((a, b) => a.priority - b.priority
                         || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
