@@ -210,6 +210,9 @@ out vec4 fragColor;
 
 void main() {
     fragColor = texture(u_textures, vec3(v_texCoord, v_texId)).bgra * v_color * vec4(v_loadAlpha);
+    if (fragColor.a < 0.01) {
+        discard;
+    }
 }
 `.trim();
 
