@@ -462,10 +462,19 @@ type ModelSpawns2 = {
     objectDatasLowDetail: ObjectData[],
 }
 
-function floatToIntBits(n: number): number {
-    const buf = new ArrayBuffer(4);
-    new Float32Array(buf)[0] = n;
-    return new Int32Array(buf)[0];
+class FloatUtil {
+    static float: Float32Array = new Float32Array(1);
+    static integer: Int32Array = new Int32Array(FloatUtil.float.buffer);
+
+    static floatToIntBits(n: number): number {
+        FloatUtil.float[0] = n;
+        return FloatUtil.integer[0];
+    }
+
+    static intToFloatBits(n: number): number {
+        FloatUtil.integer[0] = n;
+        return FloatUtil.float[0];
+    }
 }
 
 function stringify(ns: number[]): string {
@@ -474,7 +483,7 @@ function stringify(ns: number[]): string {
 
 function packFloat16(v: number): number {
     const exponent = (v | 0);
-    const mantissa = (v - exponent) * 1024 | 0;
+    const mantissa = Math.round((v - exponent) * 1024);
     return (exponent << 10) + mantissa;
 }
 
@@ -483,6 +492,30 @@ function unpackFloat16(v: number): number {
     const mantissa = (v & 0x3FF) / 1024;
     return exponent + mantissa;
 }
+
+function packFloat12(v: number): number {
+    return 2048 - Math.round(v / (1 / 128));
+}
+
+function unpackFloat12(v: number): number {
+    return 16 - v / 128;
+}
+
+
+// 2048 - -15.0078125 / (1/128)
+
+// const unit = 1 / 128;
+
+// for (let i = 0; i < 20; i++) {
+//     for (let m = 0; m < 128; m++) {
+//         const float = i - 10 + m / 128;
+//         const packed = packFloat12(float);
+//         const unpacked = unpackFloat12(packed);
+//         // if (Math.abs(float - unpacked) > unit) {
+//             console.log('wrong', float, packed, unpacked);
+//         // }
+//     }
+// }
 
 let xxhashApi: XXHashAPI | undefined;
 
@@ -539,8 +572,8 @@ class VertexBuffer {
             this.view.setUint32(vertexBufIndex + 6, hsl << 16 | faceAlpha, false);
         }
 
-        this.view.setUint16(vertexBufIndex + 10, packFloat16(u), true);
-        this.view.setUint16(vertexBufIndex + 12, packFloat16(v), true);
+        this.view.setUint16(vertexBufIndex + 10, packFloat12(u), true);
+        this.view.setUint16(vertexBufIndex + 12, packFloat12(v), true);
 
         this.view.setUint8(vertexBufIndex + 14, textureId + 1);
 

@@ -182,7 +182,7 @@ layout(std140, column_major) uniform;
 
 layout(location = 0) in ivec3 a_position;
 layout(location = 1) in vec4 a_color;
-layout(location = 2) in ivec2 a_texCoord;
+layout(location = 2) in uvec2 a_texCoord;
 layout(location = 3) in uint a_texId;
 layout(location = 4) in uint a_priority;
 
@@ -225,6 +225,10 @@ float unpackFloat16(int v) {
     return float(exponent) + mantissa;
 }
 
+float unpackFloat12(uint v) {
+    return 16.0 - float(v) / 128.0;
+}
+
 ivec2 getDataTexCoordFromIndex(int index) {
     int x = index % 16;
     int y = index / 16;
@@ -240,7 +244,7 @@ void main() {
     // v_color = a_color / vec4(255);
     v_color = vec4(hslToRgb(hsl, 0.9), a_color.a / 255.0) * when_eq(float(a_texId), 0.0) + vec4(vec3(a_color.r / 255.0), a_color.a / 255.0)  * when_neq(float(a_texId), 0.0);
 
-    v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y)) + (u_currentTime / 0.02) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
+    v_texCoord = vec2(unpackFloat12(a_texCoord.x), unpackFloat12(a_texCoord.y)) + (u_currentTime / 0.02) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
     v_texId = int(a_texId);
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
@@ -372,7 +376,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
         })
         // tex coords
         .vertexAttributeBuffer(2, interleavedBuffer, {
-            type: PicoGL.SHORT,
+            type: PicoGL.UNSIGNED_SHORT,
             size: 2,
             offset: 10,
             stride: 16,
