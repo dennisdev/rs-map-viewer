@@ -97,6 +97,79 @@ void main() {
 }
 `.trim();
 
+const glslHslToRgbFunction = `
+vec3 hslToRgb(int hsl, float brightness) {
+    int var5 = hsl / 128;
+    float var6 = float(var5 >> 3) / 64.0f + 0.0078125f;
+    float var8 = float(var5 & 7) / 8.0f + 0.0625f;  
+    int var10 = hsl % 128;  
+    float var11 = float(var10) / 128.0f;
+    float var13 = var11;
+    float var15 = var11;
+    float var17 = var11;    
+    if (var8 != 0.0f) {
+        float var19;
+        if (var11 < 0.5f) {
+            var19 = var11 * (1.0f + var8);
+        } else {
+            var19 = var11 + var8 - var11 * var8;
+        } 
+        float var21 = 2.0f * var11 - var19;
+        float var23 = var6 + 0.3333333333333333f;
+        if (var23 > 1.0f) {
+            var23 -= 1.f;
+        } 
+        float var27 = var6 - 0.3333333333333333f;
+        if (var27 < 0.0f) {
+            var27 += 1.f;
+        } 
+        if (6.0f * var23 < 1.0f) {
+            var13 = var21 + (var19 - var21) * 6.0f * var23;
+        } else if (2.0f * var23 < 1.0f) {
+            var13 = var19;
+        } else if (3.0f * var23 < 2.0f) {
+            var13 = var21 + (var19 - var21) * (0.6666666666666666f - var23) * 6.0f;
+        } else {
+            var13 = var21;
+        } 
+        if (6.0f * var6 < 1.0f) {
+            var15 = var21 + (var19 - var21) * 6.0f * var6;
+        } else if (2.0f * var6 < 1.0f) {
+            var15 = var19;
+        } else if (3.0f * var6 < 2.0f) {
+            var15 = var21 + (var19 - var21) * (0.6666666666666666f - var6) * 6.0f;
+        } else {
+            var15 = var21;
+        } 
+        if (6.0f * var27 < 1.0f) {
+            var17 = var21 + (var19 - var21) * 6.0f * var27;
+        } else if (2.0f * var27 < 1.0f) {
+            var17 = var19;
+        } else if (3.0f * var27 < 2.0f) {
+            var17 = var21 + (var19 - var21) * (0.6666666666666666f - var27) * 6.0f;
+        } else {
+            var17 = var21;
+        }
+    }   
+    vec3 rgb = vec3(
+        pow(var13, brightness),
+        pow(var15, brightness),
+        pow(var17, brightness)
+    );  
+    return rgb;
+}
+`.trim();
+
+const glslLogicFunctions = `
+float when_eq(float x, float y) {
+    return 1.0 - abs(sign(x - y));
+}
+
+float when_neq(float x, float y) {
+  return abs(sign(x - y));
+}
+`.trim();
+
 const vertexShader2 = `
 #version 300 es
 #extension GL_ANGLE_multi_draw : require
@@ -134,6 +207,10 @@ out vec2 v_texCoord;
 flat out int v_texId;
 flat out float v_loadAlpha;
 
+${glslHslToRgbFunction}
+
+${glslLogicFunctions}
+
 float getHeightInterp(vec2 pos, uint plane) {
     vec2 uv = (pos + vec2(0.5)) / vec2(72.0);
 
@@ -148,14 +225,6 @@ float unpackFloat16(int v) {
     return float(exponent) + mantissa;
 }
 
-float when_eq(float x, float y) {
-    return 1.0 - abs(sign(x - y));
-}
-
-float when_neq(float x, float y) {
-  return abs(sign(x - y));
-}
-
 ivec2 getDataTexCoordFromIndex(int index) {
     int x = index % 16;
     int y = index / 16;
@@ -166,7 +235,11 @@ void main() {
     uvec2 offsetVec = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(gl_DrawID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
-    v_color = a_color;
+    int hsl = int(a_color.r) << 8 | int(a_color.g);
+
+    // v_color = a_color / vec4(255);
+    v_color = vec4(hslToRgb(hsl, 0.9), a_color.a / 255.0) * when_eq(float(a_texId), 0.0) + vec4(vec3(a_color.r / 255.0), a_color.a / 255.0)  * when_neq(float(a_texId), 0.0);
+
     v_texCoord = vec2(unpackFloat16(a_texCoord.x), unpackFloat16(a_texCoord.y)) + (u_currentTime / 0.02) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
     v_texId = int(a_texId);
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
@@ -187,13 +260,14 @@ void main() {
     localPos.y -= getHeightInterp(interpPos, plane) * when_neq(contourGround, 2.0) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
-    gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(a_priority) * 0.0001;
+    gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(a_priority) * 0.0001;    
 }
 `.trim();
 
 const fragmentShader2 = `
 #version 300 es
-#extension GL_ANGLE_multi_draw : require
+
+#define COLOR_BANDING 112.0
 
 precision mediump float;
 
@@ -209,7 +283,8 @@ uniform highp sampler2DArray u_textures;
 out vec4 fragColor;
 
 void main() {
-    fragColor = texture(u_textures, vec3(v_texCoord, v_texId)).bgra * v_color * vec4(v_loadAlpha);
+    vec3 color = round(v_color.rgb * COLOR_BANDING) / COLOR_BANDING;
+    fragColor = texture(u_textures, vec3(v_texCoord, v_texId)).bgra * vec4(color, v_color.a) * vec4(v_loadAlpha);
     if (fragColor.a < 0.01) {
         discard;
     }
@@ -280,19 +355,22 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
     const indexBuffer = app.createIndexBuffer(PicoGL.UNSIGNED_INT, chunkData.indices);
 
     const vertexArray = app.createVertexArray()
+        // position
         .vertexAttributeBuffer(0, interleavedBuffer, {
             type: PicoGL.SHORT,
             size: 3,
             stride: 16,
             integer: true as any
         })
+        // color
         .vertexAttributeBuffer(1, interleavedBuffer, {
             type: PicoGL.UNSIGNED_BYTE,
             size: 4,
             offset: 6,
             stride: 16,
-            normalized: true
+            // normalized: true
         })
+        // tex coords
         .vertexAttributeBuffer(2, interleavedBuffer, {
             type: PicoGL.SHORT,
             size: 2,
@@ -300,6 +378,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
             stride: 16,
             integer: true as any
         })
+        // texture ids
         .vertexAttributeBuffer(3, interleavedBuffer, {
             type: PicoGL.UNSIGNED_BYTE,
             size: 1,
@@ -307,6 +386,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
             stride: 16,
             integer: true as any
         })
+        // priorities
         .vertexAttributeBuffer(4, interleavedBuffer, {
             type: PicoGL.UNSIGNED_BYTE,
             size: 1,
@@ -860,8 +940,8 @@ class Test {
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 15;
-            
+            const regionViewDistance = 1;
+
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
                 for (let y = -(regionViewDistance - 1); y < regionViewDistance; y++) {
@@ -940,7 +1020,7 @@ class Test {
             const chunkData = this.chunksToLoad.shift();
             if (chunkData) {
                 this.terrains.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
-                loadTerrain(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
+                    loadTerrain(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
             }
         }
 

@@ -533,8 +533,10 @@ class VertexBuffer {
             const lightA = (hsl & 127) / 127 * 255;
 
             this.view.setUint32(vertexBufIndex + 6, lightA << 24 | lightA << 16 | lightA << 8 | faceAlpha, false);
+            // this.view.setUint32(vertexBufIndex + 6, lightA << 24 | lightA << 16 | faceAlpha, false);
         } else {
-            this.view.setUint32(vertexBufIndex + 6, rgb << 8 | faceAlpha, false);
+            // this.view.setUint32(vertexBufIndex + 6, rgb << 8 | faceAlpha, false);
+            this.view.setUint32(vertexBufIndex + 6, hsl << 16 | faceAlpha, false);
         }
 
         this.view.setUint16(vertexBufIndex + 10, packFloat16(u), true);
