@@ -647,7 +647,6 @@ class Test {
 
         this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
             {
-                minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST,
                 wrapS: PicoGL.CLAMP_TO_EDGE, maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY
             });
 
