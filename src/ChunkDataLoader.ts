@@ -305,7 +305,7 @@ function method3516(var0: number, var1: number) {
     }
 }
 
-function computeTextureCoords(model: Model): number[] | undefined {
+function computeTextureCoords(model: Model): Float32Array | undefined {
     const faceTextures = model.faceTextures;
 
     if (!faceTextures) {
@@ -327,7 +327,7 @@ function computeTextureCoords(model: Model): number[] | undefined {
     const textureCoords = model.textureCoords;
 
     const faceCount = model.faceCount;
-    const faceTextureUCoordinates: number[] = new Array(faceCount * 6).fill(0);
+    const faceTextureUCoordinates: Float32Array = new Float32Array(faceCount * 6);
 
     for (let i = 0; i < faceCount; i++) {
         const trianglePointX = trianglePointsX[i];
