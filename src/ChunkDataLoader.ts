@@ -501,7 +501,47 @@ function unpackFloat12(v: number): number {
     return 16 - v / 128;
 }
 
+function packFloat11(v: number): number {
+    return 1024 - Math.round(v / (1 / 64));
+}
 
+function unpackFloat11(v: number): number {
+    return 16 - v / 64;
+}
+
+// 0-1, 1/64 decimal precision
+function packFloat6(v: number): number {
+    return Math.round(v / (1 / 64));
+}
+
+// function packFloat11(v: number): number {
+//     return 16 * 48 - Math.round(v / (1 / 48));
+// }
+
+// function unpackFloat11(v: number): number {
+//     return 16 - v / 48;
+// }
+
+// 0-11
+function packFloat9(v: number): number {
+    return Math.round(v / (1 / 48));
+}
+
+function unpackFloat9(v: number): number {
+    return v / 48;
+}
+
+
+// for (let i = 0; i < 12; i++) {
+//     for (let m = 0; m < 1; m++) {
+//         const float = i;
+//         const packed = packFloat9(float);
+//         const unpacked = unpackFloat9(packed);
+//         if (float !== unpacked || packed > 511) {
+//             console.error('wrong', float, packed, unpacked);
+//         }
+//     }
+// }
 // 2048 - -15.0078125 / (1/128)
 
 // const unit = 1 / 128;
@@ -572,8 +612,8 @@ class VertexBuffer {
             this.view.setUint32(vertexBufIndex + 6, hsl << 16 | faceAlpha, false);
         }
 
-        this.view.setUint16(vertexBufIndex + 10, packFloat12(u), true);
-        this.view.setUint16(vertexBufIndex + 12, packFloat12(v), true);
+        this.view.setUint16(vertexBufIndex + 10, packFloat6(u), true);
+        this.view.setUint16(vertexBufIndex + 12, packFloat11(v), true);
 
         this.view.setUint8(vertexBufIndex + 14, textureId + 1);
 
@@ -585,6 +625,18 @@ class VertexBuffer {
             if (cachedIndex !== undefined) {
                 return cachedIndex;
             } else {
+                // if (u < -4 || v < -4 || u > 8 || v > 8) {
+                //     console.error(u, v);
+                // }
+                // if (Math.abs(u - v) > 7) {
+                //     console.error(u, v);
+                // }
+                // if (Math.abs(u - v) > 7) {
+                //     console.error(u, v);
+                // }
+                // if (u < 0 || v < 0) {
+                //     console.error(u, v);
+                // }
                 this.vertexIndices.set(hash, this.vertexOffset);
             }
         }
@@ -706,6 +758,7 @@ function isLowDetail(type: number, def: ObjectDefinition, localX: number, localY
     return false;
 }
 
+const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
 
 function addModel(buf: VertexBuffer, indices: number[] | undefined, model: Model, faces: ModelFace[], objectData: ObjectData | undefined, reuseVertices: boolean) {
     const verticesX = model.verticesX;
@@ -729,6 +782,50 @@ function addModel(buf: VertexBuffer, indices: number[] | undefined, model: Model
     const facesC = model.indices3;
 
     const modelTexCoords = computeTextureCoords(model);
+
+    // if (modelTexCoords) {
+    //     let hasNegativeTexCoord = false;
+    //     for (const face of faces) {
+    //         const f = face.index;
+
+    //         const texCoordIdx = f * 6;
+    //         const u0 = modelTexCoords[texCoordIdx];
+    //         const v0 = modelTexCoords[texCoordIdx + 1];
+    //         const u1 = modelTexCoords[texCoordIdx + 2];
+    //         const v1 = modelTexCoords[texCoordIdx + 3];
+    //         const u2 = modelTexCoords[texCoordIdx + 4];
+    //         const v2 = modelTexCoords[texCoordIdx + 5];
+
+    //         if (u0 < 0 || v0 < 0 || u1 < 0 || v1 < 0 || u2 < 0 || v2 < 0) {
+    //             // console.error(u0, v0, u1, v1, u2, v2);
+    //             hasNegativeTexCoord = true;
+    //         }
+
+    //         if (u0 > 1 || u1 > 1 || u2 > 1) {
+    //             // console.error(u0, u1, u2);
+    //         }
+
+    //         // modelTexCoords[texCoordIdx] = clamp(u0, 0.00390625, 1 - 0.00390625);
+    //         // modelTexCoords[texCoordIdx + 2] = clamp(u1, 0.00390625, 1 - 0.00390625);
+    //         // modelTexCoords[texCoordIdx + 4] = clamp(u2, 0.00390625, 1 - 0.00390625);
+
+    //         // if (u0 > 1) {
+    //         //     modelTexCoords[texCoordIdx] = 1;
+    //         // }
+    //         // if (u1 > 1) {
+    //         //     modelTexCoords[texCoordIdx + 2] = 1;
+    //         // }
+    //         // if (u2 > 1) {
+    //         //     modelTexCoords[texCoordIdx + 4] = 1;
+    //         // }
+
+    //     }
+    //     if (!hasNegativeTexCoord) {
+    //         // return;
+    //     }
+    // } else {
+    //     // return;
+    // }
 
     for (const face of faces) {
         const f = face.index;
@@ -759,6 +856,11 @@ function addModel(buf: VertexBuffer, indices: number[] | undefined, model: Model
             v1 = modelTexCoords[texCoordIdx + 3];
             u2 = modelTexCoords[texCoordIdx + 4];
             v2 = modelTexCoords[texCoordIdx + 5];
+
+            // emulate wrapS: PicoGL.CLAMP_TO_EDGE
+            u0 = clamp(u0, 0.00390625 * 3, 1 - 0.00390625 * 3);
+            u1 = clamp(u1, 0.00390625 * 3, 1 - 0.00390625 * 3);
+            u2 = clamp(u2, 0.00390625 * 3, 1 - 0.00390625 * 3);
         }
 
         let rgbA = HSL_RGB_MAP[hslA];

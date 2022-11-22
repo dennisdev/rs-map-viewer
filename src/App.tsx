@@ -229,6 +229,14 @@ float unpackFloat12(uint v) {
     return 16.0 - float(v) / 128.0;
 }
 
+float unpackFloat11(uint v) {
+    return 16.0 - float(v) / 64.0;
+}
+
+float unpackFloat6(uint v) {
+    return float(v) / 64.0;
+}
+
 ivec2 getDataTexCoordFromIndex(int index) {
     int x = index % 16;
     int y = index / 16;
@@ -244,7 +252,7 @@ void main() {
     // v_color = a_color / vec4(255);
     v_color = vec4(hslToRgb(hsl, 0.9), a_color.a / 255.0) * when_eq(float(a_texId), 0.0) + vec4(vec3(a_color.r / 255.0), a_color.a / 255.0)  * when_neq(float(a_texId), 0.0);
 
-    v_texCoord = vec2(unpackFloat12(a_texCoord.x), unpackFloat12(a_texCoord.y)) + (u_currentTime / 0.02) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
+    v_texCoord = vec2(unpackFloat6(a_texCoord.x), unpackFloat11(a_texCoord.y)) + (u_currentTime / 0.02) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
     v_texId = int(a_texId);
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
@@ -647,7 +655,8 @@ class Test {
 
         this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
             {
-                wrapS: PicoGL.CLAMP_TO_EDGE, maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY
+                // wrapS: PicoGL.CLAMP_TO_EDGE,
+                maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,
             });
 
         const textureAnimDirectionUvs = [
