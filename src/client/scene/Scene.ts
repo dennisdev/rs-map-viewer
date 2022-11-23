@@ -474,7 +474,10 @@ export class Scene2 {
     }
 
     addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
-        const def = regionLoader.getObjectDef(objectId);
+        let def = regionLoader.getObjectDef(objectId);
+        if (def.transforms && def.transforms.length > 0) {
+            def = regionLoader.getObjectDef(def.transforms[0]);
+        }
 
         let sizeX = def.sizeX;
         let sizeY = def.sizeY;
