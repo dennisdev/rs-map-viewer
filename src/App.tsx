@@ -180,11 +180,9 @@ precision highp float;
 
 layout(std140, column_major) uniform;
 
-layout(location = 0) in ivec3 a_position;
-layout(location = 1) in vec4 a_color;
-layout(location = 2) in uvec2 a_texCoord;
-layout(location = 3) in uint a_texId;
-layout(location = 4) in uint a_priority;
+layout(location = 0) in int a_v0;
+layout(location = 1) in int a_v1;
+layout(location = 2) in int a_v2;
 
 uniform TextureUniforms {
     vec2 textureAnimations[128];
@@ -204,7 +202,7 @@ uniform mediump sampler2DArray u_heightMap;
 
 out vec4 v_color;
 out vec2 v_texCoord;
-flat out int v_texId;
+flat out uint v_texId;
 flat out float v_loadAlpha;
 
 ${glslHslToRgbFunction}
@@ -233,8 +231,16 @@ float unpackFloat11(uint v) {
     return 16.0 - float(v) / 64.0;
 }
 
+float unpackFloat11(int v) {
+    return 16.0 - float(v) / 64.0;
+}
+
 float unpackFloat6(uint v) {
-    return float(v) / 64.0;
+    return float(v) / 63.0;
+}
+
+float unpackFloat6(int v) {
+    return float(v) / 63.0;
 }
 
 ivec2 getDataTexCoordFromIndex(int index) {
@@ -243,17 +249,44 @@ ivec2 getDataTexCoordFromIndex(int index) {
     return ivec2(x, y);
 }
 
+struct VertexData {
+    vec3 pos;
+    vec4 color;
+    vec2 texCoord;
+    uint textureId;
+    uint priority;
+};
+
+VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
+    float x = float(((v0 >> 17) & 0x7FFF) - 0x4000);
+    float u = unpackFloat6((v0 >> 11) & 0x3F);
+    float v = unpackFloat11(v0 & 0x7FF);
+
+    int hsl = (v1 >> 16) & 0xFFFF;
+    float alpha = float((v1 >> 8) & 0xFF) / 255.0;
+    int textureId = (v1 >> 1) & 0x7F;
+
+    float z = float(((v2 >> 17) & 0x7FFF) - 0x4000);
+    float y = -float(((v2 >> 3) & 0x3FFF) - 0x400);
+
+    int priority = ((v2 & 0x7) << 1) | (v1 & 0x1);
+
+    vec4 color = when_eq(float(textureId), 0.0) * vec4(hslToRgb(hsl, brightness), alpha)
+        + when_neq(float(textureId), 0.0) * vec4(vec3(float(hsl) / 127.0), alpha);
+
+    return VertexData(vec3(x, y, z), color, vec2(u, v), uint(textureId), uint(priority));
+}
+
 void main() {
     uvec2 offsetVec = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(gl_DrawID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
-    int hsl = int(a_color.r) << 8 | int(a_color.g);
+    VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, 0.9);
+    
+    v_color = vertex.color;
 
-    // v_color = a_color / vec4(255);
-    v_color = vec4(hslToRgb(hsl, 0.9), a_color.a / 255.0) * when_eq(float(a_texId), 0.0) + vec4(vec3(a_color.r / 255.0), a_color.a / 255.0)  * when_neq(float(a_texId), 0.0);
-
-    v_texCoord = vec2(unpackFloat6(a_texCoord.x), unpackFloat11(a_texCoord.y)) + (u_currentTime / 0.02) * textureAnimations[a_texId] * TEXTURE_ANIM_UNIT;
-    v_texId = int(a_texId);
+    v_texCoord = vertex.texCoord + (u_currentTime / 0.02) * textureAnimations[vertex.textureId] * TEXTURE_ANIM_UNIT;
+    v_texId = vertex.textureId;
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
     uvec4 modelData = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
@@ -266,13 +299,13 @@ void main() {
     
     vec2 tilePos = vec2(float(tilePosPacked >> uint(12)), float(tilePosPacked & uint(0xFFF))) / vec2(32);
 
-    vec3 localPos = vec3(a_position) / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
+    vec3 localPos = vertex.pos / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
 
     vec2 interpPos = tilePos * vec2(when_eq(contourGround, 0.0)) + localPos.xz * vec2(when_eq(contourGround, 1.0));
     localPos.y -= getHeightInterp(interpPos, plane) * when_neq(contourGround, 2.0) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
-    gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(a_priority) * 0.0001;    
+    gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(vertex.priority) * 0.0001;    
 }
 `.trim();
 
@@ -287,7 +320,7 @@ layout(std140, column_major) uniform;
 
 in vec4 v_color;
 in vec2 v_texCoord;
-flat in int v_texId;
+flat in uint v_texId;
 flat in float v_loadAlpha;
 
 uniform highp sampler2DArray u_textures;
@@ -362,48 +395,32 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
     const baseModelMatrix = mat4.create();
     mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
 
-    const interleavedBuffer = app.createInterleavedBuffer(16, chunkData.vertices);
+    const interleavedBuffer = app.createInterleavedBuffer(12, chunkData.vertices);
 
     const indexBuffer = app.createIndexBuffer(PicoGL.UNSIGNED_INT, chunkData.indices);
 
     const vertexArray = app.createVertexArray()
-        // position
+        // v0
         .vertexAttributeBuffer(0, interleavedBuffer, {
-            type: PicoGL.SHORT,
-            size: 3,
-            stride: 16,
+            type: PicoGL.INT,
+            size: 1,
+            stride: 12,
             integer: true as any
         })
-        // color
+        // v1
         .vertexAttributeBuffer(1, interleavedBuffer, {
-            type: PicoGL.UNSIGNED_BYTE,
-            size: 4,
-            offset: 6,
-            stride: 16,
-            // normalized: true
+            type: PicoGL.INT,
+            size: 1,
+            offset: 4,
+            stride: 12,
+            integer: true as any
         })
-        // tex coords
+        // v2
         .vertexAttributeBuffer(2, interleavedBuffer, {
-            type: PicoGL.UNSIGNED_SHORT,
-            size: 2,
-            offset: 10,
-            stride: 16,
-            integer: true as any
-        })
-        // texture ids
-        .vertexAttributeBuffer(3, interleavedBuffer, {
-            type: PicoGL.UNSIGNED_BYTE,
+            type: PicoGL.INT,
             size: 1,
-            offset: 14,
-            stride: 16,
-            integer: true as any
-        })
-        // priorities
-        .vertexAttributeBuffer(4, interleavedBuffer, {
-            type: PicoGL.UNSIGNED_BYTE,
-            size: 1,
-            offset: 15,
-            stride: 16,
+            offset: 8,
+            stride: 12,
             integer: true as any
         })
         .indexBuffer(indexBuffer);
@@ -679,6 +696,8 @@ class Test {
 
         console.timeEnd('first load');
 
+        console.log('textures: ', textures.length);
+
         console.log(gl.getSupportedExtensions());
     }
 
@@ -886,7 +905,7 @@ class Test {
         if (this.keys.get('e') || this.keys.get('E')) {
             this.moveCamera(0, 8 * cameraSpeedMult * deltaTime, 0);
         }
-        if (this.keys.get('c') || this.keys.get('C')) {
+        if (this.keys.get('q') || this.keys.get('Q') || this.keys.get('c') || this.keys.get('C')) {
             this.moveCamera(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
 
@@ -955,7 +974,7 @@ class Test {
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 1;
+            const regionViewDistance = 15;
 
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {

@@ -509,18 +509,14 @@ function unpackFloat11(v: number): number {
     return 16 - v / 64;
 }
 
-// 0-1, 1/64 decimal precision
+// 0-1, 1/63 decimal precision
 function packFloat6(v: number): number {
-    return Math.round(v / (1 / 64));
+    return Math.round(v / (1 / 63));
 }
 
-// function packFloat11(v: number): number {
-//     return 16 * 48 - Math.round(v / (1 / 48));
-// }
-
-// function unpackFloat11(v: number): number {
-//     return 16 - v / 48;
-// }
+function unpackFloat6(v: number): number {
+    return v / 63;
+}
 
 // 0-11
 function packFloat9(v: number): number {
@@ -563,8 +559,40 @@ xxhash().then(hasher => {
     xxhashApi = hasher;
 });
 
+function encodeVertex(x: number, y: number, z: number, hsl: number, alpha: number, u: number, v: number, textureId: number, priority: number): number[] {
+    const v0 = ((x + 0x4000) << 17) | (packFloat6(u) << 11) | packFloat11(v);
+
+    const v1 = (hsl << 16) | (alpha << 8) | ((textureId + 1) << 1) | (priority & 0x1);
+
+    const v2 = ((z + 0x4000) << 17) | ((y + 0x400) << 3) | (priority >> 1);
+
+    return [v0, v1, v2];
+}
+
+function decodeVertex([v0, v1, v2]: number[]) {
+    const x = ((v0 >> 17) & 0x7FFF) - 0x4000;
+    const u = unpackFloat6((v0 >> 11) & 0x3F);
+    const v = unpackFloat11(v0 & 0x7FF);
+
+    const hsl = (v1 >> 16) & 0xFFFF;
+    const alpha = (v1 >> 8) & 0xFF;
+    const textureId = (v1 >> 1) & 0x7F;
+
+    const z = ((v2 >> 17) & 0x7FFF) - 0x4000;
+    const y = ((v2 >> 3) & 0x3FFF) - 0x400;
+
+    const priority = ((v2 & 0x7) << 1) | (v1 & 0x1);
+
+    return [x, y, z, hsl, alpha, u, v, textureId, priority];
+}
+
+// console.log('before', 3/64, 1 + 1/64);
+
+// const encoded = encodeVertex(-10000, 7000, -10000, 65534, 250, 3/64, 1 + 1/64, 110, 15);
+// console.log('decoded', decodeVertex(encoded));
+
 class VertexBuffer {
-    public static readonly VERTEX_STRIDE = 16;
+    public static readonly VERTEX_STRIDE = 12;
 
     view: DataView;
 
@@ -592,32 +620,25 @@ class VertexBuffer {
         }
     }
 
-    addVertex(x: number, y: number, z: number, rgb: number, hsl: number, faceAlpha: number, u: number, v: number, textureId: number, priority: number, 
+    addVertex(x: number, y: number, z: number, rgb: number, hsl: number, alpha: number, u: number, v: number, textureId: number, priority: number, 
         reuseVertex: boolean = true) {
         this.ensureSize(1);
         const vertexBufIndex = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
-        this.view.setInt16(vertexBufIndex, x, true);
-        this.view.setInt16(vertexBufIndex + 2, y, true);
-        this.view.setInt16(vertexBufIndex + 4, z, true);
-
         if (textureId !== -1) {
-            // normalize 0-127 lightness to 0-255 
-            const lightA = (hsl & 127) / 127 * 255;
-
-            this.view.setUint32(vertexBufIndex + 6, lightA << 24 | lightA << 16 | lightA << 8 | faceAlpha, false);
-            // this.view.setUint32(vertexBufIndex + 6, lightA << 24 | lightA << 16 | faceAlpha, false);
-        } else {
-            // this.view.setUint32(vertexBufIndex + 6, rgb << 8 | faceAlpha, false);
-            this.view.setUint32(vertexBufIndex + 6, hsl << 16 | faceAlpha, false);
+            // only light
+            hsl = (hsl & 127);
         }
 
-        this.view.setUint16(vertexBufIndex + 10, packFloat6(u), true);
-        this.view.setUint16(vertexBufIndex + 12, packFloat11(v), true);
+        const v0 = ((x + 0x4000) << 17) | (packFloat6(u) << 11) | packFloat11(v);
 
-        this.view.setUint8(vertexBufIndex + 14, textureId + 1);
+        const v1 = (hsl << 16) | (alpha << 8) | ((textureId + 1) << 1) | (priority & 0x1);
+    
+        const v2 = ((z + 0x4000) << 17) | ((-y + 0x400) << 3) | (priority >> 1);
 
-        this.view.setUint8(vertexBufIndex + 15, priority);
+        this.view.setInt32(vertexBufIndex, v0, true);
+        this.view.setInt32(vertexBufIndex + 4, v1, true);
+        this.view.setInt32(vertexBufIndex + 8, v2, true);
 
         if (xxhashApi && reuseVertex) {
             const hash = xxhashApi.h64Raw(this.byteArray.subarray(vertexBufIndex, vertexBufIndex + VertexBuffer.VERTEX_STRIDE));
@@ -625,18 +646,6 @@ class VertexBuffer {
             if (cachedIndex !== undefined) {
                 return cachedIndex;
             } else {
-                // if (u < -4 || v < -4 || u > 8 || v > 8) {
-                //     console.error(u, v);
-                // }
-                // if (Math.abs(u - v) > 7) {
-                //     console.error(u, v);
-                // }
-                // if (Math.abs(u - v) > 7) {
-                //     console.error(u, v);
-                // }
-                // if (u < 0 || v < 0) {
-                //     console.error(u, v);
-                // }
                 this.vertexIndices.set(hash, this.vertexOffset);
             }
         }
@@ -783,50 +792,6 @@ function addModel(buf: VertexBuffer, indices: number[] | undefined, model: Model
 
     const modelTexCoords = computeTextureCoords(model);
 
-    // if (modelTexCoords) {
-    //     let hasNegativeTexCoord = false;
-    //     for (const face of faces) {
-    //         const f = face.index;
-
-    //         const texCoordIdx = f * 6;
-    //         const u0 = modelTexCoords[texCoordIdx];
-    //         const v0 = modelTexCoords[texCoordIdx + 1];
-    //         const u1 = modelTexCoords[texCoordIdx + 2];
-    //         const v1 = modelTexCoords[texCoordIdx + 3];
-    //         const u2 = modelTexCoords[texCoordIdx + 4];
-    //         const v2 = modelTexCoords[texCoordIdx + 5];
-
-    //         if (u0 < 0 || v0 < 0 || u1 < 0 || v1 < 0 || u2 < 0 || v2 < 0) {
-    //             // console.error(u0, v0, u1, v1, u2, v2);
-    //             hasNegativeTexCoord = true;
-    //         }
-
-    //         if (u0 > 1 || u1 > 1 || u2 > 1) {
-    //             // console.error(u0, u1, u2);
-    //         }
-
-    //         // modelTexCoords[texCoordIdx] = clamp(u0, 0.00390625, 1 - 0.00390625);
-    //         // modelTexCoords[texCoordIdx + 2] = clamp(u1, 0.00390625, 1 - 0.00390625);
-    //         // modelTexCoords[texCoordIdx + 4] = clamp(u2, 0.00390625, 1 - 0.00390625);
-
-    //         // if (u0 > 1) {
-    //         //     modelTexCoords[texCoordIdx] = 1;
-    //         // }
-    //         // if (u1 > 1) {
-    //         //     modelTexCoords[texCoordIdx + 2] = 1;
-    //         // }
-    //         // if (u2 > 1) {
-    //         //     modelTexCoords[texCoordIdx + 4] = 1;
-    //         // }
-
-    //     }
-    //     if (!hasNegativeTexCoord) {
-    //         // return;
-    //     }
-    // } else {
-    //     // return;
-    // }
-
     for (const face of faces) {
         const f = face.index;
         const faceAlpha = face.alpha;
@@ -905,10 +870,6 @@ type ModelFace = {
     textureId: number
 };
 
-const modelVertexBuf = new VertexBuffer(5000);
-
-let modelData = new Int32Array(5000);
-
 export class ChunkDataLoader {
     regionLoader: RegionLoader;
 
@@ -917,6 +878,8 @@ export class ChunkDataLoader {
     objectModelLoader: ObjectModelLoader;
 
     textureProvider: TextureLoader;
+
+    modelData: Int32Array = new Int32Array(5000);
 
     constructor(regionLoader: RegionLoader, modelLoader: CachedModelLoader, textureProvider: TextureLoader) {
         this.regionLoader = regionLoader;
@@ -1598,7 +1561,6 @@ export class ChunkDataLoader {
             const regionModelSpawns: Map<number, ModelSpawns> = new Map();
 
             const gameObjects: Set<GameObject> = new Set();
-            let gameObjectCount = 0;
 
             const allModelSpawns: ModelSpawns[] = [];
 
@@ -1757,32 +1719,7 @@ export class ChunkDataLoader {
 
             console.timeEnd('iterate tiles');
 
-            // console.log(gameObjectCount, gameObjects);
-
-            // console.log(lowDetailOcclusionMap);
-
-            // const spawns = region.decodeLandscape(new ByteBuffer(landscapeData));
-
             console.log('diff models: ', regionModelSpawns.size);
-
-            // const allModelSpawns = Array.from(regionModelSpawns.values());
-
-            // draw transparent objects last
-            // allModelSpawns.sort((a, b) => (a.hasAlpha ? 1 : 0) - (b.hasAlpha ? 1 : 0));
-
-            // allModelSpawns.sort((a, b) => a.type - b.type);
-
-            const modelHashes: Set<bigint> = new Set();
-            const modelHashCounts: Map<bigint, number> = new Map();
-
-            const modelHashes2: Set<string> = new Set();
-            const modelHashCounts2: Map<string, number> = new Map();
-
-            const modelUniqueVertexCounts: Map<bigint, number> = new Map();
-
-            const uniqueModels: Map<bigint, Model> = new Map();
-
-            // const models: Model[] = [];
 
             const modelSpawns2: Map<bigint, ModelSpawns2> = new Map();
 
@@ -1794,12 +1731,6 @@ export class ChunkDataLoader {
 
                 const model = modelSpawns.model;
 
-                // models.push(model);
-
-                // const faceAlphas = model.faceAlphas;
-
-                // const priorities = model.faceRenderPriorities;
-
                 const indexOffset = indices.length * 4;
 
                 const textureIds = (model.faceTextures && new Int32Array(model.faceTextures)) || new Int32Array(0);
@@ -1810,87 +1741,28 @@ export class ChunkDataLoader {
                     dataLength += data.length;
                 }
 
-                if (dataLength > modelData.length) {
-                    modelData = new Int32Array(dataLength * 2);
+                if (dataLength > this.modelData.length) {
+                    this.modelData = new Int32Array(dataLength * 2);
                 }
                 let modelDataOffset = 0;
                 for (const data of datas) {
-                    modelData.set(data, modelDataOffset);
+                    this.modelData.set(data, modelDataOffset);
                     modelDataOffset += data.length;
                 }
 
                 const faces: ModelFace[] = [];
 
-                // for (let f = 0; f < model.faceCount; f++) {
-                //     let faceAlpha = (faceAlphas && (0xFF - (faceAlphas[f] & 0xFF))) || 0xFF;
-
-                //     if (faceAlpha === 0 || faceAlpha === 0x1) {
-                //         continue;
-                //     }
-
-                //     let hslC = model.faceColors3[f];
-
-                //     if (hslC == -2) {
-                //         continue;
-                //     }
-
-                //     const priority = (priorities && priorities[f]) || 0;
-
-                //     const textureId = (model.faceTextures && model.faceTextures[f]) || -1;
-
-                //     const textureIndex = this.textureProvider.getTextureIndex(textureId) || -1;
-
-                //     faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
-
-                // }
-
-                const modelStartIndices = indices.length;
-
-                let uniqueVertexCount = 0;
-
-                modelVertexBuf.vertexOffset = 0;
-
-                // addModel(modelVertexBuf, undefined, model, faces, undefined, false);
-
                 const modelVertexCount = (indices.length * 4 - indexOffset) / 4;
-
-                const modelEndIndices = indices.length;
 
                 if (model.faceCount === 0) {
                     continue;
                 }
 
                 if (xxhashApi) {
-                    // const modelStart = (vertexBuf.vertexOffset - modelVertexCount) * VertexBuffer.VERTEX_STRIDE;
-                    // const modelEnd = modelStart + modelVertexCount * VertexBuffer.VERTEX_STRIDE;
-                    // const modelStart = modelStartVertexOffset * VertexBuffer.VERTEX_STRIDE;
-                    // const modelEnd = modelEndVertexOffset * VertexBuffer.VERTEX_STRIDE;
-                    // console.log(modelStart, modelEnd);
-                    // const hashData = new Int32Array(indices.slice(modelStartIndices, modelEndIndices));
-                    // const hash = xxhashApi.h64Raw(new Uint8Array(hashData.buffer));
-                    // const hashData = modelVertexBuf.byteArray.subarray(0, modelVertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE);
-                    const hashData = new Uint8Array(modelData.buffer).subarray(0, modelDataOffset * 4);
+                    const hashData = new Uint8Array(this.modelData.buffer).subarray(0, modelDataOffset * 4);
                     let hash = xxhashApi.h64Raw(hashData);
                     // hash = BigInt(Math.random() * 2147000000 | 0);
-                    // modelHashes.add(hash);
-
-                    // let count = modelHashCounts.get(hash);
-                    // if (count === undefined) {
-                    //     count = 0;
-                    // }
-                    // count++;
-                    // modelHashCounts.set(hash, count);
-
-
-                    // let ucount = modelUniqueVertexCounts.get(hash);
-                    // if (ucount === undefined) {
-                    //     ucount = 0;
-                    // }
-                    // ucount += uniqueVertexCount;
-                    // modelUniqueVertexCounts.set(hash, ucount);
-
-                    // uniqueModels.set(hash, model);
-
+                    
                     let spawns2 = modelSpawns2.get(hash);
                     if (!spawns2) {
                         spawns2 = {
@@ -1902,9 +1774,6 @@ export class ChunkDataLoader {
                             objectDatas: [],
                             objectDatasLowDetail: [],
                         };
-                        // indices.length -= hashData.length;
-                    } else {
-                        // indices.length -= hashData.length;
                     }
 
                     spawns2.objectDatas.push(...modelSpawns.objectDatas);
@@ -1912,24 +1781,6 @@ export class ChunkDataLoader {
 
                     modelSpawns2.set(hash, spawns2);
                 }
-
-                // const objectDatas: ObjectData[] = modelSpawns.objectDatas;
-                // const objectDatasLowDetail: ObjectData[] = modelSpawns.objectDatasLowDetail;
-
-                // if (objectDatas.length) {
-                //     drawCommands.push({
-                //         vertexOffset: indexOffset,
-                //         vertexCount: modelVertexCount,
-                //         objectDatas
-                //     });
-                // }
-                // if (objectDatasLowDetail.length) {
-                //     drawCommandsLowDetail.push({
-                //         vertexOffset: indexOffset,
-                //         vertexCount: modelVertexCount,
-                //         objectDatas: objectDatasLowDetail
-                //     });
-                // }
             }
 
             console.timeEnd('models phase 1');
@@ -2114,11 +1965,7 @@ export class ChunkDataLoader {
             }
             console.timeEnd('create model groups models');
 
-            console.log('combined vertices: ', modelVertexBuf.vertexOffset);
-
-            console.log('hashes: ', modelHashes.size, modelHashes);
-
-            console.log(modelUniqueVertexCounts);
+            // console.log('combined vertices: ', modelVertexBuf.vertexOffset);
 
             // let uniqueVertexCounts2 = 0;
 
