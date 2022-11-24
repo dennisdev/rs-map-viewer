@@ -1,0 +1,12 @@
+.loading-bar-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.fps-counter {
+  color: white;
+  position: absolute;
+  padding: 8px;
+}

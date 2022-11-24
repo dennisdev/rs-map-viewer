@@ -3,7 +3,7 @@ import './App.css';
 import WebGLCanvas from './Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
 import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall } from 'picogl';
-import { MemoryFileSystem, fetchMemoryStore, loadFromStore } from './client/fs/FileSystem';
+import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } from './client/fs/FileSystem';
 import { IndexType } from './client/fs/IndexType';
 import { Scene } from './client/Scene';
 import { TextureLoader } from './client/fs/loader/TextureLoader';
@@ -16,9 +16,10 @@ import { ConfigType } from './client/fs/ConfigType';
 import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
 import { CachedOverlayLoader } from './client/fs/loader/OverlayLoader';
 import { CachedObjectLoader } from './client/fs/loader/ObjectLoader';
-import { CachedModelLoader, IndexModelLoader } from './client/fs/loader/ModelLoader';
+import { IndexModelLoader } from './client/fs/loader/ModelLoader';
 import Denque from 'denque';
 import { ObjectModelLoader } from './client/scene/Scene';
+import { OsrsLoadingBar } from './OsrsLoadingBar';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -1069,7 +1070,22 @@ type ChunkLoaderWorker = {
     load(regionX: number, regionY: number): ChunkData | undefined,
 };
 
+function formatBytes(bytes: number, decimals: number = 2): string {
+    if (!+bytes) {
+        return '0 Bytes';
+    }
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
 function App() {
+    const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | undefined>(undefined);
     const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(undefined);
     const [fps, setFps] = useState<number>(0);
 
@@ -1087,7 +1103,7 @@ function App() {
                 IndexType.MODELS,
                 IndexType.SPRITES,
                 IndexType.TEXTURES
-            ], true);
+            ], true, setDownloadProgress);
 
             console.time('load xteas');
             const xteas: any[] = await fetch('/cache209/keys.json').then(resp => resp.json());
@@ -1154,14 +1170,26 @@ function App() {
         load().catch(console.error);
     }, []);
 
-    let view: JSX.Element | undefined = undefined;
+    let content: JSX.Element | undefined = undefined;
     if (mapViewer) {
-        view = (<div className='fps-counter'>{fps.toFixed(1)}</div>);
+        content = (
+            <div>
+                <div className='fps-counter'>{fps.toFixed(1)}</div>
+                <WebGLCanvas init={mapViewer.init} draw={mapViewer.render}></WebGLCanvas>
+            </div>
+        );
+    } else if (downloadProgress) {
+        const formattedCacheSize = formatBytes(downloadProgress.total);
+        const progress = downloadProgress.current / downloadProgress.total * 100 | 0;
+        content = (
+            <div className='loading-bar-container'>
+                <OsrsLoadingBar text={`Downloading cache (${formattedCacheSize})`} progress={progress} />
+            </div>
+        );
     }
     return (
         <div className="App">
-            {view}
-            {mapViewer && <WebGLCanvas init={mapViewer.init} draw={mapViewer.render}></WebGLCanvas>}
+            {content}
         </div>
     );
 }

@@ -99,18 +99,34 @@ export function open(files: FileList, indicesToLoad?: number[]): Promise<FileFil
     });
 }
 
-async function toSharedArrayBuffer(response: Response) {
+export type DownloadProgress = {
+    total: number,
+    current: number,
+};
+
+type ProgressListener = (progress: DownloadProgress) => void;
+
+async function toArrayBuffer(response: Response, shared: boolean, progressListener?: ProgressListener) {
     if (!response.body) {
-        return new SharedArrayBuffer(0);
+        return new ArrayBuffer(0);
     }
+    const contentLength = Number(response.headers.get('Content-Length') || 0);
+
+    if (progressListener) {
+        progressListener({total: contentLength, current: 0});
+    }
+
     const reader = response.body.getReader();
     const parts = [];
-    let totalLength = 0;
+    let currentLength = 0;
     for (let res = await reader.read(); !res.done && res.value; res = await reader.read()) {
         parts.push(res.value);
-        totalLength += res.value.byteLength;
+        currentLength += res.value.byteLength;
+        if (progressListener) {
+            progressListener({total: contentLength, current: currentLength});
+        }
     }
-    const sab = new SharedArrayBuffer(totalLength);
+    const sab = shared ? new SharedArrayBuffer(currentLength) : new ArrayBuffer(currentLength);
     const u8 = new Uint8Array(sab);
     let offset = 0;
     for (const buffer of parts) {
@@ -118,14 +134,6 @@ async function toSharedArrayBuffer(response: Response) {
         offset += buffer.byteLength;
     }
     return sab;
-}
-
-function respToBuffer(resp: Response, shared: boolean): Promise<ArrayBuffer> {
-    if (shared) {
-        return toSharedArrayBuffer(resp);
-    } else {
-        return resp.arrayBuffer();
-    }
 }
 
 type CacheIndexFile = {
@@ -146,15 +154,15 @@ async function fetchCacheFile(input: RequestInfo): Promise<Response> {
 
 async function fetchCacheIndex(baseUrl: string, id: IndexType, shared: boolean): Promise<CacheIndexFile> {
     const resp = await fetchCacheFile(baseUrl + 'main_file_cache.idx' + id);
-    const data = await respToBuffer(resp, shared);
+    const data = await toArrayBuffer(resp, shared);
     return {id, data};
 }
 
-export async function fetchMemoryStore(baseUrl: string, indicesToLoad: IndexType[] = [], shared: boolean = false): Promise<MemoryStore> {
+export async function fetchMemoryStore(baseUrl: string, indicesToLoad: IndexType[] = [], shared: boolean = false, progressListener?: ProgressListener): Promise<MemoryStore> {
     console.time('fetch');
     const [dataFile, metaFile] = await Promise.all([
-        fetchCacheFile(baseUrl + 'main_file_cache.dat2').then(resp => respToBuffer(resp, shared)),
-        fetchCacheFile(baseUrl + 'main_file_cache.idx255').then(resp => respToBuffer(resp, shared))
+        fetchCacheFile(baseUrl + 'main_file_cache.dat2').then(resp => toArrayBuffer(resp, shared, progressListener)),
+        fetchCacheFile(baseUrl + 'main_file_cache.idx255').then(resp => toArrayBuffer(resp, shared))
     ]);
 
     const indexCount = metaFile.byteLength / SectorCluster.SIZE;
