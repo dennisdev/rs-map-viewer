@@ -457,10 +457,31 @@ function getRegionDistance(x: number, y: number, region: vec2): number {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
+class ChunkLoaderWorkerPool {
+    pool: Pool<ModuleThread<ChunkLoaderWorker>>;
+
+    size: number;
+
+    static init(store: MemoryStore, xteasMap: Map<number, number[]>, size: number): ChunkLoaderWorkerPool {
+        const pool = Pool(() => {
+            return spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any)).then(worker => {
+                worker.init(Transfer(store, []), xteasMap);
+                return worker;
+            });
+        }, size);
+        return new ChunkLoaderWorkerPool(pool, size);
+    }
+
+    constructor(pool: Pool<ModuleThread<ChunkLoaderWorker>>, size: number) {
+        this.pool = pool;
+        this.size = size;
+    }
+}
+
 class MapViewer {
     fileSystem: MemoryFileSystem;
 
-    chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>;
+    chunkLoaderWorker: ChunkLoaderWorkerPool;
 
     // modelIndex: IndexSync<StoreSync>;
 
@@ -533,7 +554,7 @@ class MapViewer {
     isVisiblePos: vec3 = [0, 0, 0];
     moveCameraRotOrigin: vec3 = [0, 0, 0];
 
-    constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>) {
+    constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: ChunkLoaderWorkerPool) {
         this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
 
@@ -942,7 +963,7 @@ class MapViewer {
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 10;
+            const regionViewDistance = 15;
 
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
@@ -1006,12 +1027,15 @@ class MapViewer {
 
         for (const regionPos of this.regionPositions) {
             const regionId = RegionLoader.getRegionId(regionPos[0], regionPos[1]);
-            if (!this.loadingRegionIds.has(regionId) && !this.chunks.has(regionId) && this.isVisible(regionPos)) {
+            if (this.loadingRegionIds.size < this.chunkLoaderWorker.size * 2 && !this.loadingRegionIds.has(regionId)
+                && !this.chunks.has(regionId) && this.isVisible(regionPos)) {
                 this.loadingRegionIds.add(regionId);
 
-                this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
+                this.chunkLoaderWorker.pool.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
                     if (chunkData) {
                         this.chunksToLoad.push(chunkData);
+                    } else {
+                        this.invalidRegionIds.add(regionId);
                     }
                 });
             }
@@ -1021,8 +1045,10 @@ class MapViewer {
         if (this.frameCount % 30) {
             const chunkData = this.chunksToLoad.shift();
             if (chunkData) {
-                this.chunks.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
+                const regionId = RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY);
+                this.chunks.set(regionId,
                     loadChunk(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
+                this.loadingRegionIds.delete(regionId);
             }
         }
 
@@ -1073,12 +1099,7 @@ function App() {
             // const poolSize = navigator.hardwareConcurrency;
             const poolSize = Math.min(navigator.hardwareConcurrency, 4);
 
-            const pool = Pool(() => {
-                return spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any)).then(worker => {
-                    worker.init(Transfer(store, []), xteasMap);
-                    return worker;
-                });
-            }, poolSize);
+            const pool = ChunkLoaderWorkerPool.init(store, xteasMap, poolSize);
 
             const fileSystem = loadFromStore(store);
 
