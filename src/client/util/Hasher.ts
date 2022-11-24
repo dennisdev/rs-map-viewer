@@ -1,4 +1,5 @@
 import xxhash, { XXHashAPI } from "xxhash-wasm";
+import { xxHash32 } from 'js-xxhash';
 
 export class Hasher {
     static hashApi: XXHashAPI | undefined;
@@ -13,10 +14,16 @@ export class Hasher {
         if (Hasher.hashApi) {
             return Hasher.hashApi.h64Raw(data);
         }
-        return Hasher.hashFallback(data);
+        return Hasher.hashJs(data);
     }
 
-    static hashFallback(data: Uint8Array): bigint {
+    static hashJs(data: Uint8Array): bigint {
+        const v0 = xxHash32(data, Math.random() * 0xFFFFFF);
+        const v1 = xxHash32(data, Math.random() * 0xFFFFFF);
+        return BigInt(v0) << 32n | BigInt(v1);
+    }
+
+    static bufToBigInt(data: Uint8Array): bigint {
         let bits = 8n
 
         let ret = 0n
