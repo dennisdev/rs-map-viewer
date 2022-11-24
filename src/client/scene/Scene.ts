@@ -502,10 +502,11 @@ export class Scene2 {
     }
 
     addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
-        let def = regionLoader.getObjectDef(objectId);
+        const def = regionLoader.getObjectDef(objectId);
+        let defTransform = def;
         if (def.transforms && def.transforms.length > 0) {
             // should use animation id from parent object
-            def = regionLoader.getObjectDef(def.transforms[0]);
+            defTransform = regionLoader.getObjectDef(def.transforms[0]);
         }
 
         let sizeX = def.sizeX;
@@ -548,17 +549,17 @@ export class Scene2 {
 
 
         if (type === ObjectType.FLOOR_DECORATION) {
-            const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+            const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
             this.newFloorDecoration(plane, tileX, tileY, centerHeight, model, tag, type, def);
         } else if (type !== ObjectType.OBJECT && type !== ObjectType.OBJECT_DIAGIONAL) {
             // roofs
             if (type >= ObjectType.ROOF_SLOPED) {
-                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
             } else if (type === ObjectType.WALL) {
-                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
 
@@ -566,12 +567,12 @@ export class Scene2 {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                 }
             } else if (type === ObjectType.WALL_TRI_CORNER) {
-                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
             } else if (type === ObjectType.WALL_CORNER) {
-                const model0 = modelLoader.getObjectModel(def, type, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
-                const model1 = modelLoader.getObjectModel(def, type, rotation + 1 & 3, heightMap, sceneX, centerHeight, sceneY);
+                const model0 = modelLoader.getObjectModel(defTransform, type, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                const model1 = modelLoader.getObjectModel(defTransform, type, rotation + 1 & 3, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, centerHeight, model0, model1, tag, type, def);
 
@@ -579,11 +580,11 @@ export class Scene2 {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                 }
             } else if (type === ObjectType.WALL_RECT_CORNER) {
-                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
             } else if (type === ObjectType.WALL_DIAGONAL) {
-                const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
 
@@ -591,7 +592,7 @@ export class Scene2 {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                 }
             } else if (type === ObjectType.WALL_DECORATION_INSIDE) {
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
 
@@ -605,7 +606,7 @@ export class Scene2 {
                     displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement;
                 }
 
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 const displacementX = displacement * Scene2.displacementX[rotation];
                 const displacementY = displacement * Scene2.displacementY[rotation];
@@ -627,7 +628,7 @@ export class Scene2 {
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_INSIDE) {
                 const insideRotation = rotation + 2 & 3;
 
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_DOUBLE) {
@@ -639,8 +640,8 @@ export class Scene2 {
 
                 const insideRotation = rotation + 2 & 3;
 
-                const model0 = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
-                const model1 = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                const model0 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                const model1 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
                 const displacementX = displacement * Scene2.diagonalDisplacementX[rotation];
                 const displacementY = displacement * Scene2.diagonalDisplacementY[rotation];
@@ -648,7 +649,7 @@ export class Scene2 {
                 this.newWallDecoration(plane, tileX, tileY, centerHeight, model0, model1, displacementX, displacementY, tag, type, def);
             }
         } else {
-            const model = modelLoader.getObjectModel(def, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+            const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
             if (model && this.newGameObject(plane, tileX, tileY, centerHeight, sizeX, sizeY, model, tag, type, def) && def.clipped) {
                 let lightOcclusion = 15;
