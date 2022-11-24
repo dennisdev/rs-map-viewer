@@ -13,6 +13,7 @@ import { Compression } from "./client/util/Compression";
 import { ChunkDataLoader } from "./ChunkDataLoader";
 import { CachedModelLoader, IndexModelLoader } from "./client/fs/loader/ModelLoader";
 import { ObjectModelLoader, Scene2 } from "./client/scene/Scene";
+import { Hasher } from "./client/util/Hasher";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,
@@ -23,11 +24,11 @@ type MemoryStoreProperties = {
 let chunkDataLoader: ChunkDataLoader | undefined;
 
 const wasmCompressionPromise = Compression.initWasm();
+const hasherPromise = Hasher.init();
 
 expose({
     async init(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>) {
         // await wasmCompressionPromise;
-
         const store = new MemoryStore(memoryStoreProperties.dataFile, memoryStoreProperties.indexFiles, memoryStoreProperties.metaFile);
 
         const fileSystem = loadFromStore(store);
@@ -48,14 +49,14 @@ expose({
 
         const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
 
-        const modelLoader = new CachedModelLoader(modelIndex);
+        const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
 
         const textureProvider = TextureLoader.load(textureIndex, spriteIndex);
         for (const texture of textureProvider.definitions.values()) {
             textureProvider.loadFromDef(texture, 1.0, 128);
         }
 
-        chunkDataLoader = new ChunkDataLoader(regionLoader, modelLoader, textureProvider);
+        chunkDataLoader = new ChunkDataLoader(regionLoader, objectModelLoader, textureProvider);
         console.log('init worker', fileSystem);
     },
     load(regionX: number, regionY: number) {
@@ -63,7 +64,7 @@ expose({
             throw new Error('ChunkLoaderWorker not initialized');
         }
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = chunkDataLoader.load2(regionX, regionY);
+        const chunkData = chunkDataLoader.load(regionX, regionY);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
         console.log('model caches: ', chunkDataLoader.objectModelLoader.modelDataCache.size, chunkDataLoader.objectModelLoader.modelCache.size)
 
@@ -92,7 +93,6 @@ expose({
         chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
         chunkDataLoader.regionLoader.lightLevels.clear();
 
-        chunkDataLoader.modelLoader.cache.clear();
         chunkDataLoader.objectModelLoader.modelDataCache.clear();
         chunkDataLoader.objectModelLoader.modelCache.clear();
 
@@ -100,7 +100,7 @@ expose({
             const transferables: Transferable[] = [
                 chunkData.vertices.buffer,
                 chunkData.indices.buffer,
-                chunkData.perModelTextureData.buffer, 
+                chunkData.modelTextureData.buffer, 
                 chunkData.heightMapTextureData.buffer
             ];
             return Transfer(chunkData, transferables);

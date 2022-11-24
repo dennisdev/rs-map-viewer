@@ -1,6 +1,108 @@
 import { TextureLoader } from "../fs/loader/TextureLoader";
 import { Renderable } from "../Renderable";
 
+export function computeTextureCoords(model: Model): Float32Array | undefined {
+    const faceTextures = model.faceTextures;
+
+    if (!faceTextures) {
+        return undefined;
+    }
+
+    const vertexPositionsX = model.verticesX;
+    const vertexPositionsY = model.verticesY;
+    const vertexPositionsZ = model.verticesZ;
+
+    const trianglePointsX = model.indices1;
+    const trianglePointsY = model.indices2;
+    const trianglePointsZ = model.indices3;
+
+    const texTriangleX = model.texTriangleX;
+    const texTriangleY = model.texTriangleY;
+    const texTriangleZ = model.texTriangleZ;
+
+    const textureCoords = model.textureCoords;
+
+    const faceCount = model.faceCount;
+    const faceTextureUCoordinates: Float32Array = new Float32Array(faceCount * 6);
+
+    for (let i = 0; i < faceCount; i++) {
+        const trianglePointX = trianglePointsX[i];
+        const trianglePointY = trianglePointsY[i];
+        const trianglePointZ = trianglePointsZ[i];
+
+        const textureIdx = faceTextures[i];
+
+        if (textureIdx != -1) {
+            let triangleVertexIdx1: number;
+            let triangleVertexIdx2: number;
+            let triangleVertexIdx3: number;
+
+            if (textureCoords && textureCoords[i] != -1) {
+                const textureCoordinate = textureCoords[i] & 255;
+                triangleVertexIdx1 = texTriangleX[textureCoordinate];
+                triangleVertexIdx2 = texTriangleY[textureCoordinate];
+                triangleVertexIdx3 = texTriangleZ[textureCoordinate];
+            }
+            else {
+                triangleVertexIdx1 = trianglePointX;
+                triangleVertexIdx2 = trianglePointY;
+                triangleVertexIdx3 = trianglePointZ;
+            }
+
+            const triangleX = vertexPositionsX[triangleVertexIdx1];
+            const triangleY = vertexPositionsY[triangleVertexIdx1];
+            const triangleZ = vertexPositionsZ[triangleVertexIdx1];
+
+            const f_882_ = vertexPositionsX[triangleVertexIdx2] - triangleX;
+            const f_883_ = vertexPositionsY[triangleVertexIdx2] - triangleY;
+            const f_884_ = vertexPositionsZ[triangleVertexIdx2] - triangleZ;
+            const f_885_ = vertexPositionsX[triangleVertexIdx3] - triangleX;
+            const f_886_ = vertexPositionsY[triangleVertexIdx3] - triangleY;
+            const f_887_ = vertexPositionsZ[triangleVertexIdx3] - triangleZ;
+            const f_888_ = vertexPositionsX[trianglePointX] - triangleX;
+            const f_889_ = vertexPositionsY[trianglePointX] - triangleY;
+            const f_890_ = vertexPositionsZ[trianglePointX] - triangleZ;
+            const f_891_ = vertexPositionsX[trianglePointY] - triangleX;
+            const f_892_ = vertexPositionsY[trianglePointY] - triangleY;
+            const f_893_ = vertexPositionsZ[trianglePointY] - triangleZ;
+            const f_894_ = vertexPositionsX[trianglePointZ] - triangleX;
+            const f_895_ = vertexPositionsY[trianglePointZ] - triangleY;
+            const f_896_ = vertexPositionsZ[trianglePointZ] - triangleZ;
+
+            const f_897_ = f_883_ * f_887_ - f_884_ * f_886_;
+            const f_898_ = f_884_ * f_885_ - f_882_ * f_887_;
+            const f_899_ = f_882_ * f_886_ - f_883_ * f_885_;
+            let f_900_ = f_886_ * f_899_ - f_887_ * f_898_;
+            let f_901_ = f_887_ * f_897_ - f_885_ * f_899_;
+            let f_902_ = f_885_ * f_898_ - f_886_ * f_897_;
+            let f_903_ = 1.0 / (f_900_ * f_882_ + f_901_ * f_883_ + f_902_ * f_884_);
+
+            const u0 = (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
+            const u1 = (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
+            const u2 = (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
+
+            f_900_ = f_883_ * f_899_ - f_884_ * f_898_;
+            f_901_ = f_884_ * f_897_ - f_882_ * f_899_;
+            f_902_ = f_882_ * f_898_ - f_883_ * f_897_;
+            f_903_ = 1.0 / (f_900_ * f_885_ + f_901_ * f_886_ + f_902_ * f_887_);
+
+            const v0 = (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
+            const v1 = (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
+            const v2 = (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
+
+            const idx = i * 6;
+            faceTextureUCoordinates[idx] = u0;
+            faceTextureUCoordinates[idx + 1] = v0;
+            faceTextureUCoordinates[idx + 2] = u1;
+            faceTextureUCoordinates[idx + 3] = v1;
+            faceTextureUCoordinates[idx + 4] = u2;
+            faceTextureUCoordinates[idx + 5] = v2;
+        }
+    }
+
+    return faceTextureUCoordinates;
+}
+
 export class Model extends Renderable {
     verticesCount: number;
 

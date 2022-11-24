@@ -28,7 +28,18 @@ class SceneTile {
     }
 }
 
-class FloorDecoration {
+export interface SceneObject {
+    def: ObjectDefinition;
+    type: number;
+    sceneX: number;
+    sceneY: number;
+    sceneHeight: number;
+    tag: bigint;
+
+    getModels(): Model[];
+}
+
+class FloorDecoration implements SceneObject {
     constructor(
         public sceneX: number,
         public sceneY: number,
@@ -39,6 +50,14 @@ class FloorDecoration {
         public def: ObjectDefinition,
     ) {
 
+    }
+
+    getModels() {
+        const models: Model[] = [];
+        if (this.model instanceof Model) {
+            models.push(this.model);
+        }
+        return models;
     }
 }
 
@@ -54,6 +73,17 @@ class WallObject {
         public def: ObjectDefinition,
     ) {
 
+    }
+
+    getModels() {
+        const models: Model[] = [];
+        if (this.model0 instanceof Model) {
+            models.push(this.model0);
+        }
+        if (this.model1 instanceof Model) {
+            models.push(this.model1);
+        }
+        return models;
     }
 }
 
@@ -72,22 +102,18 @@ class WallDecoration {
     ) {
 
     }
-}
-/*
 
-      var21.tag = tag;
-      var21.flags = flags;
-      var21.plane = plane;
-      var21.centerX = sceneX;
-      var21.centerY = sceneY;
-      var21.z = centerHeight;
-      var21.renderable = renderable;
-      var21.orientation = orientation;
-      var21.startX = tileX;
-      var21.startY = tileY;
-      var21.endX = tileX + sizeX - 1;
-      var21.endY = tileY + sizeY - 1;
-*/
+    getModels() {
+        const models: Model[] = [];
+        if (this.model0 instanceof Model) {
+            models.push(this.model0);
+        }
+        if (this.model1 instanceof Model) {
+            models.push(this.model1);
+        }
+        return models;
+    }
+}
 
 export class GameObject {
     constructor(
@@ -106,12 +132,14 @@ export class GameObject {
     ) {
 
     }
-}
 
-class SceneModel {
-    // model: ModelData;
-
-    // shouldMergeNormals: boolean;
+    getModels() {
+        const models: Model[] = [];
+        if (this.model instanceof Model) {
+            models.push(this.model);
+        }
+        return models;
+    }
 }
 
 enum EntityType {
@@ -476,6 +504,7 @@ export class Scene2 {
     addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
         let def = regionLoader.getObjectDef(objectId);
         if (def.transforms && def.transforms.length > 0) {
+            // should use animation id from parent object
             def = regionLoader.getObjectDef(def.transforms[0]);
         }
 
@@ -512,9 +541,6 @@ export class Scene2 {
         const centerHeight = heightMap[endX][endY] + heightMap[startX][endY] + heightMap[startX][startY] + heightMap[endX][startY] >> 2;
         const sceneX = (tileX << 7) + (sizeX << 6);
         const sceneY = (tileY << 7) + (sizeY << 6);
-
-        
-        // const centerHeight = heightMap[centerY][var14] + heightMap[centerX][var14] + heightMap[centerX][var13] + heightMap[centerY][var13] >> 2;
 
         const tag = calculateEntityTag(tileX, tileY, EntityType.OBJECT, def.int1 === 0, objectId);
 

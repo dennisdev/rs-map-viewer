@@ -32,6 +32,10 @@ export class RegionLoader {
         return regionX << 8 | regionY;
     }
 
+    static getTerrainArchiveId(mapIndex: IndexSync<StoreSync>, regionX: number, regionY: number): number {
+        return mapIndex.getArchiveId(`m${regionX}_${regionY}`);
+    }
+
     constructor(mapIndex: IndexSync<StoreSync>, underlayLoader: UnderlayLoader, overlayLoader: OverlayLoader, objectLoader: ObjectLoader, xteasMap: Map<number, number[]>) {
         this.mapIndex = mapIndex;
         this.underlayLoader = underlayLoader;
@@ -41,7 +45,7 @@ export class RegionLoader {
     }
 
     getTerrainArchiveId(regionX: number, regionY: number): number {
-        return this.mapIndex.getArchiveId(`m${regionX}_${regionY}`);
+        return RegionLoader.getTerrainArchiveId(this.mapIndex, regionX, regionY);
     }
 
     getLandscapeArchiveId(regionX: number, regionY: number): number {

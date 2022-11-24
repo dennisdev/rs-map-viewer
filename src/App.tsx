@@ -16,8 +16,9 @@ import { ConfigType } from './client/fs/ConfigType';
 import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
 import { CachedOverlayLoader } from './client/fs/loader/OverlayLoader';
 import { CachedObjectLoader } from './client/fs/loader/ObjectLoader';
-import { CachedModelLoader } from './client/fs/loader/ModelLoader';
+import { CachedModelLoader, IndexModelLoader } from './client/fs/loader/ModelLoader';
 import Denque from 'denque';
+import { ObjectModelLoader } from './client/scene/Scene';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -150,13 +151,12 @@ vec3 hslToRgb(int hsl, float brightness) {
         } else {
             var17 = var21;
         }
-    }   
-    vec3 rgb = vec3(
+    }
+    return vec3(
         pow(var13, brightness),
         pow(var15, brightness),
         pow(var17, brightness)
-    );  
-    return rgb;
+    );
 }
 `.trim();
 
@@ -197,7 +197,7 @@ uniform float u_currentTime;
 uniform float u_timeLoaded;
 uniform float u_deltaTime;
 
-uniform highp usampler2D u_perModelPosTexture;
+uniform highp usampler2D u_modelDataTexture;
 uniform mediump sampler2DArray u_heightMap;
 
 out vec4 v_color;
@@ -212,9 +212,7 @@ ${glslLogicFunctions}
 float getHeightInterp(vec2 pos, uint plane) {
     vec2 uv = (pos + vec2(0.5)) / vec2(72.0);
 
-    float height = texture(u_heightMap, vec3(uv, plane)).r;
-
-    return height * 8.0;
+    return texture(u_heightMap, vec3(uv, plane)).r * 8.0;
 }
 
 float unpackFloat16(int v) {
@@ -244,9 +242,7 @@ float unpackFloat6(int v) {
 }
 
 ivec2 getDataTexCoordFromIndex(int index) {
-    int x = index % 16;
-    int y = index / 16;
-    return ivec2(x, y);
+    return ivec2(index % 16, index / 16);
 }
 
 struct VertexData {
@@ -278,7 +274,7 @@ VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
 }
 
 void main() {
-    uvec2 offsetVec = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(gl_DrawID), 0).gr;
+    uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(gl_DrawID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
     VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, 0.9);
@@ -289,7 +285,7 @@ void main() {
     v_texId = vertex.textureId;
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
-    uvec4 modelData = texelFetch(u_perModelPosTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
+    uvec4 modelData = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
 
     uint plane = modelData.r >> uint(6);
     float contourGround = float(int(modelData.r) >> 4 & 0x3);
@@ -338,37 +334,10 @@ void main() {
 
 const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
 
-function getSpiralDeltas(radius: number): vec2[] {
-    let x = 0;
-    let y = 0;
-    let delta = [0, -1];
-
-    const deltas: vec2[] = [];
-
-    for (let i = Math.pow(Math.max(radius, radius), 2); i > 0; i--) {
-        if ((-radius / 2 < x && x <= radius / 2)
-            && (-radius / 2 < y && y <= radius / 2)) {
-            deltas.push([x, y]);
-        }
-
-        if (x === y
-            || (x < 0 && x === -y)
-            || (x > 0 && x === 1 - y)) {
-            // change direction
-            delta = [-delta[1], delta[0]]
-        }
-
-        x += delta[0];
-        y += delta[1];
-    }
-
-    return deltas;
-}
-
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
 
-type Terrain = {
+type Chunk = {
     regionX: number,
     regionY: number,
     modelMatrix: mat4,
@@ -378,14 +347,14 @@ type Terrain = {
     drawRangesLowDetail: number[][],
     timeLoaded: number,
     frameLoaded: number,
-    perModelPosTexture: Texture,
+    modelDataTexture: Texture,
     heightMapTexture: Texture,
     drawCall: DrawCall,
     drawCallLowDetail: DrawCall,
 }
 
-function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer,
-    chunkData: ChunkData, frame: number): Terrain {
+function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer,
+    chunkData: ChunkData, frame: number): Chunk {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
@@ -425,7 +394,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
         })
         .indexBuffer(indexBuffer);
 
-    const perModelPosTexture = app.createTexture2D(new Uint8Array(chunkData.perModelTextureData.buffer), 16, chunkData.perModelTextureData.length / 16,
+    const modelDataTexture = app.createTexture2D(new Uint8Array(chunkData.modelTextureData.buffer), 16, chunkData.modelTextureData.length / 16,
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
 
     const heightMapTexture = app.createTextureArray(chunkData.heightMapTextureData, 72, 72, Scene.MAX_PLANE,
@@ -443,7 +412,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
         .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
         .texture('u_textures', textureArray)
-        .texture('u_perModelPosTexture', perModelPosTexture)
+        .texture('u_modelDataTexture', modelDataTexture)
         .texture('u_heightMap', heightMapTexture)
         .drawRanges(...chunkData.drawRanges);
 
@@ -453,7 +422,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
         .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
         .texture('u_textures', textureArray)
-        .texture('u_perModelPosTexture', perModelPosTexture)
+        .texture('u_modelDataTexture', modelDataTexture)
         .texture('u_heightMap', heightMapTexture)
         .drawRanges(...chunkData.drawRangesLowDetail);
 
@@ -467,7 +436,7 @@ function loadTerrain(app: PicoApp, program: Program, textureArray: Texture, text
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
         timeLoaded: time,
         frameLoaded: frame,
-        perModelPosTexture,
+        modelDataTexture: modelDataTexture,
         heightMapTexture,
         drawCall,
         drawCallLowDetail
@@ -488,7 +457,7 @@ function getRegionDistance(x: number, y: number, region: vec2): number {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-class Test {
+class MapViewer {
     fileSystem: MemoryFileSystem;
 
     chunkLoaderWorker: Pool<ModuleThread<ChunkLoaderWorker>>;
@@ -514,7 +483,7 @@ class Test {
 
     textureArray!: Texture;
 
-    terrains: Map<number, Terrain> = new Map();
+    chunks: Map<number, Chunk> = new Map();
 
     pitch: number = 244;
     yaw: number = 749;
@@ -582,7 +551,7 @@ class Test {
         const underlayLoader = new CachedUnderlayLoader(underlayArchive);
         const overlayLoader = new CachedOverlayLoader(overlayArchive);
         const objectLoader = new CachedObjectLoader(objectArchive);
-        const modelLoader = new CachedModelLoader(modelIndex);
+        const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
 
         const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
         // console.timeEnd('region loader');
@@ -592,7 +561,7 @@ class Test {
         console.time('check invalid regions');
         for (let x = 0; x < 100; x++) {
             for (let y = 0; y < 200; y++) {
-                if (regionLoader.getTerrainArchiveId(x, y) === -1) {
+                if (RegionLoader.getTerrainArchiveId(mapIndex, x, y) === -1) {
                     this.invalidRegionIds.add(RegionLoader.getRegionId(x, y));
                 }
             }
@@ -605,7 +574,7 @@ class Test {
 
         // console.log('texture count: ', this.textureProvider.definitions.size);
 
-        this.chunkDataLoader = new ChunkDataLoader(regionLoader, modelLoader, this.textureProvider);
+        this.chunkDataLoader = new ChunkDataLoader(regionLoader, objectModelLoader, this.textureProvider);
 
         this.init = this.init.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -910,9 +879,9 @@ class Test {
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
-            const totalTriangles = Array.from(this.terrains.values()).map(t => t.triangleCount).reduce((a, b) => a + b, 0);
+            const totalTriangles = Array.from(this.chunks.values()).map(t => t.triangleCount).reduce((a, b) => a + b, 0);
 
-            console.log(this.timer.cpuTime, this.timer.gpuTime, this.terrains.size, 'triangles', totalTriangles);
+            console.log(this.timer.cpuTime, this.timer.gpuTime, this.chunks.size, 'triangles', totalTriangles);
             console.log(time);
         }
 
@@ -926,13 +895,12 @@ class Test {
 
         if (this.keys.get('p')) {
             for (let i = 0; i < 20; i++) {
-                this.chunkDataLoader.load2(50, 50);
+                this.chunkDataLoader.load(50, 50);
 
                 this.chunkDataLoader.regionLoader.regions.clear();
                 this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
                 this.chunkDataLoader.regionLoader.lightLevels.clear();
 
-                this.chunkDataLoader.modelLoader.cache.clear();
                 this.chunkDataLoader.objectModelLoader.modelDataCache.clear();
                 this.chunkDataLoader.objectModelLoader.modelCache.clear();
             }
@@ -974,7 +942,7 @@ class Test {
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 15;
+            const regionViewDistance = 10;
 
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
@@ -1014,7 +982,7 @@ class Test {
         for (let i = this.regionPositions.length - 1; i >= 0; i--) {
             const pos = this.regionPositions[i];
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
-            const terrain = this.terrains.get(regionId);
+            const terrain = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
             if (!terrain || !this.isVisible(pos) || (this.frameCount - terrain.frameLoaded) < 4) {
                 continue;
@@ -1038,7 +1006,7 @@ class Test {
 
         for (const regionPos of this.regionPositions) {
             const regionId = RegionLoader.getRegionId(regionPos[0], regionPos[1]);
-            if (!this.loadingRegionIds.has(regionId) && !this.terrains.has(regionId) && this.isVisible(regionPos)) {
+            if (!this.loadingRegionIds.has(regionId) && !this.chunks.has(regionId) && this.isVisible(regionPos)) {
                 this.loadingRegionIds.add(regionId);
 
                 this.chunkLoaderWorker.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
@@ -1053,8 +1021,8 @@ class Test {
         if (this.frameCount % 30) {
             const chunkData = this.chunksToLoad.shift();
             if (chunkData) {
-                this.terrains.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
-                    loadTerrain(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
+                this.chunks.set(RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY),
+                    loadChunk(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
             }
         }
 
@@ -1076,7 +1044,7 @@ type ChunkLoaderWorker = {
 };
 
 function App() {
-    const [test, setTest] = useState<Test | undefined>(undefined);
+    const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(undefined);
     const [fps, setFps] = useState<number>(0);
 
 
@@ -1154,25 +1122,25 @@ function App() {
             // console.timeEnd('load anim archives');
             // console.log(fileCount, skeletonIds);
 
-            const mapViewer = new Test(fileSystem, xteasMap, pool);
+            const mapViewer = new MapViewer(fileSystem, xteasMap, pool);
             mapViewer.fpsListener = (fps: number) => {
                 setFps(fps);
             };
 
-            setTest(mapViewer);
+            setMapViewer(mapViewer);
         };
 
         load().catch(console.error);
     }, []);
 
     let view: JSX.Element | undefined = undefined;
-    if (test) {
+    if (mapViewer) {
         view = (<div className='fps-counter'>{fps.toFixed(1)}</div>);
     }
     return (
         <div className="App">
             {view}
-            {test && <WebGLCanvas init={test.init} draw={test.render}></WebGLCanvas>}
+            {mapViewer && <WebGLCanvas init={mapViewer.init} draw={mapViewer.render}></WebGLCanvas>}
         </div>
     );
 }

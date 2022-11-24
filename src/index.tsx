@@ -15,7 +15,6 @@ import { ModelData } from './client/model/ModelData';
 import { ParamManager } from './client/ParamManager';
 import { ItemManager } from './client/ItemManager';
 import { Scene } from './client/Scene';
-import { ModelManager } from './client/ModelManager';
 
 import { openDB, deleteDB } from 'idb';
 import { IndexType } from './client/fs/IndexType';
