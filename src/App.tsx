@@ -1129,6 +1129,7 @@ function App() {
                 IndexType.SPRITES,
                 IndexType.TEXTURES
             ], true, setDownloadProgress);
+            setDownloadProgress(undefined);
 
             console.time('load xteas');
             const xteas: any[] = await fetch('/cache209/keys.json').then(resp => resp.json());

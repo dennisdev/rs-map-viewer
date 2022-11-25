@@ -65,24 +65,24 @@ export function open(files: FileList, indicesToLoad?: number[]): Promise<FileFil
     return new Promise<FileFileSystem>((resolve, reject) => {
         const filesArr: File[] = Array.from(files);
         const dataFile = filesArr.find(file => file.name.endsWith('.dat2'));
-        if (typeof(dataFile) === 'undefined') {
+        if (typeof (dataFile) === 'undefined') {
             reject("main_file_cache.dat2 file not found");
             return;
         }
         const metaFile = filesArr.find(file => file.name.endsWith('.idx255'));
-        if (typeof(metaFile) === 'undefined') {
+        if (typeof (metaFile) === 'undefined') {
             reject('main_file_cache.idx255 file not found');
             return;
         }
         const indexCount = metaFile.size / SectorCluster.SIZE;
-        const indexFiles = new Array<{id: number, file: File}>(indexCount);
+        const indexFiles = new Array<{ id: number, file: File }>(indexCount);
 
         for (let idx = 0; idx < indexCount; idx++) {
             if (indicesToLoad && indicesToLoad.indexOf(idx) < 0) {
                 continue;
             }
             const indexFile = filesArr.find(file => file.name.endsWith('.idx' + idx));
-            if (typeof(indexFile) === 'undefined') {
+            if (typeof (indexFile) === 'undefined') {
                 reject(`main_file_cache.idx${idx} file not found`);
                 return;
             }
@@ -102,31 +102,52 @@ export function open(files: FileList, indicesToLoad?: number[]): Promise<FileFil
 export type DownloadProgress = {
     total: number,
     current: number,
+    part: Uint8Array
 };
 
 type ProgressListener = (progress: DownloadProgress) => void;
 
-async function toArrayBuffer(response: Response, shared: boolean, progressListener?: ProgressListener) {
-    if (!response.body) {
-        return new ArrayBuffer(0);
-    }
-    const contentLength = Number(response.headers.get('Content-Length') || 0);
+function ReadableBufferStream(ab: ArrayBuffer): ReadableStream<Uint8Array> {
+    return new ReadableStream({
+        start(controller) {
+            controller.enqueue(new Uint8Array(ab));
+            controller.close();
+        }
+    });
+}
 
-    if (progressListener) {
-        progressListener({total: contentLength, current: 0});
+async function toBufferParts(response: Response, offset: number, progressListener?: ProgressListener): Promise<Uint8Array[]> {
+    if (!response.body) {
+        return [];
     }
+    const contentLength = offset + Number(response.headers.get('Content-Length') || 0);
+
 
     const reader = response.body.getReader();
-    const parts = [];
-    let currentLength = 0;
+    const parts: Uint8Array[] = [];
+    let currentLength = offset;
+
+    if (progressListener) {
+        progressListener({ total: contentLength, current: currentLength, part: new Uint8Array(0) });
+    }
+
     for (let res = await reader.read(); !res.done && res.value; res = await reader.read()) {
         parts.push(res.value);
         currentLength += res.value.byteLength;
         if (progressListener) {
-            progressListener({total: contentLength, current: currentLength});
+            progressListener({ total: contentLength, current: currentLength, part: res.value });
         }
     }
-    const sab = shared ? new SharedArrayBuffer(currentLength) : new ArrayBuffer(currentLength);
+    return parts;
+}
+
+function partsToBuffer(parts: Uint8Array[], shared: boolean): ArrayBuffer {
+    let totalLength = 0;
+    for (const part of parts) {
+        totalLength += part.byteLength;
+    }
+
+    const sab = shared ? new SharedArrayBuffer(totalLength) : new ArrayBuffer(totalLength);
     const u8 = new Uint8Array(sab);
     let offset = 0;
     for (const buffer of parts) {
@@ -141,28 +162,113 @@ type CacheIndexFile = {
     data: ArrayBuffer
 }
 
-async function fetchCacheFile(input: RequestInfo): Promise<Response> {
-    const cache = await caches.open('cache-files');
-    let resp = await cache.match(input);
-    if (resp) {
-        return resp;
+async function fetchCacheFile(cache: Cache, input: RequestInfo, shared: boolean, incremental: boolean, progressListener?: ProgressListener): Promise<ArrayBuffer> {
+    const cachedResp = await cache.match(input);
+    if (cachedResp) {
+        const parts = await toBufferParts(cachedResp, 0, progressListener);
+        return partsToBuffer(parts, shared);
     }
-    resp = await fetch(input);
-    cache.put(input, resp.clone());
-    return resp;
+    const partUrls: RequestInfo[] = [];
+    const partBuffers: Uint8Array[][] = [];
+    if (incremental) {
+        const partResponses = await cache.matchAll(input + '/part/', { ignoreSearch: true });
+        for (const partResp of partResponses) {
+            const index = parseInt(partResp.headers.get('Cache-Part') || '0');
+            partUrls.push(input + '/part/?p=' + index);
+            partBuffers[index] = await toBufferParts(partResp, 0);
+        }
+    }
+
+    const parts: Uint8Array[] = [];
+    let partCount = 0;
+    let offset = 0;
+    for (let i = 0; i < partBuffers.length; i++) {
+        const partBuffer = partBuffers[i];
+        if (!partBuffer) {
+            break;
+        }
+        partCount++;
+        for (const part of partBuffer) {
+            parts.push(part);
+            offset += part.byteLength;
+        }
+    }
+
+    const contentRange = `bytes=${offset}-${Number.MAX_SAFE_INTEGER}/*`;
+
+    const resp = await fetch(input, {
+        headers: {
+            'Range': contentRange
+        }
+    });
+    const cacheUpdates: Promise<void>[] = [];
+    let partCache: Uint8Array[] = [];
+    let partCacheLength = 0;
+    const partProgressListener = (progress: DownloadProgress) => {
+        if (incremental && progress.part.byteLength > 0) {
+            partCache.push(progress.part);
+            partCacheLength += progress.part.byteLength;
+
+            // cache every 1MB
+            if (partCacheLength > 1000 * 1024) {
+                const partUrl = input + '/part/?p=' + partCount;
+                partUrls.push(partUrl);
+                const partResp = new Response(ReadableBufferStream(partsToBuffer(partCache, false)), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'Content-Length': partCacheLength.toString(),
+                        'Cache-Part': partCount.toString()
+                    }
+                });
+                Object.defineProperty(partResp, 'url', { value: partUrl });
+                const update = cache.put(partUrl, partResp);
+                cacheUpdates.push(update);
+                partCount++;
+
+                partCache = [];
+                partCacheLength = 0;
+            }
+
+        }
+        if (progressListener) {
+            progressListener(progress);
+        }
+    };
+    const newParts = await toBufferParts(resp, offset, partProgressListener);
+    parts.push(...newParts);
+
+    const buffer = partsToBuffer(parts, shared);
+
+    cache.put(input, new Response(ReadableBufferStream(buffer), {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': buffer.byteLength.toString()
+        }
+    }));
+
+    if (incremental) {
+        await Promise.all(cacheUpdates);
+        for (const url of partUrls) {
+            cache.delete(url);
+        }
+    }
+
+    return buffer;
 }
 
-async function fetchCacheIndex(baseUrl: string, id: IndexType, shared: boolean): Promise<CacheIndexFile> {
-    const resp = await fetchCacheFile(baseUrl + 'main_file_cache.idx' + id);
-    const data = await toArrayBuffer(resp, shared);
-    return {id, data};
+async function fetchCacheIndex(cache: Cache, baseUrl: string, id: IndexType, shared: boolean, incremental: boolean): Promise<CacheIndexFile> {
+    const data = await fetchCacheFile(cache, baseUrl + 'main_file_cache.idx' + id, shared, incremental);
+    return { id, data };
 }
 
 export async function fetchMemoryStore(baseUrl: string, indicesToLoad: IndexType[] = [], shared: boolean = false, progressListener?: ProgressListener): Promise<MemoryStore> {
     console.time('fetch');
+    const cache = await caches.open('cache-files');
     const [dataFile, metaFile] = await Promise.all([
-        fetchCacheFile(baseUrl + 'main_file_cache.dat2').then(resp => toArrayBuffer(resp, shared, progressListener)),
-        fetchCacheFile(baseUrl + 'main_file_cache.idx255').then(resp => toArrayBuffer(resp, shared))
+        fetchCacheFile(cache, baseUrl + 'main_file_cache.dat2', shared, true, progressListener),
+        fetchCacheFile(cache, baseUrl + 'main_file_cache.idx255', shared, false)
     ]);
 
     const indexCount = metaFile.byteLength / SectorCluster.SIZE;
@@ -172,7 +278,7 @@ export async function fetchMemoryStore(baseUrl: string, indicesToLoad: IndexType
         indicesToLoad = allIndexIds;
     }
 
-    const indexFilePromises = indicesToLoad.map(id => fetchCacheIndex(baseUrl, id, shared));
+    const indexFilePromises = indicesToLoad.map(id => fetchCacheIndex(cache, baseUrl, id, shared, false));
 
     const indexFiles = await Promise.all(indexFilePromises);
     console.timeEnd('fetch');
