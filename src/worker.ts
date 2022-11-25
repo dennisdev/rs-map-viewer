@@ -59,12 +59,12 @@ expose({
         chunkDataLoader = new ChunkDataLoader(regionLoader, objectModelLoader, textureProvider);
         console.log('init worker', fileSystem);
     },
-    load(regionX: number, regionY: number) {
+    load(regionX: number, regionY: number, minimizeDrawCalls: boolean) {
         if (!chunkDataLoader) {
             throw new Error('ChunkLoaderWorker not initialized');
         }
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = chunkDataLoader.load(regionX, regionY);
+        const chunkData = chunkDataLoader.load(regionX, regionY, minimizeDrawCalls);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
         console.log('model caches: ', chunkDataLoader.objectModelLoader.modelDataCache.size, chunkDataLoader.objectModelLoader.modelCache.size)
 

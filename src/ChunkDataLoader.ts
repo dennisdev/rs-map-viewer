@@ -460,7 +460,7 @@ class ModelDataBuffer {
     }
 }
 
-function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffer): Map<bigint, InstancedModel> {
+function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffer, minimizeDrawCalls: boolean): Map<bigint, InstancedModel> {
     const groupedModels: Map<bigint, InstancedModel> = new Map();
 
     const modelHashMap: Map<Model, bigint> = new Map();
@@ -472,7 +472,7 @@ function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffe
             continue;
         }
 
-        let hash = modelHashMap.get(model);
+        let hash = minimizeDrawCalls ? BigInt(Math.random() * 0x7FFFFFFF | 0) : modelHashMap.get(model);
         if (!hash) {
             const textureIds = (model.faceTextures && new Int32Array(model.faceTextures)) || new Int32Array(0);
 
@@ -495,7 +495,6 @@ function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffe
 
             modelHashMap.set(model, hash);
         }
-        // hash = BigInt(Math.random() * 2147000000 | 0);
 
         const groupedModel = groupedModels.get(hash);
         if (groupedModel) {
@@ -634,7 +633,7 @@ export class ChunkDataLoader {
         this.modelDataBuf = new ModelDataBuffer(5000);
     }
 
-    load(regionX: number, regionY: number): ChunkData | undefined {
+    load(regionX: number, regionY: number, minimizeDrawCalls: boolean = false): ChunkData | undefined {
         const baseX = regionX * 64;
         const baseY = regionY * 64;
 
@@ -813,7 +812,7 @@ export class ChunkDataLoader {
 
             console.time('models phase 1');
 
-            const groupedModels = getGroupedModels(models, this.modelDataBuf);
+            const groupedModels = getGroupedModels(models, this.modelDataBuf, minimizeDrawCalls);
 
             console.timeEnd('models phase 1');
 

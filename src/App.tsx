@@ -171,51 +171,7 @@ float when_neq(float x, float y) {
 }
 `.trim();
 
-const vertexShader2 = `
-#version 300 es
-#extension GL_ANGLE_multi_draw : require
-
-#define TEXTURE_ANIM_UNIT (1.0f / 128.0f)
-
-precision highp float;
-
-layout(std140, column_major) uniform;
-
-layout(location = 0) in int a_v0;
-layout(location = 1) in int a_v1;
-layout(location = 2) in int a_v2;
-
-uniform TextureUniforms {
-    vec2 textureAnimations[128];
-};
-
-uniform SceneUniforms {
-    mat4 u_viewProjMatrix;
-};
-
-uniform mat4 u_modelMatrix;
-uniform float u_currentTime;
-uniform float u_timeLoaded;
-uniform float u_deltaTime;
-
-uniform highp usampler2D u_modelDataTexture;
-uniform mediump sampler2DArray u_heightMap;
-
-out vec4 v_color;
-out vec2 v_texCoord;
-flat out uint v_texId;
-flat out float v_loadAlpha;
-
-${glslHslToRgbFunction}
-
-${glslLogicFunctions}
-
-float getHeightInterp(vec2 pos, uint plane) {
-    vec2 uv = (pos + vec2(0.5)) / vec2(72.0);
-
-    return texture(u_heightMap, vec3(uv, plane)).r * 8.0;
-}
-
+const glslUnpackFloatFunctions = `
 float unpackFloat16(int v) {
     int exponent = v >> 10;
     float mantissa = float(v & 0x3FF) / 1024.0;
@@ -241,10 +197,63 @@ float unpackFloat6(uint v) {
 float unpackFloat6(int v) {
     return float(v) / 63.0;
 }
+`.trim();
+
+function getVertexShader(hasMultiDraw: boolean): string {
+    const defineDrawId = hasMultiDraw ? 'gl_DrawID' : 'u_drawId';
+    return `
+#version 300 es
+${hasMultiDraw ? '#extension GL_ANGLE_multi_draw : require' : ''}
+
+#define DRAW_ID ${defineDrawId}
+#define TEXTURE_ANIM_UNIT (1.0f / 128.0f)
+
+precision highp float;
+
+layout(std140, column_major) uniform;
+
+layout(location = 0) in int a_v0;
+layout(location = 1) in int a_v1;
+layout(location = 2) in int a_v2;
+
+uniform TextureUniforms {
+    vec2 textureAnimations[128];
+};
+
+uniform SceneUniforms {
+    mat4 u_viewProjMatrix;
+};
+
+${hasMultiDraw ? '' : 'uniform int u_drawId;'}
+
+uniform mat4 u_modelMatrix;
+uniform float u_currentTime;
+uniform float u_timeLoaded;
+uniform float u_deltaTime;
+
+uniform highp usampler2D u_modelDataTexture;
+uniform mediump sampler2DArray u_heightMap;
+
+out vec4 v_color;
+out vec2 v_texCoord;
+flat out uint v_texId;
+flat out float v_loadAlpha;
+
+${glslHslToRgbFunction}
+
+${glslLogicFunctions}
+
+float getHeightInterp(vec2 pos, uint plane) {
+    vec2 uv = (pos + vec2(0.5)) / vec2(72.0);
+
+    return texture(u_heightMap, vec3(uv, plane)).r * 8.0;
+}
 
 ivec2 getDataTexCoordFromIndex(int index) {
     return ivec2(index % 16, index / 16);
 }
+
+${glslUnpackFloatFunctions}
 
 struct VertexData {
     vec3 pos;
@@ -275,7 +284,7 @@ VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
 }
 
 void main() {
-    uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(gl_DrawID), 0).gr;
+    uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
     VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, 0.9);
@@ -307,6 +316,7 @@ void main() {
     gl_Position.z -= (float(vertex.priority) + float(priority) + float(plane)) * 0.0001;  
 }
 `.trim();
+}
 
 const fragmentShader2 = `
 #version 300 es
@@ -652,7 +662,7 @@ class MapViewer {
 
         this.timer = app.createTimer();
 
-        app.createPrograms([vertexShader2, fragmentShader2]).then(([program]) => {
+        app.createPrograms([getVertexShader(PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED), fragmentShader2]).then(([program]) => {
             this.program = program;
         });
 
@@ -1025,7 +1035,17 @@ class MapViewer {
             drawCall.uniform('u_timeLoaded', terrain.timeLoaded);
             drawCall.uniform('u_deltaTime', deltaTime);
 
-            drawCall.draw();
+            if (PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED) {
+                drawCall.draw();
+            } else {
+                const drawRanges = regionDist >= 3 ? terrain.drawRangesLowDetail : terrain.drawRanges;
+
+                for (let i = 0; i < drawRanges.length; i++) {
+                    drawCall.uniform('u_drawId', i);
+                    drawCall.drawRanges(drawRanges[i]);
+                    drawCall.draw();
+                }
+            }
         }
 
         for (const regionPos of this.regionPositions) {
@@ -1034,7 +1054,7 @@ class MapViewer {
                 && !this.chunks.has(regionId) && this.isVisible(regionPos)) {
                 this.loadingRegionIds.add(regionId);
 
-                this.chunkLoaderWorker.pool.queue(worker => worker.load(regionPos[0], regionPos[1])).then(chunkData => {
+                this.chunkLoaderWorker.pool.queue(worker => worker.load(regionPos[0], regionPos[1], !PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED)).then(chunkData => {
                     if (chunkData) {
                         this.chunksToLoad.push(chunkData);
                     } else {
@@ -1069,7 +1089,7 @@ class MapViewer {
 type ChunkLoaderWorker = {
     init(memoryStore: TransferDescriptor<MemoryStore>, xteasMap: Map<number, number[]>): void,
 
-    load(regionX: number, regionY: number): ChunkData | undefined,
+    load(regionX: number, regionY: number, minimizeDrawCalls: boolean): ChunkData | undefined,
 };
 
 function formatBytes(bytes: number, decimals: number = 2): string {
