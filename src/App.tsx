@@ -20,6 +20,7 @@ import { IndexModelLoader } from './client/fs/loader/ModelLoader';
 import Denque from 'denque';
 import { ObjectModelLoader } from './client/scene/Scene';
 import { OsrsLoadingBar } from './OsrsLoadingBar';
+import { Hasher } from './client/util/Hasher';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -976,7 +977,7 @@ class MapViewer {
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 10;
+            const regionViewDistance = 1;
 
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
@@ -1105,6 +1106,8 @@ function formatBytes(bytes: number, decimals: number = 2): string {
 
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
+
+Hasher.init();
 
 function App() {
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | undefined>(undefined);

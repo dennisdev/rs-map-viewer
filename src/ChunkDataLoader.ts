@@ -76,7 +76,7 @@ class VertexBuffer {
 
     vertexOffset: number;
 
-    vertexIndices: Map<bigint, number> = new Map();
+    vertexIndices: Map<number, number> = new Map();
 
     constructor(vertexCount: number, vertexOffset: number = 0) {
         this.view = new DataView(new ArrayBuffer(vertexCount * VertexBuffer.VERTEX_STRIDE));
@@ -117,7 +117,9 @@ class VertexBuffer {
         this.view.setInt32(vertexBufIndex + 8, v2, true);
 
         if (reuseVertex) {
-            const hash = Hasher.hash(this.byteArray.subarray(vertexBufIndex, vertexBufIndex + VertexBuffer.VERTEX_STRIDE));
+            const hash = v0 * v1 * v2;
+            // const hash = BigInt(v0) << 64n | BigInt(v1) << 32n | BigInt(v2);
+            // const hash = Hasher.hash(this.byteArray.subarray(vertexBufIndex, vertexBufIndex + VertexBuffer.VERTEX_STRIDE));
             const cachedIndex = this.vertexIndices.get(hash);
             if (cachedIndex !== undefined) {
                 return cachedIndex;
@@ -285,17 +287,18 @@ function getModelFaces(model: Model, textureProvider: TextureLoader): ModelFace[
     return faces;
 }
 
-function addModelGroup(modelGroup: ModelGroup, vertexBuf: VertexBuffer, indices: number[], drawCommands: DrawCommand[], drawCommandsLowDetail: DrawCommand[]) {
+function addModelGroup(modelGroup: ModelGroup, vertexBuf: VertexBuffer, indices: number[], drawCommands: DrawCommand[], drawCommandsLowDetail: DrawCommand[], 
+    reuseVertices: boolean) {
     const indexOffset = indices.length * 4;
 
     if (modelGroup.mergeData) {
         for (const { faces, data } of modelGroup.models) {
-            addModel(vertexBuf, indices, data.model, faces, data, true, true);
+            addModel(vertexBuf, indices, data.model, faces, data, true, reuseVertices);
         }
     } else {
         // Only 1 model required
         for (const { faces, data } of modelGroup.models) {
-            addModel(vertexBuf, indices, data.model, faces, undefined, false, true);
+            addModel(vertexBuf, indices, data.model, faces, undefined, false, reuseVertices);
             break;
         }
     }
@@ -822,7 +825,7 @@ export class ChunkDataLoader {
 
             console.time('create model groups models');
             for (const modelGroup of modelGroups) {
-                addModelGroup(modelGroup, vertexBuf, indices, drawCommands, drawCommandsLowDetail);
+                addModelGroup(modelGroup, vertexBuf, indices, drawCommands, drawCommandsLowDetail, true);
             }
             console.timeEnd('create model groups models');
         }
