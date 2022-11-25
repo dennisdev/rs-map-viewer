@@ -10,14 +10,25 @@ export class Hasher {
         return promise;
     }
 
-    static hash(data: Uint8Array): bigint {
+    static hash32(data: Uint8Array): number {
+        if (Hasher.hashApi) {
+            return Hasher.hashApi.h32Raw(data);
+        }
+        return Hasher.hash32js(data);
+    }
+
+    static hash32js(data: Uint8Array): number {
+        return xxHash32(data);
+    }
+
+    static hash64(data: Uint8Array): bigint {
         if (Hasher.hashApi) {
             return Hasher.hashApi.h64Raw(data);
         }
-        return Hasher.hashJs(data);
+        return Hasher.hash64js(data);
     }
 
-    static hashJs(data: Uint8Array): bigint {
+    static hash64js(data: Uint8Array): bigint {
         const v0 = xxHash32(data, Math.random() * 0xFFFFFF);
         const v1 = xxHash32(data, Math.random() * 0xFFFFFF);
         return BigInt(v0) << 32n | BigInt(v1);

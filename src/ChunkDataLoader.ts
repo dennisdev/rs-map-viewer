@@ -112,10 +112,6 @@ class VertexBuffer {
 
         const v2 = ((z + 0x4000) << 17) | ((-y + 0x400) << 3) | (priority >> 1);
 
-        this.view.setInt32(vertexBufIndex, v0, true);
-        this.view.setInt32(vertexBufIndex + 4, v1, true);
-        this.view.setInt32(vertexBufIndex + 8, v2, true);
-
         if (reuseVertex) {
             const hash = v0 * v1 * v2;
             // const hash = BigInt(v0) << 64n | BigInt(v1) << 32n | BigInt(v2);
@@ -127,6 +123,10 @@ class VertexBuffer {
                 this.vertexIndices.set(hash, this.vertexOffset);
             }
         }
+
+        this.view.setInt32(vertexBufIndex, v0, true);
+        this.view.setInt32(vertexBufIndex + 4, v1, true);
+        this.view.setInt32(vertexBufIndex + 8, v2, true);
 
         return this.vertexOffset++;
     }
@@ -287,7 +287,7 @@ function getModelFaces(model: Model, textureProvider: TextureLoader): ModelFace[
     return faces;
 }
 
-function addModelGroup(modelGroup: ModelGroup, vertexBuf: VertexBuffer, indices: number[], drawCommands: DrawCommand[], drawCommandsLowDetail: DrawCommand[], 
+function addModelGroup(modelGroup: ModelGroup, vertexBuf: VertexBuffer, indices: number[], drawCommands: DrawCommand[], drawCommandsLowDetail: DrawCommand[],
     reuseVertices: boolean) {
     const indexOffset = indices.length * 4;
 
@@ -452,21 +452,25 @@ function createModelTextureData(drawCommands: DrawCommand[]): Int32Array {
 class ModelDataBuffer {
     data: Int32Array;
 
+    bytes: Uint8Array;
+
     constructor(size: number) {
         this.data = new Int32Array(size);
+        this.bytes = new Uint8Array(this.data.buffer);
     }
 
     ensureSize(size: number) {
         if (size > this.data.length) {
             this.data = new Int32Array(size * 2);
+            this.bytes = new Uint8Array(this.data.buffer);
         }
     }
 }
 
-function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffer, minimizeDrawCalls: boolean): Map<bigint, InstancedModel> {
-    const groupedModels: Map<bigint, InstancedModel> = new Map();
+function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffer, minimizeDrawCalls: boolean): Map<number, InstancedModel> {
+    const groupedModels: Map<number, InstancedModel> = new Map();
 
-    const modelHashMap: Map<Model, bigint> = new Map();
+    const modelHashMap: Map<Model, number> = new Map();
 
     for (const instancedModel of models) {
         const model = instancedModel.model;
@@ -475,7 +479,7 @@ function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffe
             continue;
         }
 
-        let hash = minimizeDrawCalls ? BigInt(Math.random() * 0x7FFFFFFF | 0) : modelHashMap.get(model);
+        let hash = minimizeDrawCalls ? (Math.random() * 0x7FFFFFFF | 0) : modelHashMap.get(model);
         if (!hash) {
             const textureIds = (model.faceTextures && new Int32Array(model.faceTextures)) || new Int32Array(0);
 
@@ -493,8 +497,8 @@ function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffe
                 modelDataOffset += data.length;
             }
 
-            const hashData = new Uint8Array(modelDataBuf.data.buffer).subarray(0, modelDataOffset * 4);
-            hash = Hasher.hash(hashData);
+            const hashData = modelDataBuf.bytes.subarray(0, modelDataOffset * 4);
+            hash = Hasher.hash32(hashData);
 
             modelHashMap.set(model, hash);
         }
@@ -510,7 +514,7 @@ function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffe
     return groupedModels;
 }
 
-function getModelGroups(groupedModels: Map<bigint, InstancedModel>, textureProvider: TextureLoader): ModelGroup[] {
+function getModelGroups(groupedModels: Map<number, InstancedModel>, textureProvider: TextureLoader): ModelGroup[] {
     const modelGroups: ModelGroup[] = [];
 
     const modelGroupsLowDetail: ModelGroup[] = [];
@@ -613,10 +617,10 @@ function getModelGroups(groupedModels: Map<bigint, InstancedModel>, textureProvi
 
     modelGroups.push(...modelGroupsLowDetail);
     modelGroups.push(...modelGroupPlanesLowDetail);
-    
+
     modelGroups.push(...modelGroupsLowDetailAlpha);
     modelGroups.push(...modelGroupPlanesLowDetailAlpha);
-    
+
     return modelGroups;
 }
 
