@@ -302,7 +302,9 @@ void main() {
     localPos.y -= getHeightInterp(interpPos, plane) * when_neq(contourGround, 2.0) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
-    gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(vertex.priority) * 0.0001;    
+    // gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(vertex.priority) * 0.0001;
+    // TODO: Subtract z before projection
+    gl_Position.z -= (float(vertex.priority) + float(priority) + float(plane)) * 0.0001;  
 }
 `.trim();
 
@@ -964,7 +966,7 @@ class MapViewer {
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 1;
+            const regionViewDistance = 10;
 
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
