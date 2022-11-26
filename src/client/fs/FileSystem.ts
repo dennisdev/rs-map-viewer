@@ -194,14 +194,16 @@ async function fetchCacheFile(cache: Cache, input: RequestInfo, shared: boolean,
         }
     }
 
-    const contentRange = `bytes=${offset}-${Number.MAX_SAFE_INTEGER}`;
+    const headers: HeadersInit = {};
+
+    if (offset > 0) {
+        headers['Range'] = `bytes=${offset}-${Number.MAX_SAFE_INTEGER}`;
+    }
 
     const resp = await fetch(input, {
-        headers: {
-            'Range': contentRange
-        }
+        headers
     });
-    if (resp.status !== 200) {
+    if (resp.status !== 200 && resp.status !== 206) {
         throw new Error('Failed downloading ' + input + ', ' + resp.status);
     }
     const cacheUpdates: Promise<void>[] = [];
