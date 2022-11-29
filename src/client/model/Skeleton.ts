@@ -31,6 +31,7 @@ export class Skeleton {
         }
 
         if (buf.remaining > 0) {
+            // new animation system
             // console.log('skeleton: ', id, 'has new anim')
         }
     }

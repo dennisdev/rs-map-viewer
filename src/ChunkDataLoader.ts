@@ -98,8 +98,6 @@ class VertexBuffer {
 
     addVertex(x: number, y: number, z: number, rgb: number, hsl: number, alpha: number, u: number, v: number, textureId: number, priority: number,
         reuseVertex: boolean = true) {
-        this.ensureSize(1);
-        const vertexBufIndex = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
         if (textureId !== -1) {
             // only light
@@ -123,6 +121,8 @@ class VertexBuffer {
                 this.vertexIndices.set(hash, this.vertexOffset);
             }
         }
+        this.ensureSize(1);
+        const vertexBufIndex = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
 
         this.view.setInt32(vertexBufIndex, v0, true);
         this.view.setInt32(vertexBufIndex + 4, v1, true);

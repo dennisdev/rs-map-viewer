@@ -523,7 +523,7 @@ class MapViewer {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 40, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -977,7 +977,7 @@ class MapViewer {
         }
 
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 7;
+            const regionViewDistance = 1;
 
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
