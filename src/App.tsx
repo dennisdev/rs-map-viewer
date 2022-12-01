@@ -558,7 +558,7 @@ class MapViewer {
     startPitch: number = -1;
     startYaw: number = -1;
 
-    chunkDataLoader: ChunkDataLoader;
+    chunkDataLoader?: ChunkDataLoader;
 
     lastCameraX: number = -1;
     lastCameraY: number = -1;
@@ -581,22 +581,22 @@ class MapViewer {
         const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
         const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
         const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
-        const modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
+        // const modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
 
-        const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
-        const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
-        const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
-        const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
+        // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
+        // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
+        // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+        // const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
 
         // console.time('region loader');
-        const underlayLoader = new CachedUnderlayLoader(underlayArchive);
-        const overlayLoader = new CachedOverlayLoader(overlayArchive);
-        const objectLoader = new CachedObjectLoader(objectArchive);
-        const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
+        // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
+        // const overlayLoader = new CachedOverlayLoader(overlayArchive);
+        // const objectLoader = new CachedObjectLoader(objectArchive);
+        // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
 
-        const animationLoader = new CachedAnimationLoader(animationArchive);
+        // const animationLoader = new CachedAnimationLoader(animationArchive);
 
-        const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
+        // const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
 
         const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
         const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
@@ -650,7 +650,7 @@ class MapViewer {
 
         // console.log('texture count: ', this.textureProvider.definitions.size);
 
-        this.chunkDataLoader = new ChunkDataLoader(regionLoader, objectModelLoader, this.textureProvider);
+        // this.chunkDataLoader = new ChunkDataLoader(regionLoader, objectModelLoader, this.textureProvider);
 
         this.init = this.init.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -969,7 +969,7 @@ class MapViewer {
             this.app.disable(PicoGL.RASTERIZER_DISCARD);
         }
 
-        if (this.keys.get('p')) {
+        if (this.keys.get('p') && this.chunkDataLoader) {
             for (let i = 0; i < 20; i++) {
                 this.chunkDataLoader.load(50, 50);
 
@@ -990,6 +990,8 @@ class MapViewer {
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
         mat4.identity(this.viewMatrix);
+        // const scale = 2;
+        // mat4.scale(this.viewMatrix, this.viewMatrix, [scale, scale, 1]);
         // mat4.lookAt(this.viewMatrix, vec3.fromValues(1, 1, 0), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
         if (this.pitch !== 0) {
             mat4.rotateX(this.viewMatrix, this.viewMatrix, this.pitch * RS_TO_RADIANS);

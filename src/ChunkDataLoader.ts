@@ -669,14 +669,32 @@ export class ChunkDataLoader {
         const blendedColors = this.regionLoader.getBlendedUnderlayColors(regionX, regionY);
         // console.timeEnd(`blend region ${regionX}_${regionY}`);
 
-        // console.time(`light region ${regionX}_${regionY}`);
-        const lightLevels = this.regionLoader.getLightLevels(regionX, regionY);
-        // console.timeEnd(`light region ${regionX}_${regionY}`);
 
         // const underlayIdSet: Set<number> = new Set();
         // const overlayIdSet: Set<number> = new Set();
         // const heightSet: Set<number> = new Set();
         // const lightSet: Set<number> = new Set();
+
+        console.time('read landscape data');
+        const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
+        console.timeEnd('read landscape data');
+
+        let scene: Scene2 | undefined = undefined;
+        
+        if (landscapeData) {
+            console.time('load heightmap');
+            const heightMap = this.loadHeightMap(regionX, regionY, 72);
+            console.timeEnd('load heightmap');
+
+            console.time('load landscape');
+            scene = new Scene2(regionX, regionY, 4, 64, 64, heightMap);
+            scene.decodeLandscape(this.regionLoader, this.objectModelLoader, landscapeData);
+            console.timeEnd('load landscape');
+        }
+
+        // console.time(`light region ${regionX}_${regionY}`);
+        const lightLevels = this.regionLoader.getLightLevels(regionX, regionY);
+        // console.timeEnd(`light region ${regionX}_${regionY}`);
 
         console.time('terrain');
 
@@ -782,10 +800,6 @@ export class ChunkDataLoader {
 
         terrainVertexCount = vertexBuf.vertexOffset;
 
-        console.time('read landscape data');
-        const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
-        console.timeEnd('read landscape data');
-
         // check if is empty water region
         // if (overlayIdSet.size == 2 && overlayIdSet.has(5) 
         //         && heightSet.size === 1 && heightSet.has(0)
@@ -795,16 +809,7 @@ export class ChunkDataLoader {
         //     return undefined;
         // }
 
-        if (landscapeData) {
-            console.time('load heightmap');
-            const heightMap = this.loadHeightMap(regionX, regionY, 72);
-            console.timeEnd('load heightmap');
-
-            console.time('load landscape');
-            const scene = new Scene2(4, 64, 64, heightMap);
-            scene.decodeLandscape(this.regionLoader, this.objectModelLoader, landscapeData);
-            console.timeEnd('load landscape');
-
+        if (scene) {
             console.time('light scene');
             scene.applyLighting(-50, -10, -50);
             console.timeEnd('light scene');

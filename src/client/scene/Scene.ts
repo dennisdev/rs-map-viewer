@@ -326,7 +326,7 @@ export class ObjectModelLoader {
         return copy;
     }
 
-    getObjectModel(def: ObjectDefinition, type: number, rotation: number, heightMap: Int32Array[], 
+    getObjectModel(def: ObjectDefinition, type: number, rotation: number, heightMap: Int32Array[],
         sceneX: number, sceneHeight: number, sceneY: number): Model | ModelData | undefined {
         let key: number;
         if (def.objectTypes) {
@@ -358,7 +358,7 @@ export class ObjectModelLoader {
         if (def.mergeNormals) {
             model = (model as ModelData).copy();
         }
-        
+
         if (def.contouredGround >= 0) {
             if (model instanceof Model) {
                 model = (model as Model).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
@@ -378,6 +378,10 @@ export class Scene2 {
     private static readonly diagonalDisplacementX: number[] = [1, -1, -1, 1];
     private static readonly diagonalDisplacementY: number[] = [-1, -1, 1, 1];
 
+    regionX: number;
+
+    regionY: number;
+
     planes: number;
 
     sizeX: number;
@@ -390,7 +394,9 @@ export class Scene2 {
 
     objectLightOcclusionMap: Uint8Array[][];
 
-    constructor(planes: number, sizeX: number, sizeY: number, tileHeights: Int32Array[][]) {
+    constructor(regionX: number, regionY: number, planes: number, sizeX: number, sizeY: number, tileHeights: Int32Array[][]) {
+        this.regionX = regionX;
+        this.regionY = regionY;
         this.planes = planes;
         this.sizeX = sizeX;
         this.sizeY = sizeY;
@@ -415,7 +421,7 @@ export class Scene2 {
         }
     }
 
-    newFloorDecoration(plane: number, tileX: number, tileY: number, sceneHeight: number, model: Model | ModelData | undefined, tag: bigint, 
+    newFloorDecoration(plane: number, tileX: number, tileY: number, sceneHeight: number, model: Model | ModelData | undefined, tag: bigint,
         type: number, def: ObjectDefinition) {
         if (model) {
             const sceneX = tileX * 128 + 64;
@@ -429,7 +435,7 @@ export class Scene2 {
         }
     }
 
-    newWall(plane: number, tileX: number, tileY: number, sceneHeight: number, model0: Model | ModelData | undefined, model1: Model | ModelData | undefined, tag: bigint, 
+    newWall(plane: number, tileX: number, tileY: number, sceneHeight: number, model0: Model | ModelData | undefined, model1: Model | ModelData | undefined, tag: bigint,
         type: number, def: ObjectDefinition) {
         if (model0 || model1) {
             const sceneX = tileX * 128 + 64;
@@ -457,7 +463,7 @@ export class Scene2 {
         }
     }
 
-    newGameObject(plane: number, tileX: number, tileY: number, sceneHeight: number, sizeX: number, sizeY: number, model: Model | ModelData | undefined, tag: bigint, 
+    newGameObject(plane: number, tileX: number, tileY: number, sceneHeight: number, sizeX: number, sizeY: number, model: Model | ModelData | undefined, tag: bigint,
         type: number, def: ObjectDefinition): boolean {
         if (!model) {
             return true;
@@ -476,7 +482,7 @@ export class Scene2 {
             for (let y = tileY; y < tileY + sizeY; y++) {
                 if (x < 0 || y < 0 || x >= this.sizeX || y >= this.sizeY) {
                     return false;
-                 }
+                }
 
                 this.ensureTileExists(0, plane, x, y);
 
@@ -509,6 +515,9 @@ export class Scene2 {
             defTransform = regionLoader.getObjectDef(def.transforms[0]);
         }
 
+        const baseX = this.regionX * 64;
+        const baseY = this.regionY * 64;
+
         // if (def.animationId === -1) {
         //     return;
         // }
@@ -518,28 +527,28 @@ export class Scene2 {
         if (rotation == 1 || rotation == 3) {
             sizeX = def.sizeY;
             sizeY = def.sizeX;
-        }         
+        }
 
         const heightMapSize = this.tileHeights[0].length;
 
         let startX: number;
         let endX: number;
         if (sizeX + tileX < heightMapSize) {
-           startX = (sizeX >> 1) + tileX;
-           endX = (sizeX + 1 >> 1) + tileX;
+            startX = (sizeX >> 1) + tileX;
+            endX = (sizeX + 1 >> 1) + tileX;
         } else {
-           startX = tileX;
-           endX = tileX + 1;
+            startX = tileX;
+            endX = tileX + 1;
         }
 
         let startY: number;
         let endY: number;
         if (sizeY + tileY < heightMapSize) {
-           startY = (sizeY >> 1) + tileY;
-           endY = tileY + (sizeY + 1 >> 1);
+            startY = (sizeY >> 1) + tileY;
+            endY = tileY + (sizeY + 1 >> 1);
         } else {
-           startY = tileY;
-           endY = tileY + 1;
+            startY = tileY;
+            endY = tileY + 1;
         }
 
         const heightMap = this.tileHeights[plane];
@@ -567,6 +576,28 @@ export class Scene2 {
 
                 this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
 
+                if (rotation === 0) {
+                    if (def.clipped) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
+                    }
+                } else if (rotation === 1) {
+                    if (def.clipped) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                    }
+                } else if (rotation === 2) {
+                    if (def.clipped) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                    }
+                } else if (rotation === 3) {
+                    if (def.clipped) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
+                    }
+                }
+
                 if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                     this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                 }
@@ -574,6 +605,18 @@ export class Scene2 {
                 const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+
+                if (def.clipped) {
+                    if (rotation === 0) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
+                    } else if (rotation === 1) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                    } else if (rotation === 2) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
+                    } else if (rotation === 3) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
+                    }
+                }
             } else if (type === ObjectType.WALL_CORNER) {
                 const model0 = modelLoader.getObjectModel(defTransform, type, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
                 const model1 = modelLoader.getObjectModel(defTransform, type, rotation + 1 & 3, heightMap, sceneX, centerHeight, sceneY);
@@ -587,6 +630,18 @@ export class Scene2 {
                 const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
                 this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+
+                if (def.clipped) {
+                    if (rotation === 0) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
+                    } else if (rotation === 1) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                    } else if (rotation === 2) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
+                    } else if (rotation === 3) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
+                    }
+                }
             } else if (type === ObjectType.WALL_DIAGONAL) {
                 const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
@@ -664,7 +719,11 @@ export class Scene2 {
                     }
                 }
 
-
+                for (let sx = 0; sx <= sizeX; sx++) {
+                    for (let sy = 0; sy <= sizeY; sy++) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + sx, baseY + tileY + sy, plane, lightOcclusion);
+                    }
+                }
             }
         }
     }

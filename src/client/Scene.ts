@@ -85,6 +85,8 @@ export class Scene {
 
     tileRotations: Uint8Array[][];
 
+    objectLightOcclusionMap: Uint8Array[][];
+
     constructor(revision: number, planes: number, width: number, height: number) {
         this.revision = revision;
         this.planes = planes;
@@ -97,6 +99,7 @@ export class Scene {
         this.tileOverlays = new Array(this.planes);
         this.tileShapes = new Array(this.planes);
         this.tileRotations = new Array(this.planes);
+        this.objectLightOcclusionMap = new Array(this.planes);
         for (let i = 0; i < Scene.MAX_PLANE; i++) {
             this.collisionMaps[i] = new CollisionMap(width, height);
             this.tileHeights[i] = new Array(this.width + 1).fill(0).map(() => new Int32Array(this.height + 1));
@@ -105,12 +108,14 @@ export class Scene {
             this.tileOverlays[i] = new Array(this.width);
             this.tileShapes[i] = new Array(this.width);
             this.tileRotations[i] = new Array(this.width);
+            this.objectLightOcclusionMap[i] = new Array(this.width);
             for (let x = 0; x < this.width; x++) {
                 this.tileRenderFlags[i][x] = new Uint8Array(this.height);
                 this.tileUnderlays[i][x] = new Uint16Array(this.height);
                 this.tileOverlays[i][x] = new Int16Array(this.height);
                 this.tileShapes[i][x] = new Uint8Array(this.height);
                 this.tileRotations[i][x] = new Uint8Array(this.height);
+                this.objectLightOcclusionMap[i][x] = new Uint8Array(this.height);
             }
         }
     }

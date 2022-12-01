@@ -294,6 +294,27 @@ export class RegionLoader {
         return colors[plane][x % 64][y % 64];
     }
 
+    getObjectLightOcclusion(x: number, y: number, plane: number): number {
+        const regionX = x / 64 | 0;
+        const regionY = y / 64 | 0;
+
+        const region = this.getRegion(regionX, regionY);
+        if (!region) {
+            return 0;
+        }
+        return region.objectLightOcclusionMap[plane][x % 64][y % 64];
+    }
+
+    setObjectLightOcclusion(x: number, y: number, plane: number, light: number) {
+        const regionX = x / 64 | 0;
+        const regionY = y / 64 | 0;
+
+        const region = this.getRegion(regionX, regionY);
+        if (region) {
+            region.objectLightOcclusionMap[plane][x % 64][y % 64] = light;
+        }
+    }
+
     calculateLightLevels(regionX: number, regionY: number, plane: number): Int32Array[] {
         const baseX = regionX * Scene.MAP_SIZE;
         const baseY = regionY * Scene.MAP_SIZE;
@@ -302,7 +323,6 @@ export class RegionLoader {
         for (let i = 0; i < Scene.MAP_SIZE; i++) {
             levels[i] = new Int32Array(Scene.MAP_SIZE);
         }
-
 
         // const var45: Uint8Array[] = new Array(Scene.MAP_SIZE + 2);
         // for (let x = 0; x < Scene.MAP_SIZE + 2; x++) {
@@ -322,11 +342,11 @@ export class RegionLoader {
                 const lightY = 65536 / sqrtHeightDelta | 0;
                 const lightZ = (heightDeltaY << 8) / sqrtHeightDelta | 0;
                 const ambient = ((lightZ * -50 + lightX * -50 + lightY * -10) / var10 | 0) + 96;
-                const contrast = (0 >> 2)
-                    + (0 >> 2)
-                    + (0 >> 3)
-                    + (0 >> 3)
-                    + (0 >> 1);
+                const contrast = (this.getObjectLightOcclusion(x - 1, y, plane) >> 2)
+                    + (this.getObjectLightOcclusion(x, y - 1, plane) >> 2)
+                    + (this.getObjectLightOcclusion(x + 1, y, plane) >> 3)
+                    + (this.getObjectLightOcclusion(x, y + 1, plane) >> 3)
+                    + (this.getObjectLightOcclusion(x, y, plane) >> 1);
                 levels[x - baseX][y - baseY] = ambient - contrast;
             }
         }
