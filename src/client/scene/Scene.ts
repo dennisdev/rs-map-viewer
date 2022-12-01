@@ -509,6 +509,10 @@ export class Scene2 {
             defTransform = regionLoader.getObjectDef(def.transforms[0]);
         }
 
+        // if (def.animationId === -1) {
+        //     return;
+        // }
+
         let sizeX = def.sizeX;
         let sizeY = def.sizeY;
         if (rotation == 1 || rotation == 3) {

@@ -1,5 +1,8 @@
+import { COSINE, SINE } from "../Client";
 import { TextureLoader } from "../fs/loader/TextureLoader";
 import { Renderable } from "../Renderable";
+import { AnimationFrame } from "./animation/AnimationFrame";
+import { TransformType } from "./animation/TransformType";
 
 export function computeTextureCoords(model: Model): Float32Array | undefined {
     const faceTextures = model.faceTextures;
@@ -104,6 +107,10 @@ export function computeTextureCoords(model: Model): Float32Array | undefined {
 }
 
 export class Model extends Renderable {
+    static animateOriginX: number = 0;
+    static animateOriginY: number = 0;
+    static animateOriginZ: number = 0;
+
     verticesCount: number;
 
     verticesX!: Int32Array;
@@ -190,6 +197,12 @@ export class Model extends Renderable {
         const model = new Model();
         model.merge(models, count);
         return model;
+    }
+
+    static resetAnimateOrigin() {
+        Model.animateOriginX = 0;
+        Model.animateOriginY = 0;
+        Model.animateOriginZ = 0;
     }
 
     constructor() {
@@ -451,6 +464,58 @@ export class Model extends Renderable {
         }
     }
 
+    rotate90(): void {
+        for (let i = 0; i < this.verticesCount; i++) {
+            const temp = this.verticesX[i];
+            this.verticesX[i] = this.verticesZ[i];
+            this.verticesZ[i] = -temp;
+        }
+
+        this.invalidateBounds();
+    }
+
+    rotate180(): void {
+        for (let i = 0; i < this.verticesCount; i++) {
+            this.verticesX[i] = -this.verticesX[i];
+            this.verticesZ[i] = -this.verticesZ[i];
+        }
+
+        this.invalidateBounds();
+    }
+
+    rotate270(): void {
+        for (let i = 0; i < this.verticesCount; i++) {
+            const temp = this.verticesZ[i];
+            this.verticesZ[i] = this.verticesX[i];
+            this.verticesX[i] = -temp;
+        }
+
+        this.invalidateBounds();
+    }
+
+    rotate(angle: number): void {
+        const sin = SINE[angle];
+        const cos = COSINE[angle];
+
+        for (let i = 0; i < this.verticesCount; i++) {
+            const temp = sin * this.verticesZ[i] + cos * this.verticesX[i] >> 16;
+            this.verticesZ[i] = cos * this.verticesZ[i] - sin * this.verticesX[i] >> 16;
+            this.verticesX[i] = temp;
+        }
+
+        this.invalidateBounds();
+    }
+
+    translate(x: number, y: number, z: number): void {
+        for (let i = 0; i < this.verticesCount; i++) {
+            this.verticesX[i] += x;
+            this.verticesY[i] += y;
+            this.verticesZ[i] += z;
+        }
+
+        this.invalidateBounds();
+    }
+
     hasAlpha(textureLoader: TextureLoader): boolean {
         if (this.faceAlphas) {
             return true;
@@ -469,5 +534,145 @@ export class Model extends Renderable {
     getXZRadius(): number {
         this.calculateBoundsCylinder();
         return this.xzRadius;
+    }
+
+    animate(frame: AnimationFrame | undefined) {
+        if (this.vertexLabels && frame) {
+            Model.resetAnimateOrigin();
+
+            const skeleton = frame.skeleton;
+
+            for (let i = 0; i < frame.transformCount; i++) {
+                const group = frame.transformGroups[i];
+                this.transform(skeleton.types[group], skeleton.labels[group], frame.transformX[i], frame.transformY[i], frame.transformZ[i]);
+            }
+
+            this.invalidateBounds();
+        }
+    }
+
+    transform(type: TransformType, labels: number[], tx: number, ty: number, tz: number) {
+        switch (type) {
+            case TransformType.ORIGIN:
+                Model.resetAnimateOrigin();
+
+                let groupVertexCount = 0;
+
+                for (const label of labels) {
+                    if (label < this.vertexLabels.length) {
+                        for (const v of this.vertexLabels[label]) {
+                            Model.animateOriginX += this.verticesX[v];
+                            Model.animateOriginY += this.verticesY[v];
+                            Model.animateOriginZ += this.verticesZ[v];
+                            groupVertexCount++;
+                        }
+                    }
+                }
+
+                if (groupVertexCount > 0) {
+                    Model.animateOriginX = tx + (Model.animateOriginX / groupVertexCount | 0);
+                    Model.animateOriginY = ty + (Model.animateOriginY / groupVertexCount | 0);
+                    Model.animateOriginZ = tz + (Model.animateOriginZ / groupVertexCount | 0);
+                } else {
+                    Model.animateOriginX = tx;
+                    Model.animateOriginY = ty;
+                    Model.animateOriginZ = tz;
+                }
+                break;
+            case TransformType.TRANSLATE:
+                for (const label of labels) {
+                    if (label < this.vertexLabels.length) {
+                        for (const v of this.vertexLabels[label]) {
+                            this.verticesX[v] += tx;
+                            this.verticesY[v] += ty;
+                            this.verticesZ[v] += tz;
+                        }
+                    }
+                }
+                break;
+            case TransformType.ROTATE:
+                for (const label of labels) {
+                    if (label < this.vertexLabels.length) {
+                        for (const v of this.vertexLabels[label]) {
+                            this.verticesX[v] -= Model.animateOriginX;
+                            this.verticesY[v] -= Model.animateOriginY;
+                            this.verticesZ[v] -= Model.animateOriginZ;
+
+                            const angleX = (tx & 0xFF) * 8;
+                            const angleY = (ty & 0xFF) * 8;
+                            const angleZ = (tz & 0xFF) * 8;
+
+                            // roll
+                            if (angleZ !== 0) {
+                                const sin = SINE[angleZ];
+                                const cos = COSINE[angleZ];
+                                const temp = sin * this.verticesY[v] + cos * this.verticesX[v] >> 16;
+                                this.verticesY[v] = cos * this.verticesY[v] - sin * this.verticesX[v] >> 16;
+                                this.verticesX[v] = temp;
+                            }
+
+                            // pitch
+                            if (angleX !== 0) {
+                                const sin = SINE[angleX];
+                                const cos = COSINE[angleX];
+                                const temp = cos * this.verticesY[v] - sin * this.verticesZ[v] >> 16;
+                                this.verticesZ[v] = sin * this.verticesY[v] + cos * this.verticesZ[v] >> 16;
+                                this.verticesY[v] = temp;
+                            }
+
+                            // yaw
+                            if (angleY !== 0) {
+                                const sin = SINE[angleY];
+                                const cos = COSINE[angleY];
+                                const temp = sin * this.verticesZ[v] + cos * this.verticesX[v] >> 16;
+                                this.verticesZ[v] = cos * this.verticesZ[v] - sin * this.verticesX[v] >> 16;
+                                this.verticesX[v] = temp;
+                            }
+
+                            this.verticesX[v] += Model.animateOriginX;
+                            this.verticesY[v] += Model.animateOriginY;
+                            this.verticesZ[v] += Model.animateOriginZ;
+                        }
+                    }
+                }
+                break;
+            case TransformType.SCALE:
+                for (const label of labels) {
+                    if (label < this.vertexLabels.length) {
+                        for (const v of this.vertexLabels[label]) {
+                            this.verticesX[v] -= Model.animateOriginX;
+                            this.verticesY[v] -= Model.animateOriginY;
+                            this.verticesZ[v] -= Model.animateOriginZ;
+
+                            this.verticesX[v] = (tx * this.verticesX[v] / 128) | 0;
+                            this.verticesY[v] = (ty * this.verticesY[v] / 128) | 0;
+                            this.verticesZ[v] = (tz * this.verticesZ[v] / 128) | 0;
+
+                            this.verticesX[v] += Model.animateOriginX;
+                            this.verticesY[v] += Model.animateOriginY;
+                            this.verticesZ[v] += Model.animateOriginZ;
+                        }
+                    }
+                }
+                break;
+            case TransformType.ALPHA:
+                if (this.faceLabelsAlpha && this.faceAlphas) {
+                    for (const label of labels) {
+                        if (label < this.faceLabelsAlpha.length) {
+                            for (const f of this.faceLabelsAlpha[label]) {
+                                let newAlpha = (this.faceAlphas[f] & 0xFF) + tx * 8
+                                if (newAlpha < 0) {
+                                    newAlpha = 0;
+                                } else if (newAlpha > 255) {
+                                    newAlpha = 255;
+                                }
+
+                                this.faceAlphas[f] = newAlpha;
+                            }
+                        }
+                    }
+                }
+                break;
+        }
     }
 }

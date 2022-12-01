@@ -1,11 +1,12 @@
-import { ByteBuffer } from "../util/ByteBuffer";
+import { ByteBuffer } from "../../util/ByteBuffer";
+import { TransformType } from "./TransformType";
 
 export class Skeleton {
     id: number;
 
     count: number;
 
-    types: number[];
+    types: TransformType[];
 
     labels: number[][];
 

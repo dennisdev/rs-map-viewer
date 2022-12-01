@@ -1872,9 +1872,9 @@ export class ModelData extends Renderable {
 
     rotate90(): void {
         for (let i = 0; i < this.verticesCount; i++) {
-            const var2 = this.verticesX[i];
+            const temp = this.verticesX[i];
             this.verticesX[i] = this.verticesZ[i];
-            this.verticesZ[i] = -var2;
+            this.verticesZ[i] = -temp;
         }
 
         this.invalidate();
@@ -1891,9 +1891,9 @@ export class ModelData extends Renderable {
 
     rotate270(): void {
         for (let i = 0; i < this.verticesCount; i++) {
-            const var2 = this.verticesZ[i];
+            const temp = this.verticesZ[i];
             this.verticesZ[i] = this.verticesX[i];
-            this.verticesX[i] = -var2;
+            this.verticesX[i] = -temp;
         }
 
         this.invalidate();
@@ -1904,9 +1904,9 @@ export class ModelData extends Renderable {
         const cos = COSINE[angle];
 
         for (let i = 0; i < this.verticesCount; i++) {
-            const var5 = sin * this.verticesZ[i] + cos * this.verticesX[i] >> 16;
+            const temp = sin * this.verticesZ[i] + cos * this.verticesX[i] >> 16;
             this.verticesZ[i] = cos * this.verticesZ[i] - sin * this.verticesX[i] >> 16;
-            this.verticesX[i] = var5;
+            this.verticesX[i] = temp;
         }
 
         this.invalidate();
@@ -1946,9 +1946,9 @@ export class ModelData extends Renderable {
         }
 
         for (let i = 0; i < this.faceCount; i++) {
-            const var2 = this.indices1[i];
+            const temp = this.indices1[i];
             this.indices1[i] = this.indices3[i];
-            this.indices3[i] = var2;
+            this.indices3[i] = temp;
         }
 
         this.invalidate();

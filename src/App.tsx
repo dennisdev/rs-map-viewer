@@ -11,7 +11,7 @@ import { spawn, Pool, Worker, Transfer, TransferDescriptor, ModuleThread } from 
 import { RegionLoader } from './client/RegionLoader';
 import { ChunkData, ChunkDataLoader } from './ChunkDataLoader';
 import { MemoryStore } from './client/fs/MemoryStore';
-import { Skeleton } from './client/model/Skeleton';
+import { Skeleton } from './client/model/animation/Skeleton';
 import { ConfigType } from './client/fs/ConfigType';
 import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
 import { CachedOverlayLoader } from './client/fs/loader/OverlayLoader';
@@ -21,6 +21,9 @@ import Denque from 'denque';
 import { ObjectModelLoader } from './client/scene/Scene';
 import { OsrsLoadingBar } from './OsrsLoadingBar';
 import { Hasher } from './client/util/Hasher';
+import { CachedAnimationLoader } from './client/fs/loader/AnimationLoader';
+import { CachedSkeletonLoader } from './client/fs/loader/SkeletonLoader';
+import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client/fs/loader/AnimationFrameMapLoader';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -572,6 +575,8 @@ class MapViewer {
         this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
 
+        const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
+        const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
         const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
         const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
         const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
@@ -581,6 +586,7 @@ class MapViewer {
         const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
         const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
         const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+        const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
 
         // console.time('region loader');
         const underlayLoader = new CachedUnderlayLoader(underlayArchive);
@@ -588,7 +594,42 @@ class MapViewer {
         const objectLoader = new CachedObjectLoader(objectArchive);
         const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
 
+        const animationLoader = new CachedAnimationLoader(animationArchive);
+
         const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
+
+        const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
+        const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
+
+        // const fireplaceId = 24969;
+        // const fireplaceDef = objectLoader.getDefinition(fireplaceId);
+        // const fireplaceAnim = animationLoader.getDefinition(fireplaceDef.animationId);
+        // if (fireplaceAnim.frameIds) {
+        //     for (const frame of fireplaceAnim.frameIds) {
+        //         const frameMapId = frame >> 16;
+        //         const frameId = frame & 0xFFFF;
+        //         console.log(frameMapId, frameId);
+        //     }
+        // }
+        // console.log('fireplace', fireplaceDef, fireplaceAnim);
+
+        console.time('load anim frames');
+        // for (const animId of animationArchive.fileIds) {
+        //     const anim = animationLoader.getDefinition(animId);
+        //     if (anim.frameIds) {
+        //         const mapIds: Set<number> = new Set();
+        //         for (const frame of anim.frameIds) {
+        //             const frameMapId = frame >> 16;
+        //             const frameId = frame & 0xFFFF;
+        //             const frameMap = frameMapLoader.getFrameMap(frameMapId);
+        //             mapIds.add(frameMapId);
+        //         }
+        //         if (mapIds.size > 1) {
+        //             console.log(anim.id, mapIds, anim);
+        //         }
+        //     }
+        // }
+        console.timeEnd('load anim frames');
         // console.timeEnd('region loader');
 
         // console.log(regionLoader.getTerrainArchiveId(50, 50));
