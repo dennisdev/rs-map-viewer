@@ -235,6 +235,7 @@ uniform mat4 u_modelMatrix;
 uniform float u_currentTime;
 uniform float u_timeLoaded;
 uniform float u_deltaTime;
+uniform float u_brightness;
 
 uniform highp usampler2D u_modelDataTexture;
 uniform mediump sampler2DArray u_heightMap;
@@ -292,7 +293,7 @@ void main() {
     uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
-    VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, 1.0);
+    VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, u_brightness);
     
     v_color = vertex.color;
 
@@ -337,13 +338,15 @@ in vec2 v_texCoord;
 flat in uint v_texId;
 flat in float v_loadAlpha;
 
+uniform highp float u_brightness;
+
 uniform highp sampler2DArray u_textures;
 
 out vec4 fragColor;
 
 void main() {
     vec3 color = round(v_color.rgb * COLOR_BANDING) / COLOR_BANDING;
-    fragColor = texture(u_textures, vec3(v_texCoord, v_texId)).bgra * vec4(color, v_color.a) * vec4(v_loadAlpha);
+    fragColor = pow(texture(u_textures, vec3(v_texCoord, v_texId)).bgra, vec4(vec3(u_brightness), 1.0)) * vec4(color, v_color.a) * vec4(v_loadAlpha);
     if (fragColor.a < 0.01) {
         discard;
     }
@@ -554,6 +557,8 @@ class MapViewer {
 
     viewDistanceRegionIds: Set<number>[] = [new Set(), new Set()];
 
+    brightness: number = 1.0;
+
     currentMouseX: number = 0;
     currentMouseY: number = 0;
 
@@ -717,7 +722,7 @@ class MapViewer {
         this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4]);
 
         console.time('load texture array');
-        const textureArrayImage = this.textureProvider.createTextureArrayImage(0.9, TEXTURE_SIZE, true);
+        const textureArrayImage = this.textureProvider.createTextureArrayImage(1.0, TEXTURE_SIZE, true);
         console.timeEnd('load texture array');
 
         this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
@@ -1083,6 +1088,7 @@ class MapViewer {
             drawCall.uniform('u_currentTime', time);
             drawCall.uniform('u_timeLoaded', terrain.timeLoaded);
             drawCall.uniform('u_deltaTime', deltaTime);
+            drawCall.uniform('u_brightness', this.brightness);
 
             if (PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED) {
                 drawCall.draw();
@@ -1163,11 +1169,12 @@ interface MapViewerContainerProps {
     mapViewer: MapViewer;
 }
 
-function MapViewerContainer({mapViewer}: MapViewerContainerProps) {
+function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
 
     const data = useControls({
-        "View Distance": { value: 1, min: 1, max: 30, step: 1, onChange: (v) => {mapViewer.regionViewDistance = v;} },
+        "View Distance": { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        "Brightness": { value: 0, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
     });
 
     useEffect(() => {
