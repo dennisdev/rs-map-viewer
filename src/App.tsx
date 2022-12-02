@@ -24,6 +24,7 @@ import { Hasher } from './client/util/Hasher';
 import { CachedAnimationLoader } from './client/fs/loader/AnimationLoader';
 import { CachedSkeletonLoader } from './client/fs/loader/SkeletonLoader';
 import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client/fs/loader/AnimationFrameMapLoader';
+import { useControls, Leva } from 'leva';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -291,7 +292,7 @@ void main() {
     uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
-    VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, 0.9);
+    VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, 1.0);
     
     v_color = vertex.color;
 
@@ -317,7 +318,7 @@ void main() {
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
     // gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(vertex.priority) * 0.0001;
     // TODO: Subtract z before projection
-    gl_Position.z -= (float(vertex.priority) + float(priority) + float(plane)) * 0.0001;  
+    gl_Position.z -= (float(vertex.priority) + float(priority) + float(plane)) * 0.0001;
 }
 `.trim();
 }
@@ -546,6 +547,10 @@ class MapViewer {
     lastFrameTime: number = 0;
 
     fpsListener?: (fps: number) => void;
+
+    regionViewDistance: number = 1;
+
+    lastRegionViewDistance: number = -1;
 
     viewDistanceRegionIds: Set<number>[] = [new Set(), new Set()];
 
@@ -1019,8 +1024,8 @@ class MapViewer {
             // this.isVisible(this.terrains[0]);
         }
 
-        if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY) {
-            const regionViewDistance = 1;
+        if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY || this.lastRegionViewDistance != this.regionViewDistance) {
+            const regionViewDistance = this.regionViewDistance;
 
             this.regionPositions.length = 0;
             for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
@@ -1042,7 +1047,7 @@ class MapViewer {
 
         this.timer.start();
 
-        if (this.lastCameraX != cameraX || this.lastCameraY != cameraY) {
+        if (this.lastCameraX != cameraX || this.lastCameraY != cameraY || this.lastRegionViewDistance != this.regionViewDistance) {
             // sort front to back
             this.regionPositions.sort((a, b) => {
                 const regionDistA = getRegionDistance(cameraX, cameraY, a);
@@ -1123,6 +1128,8 @@ class MapViewer {
 
         this.frameCount++;
 
+        this.lastRegionViewDistance = this.regionViewDistance;
+
         this.lastCameraX = cameraX;
         this.lastCameraY = cameraY;
         this.lastCameraRegionX = cameraRegionX;
@@ -1152,10 +1159,34 @@ function formatBytes(bytes: number, decimals: number = 2): string {
 
 Hasher.init();
 
+interface MapViewerContainerProps {
+    mapViewer: MapViewer;
+}
+
+function MapViewerContainer({mapViewer}: MapViewerContainerProps) {
+    const [fps, setFps] = useState<number>(0);
+
+    const data = useControls({
+        "View Distance": { value: 1, min: 1, max: 30, step: 1, onChange: (v) => {mapViewer.regionViewDistance = v;} },
+    });
+
+    useEffect(() => {
+        mapViewer.fpsListener = setFps;
+    }, [mapViewer])
+
+
+    return (
+        <div>
+            <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} />
+            <div className='fps-counter'>{fps.toFixed(1)}</div>
+            <WebGLCanvas init={mapViewer.init} draw={mapViewer.render}></WebGLCanvas>
+        </div>
+    );
+}
+
 function App() {
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | undefined>(undefined);
     const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(undefined);
-    const [fps, setFps] = useState<number>(0);
 
 
     // const test = new Test();
@@ -1229,9 +1260,6 @@ function App() {
             // console.log(fileCount, skeletonIds);
 
             const mapViewer = new MapViewer(fileSystem, xteasMap, pool);
-            mapViewer.fpsListener = (fps: number) => {
-                setFps(fps);
-            };
 
             setMapViewer(mapViewer);
         };
@@ -1241,12 +1269,7 @@ function App() {
 
     let content: JSX.Element | undefined = undefined;
     if (mapViewer) {
-        content = (
-            <div>
-                <div className='fps-counter'>{fps.toFixed(1)}</div>
-                <WebGLCanvas init={mapViewer.init} draw={mapViewer.render}></WebGLCanvas>
-            </div>
-        );
+        content = <MapViewerContainer mapViewer={mapViewer}></MapViewerContainer>
     } else if (downloadProgress) {
         const formattedCacheSize = formatBytes(downloadProgress.total);
         const progress = downloadProgress.current / downloadProgress.total * 100 | 0;

@@ -5,7 +5,8 @@
     position: relative;
     width: 305px;
     height: 35px;
-    font-family: Helvetica;
+    font-family: ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
+    /* font-family: Helvetica; */
     font-size: 13px;
     font-weight: bold;
     color: white;

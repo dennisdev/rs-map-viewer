@@ -6,7 +6,10 @@
 }
 
 .fps-counter {
+  font-family: ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
+  font-weight: bold;
   color: white;
   position: absolute;
-  padding: 8px;
+  padding: 10px;
+  line-height: 0.7;
 }
