@@ -25,6 +25,7 @@ import { CachedAnimationLoader } from './client/fs/loader/AnimationLoader';
 import { CachedSkeletonLoader } from './client/fs/loader/SkeletonLoader';
 import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client/fs/loader/AnimationFrameMapLoader';
 import { useControls, Leva } from 'leva';
+import { BrowserRouter, useSearchParams } from 'react-router-dom';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -327,7 +328,7 @@ void main() {
 const fragmentShader2 = `
 #version 300 es
 
-#define COLOR_BANDING 112.0
+#define COLOR_BANDING 255.0
 
 precision mediump float;
 
@@ -339,14 +340,15 @@ flat in uint v_texId;
 flat in float v_loadAlpha;
 
 uniform highp float u_brightness;
+uniform highp float u_colorBanding;
 
 uniform highp sampler2DArray u_textures;
 
 out vec4 fragColor;
 
 void main() {
-    vec3 color = round(v_color.rgb * COLOR_BANDING) / COLOR_BANDING;
-    fragColor = pow(texture(u_textures, vec3(v_texCoord, v_texId)).bgra, vec4(vec3(u_brightness), 1.0)) * vec4(color, v_color.a) * vec4(v_loadAlpha);
+    fragColor = pow(texture(u_textures, vec3(v_texCoord, v_texId)).bgra, vec4(vec3(u_brightness), 1.0)) * 
+        vec4(round(v_color.rgb * u_colorBanding) / u_colorBanding, v_color.a) * v_loadAlpha;
     if (fragColor.a < 0.01) {
         discard;
     }
@@ -530,7 +532,9 @@ class MapViewer {
     pitch: number = 244;
     yaw: number = 749;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 10, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+
+    cameraUpdated: boolean = false;
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
     // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
 
@@ -550,6 +554,7 @@ class MapViewer {
     lastFrameTime: number = 0;
 
     fpsListener?: (fps: number) => void;
+    cameraMoveEndListener?: (pos: vec3, pitch: number, yaw: number) => void;
 
     regionViewDistance: number = 1;
 
@@ -558,6 +563,7 @@ class MapViewer {
     viewDistanceRegionIds: Set<number>[] = [new Set(), new Set()];
 
     brightness: number = 1.0;
+    colorBanding: number = 255;
 
     currentMouseX: number = 0;
     currentMouseY: number = 0;
@@ -876,10 +882,12 @@ class MapViewer {
 
     updatePitch(pitch: number, deltaPitch: number): void {
         this.pitch = clamp(pitch + deltaPitch, 0, 512);
+        this.cameraUpdated = true;
     }
 
     updateYaw(yaw: number, deltaYaw: number): void {
         this.yaw = yaw + deltaYaw;
+        this.cameraUpdated = true;
     }
 
     moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
@@ -888,6 +896,17 @@ class MapViewer {
         vec3.rotateY(delta, delta, this.moveCameraRotOrigin, (512 * 3 - this.yaw) * RS_TO_RADIANS);
 
         vec3.add(this.cameraPos, this.cameraPos, delta);
+        this.cameraUpdated = true;
+    }
+
+    runCameraMoveListener() {
+        if (this.cameraMoveEndListener) {
+            let yaw = this.yaw % 2048;
+            if (yaw < 0) {
+                yaw += 2048;
+            }
+            this.cameraMoveEndListener(this.cameraPos, this.pitch, yaw);
+        }
     }
 
     render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
@@ -913,6 +932,10 @@ class MapViewer {
             console.warn('program not compiled yet');
             return;
         }
+
+        const movedCameraLastFrame = this.cameraUpdated;
+
+        this.cameraUpdated = false;
 
         let cameraSpeedMult = 1.0;
         if (this.keys.get('Shift')) {
@@ -962,6 +985,10 @@ class MapViewer {
         }
         if (this.keys.get('q') || this.keys.get('Q') || this.keys.get('c') || this.keys.get('C')) {
             this.moveCamera(0, -8 * cameraSpeedMult * deltaTime, 0);
+        }
+
+        if (movedCameraLastFrame && !this.cameraUpdated) {
+            this.runCameraMoveListener();
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
@@ -1089,6 +1116,7 @@ class MapViewer {
             drawCall.uniform('u_timeLoaded', terrain.timeLoaded);
             drawCall.uniform('u_deltaTime', deltaTime);
             drawCall.uniform('u_brightness', this.brightness);
+            drawCall.uniform('u_colorBanding', this.colorBanding);
 
             if (PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED) {
                 drawCall.draw();
@@ -1163,23 +1191,56 @@ function formatBytes(bytes: number, decimals: number = 2): string {
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 }
 
-Hasher.init();
-
 interface MapViewerContainerProps {
     mapViewer: MapViewer;
 }
 
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
+    const [searchParams, setSearchParams] = useSearchParams();
+
 
     const data = useControls({
-        "View Distance": { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
-        "Brightness": { value: 0, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
+        "View Distance": { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        "Brightness": { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
+        "Color Banding": { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
     });
 
     useEffect(() => {
+        const cx = searchParams.get('cx');
+        const cy = searchParams.get('cy');
+        const cz = searchParams.get('cz');
+
+        const pitch = searchParams.get('p');
+        const yaw = searchParams.get('y');
+
+        if (cx && cy && cz) {
+            const pos: vec3 = [
+                -parseFloat(cx),
+                parseFloat(cy),
+                -parseFloat(cz)
+            ];
+            mapViewer.cameraPos = pos;
+        }
+        if (pitch) {
+            mapViewer.pitch = parseInt(pitch);
+        }
+        if (yaw) {
+            mapViewer.yaw = parseInt(yaw);
+        }
+
         mapViewer.fpsListener = setFps;
-    }, [mapViewer])
+        mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
+            const cx = (-pos[0].toFixed(3)).toString();
+            const cy = (pos[1].toFixed(3)).toString();
+            const cz = (-pos[2].toFixed(3)).toString();
+
+            const p = (pitch | 0).toString();
+            const y = (yaw | 0).toString();
+
+            setSearchParams({ cx, cy, cz, p, y }, { replace: true });
+        };
+    }, [mapViewer]);
 
 
     return (
@@ -1287,9 +1348,11 @@ function App() {
         );
     }
     return (
-        <div className="App">
-            {content}
-        </div>
+        <BrowserRouter>
+            <div className="App">
+                {content}
+            </div>
+        </BrowserRouter>
     );
 }
 
