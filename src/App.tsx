@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './App.css';
 import WebGLCanvas from './Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
@@ -25,7 +26,6 @@ import { CachedAnimationLoader } from './client/fs/loader/AnimationLoader';
 import { CachedSkeletonLoader } from './client/fs/loader/SkeletonLoader';
 import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client/fs/loader/AnimationFrameMapLoader';
 import { useControls, Leva } from 'leva';
-import { BrowserRouter, useSearchParams } from 'react-router-dom';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -483,21 +483,36 @@ function getRegionDistance(x: number, y: number, region: vec2): number {
 class ChunkLoaderWorkerPool {
     pool: Pool<ModuleThread<ChunkLoaderWorker>>;
 
+    workerPromises: Promise<ModuleThread<ChunkLoaderWorker>>[];
+
     size: number;
 
-    static init(store: MemoryStore, xteasMap: Map<number, number[]>, size: number): ChunkLoaderWorkerPool {
+    static init(size: number): ChunkLoaderWorkerPool {
+        const workerPromises: Promise<ModuleThread<ChunkLoaderWorker>>[] = [];
         const pool = Pool(() => {
-            return spawn<ChunkLoaderWorker>(new Worker(new URL("./worker", import.meta.url) as any)).then(worker => {
+            const worker = new Worker(new URL("./worker", import.meta.url) as any);
+            // console.log('post init worker', performance.now());
+            const workerPromise = spawn<ChunkLoaderWorker>(worker);
+            workerPromises.push(workerPromise);
+            return workerPromise;
+        }, size);
+        return new ChunkLoaderWorkerPool(pool, workerPromises, size);
+    }
+
+    constructor(pool: Pool<ModuleThread<ChunkLoaderWorker>>, workerPromises: Promise<ModuleThread<ChunkLoaderWorker>>[], size: number) {
+        this.pool = pool;
+        this.workerPromises = workerPromises;
+        this.size = size;
+    }
+
+    init(store: MemoryStore, xteasMap: Map<number, number[]>) {
+        for (const promise of this.workerPromises) {
+            promise.then(worker => {
+                // console.log('send init worker', performance.now());
                 worker.init(Transfer(store, []), xteasMap);
                 return worker;
             });
-        }, size);
-        return new ChunkLoaderWorkerPool(pool, size);
-    }
-
-    constructor(pool: Pool<ModuleThread<ChunkLoaderWorker>>, size: number) {
-        this.pool = pool;
-        this.size = size;
+        }
     }
 }
 
@@ -660,9 +675,11 @@ class MapViewer {
         }
         console.timeEnd('check invalid regions');
 
-        console.time('load textures');
+        // console.time('load textures');
         this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
-        console.timeEnd('load textures');
+        // console.timeEnd('load textures');
+
+        // console.log('create map viewer', performance.now());
 
         // console.log('texture count: ', this.textureProvider.definitions.size);
 
@@ -683,6 +700,8 @@ class MapViewer {
     }
 
     init(gl: WebGL2RenderingContext) {
+        // console.log('init start', performance.now());
+
         gl.canvas.addEventListener('keydown', this.onKeyDown);
         gl.canvas.addEventListener('keyup', this.onKeyUp);
         gl.canvas.addEventListener('mousemove', this.onMouseMove);
@@ -694,6 +713,18 @@ class MapViewer {
         gl.canvas.addEventListener('touchend', this.onTouchEnd);
         gl.canvas.addEventListener('focusout', this.onFocusOut);
         gl.canvas.focus();
+        
+        const cameraX = -this.cameraPos[0];
+        const cameraY = -this.cameraPos[2];
+
+        const cameraRegionX = cameraX / 64 | 0;
+        const cameraRegionY = cameraY / 64 | 0;
+
+        // queue a chunk as soon as possible so we don't have idling workers
+        this.queueChunkLoad(cameraRegionX, cameraRegionY, true);
+
+
+        // console.log(this.cameraPos);
 
         const app = this.app = PicoGL.createApp(gl as any);
 
@@ -763,7 +794,7 @@ class MapViewer {
     }
 
     onKeyDown(event: KeyboardEvent) {
-        console.log('down', event.key, event.shiftKey);
+        // console.log('down', event.key, event.shiftKey);
         this.keys.set(event.key, true);
         if (event.shiftKey) {
             this.keys.set('Shift', true);
@@ -864,9 +895,9 @@ class MapViewer {
             && pos[2] >= -1.0 && pos[2] <= 1.0;
     }
 
-    isVisible(regionPos: vec2): boolean {
-        const baseX = regionPos[0] * Scene.MAP_SIZE;
-        const baseY = regionPos[1] * Scene.MAP_SIZE;
+    isVisible(regionX: number, regionY: number): boolean {
+        const baseX = regionX * Scene.MAP_SIZE;
+        const baseY = regionY * Scene.MAP_SIZE;
         for (let x = 0; x <= 8; x++) {
             for (let y = 0; y <= 8; y++) {
                 this.isVisiblePos[0] = baseX + x * 8;
@@ -906,6 +937,23 @@ class MapViewer {
                 yaw += 2048;
             }
             this.cameraMoveEndListener(this.cameraPos, this.pitch, yaw);
+        }
+    }
+
+    queueChunkLoad(regionX: number, regionY: number, force: boolean = false) {
+        const regionId = RegionLoader.getRegionId(regionX, regionY);
+        if (this.loadingRegionIds.size < this.chunkLoaderWorker.size * 2 && !this.loadingRegionIds.has(regionId)
+            && !this.chunks.has(regionId) && (force || this.isVisible(regionX, regionY))) {
+            // console.log('queue load', regionX, regionY, performance.now());
+            this.loadingRegionIds.add(regionId);
+
+            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED)).then(chunkData => {
+                if (chunkData) {
+                    this.chunksToLoad.push(chunkData);
+                } else {
+                    this.invalidRegionIds.add(regionId);
+                }
+            });
         }
     }
 
@@ -1099,7 +1147,7 @@ class MapViewer {
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const terrain = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!terrain || !this.isVisible(pos) || (this.frameCount - terrain.frameLoaded) < 4) {
+            if (!terrain || !this.isVisible(pos[0], pos[1]) || (this.frameCount - terrain.frameLoaded) < 4) {
                 continue;
             }
 
@@ -1132,25 +1180,14 @@ class MapViewer {
         }
 
         for (const regionPos of this.regionPositions) {
-            const regionId = RegionLoader.getRegionId(regionPos[0], regionPos[1]);
-            if (this.loadingRegionIds.size < this.chunkLoaderWorker.size * 2 && !this.loadingRegionIds.has(regionId)
-                && !this.chunks.has(regionId) && this.isVisible(regionPos)) {
-                this.loadingRegionIds.add(regionId);
-
-                this.chunkLoaderWorker.pool.queue(worker => worker.load(regionPos[0], regionPos[1], !PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED)).then(chunkData => {
-                    if (chunkData) {
-                        this.chunksToLoad.push(chunkData);
-                    } else {
-                        this.invalidRegionIds.add(regionId);
-                    }
-                });
-            }
+            this.queueChunkLoad(regionPos[0], regionPos[1]);
         }
 
         // TODO: upload x bytes per frame
-        if (this.frameCount % 30) {
+        if (this.frameCount % 30 || this.chunks.size === 0) {
             const chunkData = this.chunksToLoad.shift();
             if (chunkData) {
+                // console.log('loaded', chunkData.regionX, chunkData.regionY, performance.now())
                 const regionId = RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY);
                 this.chunks.set(regionId,
                     loadChunk(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
@@ -1197,7 +1234,7 @@ interface MapViewerContainerProps {
 
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [{ }, setSearchParams] = useSearchParams();
 
 
     const data = useControls({
@@ -1207,41 +1244,8 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     });
 
     useEffect(() => {
-        const cx = searchParams.get('cx');
-        const cy = searchParams.get('cy');
-        const cz = searchParams.get('cz');
-
-        const pitch = searchParams.get('p');
-        const yaw = searchParams.get('y');
-
-        if (cx && cy && cz) {
-            const pos: vec3 = [
-                -parseFloat(cx),
-                parseFloat(cy),
-                -parseFloat(cz)
-            ];
-            mapViewer.cameraPos = pos;
-        }
-        if (pitch) {
-            mapViewer.pitch = parseInt(pitch);
-        }
-        if (yaw) {
-            mapViewer.yaw = parseInt(yaw);
-        }
-
         mapViewer.fpsListener = setFps;
-        mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
-            const cx = (-pos[0].toFixed(3)).toString();
-            const cy = (pos[1].toFixed(3)).toString();
-            const cz = (-pos[2].toFixed(3)).toString();
-
-            const p = (pitch | 0).toString();
-            const y = (yaw | 0).toString();
-
-            setSearchParams({ cx, cy, cz, p, y }, { replace: true });
-        };
     }, [mapViewer]);
-
 
     return (
         <div>
@@ -1252,16 +1256,23 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     );
 }
 
+const poolSize = Math.min(navigator.hardwareConcurrency, 4);
+const pool = ChunkLoaderWorkerPool.init(poolSize);
+// console.log('start App', performance.now());
+
 function App() {
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | undefined>(undefined);
     const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(undefined);
+    const [searchParams, setSearchParams] = useSearchParams();
 
 
     // const test = new Test();
 
     useEffect(() => {
+        // console.log('start fetch', performance.now());
         console.time('first load');
         const load = async () => {
+            const xteaPromise = fetch('/cache209/keys.json').then(resp => resp.json());
             const store = await fetchMemoryStore('/cache209/', [
                 IndexType.ANIMATIONS,
                 IndexType.SKELETONS,
@@ -1274,16 +1285,16 @@ function App() {
             setDownloadProgress(undefined);
 
             console.time('load xteas');
-            const xteas: any[] = await fetch('/cache209/keys.json').then(resp => resp.json());
+            const xteas: any[] = await xteaPromise;
             const xteasMap: Map<number, number[]> = new Map();
             xteas.forEach(xtea => xteasMap.set(xtea.group, xtea.key));
             console.timeEnd('load xteas');
 
             // const poolSize = 1;
             // const poolSize = navigator.hardwareConcurrency;
-            const poolSize = Math.min(navigator.hardwareConcurrency, 4);
 
-            const pool = ChunkLoaderWorkerPool.init(store, xteasMap, poolSize);
+            // const pool = ChunkLoaderWorkerPool.init(store, xteasMap, poolSize);
+            pool.init(store, xteasMap);
 
             const fileSystem = loadFromStore(store);
 
@@ -1328,6 +1339,38 @@ function App() {
             // console.log(fileCount, skeletonIds);
 
             const mapViewer = new MapViewer(fileSystem, xteasMap, pool);
+            const cx = searchParams.get('cx');
+            const cy = searchParams.get('cy');
+            const cz = searchParams.get('cz');
+
+            const pitch = searchParams.get('p');
+            const yaw = searchParams.get('y');
+
+            if (cx && cy && cz) {
+                const pos: vec3 = [
+                    -parseFloat(cx),
+                    parseFloat(cy),
+                    -parseFloat(cz)
+                ];
+                mapViewer.cameraPos = pos;
+            }
+            if (pitch) {
+                mapViewer.pitch = parseInt(pitch);
+            }
+            if (yaw) {
+                mapViewer.yaw = parseInt(yaw);
+            }
+
+            mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
+                const cx = (-pos[0].toFixed(2)).toString();
+                const cy = (pos[1].toFixed(2)).toString();
+                const cz = (-pos[2].toFixed(2)).toString();
+
+                const p = (pitch | 0).toString();
+                const y = (yaw | 0).toString();
+
+                setSearchParams({ cx, cy, cz, p, y }, { replace: true });
+            };
 
             setMapViewer(mapViewer);
         };
@@ -1348,11 +1391,9 @@ function App() {
         );
     }
     return (
-        <BrowserRouter>
-            <div className="App">
-                {content}
-            </div>
-        </BrowserRouter>
+        <div className="App">
+            {content}
+        </div>
     );
 }
 
