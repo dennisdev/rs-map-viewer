@@ -25,7 +25,7 @@ import { Hasher } from './client/util/Hasher';
 import { CachedAnimationLoader } from './client/fs/loader/AnimationLoader';
 import { CachedSkeletonLoader } from './client/fs/loader/SkeletonLoader';
 import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client/fs/loader/AnimationFrameMapLoader';
-import { useControls, Leva } from 'leva';
+import { Leva, useControls, folder } from 'leva';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -713,7 +713,7 @@ class MapViewer {
         gl.canvas.addEventListener('touchend', this.onTouchEnd);
         gl.canvas.addEventListener('focusout', this.onFocusOut);
         gl.canvas.focus();
-        
+
         const cameraX = -this.cameraPos[0];
         const cameraY = -this.cameraPos[2];
 
@@ -1236,11 +1236,14 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [{ }, setSearchParams] = useSearchParams();
 
-
     const data = useControls({
-        "View Distance": { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
-        "Brightness": { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
-        "Color Banding": { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
+        'Camera Controls': folder({
+            'Position': { value: 'WASD, E (up), C (down)\nUse SHIFT to go faster.', editable: false },
+            'Direction': { value: 'Arrow Keys or Click and Drag.', editable: false }
+        }, { collapsed: false }),
+        'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
+        'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
     });
 
     useEffect(() => {
