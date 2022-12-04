@@ -580,6 +580,9 @@ class MapViewer {
     brightness: number = 1.0;
     colorBanding: number = 255;
 
+    cullBackFace: boolean = true;
+    lastCullBackFace: boolean = true;
+
     currentMouseX: number = 0;
     currentMouseY: number = 0;
 
@@ -740,7 +743,7 @@ class MapViewer {
 
         console.log(gl.getParameter(gl.MAX_SAMPLES));
 
-        app.enable(gl.CULL_FACE);
+        this.updateCullFace();
         app.enable(gl.DEPTH_TEST);
         app.depthFunc(gl.LEQUAL);
         app.enable(gl.BLEND);
@@ -957,6 +960,14 @@ class MapViewer {
         }
     }
 
+    updateCullFace() {
+        if (this.cullBackFace) {
+            this.app.enable(PicoGL.CULL_FACE);
+        } else {
+            this.app.disable(PicoGL.CULL_FACE);
+        }
+    }
+
     render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
         time *= 0.001;
         const deltaTime = time - this.lastFrameTime;
@@ -979,6 +990,10 @@ class MapViewer {
         if (!this.program) {
             console.warn('program not compiled yet');
             return;
+        }
+
+        if (this.lastCullBackFace != this.cullBackFace) {
+            this.updateCullFace();
         }
 
         const movedCameraLastFrame = this.cameraUpdated;
@@ -1201,6 +1216,8 @@ class MapViewer {
 
         this.lastRegionViewDistance = this.regionViewDistance;
 
+        this.lastCullBackFace = this.cullBackFace;
+
         this.lastCameraX = cameraX;
         this.lastCameraY = cameraY;
         this.lastCameraRegionX = cameraRegionX;
@@ -1244,6 +1261,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
         'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
+        'Cull Back-face': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
     });
 
     useEffect(() => {
