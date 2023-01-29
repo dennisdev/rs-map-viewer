@@ -898,7 +898,8 @@ class MapViewer {
             && pos[2] >= -1.0 && pos[2] <= 1.0;
     }
 
-    isVisible(regionX: number, regionY: number): boolean {
+    // TODO: Improve this
+    isRegionVisible(regionX: number, regionY: number): boolean {
         const baseX = regionX * Scene.MAP_SIZE;
         const baseY = regionY * Scene.MAP_SIZE;
         for (let x = 0; x <= 8; x++) {
@@ -946,7 +947,7 @@ class MapViewer {
     queueChunkLoad(regionX: number, regionY: number, force: boolean = false) {
         const regionId = RegionLoader.getRegionId(regionX, regionY);
         if (this.loadingRegionIds.size < this.chunkLoaderWorker.size * 2 && !this.loadingRegionIds.has(regionId)
-            && !this.chunks.has(regionId) && (force || this.isVisible(regionX, regionY))) {
+            && !this.chunks.has(regionId) && (force || this.isRegionVisible(regionX, regionY))) {
             // console.log('queue load', regionX, regionY, performance.now());
             this.loadingRegionIds.add(regionId);
 
@@ -1162,7 +1163,7 @@ class MapViewer {
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const terrain = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!terrain || !this.isVisible(pos[0], pos[1]) || (this.frameCount - terrain.frameLoaded) < 4) {
+            if (!terrain || !this.isRegionVisible(pos[0], pos[1]) || (this.frameCount - terrain.frameLoaded) < 4) {
                 continue;
             }
 
@@ -1261,7 +1262,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
         'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
-        'Cull Back-face': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
+        'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
     });
 
     useEffect(() => {
@@ -1293,8 +1294,9 @@ function App() {
         // console.log('start fetch', performance.now());
         console.time('first load');
         const load = async () => {
-            const xteaPromise = fetch('/cache209/keys.json').then(resp => resp.json());
-            const store = await fetchMemoryStore('/cache209/', [
+            const cachePath = '/cache210-6/';
+            const xteaPromise = fetch(cachePath + 'keys.json').then(resp => resp.json());
+            const store = await fetchMemoryStore(cachePath, [
                 IndexType.ANIMATIONS,
                 IndexType.SKELETONS,
                 IndexType.CONFIGS,
@@ -1306,9 +1308,8 @@ function App() {
             setDownloadProgress(undefined);
 
             console.time('load xteas');
-            const xteas: any[] = await xteaPromise;
-            const xteasMap: Map<number, number[]> = new Map();
-            xteas.forEach(xtea => xteasMap.set(xtea.group, xtea.key));
+            const xteas: {[group: string]: number[]} = await xteaPromise;
+            const xteasMap: Map<number, number[]> = new Map(Object.keys(xteas).map(key => [parseInt(key), xteas[key]]));
             console.timeEnd('load xteas');
 
             // const poolSize = 1;

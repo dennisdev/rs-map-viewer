@@ -270,7 +270,7 @@ async function fetchCacheIndex(cache: Cache, baseUrl: string, id: IndexType, sha
 
 export async function fetchMemoryStore(baseUrl: string, indicesToLoad: IndexType[] = [], shared: boolean = false, progressListener?: ProgressListener): Promise<MemoryStore> {
     console.time('fetch');
-    const cache = await caches.open('cache-files');
+    const cache = await caches.open('cache-files-210-6');
     const [dataFile, metaFile] = await Promise.all([
         fetchCacheFile(cache, baseUrl + 'main_file_cache.dat2', shared, true, progressListener),
         fetchCacheFile(cache, baseUrl + 'main_file_cache.idx255', shared, false)
