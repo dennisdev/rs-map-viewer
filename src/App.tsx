@@ -25,6 +25,8 @@ import { CachedAnimationLoader } from './client/fs/loader/AnimationLoader';
 import { CachedSkeletonLoader } from './client/fs/loader/SkeletonLoader';
 import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client/fs/loader/AnimationFrameMapLoader';
 import { Leva, useControls, folder } from 'leva';
+import { Joystick } from 'react-joystick-component';
+import { IJoystickUpdateEvent } from 'react-joystick-component/build/lib/Joystick';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -552,6 +554,8 @@ class MapViewer {
 
     keys: Map<string, boolean> = new Map();
 
+    isTouchDevice: boolean = false;
+
     timer!: Timer;
 
     program?: Program;
@@ -628,6 +632,8 @@ class MapViewer {
     constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: ChunkLoaderWorkerPool) {
         this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
+
+        this.isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
 
         const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
         const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
@@ -719,6 +725,10 @@ class MapViewer {
         this.onTouchMove = this.onTouchMove.bind(this);
         this.onTouchEnd = this.onTouchEnd.bind(this);
         this.onFocusOut = this.onFocusOut.bind(this);
+        this.onPositionJoystickMove = this.onPositionJoystickMove.bind(this);
+        this.onPositionJoystickStop = this.onPositionJoystickStop.bind(this);
+        this.onCameraJoystickMove = this.onCameraJoystickMove.bind(this);
+        this.onCameraJoystickStop = this.onCameraJoystickStop.bind(this);
         this.render = this.render.bind(this);
     }
 
@@ -900,6 +910,26 @@ class MapViewer {
         this.startMouseY = -1;
     }
 
+    positionJoystickEvent?: IJoystickUpdateEvent;
+
+    cameraJoystickEvent?: IJoystickUpdateEvent;
+
+    onPositionJoystickMove(event: IJoystickUpdateEvent) {
+        this.positionJoystickEvent = event;
+    }
+
+    onPositionJoystickStop(event: IJoystickUpdateEvent) {
+        this.positionJoystickEvent = undefined;
+    }
+
+    onCameraJoystickMove(event: IJoystickUpdateEvent) {
+        this.cameraJoystickEvent = event;
+    }
+
+    onCameraJoystickStop(event: IJoystickUpdateEvent) {
+        this.cameraJoystickEvent = undefined;
+    }
+
     private setProjection(offsetX: number, offsetY: number, width: number, height: number, centerX: number, centerY: number, zoom: number): mat4 {
         const left = (offsetX - centerX << 9) / zoom;
         const right = (offsetX + width - centerX << 9) / zoom;
@@ -950,7 +980,7 @@ class MapViewer {
     moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
         const delta = vec3.fromValues(deltaX, deltaY, deltaZ);
 
-        vec3.rotateY(delta, delta, this.moveCameraRotOrigin, (512 * 3 - this.yaw) * RS_TO_RADIANS);
+        vec3.rotateY(delta, delta, this.moveCameraRotOrigin, (2047 - this.yaw) * RS_TO_RADIANS);
 
         vec3.add(this.cameraPos, this.cameraPos, delta);
         this.cameraUpdated = true;
@@ -1033,38 +1063,58 @@ class MapViewer {
 
         // camera direction controls
         if (this.keys.get('ArrowUp')) {
-            this.updatePitch(this.pitch, deltaPitch);
-        }
-        if (this.keys.get('ArrowDown')) {
             this.updatePitch(this.pitch, -deltaPitch);
         }
+        if (this.keys.get('ArrowDown')) {
+            this.updatePitch(this.pitch, deltaPitch);
+        }
         if (this.keys.get('ArrowRight')) {
-            this.updateYaw(this.yaw, deltaYaw);
+            this.updateYaw(this.yaw, -deltaYaw);
         }
         if (this.keys.get('ArrowLeft')) {
-            this.updateYaw(this.yaw, -deltaYaw);
+            this.updateYaw(this.yaw, deltaYaw);
+        }
+
+        // joystick controls
+        if (this.positionJoystickEvent) {
+            const moveX = this.positionJoystickEvent.x || 0;
+            const moveY = this.positionJoystickEvent.y || 0;
+
+            this.moveCamera(moveX * -0.3, 0, moveY * -0.3);
+        }
+
+        if (this.cameraJoystickEvent) {
+            const moveX = this.cameraJoystickEvent.x || 0;
+            const moveY = this.cameraJoystickEvent.y || 0;
+            this.updatePitch(this.pitch, deltaPitch * -1.5 * moveY);
+            this.updateYaw(this.yaw, deltaYaw * -1.5 * moveX);
         }
 
         // mouse/touch controls
         if (this.startMouseX !== -1 && this.startMouseY !== -1) {
             const deltaMouseX = this.startMouseX - this.currentMouseX;
             const deltaMouseY = this.startMouseY - this.currentMouseY;
-            this.updatePitch(this.startPitch, deltaMouseY * 0.6);
-            this.updateYaw(this.startYaw, deltaMouseX * -0.9);
+
+            if (this.isTouchDevice) {
+                this.moveCamera(0, clamp(deltaMouseY, -100, 100) * 0.004, 0);
+            } else {
+                this.updatePitch(this.startPitch, deltaMouseY * 0.6);
+                this.updateYaw(this.startYaw, deltaMouseX * -0.9);
+            }
         }
 
         // camera position controls
         if (this.keys.get('w') || this.keys.get('W')) {
-            this.moveCamera(-16 * cameraSpeedMult * deltaTime, 0, 0);
-        }
-        if (this.keys.get('a') || this.keys.get('A')) {
             this.moveCamera(0, 0, -16 * cameraSpeedMult * deltaTime);
         }
-        if (this.keys.get('s') || this.keys.get('S')) {
+        if (this.keys.get('a') || this.keys.get('A')) {
             this.moveCamera(16 * cameraSpeedMult * deltaTime, 0, 0);
         }
-        if (this.keys.get('d') || this.keys.get('D')) {
+        if (this.keys.get('s') || this.keys.get('S')) {
             this.moveCamera(0, 0, 16 * cameraSpeedMult * deltaTime);
+        }
+        if (this.keys.get('d') || this.keys.get('D')) {
+            this.moveCamera(-16 * cameraSpeedMult * deltaTime, 0, 0);
         }
         if (this.keys.get('e') || this.keys.get('E')) {
             this.moveCamera(0, 8 * cameraSpeedMult * deltaTime, 0);
@@ -1292,10 +1342,15 @@ interface MapViewerContainerProps {
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
 
+    const isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
+
+    const positionControls = isTouchDevice ? 'Left joystick, Drag up and down.' : 'WASD, E (up), C (down)\nUse SHIFT to go faster.';
+    const directionControls = isTouchDevice ? 'Right joystick.' : 'Arrow Keys or Click and Drag.';
+
     const data = useControls({
         'Camera Controls': folder({
-            'Position': { value: 'WASD, E (up), C (down)\nUse SHIFT to go faster.', editable: false },
-            'Direction': { value: 'Arrow Keys or Click and Drag.', editable: false }
+            'Position': { value: positionControls, editable: false },
+            'Direction': { value: directionControls, editable: false }
         }, { collapsed: false }),
         'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
         'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
@@ -1312,6 +1367,12 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         <div>
             <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} />
             <div className='fps-counter'>{fps.toFixed(1)}</div>
+            {isTouchDevice && <div className='joystick-container left'>
+                <Joystick size={75} baseColor='#181C20' stickColor='#007BFF' stickSize={40} move={mapViewer.onPositionJoystickMove} stop={mapViewer.onPositionJoystickStop}></Joystick>
+            </div>}
+            {isTouchDevice && <div className='joystick-container right'>
+                <Joystick size={75} baseColor='#181C20' stickColor='#007BFF' stickSize={40} move={mapViewer.onCameraJoystickMove} stop={mapViewer.onCameraJoystickStop}></Joystick>
+            </div>}
             <WebGLCanvas init={mapViewer.init} draw={mapViewer.render}></WebGLCanvas>
         </div>
     );
@@ -1347,7 +1408,7 @@ function App() {
             setDownloadProgress(undefined);
 
             console.time('load xteas');
-            const xteas: {[group: string]: number[]} = await xteaPromise;
+            const xteas: { [group: string]: number[] } = await xteaPromise;
             const xteasMap: Map<number, number[]> = new Map(Object.keys(xteas).map(key => [parseInt(key), xteas[key]]));
             console.timeEnd('load xteas');
 

@@ -1,8 +1,8 @@
 .loading-bar-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
 
 .fps-counter {
@@ -11,4 +11,18 @@
   color: white;
   position: absolute;
   padding: 10px;
+}
+
+.joystick-container {
+  position: absolute;
+  bottom: 0;
+  padding: 40px;
+}
+
+.joystick-container.left {
+  left: 0;
+}
+
+.joystick-container.right {
+  right: 0;
 }
