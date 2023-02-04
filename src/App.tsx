@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import './App.css';
 import WebGLCanvas from './Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
-import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall } from 'picogl';
+import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall, VertexBuffer } from 'picogl';
 import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } from './client/fs/FileSystem';
 import { IndexType } from './client/fs/IndexType';
 import { TextureLoader } from './client/fs/loader/TextureLoader';
@@ -363,16 +363,21 @@ type Chunk = {
     regionX: number,
     regionY: number,
     modelMatrix: mat4,
-    vertexArray: VertexArray,
+
     triangleCount: number,
     drawRanges: number[][],
     drawRangesLowDetail: number[][],
-    timeLoaded: number,
-    frameLoaded: number,
-    modelDataTexture: Texture,
-    heightMapTexture: Texture,
     drawCall: DrawCall,
     drawCallLowDetail: DrawCall,
+
+    interleavedBuffer: VertexBuffer,
+    indexBuffer: VertexBuffer,
+    vertexArray: VertexArray,
+    modelDataTexture: Texture,
+    heightMapTexture: Texture,
+
+    timeLoaded: number,
+    frameLoaded: number,
 }
 
 function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer,
@@ -452,17 +457,30 @@ function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textur
         regionX,
         regionY,
         modelMatrix: baseModelMatrix,
-        vertexArray: vertexArray,
+
         triangleCount: chunkData.indices.length / 3,
         drawRanges: chunkData.drawRanges,
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
+        drawCall,
+        drawCallLowDetail,
+
+        interleavedBuffer,
+        indexBuffer,
+        vertexArray,
+        modelDataTexture,
+        heightMapTexture,
+
         timeLoaded: time,
         frameLoaded: frame,
-        modelDataTexture: modelDataTexture,
-        heightMapTexture,
-        drawCall,
-        drawCallLowDetail
     };
+}
+
+function deleteChunk(chunk: Chunk) {
+    chunk.interleavedBuffer.delete();
+    chunk.indexBuffer.delete();
+    chunk.vertexArray.delete();
+    chunk.modelDataTexture.delete();
+    chunk.heightMapTexture.delete();
 }
 
 function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
@@ -573,6 +591,7 @@ class MapViewer {
     cameraMoveEndListener?: (pos: vec3, pitch: number, yaw: number) => void;
 
     regionViewDistance: number = 1;
+    regionUnloadDistance: number = 1;
 
     lastRegionViewDistance: number = -1;
 
@@ -1123,6 +1142,11 @@ class MapViewer {
             // this.isVisible(this.terrains[0]);
         }
 
+        const viewDistanceRegionIds = this.viewDistanceRegionIds[this.frameCount % 2];
+        const lastViewDistanceRegionIds = this.viewDistanceRegionIds[(this.frameCount + 1) % 2];
+
+        viewDistanceRegionIds.clear();
+
         if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY || this.lastRegionViewDistance != this.regionViewDistance) {
             const regionViewDistance = this.regionViewDistance;
 
@@ -1138,7 +1162,24 @@ class MapViewer {
                     if (this.invalidRegionIds.has(regionId)) {
                         continue;
                     }
+                    viewDistanceRegionIds.add(regionId);
                     this.regionPositions.push([regionX, regionY]);
+                }
+            }
+
+            for (const [regionId, chunk] of this.chunks) {
+                if (viewDistanceRegionIds.has(regionId)) {
+                    continue;
+                }
+                const regionX = regionId >> 8;
+                const regionY = regionId & 0xFF;
+                const xDist = Math.abs(regionX - cameraRegionX);
+                const yDist = Math.abs(regionY - cameraRegionY);
+                const dist = Math.max(xDist, yDist);
+                if (dist >= this.regionViewDistance + this.regionUnloadDistance - 1) {
+                    deleteChunk(chunk);
+                    this.chunks.delete(regionId);
+                    console.log('deleting chunk ', dist, this.regionViewDistance, this.regionUnloadDistance, chunk);
                 }
             }
         }
@@ -1155,32 +1196,27 @@ class MapViewer {
             });
         }
 
-        const viewDistanceRegionIds = this.viewDistanceRegionIds[this.frameCount % 2];
-        const lastViewDistanceRegionIds = this.viewDistanceRegionIds[(this.frameCount + 1) % 2];
-
-        viewDistanceRegionIds.clear();
-
         // draw back to front
         for (let i = this.regionPositions.length - 1; i >= 0; i--) {
             const pos = this.regionPositions[i];
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
-            const terrain = this.chunks.get(regionId);
+            const chunk = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!terrain || !this.isRegionVisible(pos[0], pos[1]) || (this.frameCount - terrain.frameLoaded) < 4) {
+            if (!chunk || !this.isRegionVisible(pos[0], pos[1]) || (this.frameCount - chunk.frameLoaded) < 4) {
                 continue;
             }
 
-            const regionDist = Math.max(Math.abs(cameraRegionX - terrain.regionX), Math.abs(cameraRegionY - terrain.regionY));
+            const regionDist = Math.max(Math.abs(cameraRegionX - chunk.regionX), Math.abs(cameraRegionY - chunk.regionY));
 
-            const drawCall = regionDist >= 3 ? terrain.drawCallLowDetail : terrain.drawCall;
+            const drawCall = regionDist >= 3 ? chunk.drawCallLowDetail : chunk.drawCall;
 
             // fade in chunks even if it loaded a while ago
             if (!lastViewDistanceRegionIds.has(regionId)) {
-                terrain.timeLoaded = time;
+                chunk.timeLoaded = time;
             }
 
             drawCall.uniform('u_currentTime', time);
-            drawCall.uniform('u_timeLoaded', terrain.timeLoaded);
+            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
             drawCall.uniform('u_deltaTime', deltaTime);
             drawCall.uniform('u_brightness', this.brightness);
             drawCall.uniform('u_colorBanding', this.colorBanding);
@@ -1188,7 +1224,7 @@ class MapViewer {
             if (this.hasMultiDraw) {
                 drawCall.draw();
             } else {
-                const drawRanges = regionDist >= 3 ? terrain.drawRangesLowDetail : terrain.drawRanges;
+                const drawRanges = regionDist >= 3 ? chunk.drawRangesLowDetail : chunk.drawRanges;
 
                 for (let i = 0; i < drawRanges.length; i++) {
                     drawCall.uniform('u_drawId', i);
@@ -1255,7 +1291,6 @@ interface MapViewerContainerProps {
 
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
-    const [{ }, setSearchParams] = useSearchParams();
 
     const data = useControls({
         'Camera Controls': folder({
@@ -1263,6 +1298,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             'Direction': { value: 'Arrow Keys or Click and Drag.', editable: false }
         }, { collapsed: false }),
         'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
         'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
         'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
