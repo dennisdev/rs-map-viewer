@@ -2,9 +2,8 @@ import { ObjectDefinition } from "./client/fs/definition/ObjectDefinition";
 import { TextureLoader } from "./client/fs/loader/TextureLoader";
 import { Model, computeTextureCoords } from "./client/model/Model";
 import { RegionLoader } from "./client/RegionLoader";
-import { Scene } from "./client/Scene";
 import { HSL_RGB_MAP, packHsl } from "./client/util/ColorUtil";
-import { GameObject, ObjectModelLoader, Scene2, SceneObject } from "./client/scene/Scene";
+import { GameObject, ObjectModelLoader, Scene, SceneObject } from "./client/scene/Scene";
 import { Hasher } from "./client/util/Hasher";
 import { FloatUtil } from "./client/util/FloatUtil";
 
@@ -96,7 +95,7 @@ class VertexBuffer {
         }
     }
 
-    addVertex(x: number, y: number, z: number, rgb: number, hsl: number, alpha: number, u: number, v: number, textureId: number, priority: number,
+    addVertex(x: number, y: number, z: number, hsl: number, alpha: number, u: number, v: number, textureId: number, priority: number,
         reuseVertex: boolean = true) {
 
         if (textureId !== -1) {
@@ -207,9 +206,9 @@ function addModel(buf: VertexBuffer, indices: number[] | undefined, model: Model
             u2 = clamp(u2, 0.00390625 * 3, 1 - 0.00390625 * 3);
         }
 
-        let rgbA = HSL_RGB_MAP[hslA];
-        let rgbB = HSL_RGB_MAP[hslB];
-        let rgbC = HSL_RGB_MAP[hslC];
+        // let rgbA = HSL_RGB_MAP[hslA];
+        // let rgbB = HSL_RGB_MAP[hslB];
+        // let rgbC = HSL_RGB_MAP[hslC];
 
         // const SCALE = 128;
         const fa = facesA[f];
@@ -228,9 +227,9 @@ function addModel(buf: VertexBuffer, indices: number[] | undefined, model: Model
         const vzb = sceneY + verticesZ[fb];
         const vzc = sceneY + verticesZ[fc];
 
-        const index0 = buf.addVertex(vxa, vya, vza, rgbA, hslA, faceAlpha, u0, v0, textureId, priority + 1, reuseVertices);
-        const index1 = buf.addVertex(vxb, vyb, vzb, rgbB, hslB, faceAlpha, u1, v1, textureId, priority + 1, reuseVertices);
-        const index2 = buf.addVertex(vxc, vyc, vzc, rgbC, hslC, faceAlpha, u2, v2, textureId, priority + 1, reuseVertices);
+        const index0 = buf.addVertex(vxa, vya, vza, hslA, faceAlpha, u0, v0, textureId, priority + 1, reuseVertices);
+        const index1 = buf.addVertex(vxb, vyb, vzb, hslB, faceAlpha, u1, v1, textureId, priority + 1, reuseVertices);
+        const index2 = buf.addVertex(vxc, vyc, vzc, hslC, faceAlpha, u2, v2, textureId, priority + 1, reuseVertices);
 
         if (indices) {
             indices.push(
@@ -370,7 +369,7 @@ function createOcclusionMap(renderFlags: Uint8Array[][], underlayIds: Uint16Arra
     return occlusionMap;
 }
 
-function getModelsFromScene(scene: Scene2, occlusionMap: boolean[][][]): InstancedModel[] {
+function getModelsFromScene(scene: Scene, occlusionMap: boolean[][][]): InstancedModel[] {
     const models: InstancedModel[] = [];
 
     const gameObjects: Set<GameObject> = new Set();
@@ -678,17 +677,10 @@ export class ChunkDataLoader {
         console.time('read landscape data');
         const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
         console.timeEnd('read landscape data');
-
-        let scene: Scene2 | undefined = undefined;
         
         if (landscapeData) {
-            console.time('load heightmap');
-            const heightMap = this.loadHeightMap(regionX, regionY, 72);
-            console.timeEnd('load heightmap');
-
             console.time('load landscape');
-            scene = new Scene2(regionX, regionY, 4, 64, 64, heightMap);
-            scene.decodeLandscape(this.regionLoader, this.objectModelLoader, landscapeData);
+            region.decodeLandscape(this.regionLoader, this.objectModelLoader, landscapeData);
             console.timeEnd('load landscape');
         }
 
@@ -809,16 +801,16 @@ export class ChunkDataLoader {
         //     return undefined;
         // }
 
-        if (scene) {
+        if (landscapeData) {
             console.time('light scene');
-            scene.applyLighting(-50, -10, -50);
+            region.applyLighting(-50, -10, -50);
             console.timeEnd('light scene');
 
             const occlusionMap = createOcclusionMap(renderFlags, underlayIds, overlayIds);
 
             console.time('iterate tiles');
 
-            const models = getModelsFromScene(scene, occlusionMap);
+            const models = getModelsFromScene(region, occlusionMap);
 
             console.timeEnd('iterate tiles');
 
@@ -873,25 +865,6 @@ export class ChunkDataLoader {
             drawRanges: drawRanges,
             drawRangesLowDetail: drawRangesLowDetail
         };
-    }
-
-    loadHeightMap(regionX: number, regionY: number, size: number): Int32Array[][] {
-        const heightMap: Int32Array[][] = new Array(Scene.MAX_PLANE);
-
-        const baseX = regionX * 64;
-        const baseY = regionY * 64;
-
-        for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
-            heightMap[plane] = new Array(size);
-            for (let x = 0; x < size; x++) {
-                heightMap[plane][x] = new Int32Array(size);
-                for (let y = 0; y < size; y++) {
-                    heightMap[plane][x][y] = this.regionLoader.getHeight(baseX + x, baseY + y, plane);
-                }
-            }
-        }
-
-        return heightMap;
     }
 
     loadHeightMapTextureData(regionX: number, regionY: number): Float32Array {
@@ -1139,9 +1112,9 @@ function addTileModel(shape: number, rotation: number, textureId: number, x: num
             continue;
         }
 
-        const rgbA = HSL_RGB_MAP[hslA];
-        const rgbB = HSL_RGB_MAP[hslB];
-        const rgbC = HSL_RGB_MAP[hslC];
+        // const rgbA = HSL_RGB_MAP[hslA];
+        // const rgbB = HSL_RGB_MAP[hslB];
+        // const rgbC = HSL_RGB_MAP[hslC];
 
 
         const u0 = (vertexX[a] - tileX) / TILE_SIZE;
@@ -1154,9 +1127,9 @@ function addTileModel(shape: number, rotation: number, textureId: number, x: num
         const v2 = (vertexZ[c] - tileY) / TILE_SIZE;
 
 
-        const index0 = vertexBuf.addVertex(vertexX[a], vertexY[a], vertexZ[a], rgbA, hslA, 0xFF, u0, v0, faceTextureId, 0);
-        const index1 = vertexBuf.addVertex(vertexX[b], vertexY[b], vertexZ[b], rgbB, hslB, 0xFF, u1, v1, faceTextureId, 0);
-        const index2 = vertexBuf.addVertex(vertexX[c], vertexY[c], vertexZ[c], rgbC, hslC, 0xFF, u2, v2, faceTextureId, 0);
+        const index0 = vertexBuf.addVertex(vertexX[a], vertexY[a], vertexZ[a], hslA, 0xFF, u0, v0, faceTextureId, 0);
+        const index1 = vertexBuf.addVertex(vertexX[b], vertexY[b], vertexZ[b], hslB, 0xFF, u1, v1, faceTextureId, 0);
+        const index2 = vertexBuf.addVertex(vertexX[c], vertexY[c], vertexZ[c], hslC, 0xFF, u2, v2, faceTextureId, 0);
 
         indices.push(
             index0,

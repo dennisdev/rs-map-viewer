@@ -1,3 +1,5 @@
+import { COSINE, generateHeight } from "../Client";
+import { CollisionMap } from "../CollisionMap";
 import { ObjectDefinition } from "../fs/definition/ObjectDefinition";
 import { ModelLoader } from "../fs/loader/ModelLoader";
 import { Model } from "../model/Model";
@@ -371,8 +373,11 @@ export class ObjectModelLoader {
     }
 }
 
+export class Scene {
+    public static readonly MAX_PLANE = 4;
 
-export class Scene2 {
+    public static readonly MAP_SIZE = 64;
+
     private static readonly displacementX: number[] = [1, 0, -1, 0];
     private static readonly displacementY: number[] = [0, -1, 0, 1];
     private static readonly diagonalDisplacementX: number[] = [1, -1, -1, 1];
@@ -388,27 +393,61 @@ export class Scene2 {
 
     sizeY: number;
 
+    tiles: SceneTile[][][];
+
+    collisionMaps: CollisionMap[];
+
     tileHeights: Int32Array[][];
 
-    tiles: SceneTile[][][];
+    tileRenderFlags: Uint8Array[][];
+
+    tileUnderlays: Uint16Array[][];
+
+    tileOverlays: Int16Array[][];
+
+    tileShapes: Uint8Array[][];
+
+    tileRotations: Uint8Array[][];
 
     objectLightOcclusionMap: Uint8Array[][];
 
-    constructor(regionX: number, regionY: number, planes: number, sizeX: number, sizeY: number, tileHeights: Int32Array[][]) {
+    constructor(regionX: number, regionY: number, planes: number, sizeX: number, sizeY: number) {
         this.regionX = regionX;
         this.regionY = regionY;
         this.planes = planes;
         this.sizeX = sizeX;
         this.sizeY = sizeY;
-        this.tileHeights = tileHeights;
+        // this.tileHeights = tileHeights;
         this.tiles = new Array(planes);
+        this.collisionMaps = new Array(this.planes);
+        this.tileHeights = new Array(this.planes);
+        this.tileRenderFlags = new Array(this.planes);
+        this.tileUnderlays = new Array(this.planes);
+        this.tileOverlays = new Array(this.planes);
+        this.tileShapes = new Array(this.planes);
+        this.tileRotations = new Array(this.planes);
         this.objectLightOcclusionMap = new Array(planes);
         for (let plane = 0; plane < planes; plane++) {
             this.tiles[plane] = new Array(sizeX);
+            this.collisionMaps[plane] = new CollisionMap(sizeX, sizeY);
+            this.tileHeights[plane] = new Array(this.sizeX + 1);
+            this.tileRenderFlags[plane] = new Array(this.sizeX);
+            this.tileUnderlays[plane] = new Array(this.sizeX);
+            this.tileOverlays[plane] = new Array(this.sizeX);
+            this.tileShapes[plane] = new Array(this.sizeX);
+            this.tileRotations[plane] = new Array(this.sizeX);
             this.objectLightOcclusionMap[plane] = new Array(sizeX);
             for (let x = 0; x < sizeX; x++) {
                 this.tiles[plane][x] = new Array(sizeY);
-                this.objectLightOcclusionMap[plane][x] = new Uint8Array(sizeY);
+                this.tileRenderFlags[plane][x] = new Uint8Array(this.sizeY);
+                this.tileUnderlays[plane][x] = new Uint16Array(this.sizeY);
+                this.tileOverlays[plane][x] = new Int16Array(this.sizeY);
+                this.tileShapes[plane][x] = new Uint8Array(this.sizeY);
+                this.tileRotations[plane][x] = new Uint8Array(this.sizeY);
+                this.objectLightOcclusionMap[plane][x] = new Uint8Array(this.sizeY);
+            }
+            for (let x = 0; x < sizeX + 1; x++) {
+                this.tileHeights[plane][x] = new Int32Array(sizeY);
             }
         }
     }
@@ -507,7 +546,9 @@ export class Scene2 {
         return (tile && tile.wallObject && tile.wallObject.tag) || 0n;
     }
 
-    addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
+    addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, expandedTileHeights: Int32Array[][], 
+        plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
+
         const def = regionLoader.getObjectDef(objectId);
         let defTransform = def;
         if (def.transforms && def.transforms.length > 0) {
@@ -529,7 +570,7 @@ export class Scene2 {
             sizeY = def.sizeX;
         }
 
-        const heightMapSize = this.tileHeights[0].length;
+        const heightMapSize = expandedTileHeights[0].length;
 
         let startX: number;
         let endX: number;
@@ -551,7 +592,7 @@ export class Scene2 {
             endY = tileY + 1;
         }
 
-        const heightMap = this.tileHeights[plane];
+        const heightMap = expandedTileHeights[plane];
         const centerHeight = heightMap[endX][endY] + heightMap[startX][endY] + heightMap[startX][startY] + heightMap[endX][startY] >> 2;
         const sceneX = (tileX << 7) + (sizeX << 6);
         const sceneY = (tileY << 7) + (sizeY << 6);
@@ -667,8 +708,8 @@ export class Scene2 {
 
                 const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                const displacementX = displacement * Scene2.displacementX[rotation];
-                const displacementY = displacement * Scene2.displacementY[rotation];
+                const displacementX = displacement * Scene.displacementX[rotation];
+                const displacementY = displacement * Scene.displacementY[rotation];
 
                 this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_OUTSIDE) {
@@ -680,8 +721,8 @@ export class Scene2 {
 
                 const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
-                const displacementX = displacement * Scene2.diagonalDisplacementX[rotation];
-                const displacementY = displacement * Scene2.diagonalDisplacementY[rotation];
+                const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
+                const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
 
                 this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_INSIDE) {
@@ -702,8 +743,8 @@ export class Scene2 {
                 const model0 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
                 const model1 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
-                const displacementX = displacement * Scene2.diagonalDisplacementX[rotation];
-                const displacementY = displacement * Scene2.diagonalDisplacementY[rotation];
+                const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
+                const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
 
                 this.newWallDecoration(plane, tileX, tileY, centerHeight, model0, model1, displacementX, displacementY, tag, type, def);
             }
@@ -847,6 +888,9 @@ export class Scene2 {
     }
 
     decodeLandscape(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, data: Int8Array): void {
+        // Needed for larger objects that spill over to the neighboring regions
+        const expandedTileHeights = regionLoader.loadHeightMap(this.regionX, this.regionY, 72);
+
         const buffer = new ByteBuffer(data);
 
         let id = -1;
@@ -868,8 +912,89 @@ export class Scene2 {
                 const type = attributes >> 2;
                 const rotation = attributes & 0x3;
 
-                this.addObject(regionLoader, objectModelLoader, plane, localX, localY, id, rotation, type);
+                this.addObject(regionLoader, objectModelLoader, expandedTileHeights, plane, localX, localY, id, rotation, type);
             }
         }
     }
+
+    readTerrainValue(buffer: ByteBuffer, newFormat: boolean, signed: boolean = false) {
+        if (newFormat) {
+            return signed ? buffer.readShort() : buffer.readUnsignedShort();
+        } else {
+            return signed ? buffer.readByte() : buffer.readUnsignedByte();
+        }
+    }
+
+    decodeTerrain(data: Int8Array, offsetX: number, offsetY: number, baseX: number, baseY: number): void {
+        const buffer = new ByteBuffer(data);
+
+        for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+            for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                for (let y = 0; y < Scene.MAP_SIZE; y++) {
+                    this.decodeTile(buffer, plane, x + offsetX, y + offsetY, baseX, baseY, 0);
+                }
+            }
+        }
+    }
+
+    decodeTile(buffer: ByteBuffer, plane: number, x: number, y: number, baseX: number, baseY: number, rotationOffset: number, newFormat: boolean = true): void {
+        if (x >= 0 && x < this.sizeX && y >= 0 && y < this.sizeY) {
+            this.tileRenderFlags[plane][x][y] = 0;
+
+            while (true) {
+                const v = this.readTerrainValue(buffer, newFormat);
+                if (v === 0) {
+                    if (plane == 0) {
+                        const actualX = x + baseX + 932731;
+                        const actualY = y + baseY + 556238;
+                        this.tileHeights[plane][x][y] = -generateHeight(actualX, actualY) * 8;
+                    } else {
+                        this.tileHeights[plane][x][y] = this.tileHeights[plane - 1][x][y] - 240;
+                    }
+                    break;
+                }
+
+                if (v === 1) {
+                    let height = buffer.readUnsignedByte();
+                    if (height === 1) {
+                        height = 0;
+                    }
+
+                    if (plane === 0) {
+                        this.tileHeights[0][x][y] = -height * 8;
+                    } else {
+                        this.tileHeights[plane][x][y] = this.tileHeights[plane - 1][x][y] - height * 8;
+                    }
+                    break;
+                }
+
+                if (v <= 49) {
+                    this.tileOverlays[plane][x][y] = this.readTerrainValue(buffer, newFormat);
+                    this.tileShapes[plane][x][y] = (v - 2) / 4;
+                    this.tileRotations[plane][x][y] = v - 2 + rotationOffset & 3;
+                } else if (v <= 81) {
+                    this.tileRenderFlags[plane][x][y] = v - 49;
+                } else {
+                    this.tileUnderlays[plane][x][y] = v - 81;
+                }
+            }
+        } else {
+            while (true) {
+                const v = this.readTerrainValue(buffer, newFormat);
+                if (v === 0) {
+                    break;
+                }
+
+                if (v === 1) {
+                    buffer.readUnsignedByte();
+                    break;
+                }
+
+                if (v <= 49) {
+                    this.readTerrainValue(buffer, newFormat);
+                }
+            }
+        }
+    }
+
 }

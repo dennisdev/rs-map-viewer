@@ -6,7 +6,7 @@ import { ObjectLoader } from "./fs/loader/ObjectLoader";
 import { OverlayLoader } from "./fs/loader/OverlayLoader";
 import { UnderlayLoader } from "./fs/loader/UnderlayLoader";
 import { StoreSync } from "./fs/Store";
-import { Scene } from "./Scene";
+import { Scene } from "./scene/Scene";
 import { packHsl } from "./util/ColorUtil";
 
 export class RegionLoader {
@@ -88,7 +88,7 @@ export class RegionLoader {
             // console.log('load region', regionX, regionY);
             const terrainData = this.getTerrainData(regionX, regionY);
             if (terrainData) {
-                region = new Scene(209, Scene.MAX_PLANE, Scene.MAP_SIZE, Scene.MAP_SIZE);
+                region = new Scene(regionX, regionY, Scene.MAX_PLANE, Scene.MAP_SIZE, Scene.MAP_SIZE);
                 region.decodeTerrain(terrainData, 0, 0, regionX * 64, regionY * 64);
 
                 this.regions.set(id, region);
@@ -135,6 +135,25 @@ export class RegionLoader {
             h10 * (x % 1) * (1 - y % 1) +
             h01 * (1 - x % 1) * (y % 1) +
             h11 * (x % 1) * (y % 1);
+    }
+
+    loadHeightMap(regionX: number, regionY: number, size: number): Int32Array[][] {
+        const heightMap: Int32Array[][] = new Array(Scene.MAX_PLANE);
+
+        const baseX = regionX * 64;
+        const baseY = regionY * 64;
+
+        for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+            heightMap[plane] = new Array(size);
+            for (let x = 0; x < size; x++) {
+                heightMap[plane][x] = new Int32Array(size);
+                for (let y = 0; y < size; y++) {
+                    heightMap[plane][x][y] = this.getHeight(baseX + x, baseY + y, plane);
+                }
+            }
+        }
+
+        return heightMap;
     }
 
     getUnderlayId(x: number, y: number, plane: number): number {

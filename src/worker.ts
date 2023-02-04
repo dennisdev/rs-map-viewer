@@ -1,7 +1,6 @@
 import { expose, Transfer } from "threads/worker";
 import { ConfigType } from "./client/fs/ConfigType";
 import { loadFromStore } from "./client/fs/FileSystem";
-import { IndexSync } from "./client/fs/Index";
 import { IndexType } from "./client/fs/IndexType";
 import { CachedObjectLoader } from "./client/fs/loader/ObjectLoader";
 import { CachedOverlayLoader } from "./client/fs/loader/OverlayLoader";
@@ -11,8 +10,8 @@ import { RegionLoader } from "./client/RegionLoader";
 import { TextureLoader } from "./client/fs/loader/TextureLoader";
 import { Compression } from "./client/util/Compression";
 import { ChunkDataLoader } from "./ChunkDataLoader";
-import { CachedModelLoader, IndexModelLoader } from "./client/fs/loader/ModelLoader";
-import { ObjectModelLoader, Scene2 } from "./client/scene/Scene";
+import { IndexModelLoader } from "./client/fs/loader/ModelLoader";
+import { ObjectModelLoader } from "./client/scene/Scene";
 import { Hasher } from "./client/util/Hasher";
 
 type MemoryStoreProperties = {
@@ -88,27 +87,6 @@ expose({
         const chunkData = chunkDataLoader.load(regionX, regionY, minimizeDrawCalls);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
         console.log('model caches: ', chunkDataLoader.objectModelLoader.modelDataCache.size, chunkDataLoader.objectModelLoader.modelCache.size)
-
-
-        // const regionLoader = chunkDataLoader.regionLoader;
-        // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(chunkDataLoader.modelLoader.modelIndex));
-
-        // const region = regionLoader.getRegion(regionX, regionY);
-
-
-        // const landscapeData = regionLoader.getLandscapeData(regionX, regionY);
-        // if (landscapeData && region) {
-        //     const scene = new Scene2(4, 64, 64, region.tileHeights);
-        //     console.time('scenetile');
-        //     scene.decodeLandscape(regionLoader, objectModelLoader, landscapeData);
-
-        //     scene.applyLighting(-50, -10, -50);
-
-        //     console.timeEnd('scenetile');
-        //     console.log(scene);
-        // }
-
-
 
         chunkDataLoader.regionLoader.regions.clear();
         chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
