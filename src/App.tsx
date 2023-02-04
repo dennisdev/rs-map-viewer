@@ -530,6 +530,8 @@ class MapViewer {
 
     app!: PicoApp;
 
+    hasMultiDraw: boolean = false;
+
     keys: Map<string, boolean> = new Map();
 
     timer!: Timer;
@@ -738,6 +740,8 @@ class MapViewer {
             state.extensions.multiDrawInstanced = ext;
         }
 
+        this.hasMultiDraw = !!PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED;
+
         console.log(PicoGL.WEBGL_INFO);
 
         console.log(gl.getParameter(gl.MAX_SAMPLES));
@@ -753,7 +757,7 @@ class MapViewer {
 
         this.timer = app.createTimer();
 
-        app.createPrograms([getVertexShader(PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED), fragmentShader2]).then(([program]) => {
+        app.createPrograms([getVertexShader(this.hasMultiDraw), fragmentShader2]).then(([program]) => {
             this.program = program;
         });
 
@@ -950,7 +954,7 @@ class MapViewer {
             // console.log('queue load', regionX, regionY, performance.now());
             this.loadingRegionIds.add(regionId);
 
-            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED)).then(chunkData => {
+            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !this.hasMultiDraw)).then(chunkData => {
                 if (chunkData) {
                     this.chunksToLoad.push(chunkData);
                 } else {
@@ -1181,7 +1185,7 @@ class MapViewer {
             drawCall.uniform('u_brightness', this.brightness);
             drawCall.uniform('u_colorBanding', this.colorBanding);
 
-            if (PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED) {
+            if (this.hasMultiDraw) {
                 drawCall.draw();
             } else {
                 const drawRanges = regionDist >= 3 ? terrain.drawRangesLowDetail : terrain.drawRanges;

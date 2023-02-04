@@ -1,5 +1,5 @@
 import { COSINE, generateHeight } from "../Client";
-import { CollisionMap } from "../CollisionMap";
+import { CollisionMap } from "./CollisionMap";
 import { ObjectDefinition } from "../fs/definition/ObjectDefinition";
 import { ModelLoader } from "../fs/loader/ModelLoader";
 import { Model } from "../model/Model";
@@ -191,9 +191,9 @@ enum ObjectType {
     FLOOR_DECORATION = 22,
 }
 
-const mergeObjectModelsCache: ModelData[] = new Array(4);
-
 export class ObjectModelLoader {
+    static mergeObjectModelsCache: ModelData[] = new Array(4);
+
     modelLoader: ModelLoader;
 
     modelDataCache: Map<number, ModelData>;
@@ -252,12 +252,12 @@ export class ObjectModelLoader {
                 }
 
                 if (modelCount > 1) {
-                    mergeObjectModelsCache[i] = model;
+                    ObjectModelLoader.mergeObjectModelsCache[i] = model;
                 }
             }
 
             if (modelCount > 1) {
-                model = ModelData.merge(mergeObjectModelsCache, modelCount);
+                model = ModelData.merge(ObjectModelLoader.mergeObjectModelsCache, modelCount);
             }
         } else {
             let index = -1;
@@ -409,15 +409,12 @@ export class Scene {
 
     tileRotations: Uint8Array[][];
 
-    objectLightOcclusionMap: Uint8Array[][];
-
     constructor(regionX: number, regionY: number, planes: number, sizeX: number, sizeY: number) {
         this.regionX = regionX;
         this.regionY = regionY;
         this.planes = planes;
         this.sizeX = sizeX;
         this.sizeY = sizeY;
-        // this.tileHeights = tileHeights;
         this.tiles = new Array(planes);
         this.collisionMaps = new Array(this.planes);
         this.tileHeights = new Array(this.planes);
@@ -426,7 +423,6 @@ export class Scene {
         this.tileOverlays = new Array(this.planes);
         this.tileShapes = new Array(this.planes);
         this.tileRotations = new Array(this.planes);
-        this.objectLightOcclusionMap = new Array(planes);
         for (let plane = 0; plane < planes; plane++) {
             this.tiles[plane] = new Array(sizeX);
             this.collisionMaps[plane] = new CollisionMap(sizeX, sizeY);
@@ -436,7 +432,6 @@ export class Scene {
             this.tileOverlays[plane] = new Array(this.sizeX);
             this.tileShapes[plane] = new Array(this.sizeX);
             this.tileRotations[plane] = new Array(this.sizeX);
-            this.objectLightOcclusionMap[plane] = new Array(sizeX);
             for (let x = 0; x < sizeX; x++) {
                 this.tiles[plane][x] = new Array(sizeY);
                 this.tileRenderFlags[plane][x] = new Uint8Array(this.sizeY);
@@ -444,7 +439,6 @@ export class Scene {
                 this.tileOverlays[plane][x] = new Int16Array(this.sizeY);
                 this.tileShapes[plane][x] = new Uint8Array(this.sizeY);
                 this.tileRotations[plane][x] = new Uint8Array(this.sizeY);
-                this.objectLightOcclusionMap[plane][x] = new Uint8Array(this.sizeY);
             }
             for (let x = 0; x < sizeX + 1; x++) {
                 this.tileHeights[plane][x] = new Int32Array(sizeY);
@@ -546,7 +540,7 @@ export class Scene {
         return (tile && tile.wallObject && tile.wallObject.tag) || 0n;
     }
 
-    addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, expandedTileHeights: Int32Array[][], 
+    addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, objOcclusionOnly: boolean, expandedTileHeights: Int32Array[][],
         plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
 
         const def = regionLoader.getObjectDef(objectId);
@@ -597,25 +591,38 @@ export class Scene {
         const sceneX = (tileX << 7) + (sizeX << 6);
         const sceneY = (tileY << 7) + (sizeY << 6);
 
-        const tag = calculateEntityTag(tileX, tileY, EntityType.OBJECT, def.int1 === 0, objectId);
+        let tag = 0n;
+
+        if (!objOcclusionOnly) {
+            tag = calculateEntityTag(tileX, tileY, EntityType.OBJECT, def.int1 === 0, objectId);
+        }
 
         const isDynamic = def.animationId !== -1 || !!def.transforms;
 
-
         if (type === ObjectType.FLOOR_DECORATION) {
-            const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+            if (!objOcclusionOnly) {
+                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-            this.newFloorDecoration(plane, tileX, tileY, centerHeight, model, tag, type, def);
+                this.newFloorDecoration(plane, tileX, tileY, centerHeight, model, tag, type, def);
+            }
         } else if (type !== ObjectType.OBJECT && type !== ObjectType.OBJECT_DIAGIONAL) {
             // roofs
             if (type >= ObjectType.ROOF_SLOPED) {
-                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                if (!objOcclusionOnly) {
+                    const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
+                    this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
+                }
             } else if (type === ObjectType.WALL) {
-                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                if (!objOcclusionOnly) {
+                    const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+                    this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+
+                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
+                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    }
+                }
 
                 if (rotation === 0) {
                     if (def.clipped) {
@@ -638,14 +645,12 @@ export class Scene {
                         regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
                     }
                 }
-
-                if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                    this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
-                }
             } else if (type === ObjectType.WALL_TRI_CORNER) {
-                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                if (!objOcclusionOnly) {
+                    const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+                    this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+                }
 
                 if (def.clipped) {
                     if (rotation === 0) {
@@ -659,18 +664,22 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_CORNER) {
-                const model0 = modelLoader.getObjectModel(defTransform, type, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
-                const model1 = modelLoader.getObjectModel(defTransform, type, rotation + 1 & 3, heightMap, sceneX, centerHeight, sceneY);
+                if (!objOcclusionOnly) {
+                    const model0 = modelLoader.getObjectModel(defTransform, type, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                    const model1 = modelLoader.getObjectModel(defTransform, type, rotation + 1 & 3, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, centerHeight, model0, model1, tag, type, def);
+                    this.newWall(plane, tileX, tileY, centerHeight, model0, model1, tag, type, def);
 
-                if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                    this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
+                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    }
                 }
             } else if (type === ObjectType.WALL_RECT_CORNER) {
-                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                if (!objOcclusionOnly) {
+                    const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+                    this.newWall(plane, tileX, tileY, centerHeight, model, undefined, tag, type, def);
+                }
 
                 if (def.clipped) {
                     if (rotation === 0) {
@@ -684,69 +693,99 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_DIAGONAL) {
-                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                if (!objOcclusionOnly) {
+                    const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
+                    this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, model, tag, type, def);
 
-                if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                    this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
+                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    }
                 }
             } else if (type === ObjectType.WALL_DECORATION_INSIDE) {
-                const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
+                if (!objOcclusionOnly) {
+                    const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
+                    this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
 
-                if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                    this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
+                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    }
                 }
             } else if (type === ObjectType.WALL_DECORATION_OUTSIDE) {
-                let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT;
-                const wallTag = this.getWallObjectTag(plane, tileX, tileY);
-                if (wallTag !== 0n) {
-                    displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement;
+                if (!objOcclusionOnly) {
+                    let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT;
+                    const wallTag = this.getWallObjectTag(plane, tileX, tileY);
+                    if (wallTag !== 0n) {
+                        displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement;
+                    }
+
+                    const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
+
+                    const displacementX = displacement * Scene.displacementX[rotation];
+                    const displacementY = displacement * Scene.displacementY[rotation];
+
+                    this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
                 }
-
-                const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, heightMap, sceneX, centerHeight, sceneY);
-
-                const displacementX = displacement * Scene.displacementX[rotation];
-                const displacementY = displacement * Scene.displacementY[rotation];
-
-                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_OUTSIDE) {
-                let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
-                const wallTag = this.getWallObjectTag(plane, tileX, tileY);
-                if (wallTag !== 0n) {
-                    displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement / 2;
+                if (!objOcclusionOnly) {
+                    let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
+                    const wallTag = this.getWallObjectTag(plane, tileX, tileY);
+                    if (wallTag !== 0n) {
+                        displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement / 2;
+                    }
+
+                    const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
+
+                    const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
+                    const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
+
+                    this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
                 }
-
-                const model = modelLoader.getObjectModel(def, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
-
-                const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
-                const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
-
-                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, displacementX, displacementY, tag, type, def);
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_INSIDE) {
-                const insideRotation = rotation + 2 & 3;
+                if (!objOcclusionOnly) {
+                    const insideRotation = rotation + 2 & 3;
 
-                const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                    const model = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
 
-                this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
+                    this.newWallDecoration(plane, tileX, tileY, centerHeight, model, undefined, 0, 0, tag, type, def);
+                }
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_DOUBLE) {
-                let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
-                const wallTag = this.getWallObjectTag(plane, tileX, tileY);
-                if (wallTag !== 0n) {
-                    displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement / 2;
+                if (!objOcclusionOnly) {
+                    let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
+                    const wallTag = this.getWallObjectTag(plane, tileX, tileY);
+                    if (wallTag !== 0n) {
+                        displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement / 2;
+                    }
+
+                    const insideRotation = rotation + 2 & 3;
+
+                    const model0 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
+                    const model1 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
+
+                    const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
+                    const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
+
+                    this.newWallDecoration(plane, tileX, tileY, centerHeight, model0, model1, displacementX, displacementY, tag, type, def);
+                }
+            }
+        } else if (objOcclusionOnly) {
+            if (def.clipped && (tileX + sizeX >= 63 || tileY + sizeY >= 63 || tileX <= 1 || tileY <= 1)) {
+                let lightOcclusion = 15;
+
+                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                if (model instanceof Model) {
+                    lightOcclusion = model.getXZRadius() / 4 | 0;
+                    if (lightOcclusion > 30) {
+                        lightOcclusion = 30;
+                    }
                 }
 
-                const insideRotation = rotation + 2 & 3;
-
-                const model0 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, heightMap, sceneX, centerHeight, sceneY);
-                const model1 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, heightMap, sceneX, centerHeight, sceneY);
-
-                const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
-                const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
-
-                this.newWallDecoration(plane, tileX, tileY, centerHeight, model0, model1, displacementX, displacementY, tag, type, def);
+                for (let sx = 0; sx <= sizeX; sx++) {
+                    for (let sy = 0; sy <= sizeY; sy++) {
+                        regionLoader.setObjectLightOcclusion(baseX + tileX + sx, baseY + tileY + sy, plane, lightOcclusion);
+                    }
+                }
             }
         } else {
             const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
@@ -887,7 +926,7 @@ export class Scene {
         }
     }
 
-    decodeLandscape(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, data: Int8Array): void {
+    decodeLandscape(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, data: Int8Array, objOcclusionOnly: boolean = false): void {
         // Needed for larger objects that spill over to the neighboring regions
         const expandedTileHeights = regionLoader.loadHeightMap(this.regionX, this.regionY, 72);
 
@@ -912,7 +951,7 @@ export class Scene {
                 const type = attributes >> 2;
                 const rotation = attributes & 0x3;
 
-                this.addObject(regionLoader, objectModelLoader, expandedTileHeights, plane, localX, localY, id, rotation, type);
+                this.addObject(regionLoader, objectModelLoader, objOcclusionOnly, expandedTileHeights, plane, localX, localY, id, rotation, type);
             }
         }
     }

@@ -6,7 +6,7 @@ import { ObjectLoader } from "./fs/loader/ObjectLoader";
 import { OverlayLoader } from "./fs/loader/OverlayLoader";
 import { UnderlayLoader } from "./fs/loader/UnderlayLoader";
 import { StoreSync } from "./fs/Store";
-import { Scene } from "./scene/Scene";
+import { ObjectModelLoader, Scene } from "./scene/Scene";
 import { packHsl } from "./util/ColorUtil";
 
 export class RegionLoader {
@@ -18,6 +18,8 @@ export class RegionLoader {
 
     objectLoader: ObjectLoader;
 
+    objectModelLoader: ObjectModelLoader;
+
     xteasMap: Map<number, number[]>;
 
     regions: Map<number, Scene> = new Map();
@@ -25,6 +27,10 @@ export class RegionLoader {
     invalidRegions: Set<number> = new Set();
 
     blendedUnderlayColors: Map<number, Int32Array[][]> = new Map();
+
+    objectLightOcclusionMap: Map<number, Uint8Array[][]> = new Map();
+
+    objectLightOcclusionMapLoaded: Map<number, boolean> = new Map();
 
     lightLevels: Map<number, Int32Array[][]> = new Map();
 
@@ -36,11 +42,14 @@ export class RegionLoader {
         return mapIndex.getArchiveId(`m${regionX}_${regionY}`);
     }
 
-    constructor(mapIndex: IndexSync<StoreSync>, underlayLoader: UnderlayLoader, overlayLoader: OverlayLoader, objectLoader: ObjectLoader, xteasMap: Map<number, number[]>) {
+    constructor(mapIndex: IndexSync<StoreSync>, underlayLoader: UnderlayLoader, overlayLoader: OverlayLoader, objectLoader: ObjectLoader,
+        objectModelLoader: ObjectModelLoader, xteasMap: Map<number, number[]>) {
+
         this.mapIndex = mapIndex;
         this.underlayLoader = underlayLoader;
         this.overlayLoader = overlayLoader;
         this.objectLoader = objectLoader;
+        this.objectModelLoader = objectModelLoader;
         this.xteasMap = xteasMap;
     }
 
@@ -313,6 +322,35 @@ export class RegionLoader {
         return colors[plane][x % 64][y % 64];
     }
 
+    getObjectLightOcclusionMap(regionX: number, regionY: number, load: boolean): Uint8Array[][] {
+        const regionId = RegionLoader.getRegionId(regionX, regionY);
+
+        let objectLightOccl = this.objectLightOcclusionMap.get(regionId);
+        if (!objectLightOccl) {
+            objectLightOccl = new Array(Scene.MAX_PLANE);
+            for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+                objectLightOccl[plane] = new Array(Scene.MAP_SIZE);
+                for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                    objectLightOccl[plane][x] = new Uint8Array(Scene.MAP_SIZE);
+                }
+            }
+
+            this.objectLightOcclusionMap.set(regionId, objectLightOccl);
+        }
+
+        if (load && !this.objectLightOcclusionMapLoaded.get(regionId)) {
+            const region = this.getRegion(regionX, regionY);
+            const landscapeData = this.getLandscapeData(regionX, regionY);
+            if (region && landscapeData) {
+                region.decodeLandscape(this, this.objectModelLoader, landscapeData, true);
+                // console.log('decode land: ', regionX, regionY);
+                this.objectLightOcclusionMapLoaded.set(regionId, true);
+            }
+        }
+
+        return objectLightOccl;
+    }
+
     getObjectLightOcclusion(x: number, y: number, plane: number): number {
         const regionX = x / 64 | 0;
         const regionY = y / 64 | 0;
@@ -321,17 +359,15 @@ export class RegionLoader {
         if (!region) {
             return 0;
         }
-        return region.objectLightOcclusionMap[plane][x % 64][y % 64];
+        return this.getObjectLightOcclusionMap(regionX, regionY, true)[plane][x % 64][y % 64];
     }
 
     setObjectLightOcclusion(x: number, y: number, plane: number, light: number) {
         const regionX = x / 64 | 0;
         const regionY = y / 64 | 0;
 
-        const region = this.getRegion(regionX, regionY);
-        if (region) {
-            region.objectLightOcclusionMap[plane][x % 64][y % 64] = light;
-        }
+        const objectLightOccl = this.getObjectLightOcclusionMap(regionX, regionY, false);
+        objectLightOccl[plane][x % 64][y % 64] = light;
     }
 
     calculateLightLevels(regionX: number, regionY: number, plane: number): Int32Array[] {
@@ -378,6 +414,12 @@ export class RegionLoader {
 
         let levels = this.lightLevels.get(regionId);
         if (!levels) {
+            for (let x = 0; x < 3; x++) {
+                for (let y = 0; y < 3; y++) {
+                    this.getObjectLightOcclusionMap(regionX - 1 + x, regionY - 1 + y, true);
+                }
+            }
+
             // console.log('calc light levels: ', regionX, regionY);
             levels = new Array(Scene.MAX_PLANE);
             for (let i = 0; i < Scene.MAX_PLANE; i++) {

@@ -48,9 +48,10 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     const overlayLoader = new CachedOverlayLoader(overlayArchive);
     const objectLoader = new CachedObjectLoader(objectArchive);
 
-    const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
-
     const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
+
+    const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, objectModelLoader, xteasMap);
+
 
     // console.time('load textures');
     const textureProvider = TextureLoader.load(textureIndex, spriteIndex);
@@ -90,6 +91,8 @@ expose({
 
         chunkDataLoader.regionLoader.regions.clear();
         chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
+        chunkDataLoader.regionLoader.objectLightOcclusionMap.clear();
+        chunkDataLoader.regionLoader.objectLightOcclusionMapLoaded.clear();
         chunkDataLoader.regionLoader.lightLevels.clear();
 
         chunkDataLoader.objectModelLoader.modelDataCache.clear();
@@ -99,7 +102,7 @@ expose({
             const transferables: Transferable[] = [
                 chunkData.vertices.buffer,
                 chunkData.indices.buffer,
-                chunkData.modelTextureData.buffer, 
+                chunkData.modelTextureData.buffer,
                 chunkData.heightMapTextureData.buffer
             ];
             return Transfer(chunkData, transferables);
