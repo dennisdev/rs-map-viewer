@@ -33,6 +33,7 @@ const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
+const RS_TO_DEGREES = RS_TO_RADIANS * 180 / Math.PI;
 
 const TILE_SIZE = 128;
 const HALF_TILE_SIZE = TILE_SIZE / 2;
@@ -593,6 +594,7 @@ class MapViewer {
     lastFrameTime: number = 0;
 
     fpsListener?: (fps: number) => void;
+    cameraMoveListener?: (pos: vec3, pitch: number, yaw: number) => void;
     cameraMoveEndListener?: (pos: vec3, pitch: number, yaw: number) => void;
 
     regionViewDistance: number = 1;
@@ -974,9 +976,13 @@ class MapViewer {
         this.cameraUpdated = true;
     }
 
-    updateYaw(yaw: number, deltaYaw: number): void {
-        this.yaw = yaw + deltaYaw;
+    setYaw(yaw: number): void {
+        this.yaw = yaw;
         this.cameraUpdated = true;
+    }
+
+    updateYaw(yaw: number, deltaYaw: number): void {
+        this.setYaw(yaw + deltaYaw);
     }
 
     moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
@@ -988,7 +994,22 @@ class MapViewer {
         this.cameraUpdated = true;
     }
 
+    runCameraListeners() {
+        this.runCameraMoveListener();
+        this.runCameraMoveEndListener();
+    }
+
     runCameraMoveListener() {
+        if (this.cameraMoveListener) {
+            let yaw = this.yaw % 2048;
+            if (yaw < 0) {
+                yaw += 2048;
+            }
+            this.cameraMoveListener(this.cameraPos, this.pitch, yaw);
+        }
+    }
+
+    runCameraMoveEndListener() {
         if (this.cameraMoveEndListener) {
             let yaw = this.yaw % 2048;
             if (yaw < 0) {
@@ -1125,8 +1146,12 @@ class MapViewer {
             this.moveCamera(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
 
-        if (movedCameraLastFrame && !this.cameraUpdated) {
+        if (this.cameraUpdated) {
             this.runCameraMoveListener();
+        }
+
+        if (movedCameraLastFrame && !this.cameraUpdated) {
+            this.runCameraMoveEndListener();
         }
 
         if (this.keys.get('t') && this.timer.ready()) {
@@ -1354,6 +1379,7 @@ interface MapViewerContainerProps {
 
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
+    const [compassDegrees, setCompassDegrees] = useState<number>(0);
 
     const isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
 
@@ -1374,12 +1400,22 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
 
     useEffect(() => {
         mapViewer.fpsListener = setFps;
+        mapViewer.cameraMoveListener = (pos, pitch, yaw) => {
+            setCompassDegrees((2047 - yaw) * RS_TO_DEGREES);
+        };
+        mapViewer.runCameraMoveListener();
     }, [mapViewer]);
 
     return (
         <div>
             <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} />
-            <div className='fps-counter'>{fps.toFixed(1)}</div>
+            <div className='hud left-top'>
+                <div className='fps-counter'>{fps.toFixed(1)}</div>
+                <img className='compass' style={{transform: `rotate(${compassDegrees}deg)`}} src='/compass.png' onClick={() => {
+                    mapViewer.yaw = 0;
+                    mapViewer.runCameraListeners();
+                }} />
+            </div>
             {isTouchDevice && <div className='joystick-container left'>
                 <Joystick size={75} baseColor='#181C20' stickColor='#007BFF' stickSize={40} move={mapViewer.onPositionJoystickMove} stop={mapViewer.onPositionJoystickStop}></Joystick>
             </div>}
@@ -1424,6 +1460,7 @@ function App() {
             const xteas: { [group: string]: number[] } = await xteaPromise;
             const xteasMap: Map<number, number[]> = new Map(Object.keys(xteas).map(key => [parseInt(key), xteas[key]]));
             console.timeEnd('load xteas');
+            console.log('xtea count: ', xteasMap.size);
 
             // const poolSize = 1;
             // const poolSize = navigator.hardwareConcurrency;

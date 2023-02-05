@@ -5,12 +5,23 @@
   height: 100vh;
 }
 
+.hud.left-top {
+  position: absolute;
+  padding: 10px;
+}
+
+.hud *:first-child {
+  padding-bottom: 10px;
+}
+
+.compass {
+  cursor: pointer;
+}
+
 .fps-counter {
   font-family: ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
   font-weight: bold;
   color: white;
-  position: absolute;
-  padding: 10px;
 }
 
 .joystick-container {
