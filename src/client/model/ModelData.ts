@@ -1791,7 +1791,7 @@ export class ModelData extends Renderable {
                     }
                 } else {
                     for (let i = 0; i < model.verticesCount; i++) {
-                        const var13 = (-this.verticesY[i] << 16) / this.height;
+                        const var13 = ((-this.verticesY[i] << 16) / this.height) | 0;
                         if (var13 < contourGround) {
                             const var14 = tileX + this.verticesX[i];
                             const var15 = tileY + this.verticesZ[i];
@@ -1802,7 +1802,7 @@ export class ModelData extends Renderable {
                             const var20 = heightMap[var18][var19] * (128 - var16) + heightMap[var18 + 1][var19] * var16 >> 7;
                             const var21 = heightMap[var18][var19 + 1] * (128 - var16) + var16 * heightMap[var18 + 1][var19 + 1] >> 7;
                             const var22 = var20 * (128 - var17) + var21 * var17 >> 7;
-                            model.contourVerticesY[i] = (contourGround - var13) * (var22 - tileHeight) / contourGround + this.verticesY[i];
+                            model.contourVerticesY[i] = ((contourGround - var13) * (var22 - tileHeight) / contourGround + this.verticesY[i]) | 0;
                         }
                     }
                 }
