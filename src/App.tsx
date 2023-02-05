@@ -27,6 +27,7 @@ import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client
 import { Leva, useControls, folder } from 'leva';
 import { Joystick } from 'react-joystick-component';
 import { IJoystickUpdateEvent } from 'react-joystick-component/build/lib/Joystick';
+import { FrustumIntersection } from './FrustumIntersection';
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -626,6 +627,9 @@ class MapViewer {
 
     regionPositions: vec2[] = [];
 
+    frustumIntersection: FrustumIntersection = new FrustumIntersection();
+    chunkIntersectBox: number[][] = [[0, -240 * 3 / 128, 0], [0, 240 * 10 / 128, 0]];
+
     isVisiblePos: vec3 = [0, 0, 0];
     moveCameraRotOrigin: vec3 = [0, 0, 0];
 
@@ -950,21 +954,19 @@ class MapViewer {
             && pos[2] >= -1.0 && pos[2] <= 1.0;
     }
 
-    // TODO: Improve this
-    isRegionVisible(regionX: number, regionY: number): boolean {
-        const baseX = regionX * Scene.MAP_SIZE;
-        const baseY = regionY * Scene.MAP_SIZE;
-        for (let x = 0; x <= 8; x++) {
-            for (let y = 0; y <= 8; y++) {
-                this.isVisiblePos[0] = baseX + x * 8;
-                this.isVisiblePos[1] = 0;
-                this.isVisiblePos[2] = baseY + y * 8;
-                if (this.isPositionVisible(this.isVisiblePos)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    isChunkVisible(regionX: number, regionY: number): boolean {
+        const baseX = regionX * 64;
+        const baseY = regionY * 64;
+        const endX = baseX + 64;
+        const endY = baseY + 64;
+
+        this.chunkIntersectBox[0][0] = baseX;
+        this.chunkIntersectBox[0][2] = baseY;
+
+        this.chunkIntersectBox[1][0] = endX;
+        this.chunkIntersectBox[1][2] = endY;
+
+        return this.frustumIntersection.intersectsBox(this.chunkIntersectBox);
     }
 
     updatePitch(pitch: number, deltaPitch: number): void {
@@ -999,7 +1001,7 @@ class MapViewer {
     queueChunkLoad(regionX: number, regionY: number, force: boolean = false) {
         const regionId = RegionLoader.getRegionId(regionX, regionY);
         if (this.loadingRegionIds.size < this.chunkLoaderWorker.size * 2 && !this.loadingRegionIds.has(regionId)
-            && !this.chunks.has(regionId) && (force || this.isRegionVisible(regionX, regionY))) {
+            && !this.chunks.has(regionId) && (force || this.isChunkVisible(regionX, regionY))) {
             // console.log('queue load', regionX, regionY, performance.now());
             this.loadingRegionIds.add(regionId);
 
@@ -1178,6 +1180,9 @@ class MapViewer {
 
         mat4.multiply(this.viewProjMatrix, this.projectionMatrix, this.viewMatrix);
 
+
+        this.frustumIntersection.setPlanes(this.viewProjMatrix);
+
         this.sceneUniformBuffer
             .set(0, this.viewProjMatrix as Float32Array)
             .update();
@@ -1246,15 +1251,19 @@ class MapViewer {
             });
         }
 
+        let renderedChunks = 0;
+
         // draw back to front
         for (let i = this.regionPositions.length - 1; i >= 0; i--) {
             const pos = this.regionPositions[i];
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const chunk = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!chunk || !this.isRegionVisible(pos[0], pos[1]) || (this.frameCount - chunk.frameLoaded) < 4) {
+            if (!chunk || !this.isChunkVisible(pos[0], pos[1]) || (this.frameCount - chunk.frameLoaded) < 4) {
                 continue;
             }
+
+            renderedChunks++;
 
             const regionDist = Math.max(Math.abs(cameraRegionX - chunk.regionX), Math.abs(cameraRegionY - chunk.regionY));
 
@@ -1282,6 +1291,10 @@ class MapViewer {
                     drawCall.draw();
                 }
             }
+        }
+
+        if (this.keys.get('h')) {
+            console.log('rendered chunks', renderedChunks, this.frustumIntersection.planes);
         }
 
         for (const regionPos of this.regionPositions) {
