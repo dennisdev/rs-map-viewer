@@ -6,6 +6,9 @@ import { Model } from "../model/Model";
 import { ModelData } from "../model/ModelData";
 import { RegionLoader } from "../RegionLoader";
 import { ByteBuffer } from "../util/ByteBuffer";
+import { AnimationLoader } from "../fs/loader/AnimationLoader";
+import { AnimationDefinition } from "../fs/definition/AnimationDefinition";
+import { AnimationFrameMapLoader } from "../fs/loader/AnimationFrameMapLoader";
 
 class SceneTile {
     plane: number;
@@ -196,14 +199,20 @@ export class ObjectModelLoader {
 
     modelLoader: ModelLoader;
 
+    animationLoader: AnimationLoader;
+
+    animationFrameMapLoader: AnimationFrameMapLoader;
+
     modelDataCache: Map<number, ModelData>;
 
     modelCache: Map<number, Model | ModelData>;
 
-    constructor(modelLoader: ModelLoader) {
+    constructor(modelLoader: ModelLoader, animationLoader: AnimationLoader, animationFrameMapLoader: AnimationFrameMapLoader) {
         this.modelLoader = modelLoader;
+        this.animationLoader = animationLoader;
         this.modelDataCache = new Map();
         this.modelCache = new Map();
+        this.animationFrameMapLoader = animationFrameMapLoader;
     }
 
     getModelData(id: number, mirrored: boolean): ModelData | undefined {
@@ -330,6 +339,12 @@ export class ObjectModelLoader {
 
     getObjectModel(def: ObjectDefinition, type: number, rotation: number, heightMap: Int32Array[],
         sceneX: number, sceneHeight: number, sceneY: number): Model | ModelData | undefined {
+
+        if (def.animationId !== -1) {
+            return this.getObjectModelAnimated(def, type, rotation, heightMap, sceneX, sceneHeight, sceneY);
+            // return undefined;
+        }
+
         let key: number;
         if (def.objectTypes) {
             key = rotation + (type << 3) + (def.id << 10);
@@ -362,10 +377,79 @@ export class ObjectModelLoader {
         }
 
         if (def.contouredGround >= 0) {
-            if (model instanceof Model) {
-                model = (model as Model).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
-            } else if (model instanceof ModelData) {
-                model = (model as ModelData).contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
+            model = model.contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
+        }
+
+        return model;
+    }
+
+    getObjectModelAnimated(def: ObjectDefinition, type: number, rotation: number, heightMap: Int32Array[],
+        sceneX: number, sceneHeight: number, sceneY: number): Model | undefined {
+
+        let key: number;
+        if (def.objectTypes) {
+            key = rotation + (type << 3) + (def.id << 10);
+        } else {
+            key = rotation + (def.id << 10);
+        }
+
+        let model = this.modelCache.get(key);
+        if (!model) {
+            const modelData = this.getObjectModelData(def, type, rotation);
+            if (!modelData) {
+                return undefined;
+            }
+
+            model = modelData.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+
+            this.modelCache.set(key, model);
+        } else if (model instanceof Model) {
+            return model;
+        } else {
+            throw new Error('Model is not lit');
+        }
+
+        const anim = this.animationLoader.getDefinition(def.animationId);
+        if (anim) {
+            model = this.transformObjectModel(model, anim, 0, rotation);
+        }
+
+        // if (def.contouredGround >= 0) {
+        //     model = model.contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
+        // }
+
+        return model;
+    }
+
+    transformObjectModel(model: Model, anim: AnimationDefinition, frame: number, rotation: number): Model {
+        if (anim.isAnimMaya()) {
+            return model;
+        }
+        if (!anim.frameIds || anim.frameIds.length === 0) {
+            return model;
+        }
+        frame = anim.frameIds[frame];
+        const animFrameMap = this.animationFrameMapLoader.getFrameMap(frame >> 16);
+        frame &= 0xFFFF;
+
+        if (animFrameMap) {
+            rotation &= 3;
+            if (rotation === 1) {
+                model.rotate270();
+            } else if (rotation === 2) {
+                model.rotate180();
+            } else if (rotation === 3) {
+                model.rotate90();
+            }
+
+            model.animate(animFrameMap.frames[frame]);
+
+            if (rotation === 1) {
+                model.rotate90();
+            } else if (rotation === 2) {
+                model.rotate180();
+            } else if (rotation === 3) {
+                model.rotate270();
             }
         }
 
@@ -548,6 +632,7 @@ export class Scene {
         if (def.transforms && def.transforms.length > 0) {
             // should use animation id from parent object
             defTransform = regionLoader.getObjectDef(def.transforms[0]);
+            defTransform.animationId = def.animationId;
         }
 
         const baseX = this.regionX * 64;
@@ -774,7 +859,7 @@ export class Scene {
                 let lightOcclusion = 15;
 
                 const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
-                if (model instanceof Model) {
+                if (model instanceof Model && def.animationId === -1) {
                     lightOcclusion = model.getXZRadius() / 4 | 0;
                     if (lightOcclusion > 30) {
                         lightOcclusion = 30;
@@ -788,11 +873,14 @@ export class Scene {
                 }
             }
         } else {
+            // if (def.animationId !== -1) {
+            //     return;
+            // }
             const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
             if (model && this.newGameObject(plane, tileX, tileY, centerHeight, sizeX, sizeY, model, tag, type, def) && def.clipped) {
                 let lightOcclusion = 15;
-                if (model instanceof Model) {
+                if (model instanceof Model && def.animationId === -1) {
                     lightOcclusion = model.getXZRadius() / 4 | 0;
                     if (lightOcclusion > 30) {
                         lightOcclusion = 30;

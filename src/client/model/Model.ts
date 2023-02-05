@@ -544,6 +544,7 @@ export class Model extends Renderable {
 
             for (let i = 0; i < frame.transformCount; i++) {
                 const group = frame.transformGroups[i];
+                // console.log(group, i, skeleton.types[group]);
                 this.transform(skeleton.types[group], skeleton.labels[group], frame.transformX[i], frame.transformY[i], frame.transformZ[i]);
             }
 
@@ -659,6 +660,7 @@ export class Model extends Renderable {
                 if (this.faceLabelsAlpha && this.faceAlphas) {
                     for (const label of labels) {
                         if (label < this.faceLabelsAlpha.length) {
+                            // console.log('here', label, this.faceLabelsAlpha);
                             for (const f of this.faceLabelsAlpha[label]) {
                                 let newAlpha = (this.faceAlphas[f] & 0xFF) + tx * 8
                                 if (newAlpha < 0) {
@@ -667,6 +669,7 @@ export class Model extends Renderable {
                                     newAlpha = 255;
                                 }
 
+                                // console.log('changing alpha', f, newAlpha, this.faceAlphas[f] & 0xFF);
                                 this.faceAlphas[f] = newAlpha;
                             }
                         }

@@ -630,7 +630,7 @@ class MapViewer {
     regionPositions: vec2[] = [];
 
     frustumIntersection: FrustumIntersection = new FrustumIntersection();
-    chunkIntersectBox: number[][] = [[0, -240 * 3 / 128, 0], [0, 240 * 10 / 128, 0]];
+    chunkIntersectBox: number[][] = [[0, -240 / 128, 0], [0, 240 * 10 / 128, 0]];
 
     isVisiblePos: vec3 = [0, 0, 0];
     moveCameraRotOrigin: vec3 = [0, 0, 0];
@@ -1411,7 +1411,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} />
             <div className='hud left-top'>
                 <div className='fps-counter'>{fps.toFixed(1)}</div>
-                <img className='compass' style={{transform: `rotate(${compassDegrees}deg)`}} src='/compass.png' onClick={() => {
+                <img className='compass' style={{ transform: `rotate(${compassDegrees}deg)` }} src='/compass.png' onClick={() => {
                     mapViewer.yaw = 0;
                     mapViewer.runCameraListeners();
                 }} />

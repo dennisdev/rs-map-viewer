@@ -255,8 +255,13 @@ function getModelFaces(model: Model, textureProvider: TextureLoader): ModelFace[
 
     const priorities = model.faceRenderPriorities;
 
+    // console.log('alphas', faceAlphas);
+
     for (let f = 0; f < model.faceCount; f++) {
-        let faceAlpha = (faceAlphas && (0xFF - (faceAlphas[f] & 0xFF))) || 0xFF;
+        let faceAlpha = 0xFF;
+        if (faceAlphas) {
+            faceAlpha = 0xFF - (faceAlphas[f] & 0xFF);
+        }
 
         if (faceAlpha === 0 || faceAlpha === 0x1) {
             continue;
@@ -282,6 +287,8 @@ function getModelFaces(model: Model, textureProvider: TextureLoader): ModelFace[
 
         faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
     }
+
+    // console.log('faces', faces);
 
     return faces;
 }
@@ -677,7 +684,7 @@ export class ChunkDataLoader {
         console.time('read landscape data');
         const landscapeData = this.regionLoader.getLandscapeData(regionX, regionY);
         console.timeEnd('read landscape data');
-        
+
         if (landscapeData) {
             console.time('load landscape');
             region.decodeLandscape(this.regionLoader, this.objectModelLoader, landscapeData);

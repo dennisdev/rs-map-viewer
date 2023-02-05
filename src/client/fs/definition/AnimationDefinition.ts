@@ -141,4 +141,8 @@ export class AnimationDefinition extends Definition {
             throw new Error('AnimationDefinition: Opcode ' + opcode + ' not implemented.');
         }
     }
+
+    isAnimMaya(): boolean {
+        return this.animMayaId >= 0;
+    }
 }

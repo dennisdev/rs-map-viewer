@@ -5,4 +5,8 @@ export class AnimationFrameMap {
         public frames: AnimationFrame[]
     ) {
     }
+
+    hasAlphaTransform(frame: number) {
+        return this.frames[frame].hasAlphaTransform;
+    }
 }

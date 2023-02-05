@@ -1816,9 +1816,9 @@ export class ModelData extends Renderable {
     }
 
     computeAnimationTables(): void {
-        let var4;
+        let var4: number;
         if (this.vertexSkins) {
-            const var1: number[] = new Array(256);
+            const var1: number[] = new Array(256).fill(0);
             let var2 = 0;
 
             for (let i = 0; i < this.verticesCount; i++) {
@@ -1844,8 +1844,10 @@ export class ModelData extends Renderable {
         }
 
         if (this.faceSkins) {
-            const var1: number[] = new Array(256);
+            const var1: number[] = new Array(256).fill(0);
             let var2 = 0;
+
+            // console.log(this.faceCount, this.faceSkins);
 
             for (let i = 0; i < this.faceCount; i++) {
                 var4 = this.faceSkins[i];

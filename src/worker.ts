@@ -13,6 +13,9 @@ import { ChunkDataLoader } from "./ChunkDataLoader";
 import { IndexModelLoader } from "./client/fs/loader/ModelLoader";
 import { ObjectModelLoader } from "./client/scene/Scene";
 import { Hasher } from "./client/util/Hasher";
+import { CachedAnimationLoader } from "./client/fs/loader/AnimationLoader";
+import { CachedSkeletonLoader } from "./client/fs/loader/SkeletonLoader";
+import { CachedAnimationFrameMapLoader } from "./client/fs/loader/AnimationFrameMapLoader";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,
@@ -32,11 +35,14 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
 
     const fileSystem = loadFromStore(store);
 
+    const frameMapIndex = fileSystem.getIndex(IndexType.ANIMATIONS);
+    const skeletonIndex = fileSystem.getIndex(IndexType.SKELETONS);
     const configIndex = fileSystem.getIndex(IndexType.CONFIGS);
     const mapIndex = fileSystem.getIndex(IndexType.MAPS);
     const spriteIndex = fileSystem.getIndex(IndexType.SPRITES);
     const textureIndex = fileSystem.getIndex(IndexType.TEXTURES);
     const modelIndex = fileSystem.getIndex(IndexType.MODELS);
+
 
     // console.time('load config archives');
     const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
@@ -44,11 +50,18 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
     // console.timeEnd('load config archives');
 
+    const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
+
     const underlayLoader = new CachedUnderlayLoader(underlayArchive);
     const overlayLoader = new CachedOverlayLoader(overlayArchive);
     const objectLoader = new CachedObjectLoader(objectArchive);
 
-    const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
+    const animationLoader = new CachedAnimationLoader(animationArchive);
+
+    const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
+    const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
+
+    const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex), animationLoader, frameMapLoader);
 
     const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, objectModelLoader, xteasMap);
 
