@@ -1103,7 +1103,7 @@ class MapViewer {
             const moveX = this.positionJoystickEvent.x || 0;
             const moveY = this.positionJoystickEvent.y || 0;
 
-            this.moveCamera(moveX * -0.3, 0, moveY * -0.3);
+            this.moveCamera(moveX * 32 * -deltaTime, 0, moveY * 32 * -deltaTime);
         }
 
         if (this.cameraJoystickEvent) {
