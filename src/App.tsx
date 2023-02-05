@@ -630,7 +630,7 @@ class MapViewer {
     regionPositions: vec2[] = [];
 
     frustumIntersection: FrustumIntersection = new FrustumIntersection();
-    chunkIntersectBox: number[][] = [[0, -240 / 128, 0], [0, 240 * 10 / 128, 0]];
+    chunkIntersectBox: number[][] = [[0, -240 * 10 / 128, 0], [0, 240 * 3 / 128, 0]];
 
     isVisiblePos: vec3 = [0, 0, 0];
     moveCameraRotOrigin: vec3 = [0, 0, 0];
