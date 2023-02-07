@@ -215,12 +215,23 @@ float unpackFloat6(int v) {
 `.trim();
 
 function getVertexShader(hasMultiDraw: boolean): string {
-    const defineDrawId = hasMultiDraw ? 'gl_DrawID' : 'u_drawId';
     return `
 #version 300 es
-${hasMultiDraw ? '#extension GL_ANGLE_multi_draw : require' : ''}
+${hasMultiDraw ? '#define MULTI_DRAW 1' : ''}
 
-#define DRAW_ID ${defineDrawId}
+#ifdef MULTI_DRAW
+
+    #extension GL_ANGLE_multi_draw : require
+    #define DRAW_ID gl_DrawID
+
+#else
+
+    #define DRAW_ID u_drawId
+
+    uniform int u_drawId;
+
+#endif
+
 #define TEXTURE_ANIM_UNIT (1.0f / 128.0f)
 
 precision highp float;
@@ -238,8 +249,6 @@ uniform TextureUniforms {
 uniform SceneUniforms {
     mat4 u_viewProjMatrix;
 };
-
-${hasMultiDraw ? '' : 'uniform int u_drawId;'}
 
 uniform mat4 u_modelMatrix;
 uniform float u_currentTime;
