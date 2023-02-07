@@ -299,6 +299,29 @@ VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
     return VertexData(vec3(x, y, z), color, vec2(u, v), uint(textureId), uint(priority));
 }
 
+struct ModelInfo {
+    uint plane;
+    float contourGround;
+    uint priority;
+    vec2 tilePos;
+};
+
+ModelInfo decodeModelInfo(int offset) {
+    uvec4 data = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
+
+    ModelInfo info;
+
+    info.plane = data.r >> uint(6);
+    info.contourGround = float(int(data.r) >> 4 & 0x3);
+    info.priority = (data.r & uint(0xF));
+
+    uint tilePosPacked = (data.a << uint(16)) | data.b << uint(8) | data.g;
+
+    info.tilePos = vec2(float(tilePosPacked >> uint(12)), float(tilePosPacked & uint(0xFFF))) / vec2(32);
+
+    return info;
+}
+
 void main() {
     uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
@@ -311,25 +334,17 @@ void main() {
     v_texId = vertex.textureId;
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
-    uvec4 modelData = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
+    ModelInfo modelInfo = decodeModelInfo(offset);
 
-    uint plane = modelData.r >> uint(6);
-    float contourGround = float(int(modelData.r) >> 4 & 0x3);
-    uint priority = (modelData.r & uint(0xF));
+    vec3 localPos = vertex.pos / vec3(128.0) + vec3(modelInfo.tilePos.x, 0, modelInfo.tilePos.y);
 
-    uint tilePosPacked = (modelData.a << uint(16)) | modelData.b << uint(8) | modelData.g;
-    
-    vec2 tilePos = vec2(float(tilePosPacked >> uint(12)), float(tilePosPacked & uint(0xFFF))) / vec2(32);
-
-    vec3 localPos = vertex.pos / vec3(128.0) + vec3(tilePos.x, 0, tilePos.y);
-
-    vec2 interpPos = tilePos * vec2(when_eq(contourGround, 0.0)) + localPos.xz * vec2(when_eq(contourGround, 1.0));
-    localPos.y -= getHeightInterp(interpPos, plane) * when_neq(contourGround, 2.0) / 128.0;
+    vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, 0.0)) + localPos.xz * vec2(when_eq(modelInfo.contourGround, 1.0));
+    localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, 2.0) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
     // gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(vertex.priority) * 0.0001;
     // TODO: Subtract z before projection
-    gl_Position.z -= (float(vertex.priority) + float(priority) + float(plane)) * 0.0001;
+    gl_Position.z -= (float(vertex.priority) + float(modelInfo.priority) + float(modelInfo.plane)) * 0.0001;
 }
 `.trim();
 }
