@@ -79,6 +79,12 @@ void main() {
 }
 `.trim();
 
+const animInfoStruct = `
+struct AnimInfo {
+    uint frameCount;
+};
+`.trim();
+
 const fragmentShader = `
 #version 300 es
 //#extension GL_ANGLE_multi_draw : require

@@ -88,7 +88,7 @@ export class ObjectDefinition extends Definition {
 
     soundEffectIds!: number[];
 
-    field1854: boolean;
+    randomStartAnimFrame: boolean;
 
     params!: ParamsMap;
 
@@ -128,7 +128,7 @@ export class ObjectDefinition extends Definition {
         this.int4 = 0;
         this.int5 = 0;
         this.int6 = 0;
-        this.field1854 = true;
+        this.randomStartAnimFrame = true;
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
@@ -292,7 +292,7 @@ export class ObjectDefinition extends Definition {
         } else if (opcode === 82) {
             this.mapIconId = buffer.readUnsignedShort();
         } else if (opcode === 89) {
-            this.field1854 = false;
+            this.randomStartAnimFrame = false;
         } else if (opcode === 249) {
             this.params = Definition.readParamsMap(buffer, this.params);
         } else {

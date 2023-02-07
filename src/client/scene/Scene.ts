@@ -428,6 +428,9 @@ export class ObjectModelLoader {
         if (!anim.frameIds || anim.frameIds.length === 0) {
             return model;
         }
+        // if (anim.frameIds.length === 9) {
+        //     console.log(anim);
+        // }
         frame = anim.frameIds[frame];
         const animFrameMap = this.animationFrameMapLoader.getFrameMap(frame >> 16);
         frame &= 0xFFFF;

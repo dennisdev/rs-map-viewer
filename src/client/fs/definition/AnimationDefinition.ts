@@ -10,7 +10,7 @@ export class AnimationDefinition extends Definition {
 
     frameSounds?: number[];
 
-    frameStep: number;
+    frameCount: number;
 
     interleaveLeave?: number[];
 
@@ -42,7 +42,7 @@ export class AnimationDefinition extends Definition {
 
     constructor(id: number) {
         super(id);
-        this.frameStep = -1;
+        this.frameCount = -1;
         this.stretches = false;
         this.forcedPriority = 5;
         this.leftHandItem = -1;
@@ -74,7 +74,7 @@ export class AnimationDefinition extends Definition {
                 this.frameIds[i] += buffer.readUnsignedShort() << 16;
             }
         } else if (opcode === 2) {
-            this.frameStep = buffer.readUnsignedShort();
+            this.frameCount = buffer.readUnsignedShort();
         } else if (opcode === 3) {
             const count = buffer.readUnsignedByte();
             this.interleaveLeave = new Array(count + 1);
