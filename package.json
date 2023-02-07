@@ -63,7 +63,8 @@
   "devDependencies": {
     "@types/gzip-js": "^0.3.3",
     "path": "^0.12.7",
-    "threads-plugin": "^1.4.0"
+    "threads-plugin": "^1.4.0",
+    "ts-shader-loader": "^2.0.2"
   },
   "browser": {
     "fs": false,

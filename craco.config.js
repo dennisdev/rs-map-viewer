@@ -4,12 +4,23 @@ const ThreadsPlugin = require('threads-plugin');
 
 module.exports = {
   webpack: {
-    configure: {
-      resolve: {
-        fallback: {
-          fs: false,
-        },
-      },
+    configure: (webpackConfig) => {
+      const glslLoader = {
+        test: /\.(glsl|vs|fs)$/,
+        loader: 'ts-shader-loader'
+      };
+
+      // Kind of a hack to get the glsl loader to work
+      // https://github.com/dilanx/craco/issues/486
+      webpackConfig.module.rules[1].oneOf.unshift(glslLoader);
+
+      // addBeforeLoader(webpackConfig, loaderByName('file-loader'), glslLoader);
+
+      webpackConfig.resolve.fallback = {
+        fs: false
+      };
+
+      return webpackConfig;
     },
     plugins: [
       new ThreadsPlugin()
