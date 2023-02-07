@@ -1,11 +1,11 @@
-import { ObjectDefinition } from "./client/fs/definition/ObjectDefinition";
-import { TextureLoader } from "./client/fs/loader/TextureLoader";
-import { Model, computeTextureCoords } from "./client/model/Model";
-import { RegionLoader } from "./client/RegionLoader";
-import { HSL_RGB_MAP, packHsl } from "./client/util/ColorUtil";
-import { GameObject, ObjectModelLoader, Scene, SceneObject } from "./client/scene/Scene";
-import { Hasher } from "./client/util/Hasher";
-import { FloatUtil } from "./client/util/FloatUtil";
+import { ObjectDefinition } from "../client/fs/definition/ObjectDefinition";
+import { TextureLoader } from "../client/fs/loader/TextureLoader";
+import { Model, computeTextureCoords } from "../client/model/Model";
+import { RegionLoader } from "../client/RegionLoader";
+import { HSL_RGB_MAP, packHsl } from "../client/util/ColorUtil";
+import { GameObject, ObjectModelLoader, Scene, SceneObject } from "../client/scene/Scene";
+import { Hasher } from "../client/util/Hasher";
+import { FloatUtil } from "../client/util/FloatUtil";
 
 export type ChunkData = {
     regionX: number,

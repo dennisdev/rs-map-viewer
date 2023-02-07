@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
-import App from './App';
+import MapViewerApp from './mapviewer/MapViewer';
 import reportWebVitals from './reportWebVitals';
 import { Compression } from './client/util/Compression';
 import registerServiceWorker from './registerServiceWorker';
@@ -13,7 +13,7 @@ Compression.initWasm();
 ReactDOM.render(
   <React.StrictMode>
     <BrowserRouter>
-      <App />
+      <MapViewerApp />
     </BrowserRouter>
   </React.StrictMode>,
   document.getElementById('root')

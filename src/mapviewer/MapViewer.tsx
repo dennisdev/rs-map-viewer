@@ -1,29 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import './App.css';
-import WebGLCanvas from './Canvas';
+import './MapViewer.css';
+import WebGLCanvas from '../components/Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
 import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall, VertexBuffer } from 'picogl';
-import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } from './client/fs/FileSystem';
-import { IndexType } from './client/fs/IndexType';
-import { TextureLoader } from './client/fs/loader/TextureLoader';
+import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } from '../client/fs/FileSystem';
+import { IndexType } from '../client/fs/IndexType';
+import { TextureLoader } from '../client/fs/loader/TextureLoader';
 import { spawn, Pool, Worker, Transfer, TransferDescriptor, ModuleThread } from "threads";
-import { RegionLoader } from './client/RegionLoader';
+import { RegionLoader } from '../client/RegionLoader';
 import { ChunkData, ChunkDataLoader } from './ChunkDataLoader';
-import { MemoryStore } from './client/fs/MemoryStore';
-import { Skeleton } from './client/model/animation/Skeleton';
-import { ConfigType } from './client/fs/ConfigType';
-import { CachedUnderlayLoader } from './client/fs/loader/UnderlayLoader';
-import { CachedOverlayLoader } from './client/fs/loader/OverlayLoader';
-import { CachedObjectLoader } from './client/fs/loader/ObjectLoader';
-import { IndexModelLoader } from './client/fs/loader/ModelLoader';
+import { MemoryStore } from '../client/fs/MemoryStore';
+import { Skeleton } from '../client/model/animation/Skeleton';
+import { ConfigType } from '../client/fs/ConfigType';
+import { CachedUnderlayLoader } from '../client/fs/loader/UnderlayLoader';
+import { CachedOverlayLoader } from '../client/fs/loader/OverlayLoader';
+import { CachedObjectLoader } from '../client/fs/loader/ObjectLoader';
+import { IndexModelLoader } from '../client/fs/loader/ModelLoader';
 import Denque from 'denque';
-import { ObjectModelLoader, Scene } from './client/scene/Scene';
-import { OsrsLoadingBar } from './OsrsLoadingBar';
-import { Hasher } from './client/util/Hasher';
-import { CachedAnimationLoader } from './client/fs/loader/AnimationLoader';
-import { CachedSkeletonLoader } from './client/fs/loader/SkeletonLoader';
-import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from './client/fs/loader/AnimationFrameMapLoader';
+import { ObjectModelLoader, Scene } from '../client/scene/Scene';
+import { OsrsLoadingBar } from '../components/OsrsLoadingBar';
+import { Hasher } from '../client/util/Hasher';
+import { CachedAnimationLoader } from '../client/fs/loader/AnimationLoader';
+import { CachedSkeletonLoader } from '../client/fs/loader/SkeletonLoader';
+import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from '../client/fs/loader/AnimationFrameMapLoader';
 import { Leva, useControls, folder } from 'leva';
 import { Joystick } from 'react-joystick-component';
 import { IJoystickUpdateEvent } from 'react-joystick-component/build/lib/Joystick';
@@ -1452,7 +1452,7 @@ const poolSize = Math.min(navigator.hardwareConcurrency, 4);
 const pool = ChunkLoaderWorkerPool.init(poolSize);
 // console.log('start App', performance.now());
 
-function App() {
+function MapViewerApp() {
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | undefined>(undefined);
     const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(undefined);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -1590,4 +1590,4 @@ function App() {
     );
 }
 
-export default App;
+export default MapViewerApp;

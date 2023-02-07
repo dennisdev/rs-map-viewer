@@ -1,21 +1,21 @@
 import { expose, Transfer } from "threads/worker";
-import { ConfigType } from "./client/fs/ConfigType";
-import { loadFromStore } from "./client/fs/FileSystem";
-import { IndexType } from "./client/fs/IndexType";
-import { CachedObjectLoader } from "./client/fs/loader/ObjectLoader";
-import { CachedOverlayLoader } from "./client/fs/loader/OverlayLoader";
-import { CachedUnderlayLoader } from "./client/fs/loader/UnderlayLoader";
-import { MemoryStore } from "./client/fs/MemoryStore";
-import { RegionLoader } from "./client/RegionLoader";
-import { TextureLoader } from "./client/fs/loader/TextureLoader";
-import { Compression } from "./client/util/Compression";
+import { ConfigType } from "../client/fs/ConfigType";
+import { loadFromStore } from "../client/fs/FileSystem";
+import { IndexType } from "../client/fs/IndexType";
+import { CachedObjectLoader } from "../client/fs/loader/ObjectLoader";
+import { CachedOverlayLoader } from "../client/fs/loader/OverlayLoader";
+import { CachedUnderlayLoader } from "../client/fs/loader/UnderlayLoader";
+import { MemoryStore } from "../client/fs/MemoryStore";
+import { RegionLoader } from "../client/RegionLoader";
+import { TextureLoader } from "../client/fs/loader/TextureLoader";
+import { Compression } from "../client/util/Compression";
 import { ChunkDataLoader } from "./ChunkDataLoader";
-import { IndexModelLoader } from "./client/fs/loader/ModelLoader";
-import { ObjectModelLoader } from "./client/scene/Scene";
-import { Hasher } from "./client/util/Hasher";
-import { CachedAnimationLoader } from "./client/fs/loader/AnimationLoader";
-import { CachedSkeletonLoader } from "./client/fs/loader/SkeletonLoader";
-import { CachedAnimationFrameMapLoader } from "./client/fs/loader/AnimationFrameMapLoader";
+import { IndexModelLoader } from "../client/fs/loader/ModelLoader";
+import { ObjectModelLoader } from "../client/scene/Scene";
+import { Hasher } from "../client/util/Hasher";
+import { CachedAnimationLoader } from "../client/fs/loader/AnimationLoader";
+import { CachedSkeletonLoader } from "../client/fs/loader/SkeletonLoader";
+import { CachedAnimationFrameMapLoader } from "../client/fs/loader/AnimationFrameMapLoader";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,

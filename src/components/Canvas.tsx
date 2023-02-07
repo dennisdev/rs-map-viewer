@@ -15,12 +15,6 @@ function resizeCanvas(canvas: HTMLCanvasElement) {
     return false;
 }
 
-// const worker = new Worker(new URL('./worker', import.meta.url));
-// worker.onmessage = (e: MessageEvent<string>) => {
-//     console.log('Received from worker:', e.data);
-// };
-// worker.postMessage('I love dogs');
-
 const useCanvas = (init: (gl: WebGL2RenderingContext) => void,
     draw: (gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) => void) => {
 
