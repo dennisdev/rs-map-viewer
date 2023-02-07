@@ -861,11 +861,13 @@ export class Scene {
             if (def.clipped && (tileX + sizeX >= 63 || tileY + sizeY >= 63 || tileX <= 1 || tileY <= 1)) {
                 let lightOcclusion = 15;
 
-                const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
-                if (model instanceof Model && def.animationId === -1) {
-                    lightOcclusion = model.getXZRadius() / 4 | 0;
-                    if (lightOcclusion > 30) {
-                        lightOcclusion = 30;
+                if (def.animationId === -1 && !def.mergeNormals) {
+                    const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
+                    if (model instanceof Model) {
+                        lightOcclusion = model.getXZRadius() / 4 | 0;
+                        if (lightOcclusion > 30) {
+                            lightOcclusion = 30;
+                        }
                     }
                 }
 
