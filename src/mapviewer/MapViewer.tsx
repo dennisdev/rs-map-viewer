@@ -31,7 +31,7 @@ import { FrustumIntersection } from './FrustumIntersection';
 import mainVertShader from './shaders/main.vert.glsl';
 import mainFragShader from './shaders/main.frag.glsl';
 
-console.log(mainVertShader);
+// console.log(mainVertShader);
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
