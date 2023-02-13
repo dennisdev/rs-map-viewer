@@ -6,6 +6,9 @@ import { HSL_RGB_MAP, packHsl } from "../client/util/ColorUtil";
 import { GameObject, ObjectModelLoader, Scene, SceneObject } from "../client/scene/Scene";
 import { Hasher } from "../client/util/Hasher";
 import { FloatUtil } from "../client/util/FloatUtil";
+import { AnimatedObject } from "../client/scene/AnimatedObject";
+import { ModelData } from "../client/model/ModelData";
+import { AnimationDefinition } from "../client/fs/definition/AnimationDefinition";
 
 export type ChunkData = {
     regionX: number,
@@ -128,6 +131,94 @@ class VertexBuffer {
         this.view.setInt32(vertexBufIndex + 8, v2, true);
 
         return this.vertexOffset++;
+    }
+}
+
+enum ContourGroundType {
+    CENTER_TILE = 0,
+    VERTEX_POS = 1,
+    NO_CONTOUR = 2
+}
+
+type AnimModelInfo = {
+    sceneX: number,
+    sceneY: number,
+}
+
+type AnimInfo = {
+    // 8 bits unsigned
+    frameCount: number,
+    // 8 bits unsigned
+    frameStep: number,
+    // 1 bit
+    repeat: boolean,
+    // 16 bits unsigned
+    totalLength: number,
+    // 16 bits unsigned
+    frameLengthOffset: number
+}
+
+class AnimInfoBuffer {
+    public static readonly STRIDE: number = 8;
+
+    view: DataView;
+
+    byteArray: Uint8Array;
+
+    offset: number;
+
+    frameLengths: number[];
+
+    constructor(count: number, offset: number = 0) {
+        this.view = new DataView(new ArrayBuffer(count * AnimInfoBuffer.STRIDE));
+        this.byteArray = new Uint8Array(this.view.buffer);
+        this.offset = offset;
+        this.frameLengths = [];
+    }
+
+    ensureSize(count: number) {
+        const byteOffset = this.offset * AnimInfoBuffer.STRIDE;
+        if (byteOffset + count * AnimInfoBuffer.STRIDE >= this.view.byteLength) {
+            const newLength = Math.max(this.view.byteLength * 2, AnimInfoBuffer.STRIDE * 50);
+            const newView = new DataView(new ArrayBuffer(newLength));
+            const newByteArray = new Uint8Array(newView.buffer);
+            newByteArray.set(this.byteArray, 0);
+            this.view = newView;
+            this.byteArray = newByteArray;
+        }
+    }
+
+    addAnim(frameStep: number, frameLengths: number[]): number {
+        const animTotalLength = frameLengths.reduce((a, b) => a + b, 0);
+
+        const animInfo: AnimInfo = {
+            frameCount: frameLengths.length,
+            frameStep: frameStep,
+            repeat: frameStep > 0,
+            totalLength: animTotalLength,
+            frameLengthOffset: this.frameLengths.length
+        };
+
+        this.frameLengths.push(...frameLengths);
+
+        return this.addAnimInfo(animInfo);
+    }
+
+    addAnimInfo(info: AnimInfo): number {
+        this.ensureSize(1);
+
+        const byteOffset = this.offset * AnimInfoBuffer.STRIDE;
+
+        const frameStep = info.repeat ? info.frameStep : info.frameCount;
+
+        this.view.setUint8(byteOffset, info.frameCount);
+        this.view.setUint8(byteOffset + 1, frameStep);
+        this.view.setUint8(byteOffset + 2, info.repeat ? 1 : 0);
+
+        this.view.setUint16(byteOffset + 4, info.totalLength, true);
+        this.view.setUint16(byteOffset + 6, info.frameLengthOffset, true);
+
+        return this.offset++;
     }
 }
 
@@ -376,8 +467,10 @@ function createOcclusionMap(renderFlags: Uint8Array[][], underlayIds: Uint16Arra
     return occlusionMap;
 }
 
-function getModelsFromScene(scene: Scene, occlusionMap: boolean[][][]): InstancedModel[] {
+function getObjectModelsFromScene(scene: Scene, occlusionMap: boolean[][][]): [InstancedModel[], AnimatedObject[]] {
     const models: InstancedModel[] = [];
+
+    const animatedObjects: AnimatedObject[] = [];
 
     const gameObjects: Set<GameObject> = new Set();
 
@@ -390,33 +483,67 @@ function getModelsFromScene(scene: Scene, occlusionMap: boolean[][][]): Instance
                 }
 
                 if (tile.floorDecoration) {
-                    for (const model of tile.floorDecoration.getModels()) {
-                        models.push(sceneObjectToInstancedModel(model, tile.floorDecoration, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    if (tile.floorDecoration.renderable instanceof Model) {
+                        models.push(sceneObjectToInstancedModel(tile.floorDecoration.renderable, tile.floorDecoration, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    } else if (tile.floorDecoration.renderable instanceof AnimatedObject) {
+                        tile.floorDecoration.renderable.sceneObject = tile.floorDecoration;
+
+                        animatedObjects.push(tile.floorDecoration.renderable);
                     }
                 }
 
                 if (tile.wallObject) {
-                    for (const model of tile.wallObject.getModels()) {
-                        models.push(sceneObjectToInstancedModel(model, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    if (tile.wallObject.renderable0 instanceof Model) {
+                        models.push(sceneObjectToInstancedModel(tile.wallObject.renderable0, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    } else if (tile.wallObject.renderable0 instanceof AnimatedObject) {
+                        tile.wallObject.renderable0.sceneObject = tile.wallObject;
+
+                        animatedObjects.push(tile.wallObject.renderable0);
+                    }
+                    if (tile.wallObject.renderable1 instanceof Model) {
+                        models.push(sceneObjectToInstancedModel(tile.wallObject.renderable1, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    } else if (tile.wallObject.renderable1 instanceof AnimatedObject) {
+                        tile.wallObject.renderable1.sceneObject = tile.wallObject;
+
+                        animatedObjects.push(tile.wallObject.renderable1);
                     }
                 }
 
                 if (tile.wallDecoration) {
-                    if (tile.wallDecoration.model0 instanceof Model) {
-                        const offsetX = tile.wallDecoration.offsetX;
-                        const offsetY = tile.wallDecoration.offsetY;
-                        models.push(sceneObjectToInstancedModel(tile.wallDecoration.model0, tile.wallDecoration, offsetX, offsetY, tileX, tileY, plane, 2, occlusionMap));
+                    const offsetX = tile.wallDecoration.offsetX;
+                    const offsetY = tile.wallDecoration.offsetY;
+                    if (tile.wallDecoration.renderable0 instanceof Model) {
+                        models.push(sceneObjectToInstancedModel(tile.wallDecoration.renderable0, tile.wallDecoration, offsetX, offsetY, tileX, tileY, plane, 2, occlusionMap));
+                    } else if (tile.wallDecoration.renderable0 instanceof AnimatedObject) {
+                        tile.wallDecoration.renderable0.sceneObject = tile.wallDecoration;
+                        tile.wallDecoration.renderable0.offsetX = offsetX;
+                        tile.wallDecoration.renderable0.offsetY = offsetY;
+
+                        animatedObjects.push(tile.wallDecoration.renderable0);
                     }
-                    if (tile.wallDecoration.model1 instanceof Model) {
-                        models.push(sceneObjectToInstancedModel(tile.wallDecoration.model1, tile.wallDecoration, 0, 0, tileX, tileY, plane, 2, occlusionMap));
+                    if (tile.wallDecoration.renderable1 instanceof Model) {
+                        models.push(sceneObjectToInstancedModel(tile.wallDecoration.renderable1, tile.wallDecoration, 0, 0, tileX, tileY, plane, 2, occlusionMap));
+                    } else if (tile.wallDecoration.renderable1 instanceof AnimatedObject) {
+                        tile.wallDecoration.renderable1.sceneObject = tile.wallDecoration;
+
+                        animatedObjects.push(tile.wallDecoration.renderable1);
                     }
                 }
 
                 for (const gameObject of tile.gameObjects) {
-                    const model = gameObject.model;
+                    const renderable = gameObject.renderable;
 
-                    if (model instanceof Model && !gameObjects.has(gameObject)) {
-                        models.push(sceneObjectToInstancedModel(model, gameObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    if (gameObjects.has(gameObject)) {
+                        continue;
+                    }
+
+                    if (renderable instanceof Model) {
+                        models.push(sceneObjectToInstancedModel(renderable, gameObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+
+                        gameObjects.add(gameObject);
+                    } else if (renderable instanceof AnimatedObject) {
+                        renderable.sceneObject = gameObject;
+                        animatedObjects.push(renderable);
 
                         gameObjects.add(gameObject);
                     }
@@ -425,7 +552,7 @@ function getModelsFromScene(scene: Scene, occlusionMap: boolean[][][]): Instance
         }
     }
 
-    return models;
+    return [models, animatedObjects];
 }
 
 function createModelTextureData(drawCommands: DrawCommand[]): Int32Array {
@@ -473,38 +600,48 @@ class ModelDataBuffer {
     }
 }
 
-function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffer, minimizeDrawCalls: boolean): Map<number, InstancedModel> {
+function getModelHash(modelDataBuf: ModelDataBuffer, model: Model): number {
+    const textureIds = (model.faceTextures && new Int32Array(model.faceTextures)) || new Int32Array(0);
+
+    const datas = [model.faceColors1, model.faceColors2, model.faceColors3, model.verticesX, model.verticesY, model.verticesZ, textureIds];
+    let dataLength = 0;
+    for (const data of datas) {
+        dataLength += data.length;
+    }
+
+    modelDataBuf.ensureSize(dataLength);
+
+    let modelDataOffset = 0;
+    for (const data of datas) {
+        modelDataBuf.data.set(data, modelDataOffset);
+        modelDataOffset += data.length;
+    }
+
+    const hashData = modelDataBuf.bytes.subarray(0, modelDataOffset * 4);
+    return Hasher.hash32(hashData);
+}
+
+function getGroupedModels(models: InstancedModel[], modelDataBuf: ModelDataBuffer, dedupeModels: boolean): Map<number, InstancedModel> {
     const groupedModels: Map<number, InstancedModel> = new Map();
 
     const modelHashMap: Map<Model, number> = new Map();
 
-    for (const instancedModel of models) {
+    for (let i = 0; i < models.length; i++) {
+        const instancedModel = models[i];
         const model = instancedModel.model;
 
         if (model.faceCount === 0) {
             continue;
         }
 
-        let hash = minimizeDrawCalls ? (Math.random() * 0x7FFFFFFF | 0) : modelHashMap.get(model);
-        if (!hash) {
-            const textureIds = (model.faceTextures && new Int32Array(model.faceTextures)) || new Int32Array(0);
+        let hash: number | undefined = i;
 
-            const datas = [model.faceColors1, model.faceColors2, model.faceColors3, model.verticesX, model.verticesY, model.verticesZ, textureIds];
-            let dataLength = 0;
-            for (const data of datas) {
-                dataLength += data.length;
-            }
+        if (dedupeModels) {
+            hash = modelHashMap.get(model);
+        }
 
-            modelDataBuf.ensureSize(dataLength);
-
-            let modelDataOffset = 0;
-            for (const data of datas) {
-                modelDataBuf.data.set(data, modelDataOffset);
-                modelDataOffset += data.length;
-            }
-
-            const hashData = modelDataBuf.bytes.subarray(0, modelDataOffset * 4);
-            hash = Hasher.hash32(hashData);
+        if (hash === undefined) {
+            hash = getModelHash(modelDataBuf, model);
 
             modelHashMap.set(model, hash);
         }
@@ -808,6 +945,8 @@ export class ChunkDataLoader {
         //     return undefined;
         // }
 
+        const loadAnimations = false;
+
         if (landscapeData) {
             console.time('light scene');
             region.applyLighting(-50, -10, -50);
@@ -817,13 +956,79 @@ export class ChunkDataLoader {
 
             console.time('iterate tiles');
 
-            const models = getModelsFromScene(region, occlusionMap);
+            const [models, animatedObjects] = getObjectModelsFromScene(region, occlusionMap);
+
+            // const animatedModels: InstancedModel[] = [];
+
+            const animInfoBuffer = new AnimInfoBuffer(0);
+
+            console.log('animated objects:', animatedObjects.length);
+
+            const animatedModelHashes = new Set<number>();
+
+            for (const animatedObject of animatedObjects) {
+                if (!animatedObject.sceneObject) {
+                    continue;
+                }
+
+                const def = animatedObject.sceneObject.def;
+                let defTransform = def;
+                if (def.transforms && def.transforms.length > 0) {
+                    const transformId = def.transforms.find(id => id !== -1);
+                    if (transformId !== undefined) {
+                        // TODO: check with actual varps, some objects like balloons are split into 2, atm the transform indices are different
+                        defTransform = this.regionLoader.getObjectDef(transformId);
+                    }
+                }
+
+                const anim = this.objectModelLoader.animationLoader.getDefinition(animatedObject.animationId);
+
+                if (loadAnimations && !anim.isAnimMaya() && anim.frameIds && anim.frameLengths) {
+                    let model = this.objectModelLoader.getObjectModel(defTransform, animatedObject.type, animatedObject.rotation);
+                    if (!model) {
+                        continue;
+                    }
+
+                    if (model instanceof ModelData) {
+                        model = model.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+                    }
+
+                    // const animOffset = animInfoBuffer.addAnim(anim.frameStep, anim.frameLengths);
+                    
+                    animatedModelHashes.add(getModelHash(this.modelDataBuf, model));
+
+
+
+
+                    // console.log(anim, def);
+
+                    // animatedModels.push(sceneObjectToInstancedModel(model, animatedObject.sceneObject, animatedObject.offsetX, animatedObject.offsetY,
+                    //     animatedObject.tileX, animatedObject.tileY, animatedObject.plane, 1, occlusionMap));
+                } else {
+                    const frame = animatedObject.animationId === 3217 ? 3 : 1;
+                    const model = this.objectModelLoader.getObjectModelAnimated(defTransform, animatedObject.type, animatedObject.rotation, animatedObject.animationId, frame);
+
+                    // const model = this.objectModelLoader.getObjectModel(defTransform, animatedObject.type, animatedObject.rotation);
+                    if (!model || model instanceof ModelData) {
+                        continue;
+                    }
+
+                    // if (def.id === 15478) {
+                    //     console.log(animatedObject.animationId, model);
+                    // }
+
+                    models.push(sceneObjectToInstancedModel(model, animatedObject.sceneObject, animatedObject.offsetX, animatedObject.offsetY,
+                        animatedObject.tileX, animatedObject.tileY, animatedObject.plane, 1, occlusionMap));
+                }
+            }
+
+            console.log('unique animated models', animatedModelHashes.size);
 
             console.timeEnd('iterate tiles');
 
             console.time('models phase 1');
 
-            const groupedModels = getGroupedModels(models, this.modelDataBuf, minimizeDrawCalls);
+            const groupedModels = getGroupedModels(models, this.modelDataBuf, !minimizeDrawCalls);
 
             console.timeEnd('models phase 1');
 

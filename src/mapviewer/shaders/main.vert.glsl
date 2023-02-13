@@ -86,10 +86,10 @@ VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
 }
 
 struct ModelInfo {
-    uint plane;
-    float contourGround;
-    uint priority;
     vec2 tilePos;
+    uint plane;
+    uint priority;
+    float contourGround;
 };
 
 ModelInfo decodeModelInfo(int offset) {

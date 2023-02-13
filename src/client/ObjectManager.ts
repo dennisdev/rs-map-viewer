@@ -2,7 +2,7 @@ import { Archive } from "./fs/Archive";
 import { ObjectDefinition } from "./fs/definition/ObjectDefinition";
 import { Model } from "./model/Model";
 import { ModelData } from "./model/ModelData";
-import { Renderable } from "./Renderable";
+import { Renderable } from "./scene/Renderable";
 
 export class ObjectManager {
     private readonly archive: Archive;

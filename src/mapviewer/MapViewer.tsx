@@ -354,14 +354,62 @@ class MapViewer {
         // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
         // const overlayLoader = new CachedOverlayLoader(overlayArchive);
         // const objectLoader = new CachedObjectLoader(objectArchive);
+        // const animationLoader = new CachedAnimationLoader(animationArchive);
+
         // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
 
-        // const animationLoader = new CachedAnimationLoader(animationArchive);
+
+        // const animIds = new Set<number>();
+        // let count = 0;
+        // for (const id of objectArchive.fileIds) {
+        //     const objectDef = objectLoader.getDefinition(id);
+        //     if (objectDef.animationId !== -1 && !animIds.has(objectDef.animationId)) {
+        //         animIds.add(objectDef.animationId);
+
+        //         const def = animationLoader.getDefinition(objectDef.animationId);
+        //         // if (def.frameIds && def.frameStep !== def.frameIds.length) {
+        //         //     console.log('wtf', id, objectDef.name, def);
+        //         //     count++;
+        //         // }
+        //         // if (def.frameLengths && def.frameStep > 0) {
+        //         //     const index = def.frameLengths.findIndex(length => length > 100);
+        //         //     if (index !== -1 && index !== def.frameLengths.length - 1) {
+        //         //         console.log('wtf', id, objectDef.name, def);
+        //         //         count++;
+        //         //     }
+        //         // }
+        //         // if (def.frameLengths && def.frameLengths.find(length => length > 1000)) {
+        //         //     console.log('wtf', id, objectDef.name, def);
+        //         //     count++;
+        //         // }
+        //         // if (def.frameLengths && def.frameLengths.reduce((a, b) => a + b, 0) > 0x7FFF) {
+        //         //     console.log('wtf', id, objectDef.name, def);
+        //         //     count++;
+        //         // }
+                
+        //         // if (def.frameLengths && def.frameLengths.length > 50) {
+        //         //     console.log('wtf', id, objectDef.name, def);
+        //         //     count++;
+        //         // }
+        //         if (!objectDef.randomAnimStartFrame) {
+        //             console.log('wtf', id, objectDef.name, def);
+        //             count++;
+        //         }
+        //     }
+        // }
+        // console.log(count);
+
+        // for (const id of animationArchive.fileIds) {
+        //     const def = animationLoader.getDefinition(id);
+        //     if (def.frameIds && def.frameStep !== def.frameIds.length && def.frameStep !== -1) {
+        //         console.log('wtf', def);
+        //     }
+        // }
 
         // const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
 
-        const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
-        const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
+        // const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
+        // const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
 
         // const fireplaceId = 24969;
         // const fireplaceDef = objectLoader.getDefinition(fireplaceId);
@@ -375,7 +423,7 @@ class MapViewer {
         // }
         // console.log('fireplace', fireplaceDef, fireplaceAnim);
 
-        console.time('load anim frames');
+        // console.time('load anim frames');
         // for (const animId of animationArchive.fileIds) {
         //     const anim = animationLoader.getDefinition(animId);
         //     if (anim.frameIds) {
@@ -391,7 +439,7 @@ class MapViewer {
         //         }
         //     }
         // }
-        console.timeEnd('load anim frames');
+        // console.timeEnd('load anim frames');
         // console.timeEnd('region loader');
 
         // console.log(regionLoader.getTerrainArchiveId(50, 50));
@@ -1087,7 +1135,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             'Position': { value: positionControls, editable: false },
             'Direction': { value: directionControls, editable: false }
         }, { collapsed: false }),
-        'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        'View Distance': { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
         'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
         'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },

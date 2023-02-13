@@ -1,6 +1,6 @@
 import { COSINE, SINE } from "../Client";
 import { TextureLoader } from "../fs/loader/TextureLoader";
-import { Renderable } from "../Renderable";
+import { Renderable } from "../scene/Renderable";
 import { AnimationFrame } from "./animation/AnimationFrame";
 import { TransformType } from "./animation/TransformType";
 
@@ -660,7 +660,9 @@ export class Model extends Renderable {
                 if (this.faceLabelsAlpha && this.faceAlphas) {
                     for (const label of labels) {
                         if (label < this.faceLabelsAlpha.length) {
-                            // console.log('here', label, this.faceLabelsAlpha);
+                            // if (this.faceCount === 700) {
+                                // console.log('here', label, this.faceLabelsAlpha);
+                            // }
                             for (const f of this.faceLabelsAlpha[label]) {
                                 let newAlpha = (this.faceAlphas[f] & 0xFF) + tx * 8
                                 if (newAlpha < 0) {
@@ -669,8 +671,11 @@ export class Model extends Renderable {
                                     newAlpha = 255;
                                 }
 
-                                // console.log('changing alpha', f, newAlpha, this.faceAlphas[f] & 0xFF);
+                                // if (this.faceCount === 700) {
+                                    // console.log('changing alpha', f, newAlpha, this.faceAlphas[f] & 0xFF);
+                                // }
                                 this.faceAlphas[f] = newAlpha;
+                                // this.faceAlphas[f] = 0;
                             }
                         }
                     }

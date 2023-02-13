@@ -1,5 +1,5 @@
 import { SINE, COSINE } from "../Client";
-import { Renderable } from "../Renderable";
+import { Renderable } from "../scene/Renderable";
 import { ByteBuffer } from "../util/ByteBuffer";
 import { FaceNormal } from "./FaceNormal";
 import { Model } from "./Model";
