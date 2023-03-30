@@ -69,33 +69,51 @@ type ModelGroup = {
     mergeData?: ModelGroupMergeData,
 };
 
-class VertexBuffer {
-    public static readonly VERTEX_STRIDE = 12;
+class DataBuffer {
+    stride: number;
 
     view: DataView;
 
-    byteArray: Uint8Array;
+    bytes: Uint8Array;
 
-    vertexOffset: number;
+    offset: number;
 
-    vertexIndices: Map<number, number> = new Map();
-
-    constructor(vertexCount: number, vertexOffset: number = 0) {
-        this.view = new DataView(new ArrayBuffer(vertexCount * VertexBuffer.VERTEX_STRIDE));
-        this.byteArray = new Uint8Array(this.view.buffer);
-        this.vertexOffset = vertexOffset;
+    constructor(stride: number, count: number, offset: number = 0) {
+        this.stride = stride;
+        this.view = new DataView(new ArrayBuffer(count * this.stride));
+        this.bytes = new Uint8Array(this.view.buffer);
+        this.offset = offset;
     }
 
     ensureSize(vertexCount: number) {
-        const byteOffset = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
-        if (byteOffset + vertexCount * VertexBuffer.VERTEX_STRIDE >= this.view.byteLength) {
-            // double buffer size
-            const newView = new DataView(new ArrayBuffer(this.view.byteLength * 2));
-            const newByteArray = new Uint8Array(newView.buffer);
-            newByteArray.set(this.byteArray, 0);
+        const byteOffset = this.offset * this.stride;
+        if (byteOffset + vertexCount * this.stride >= this.view.byteLength) {
+            const newLength = Math.max(this.view.byteLength * 2, this.stride * 128);
+            const newView = new DataView(new ArrayBuffer(newLength));
+            const newBytes = new Uint8Array(newView.buffer);
+            newBytes.set(this.bytes, 0);
             this.view = newView;
-            this.byteArray = newByteArray;
+            this.bytes = newBytes;
         }
+    }
+
+    byteOffset(): number {
+        return this.offset * this.stride;
+    }
+
+    byteArray(): Uint8Array {
+        return this.bytes.subarray(0, this.byteOffset());
+    }
+}
+
+class VertexBuffer extends DataBuffer {
+    public static readonly STRIDE = 12;
+
+    vertexIndices: Map<number, number>;
+
+    constructor(count: number) {
+        super(VertexBuffer.STRIDE, count);
+        this.vertexIndices = new Map();
     }
 
     addVertex(x: number, y: number, z: number, hsl: number, alpha: number, u: number, v: number, textureId: number, priority: number,
@@ -120,17 +138,17 @@ class VertexBuffer {
             if (cachedIndex !== undefined) {
                 return cachedIndex;
             } else {
-                this.vertexIndices.set(hash, this.vertexOffset);
+                this.vertexIndices.set(hash, this.offset);
             }
         }
         this.ensureSize(1);
-        const vertexBufIndex = this.vertexOffset * VertexBuffer.VERTEX_STRIDE;
+        const byteOffset = this.byteOffset();
 
-        this.view.setInt32(vertexBufIndex, v0, true);
-        this.view.setInt32(vertexBufIndex + 4, v1, true);
-        this.view.setInt32(vertexBufIndex + 8, v2, true);
+        this.view.setInt32(byteOffset, v0, true);
+        this.view.setInt32(byteOffset + 4, v1, true);
+        this.view.setInt32(byteOffset + 8, v2, true);
 
-        return this.vertexOffset++;
+        return this.offset++;
     }
 }
 
@@ -158,34 +176,14 @@ type AnimInfo = {
     frameLengthOffset: number
 }
 
-class AnimInfoBuffer {
+class AnimInfoBuffer extends DataBuffer {
     public static readonly STRIDE: number = 8;
-
-    view: DataView;
-
-    byteArray: Uint8Array;
-
-    offset: number;
 
     frameLengths: number[];
 
-    constructor(count: number, offset: number = 0) {
-        this.view = new DataView(new ArrayBuffer(count * AnimInfoBuffer.STRIDE));
-        this.byteArray = new Uint8Array(this.view.buffer);
-        this.offset = offset;
+    constructor(count: number) {
+        super(AnimInfoBuffer.STRIDE, count);
         this.frameLengths = [];
-    }
-
-    ensureSize(count: number) {
-        const byteOffset = this.offset * AnimInfoBuffer.STRIDE;
-        if (byteOffset + count * AnimInfoBuffer.STRIDE >= this.view.byteLength) {
-            const newLength = Math.max(this.view.byteLength * 2, AnimInfoBuffer.STRIDE * 50);
-            const newView = new DataView(new ArrayBuffer(newLength));
-            const newByteArray = new Uint8Array(newView.buffer);
-            newByteArray.set(this.byteArray, 0);
-            this.view = newView;
-            this.byteArray = newByteArray;
-        }
     }
 
     addAnim(frameStep: number, frameLengths: number[]): number {
@@ -207,7 +205,7 @@ class AnimInfoBuffer {
     addAnimInfo(info: AnimInfo): number {
         this.ensureSize(1);
 
-        const byteOffset = this.offset * AnimInfoBuffer.STRIDE;
+        const byteOffset = this.byteOffset();
 
         const frameStep = info.repeat ? info.frameStep : info.frameCount;
 
@@ -934,7 +932,7 @@ export class ChunkDataLoader {
 
         console.timeEnd('terrain');
 
-        terrainVertexCount = vertexBuf.vertexOffset;
+        terrainVertexCount = vertexBuf.offset;
 
         // check if is empty water region
         // if (overlayIdSet.size == 2 && overlayIdSet.has(5) 
@@ -1052,14 +1050,14 @@ export class ChunkDataLoader {
         const uniqTotalTriangles = drawCommands.map(cmd => cmd.elements / 3).reduce((a, b) => a + b, 0);
 
         const indexBufferBytes = indices.length * 4;
-        const currentBytes = vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE + indexBufferBytes;
+        const currentBytes = vertexBuf.byteOffset() + indexBufferBytes;
 
         const drawRanges: MultiDrawCommand[] = drawCommands.map(cmd => newMultiDrawCommand(cmd.offset, cmd.elements, cmd.datas.length));
 
         const modelTextureData = createModelTextureData(drawCommands);
 
         console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
-            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.vertexOffset, 'now: ', currentBytes, currentBytes - indexBufferBytes,
+            'terrain verts: ', terrainVertexCount, 'total vertices: ', vertexBuf.offset, 'now: ', currentBytes, currentBytes - indexBufferBytes,
             'uniq vertices: ', vertexBuf.vertexIndices.size, 'data texture size: ', modelTextureData.length, 'draw calls: ', drawRanges.length,
             'indices: ', indices.length);
 
@@ -1070,7 +1068,7 @@ export class ChunkDataLoader {
         return {
             regionX,
             regionY,
-            vertices: new Uint8Array(vertexBuf.view.buffer).subarray(0, vertexBuf.vertexOffset * VertexBuffer.VERTEX_STRIDE),
+            vertices: vertexBuf.byteArray(),
             indices: new Int32Array(indices),
             modelTextureData,
             heightMapTextureData,
