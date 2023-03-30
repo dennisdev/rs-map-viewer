@@ -1003,7 +1003,7 @@ export class ChunkDataLoader {
                     // animatedModels.push(sceneObjectToInstancedModel(model, animatedObject.sceneObject, animatedObject.offsetX, animatedObject.offsetY,
                     //     animatedObject.tileX, animatedObject.tileY, animatedObject.plane, 1, occlusionMap));
                 } else {
-                    const frame = animatedObject.animationId === 3217 ? 3 : 1;
+                    const frame = animatedObject.animationId === 3217 ? 0 : 0;
                     const model = this.objectModelLoader.getObjectModelAnimated(defTransform, animatedObject.type, animatedObject.rotation, animatedObject.animationId, frame);
 
                     // const model = this.objectModelLoader.getObjectModel(defTransform, animatedObject.type, animatedObject.rotation);

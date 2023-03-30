@@ -1135,7 +1135,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             'Position': { value: positionControls, editable: false },
             'Direction': { value: directionControls, editable: false }
         }, { collapsed: false }),
-        'View Distance': { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
         'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
         'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
@@ -1187,7 +1187,7 @@ function MapViewerApp() {
         // console.log('start fetch', performance.now());
         console.time('first load');
         const load = async () => {
-            const cachePath = '/cache210-6/';
+            const cachePath = '/cache212/';
             const xteaPromise = fetch(cachePath + 'keys.json').then(resp => resp.json());
             const store = await fetchMemoryStore(cachePath, [
                 IndexType.ANIMATIONS,
