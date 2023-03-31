@@ -461,6 +461,9 @@ export class Scene {
 
     tileRotations: Uint8Array[][];
 
+    varps: Map<number, number>;
+    varbits: Map<number, number>;
+
     constructor(regionX: number, regionY: number, planes: number, sizeX: number, sizeY: number) {
         this.regionX = regionX;
         this.regionY = regionY;
@@ -475,6 +478,8 @@ export class Scene {
         this.tileOverlays = new Array(this.planes);
         this.tileShapes = new Array(this.planes);
         this.tileRotations = new Array(this.planes);
+        this.varps = new Map();
+        this.varbits = new Map();
         for (let plane = 0; plane < planes; plane++) {
             this.tiles[plane] = new Array(sizeX);
             this.collisionMaps[plane] = new CollisionMap(sizeX, sizeY);
@@ -592,16 +597,44 @@ export class Scene {
         return (tile && tile.wallObject && tile.wallObject.tag) || 0n;
     }
 
+    transformObject(regionLoader: RegionLoader, def: ObjectDefinition): ObjectDefinition | undefined {
+        if (def.transforms && def.transforms.length > 0) {
+            let transformIndex: number | undefined = undefined;
+            if (def.transformVarbit !== -1) {
+                transformIndex = this.varbits.get(def.transformVarbit);
+            } else if (def.transformVarp !== -1) {
+                transformIndex = this.varps.get(def.transformVarp);
+            }
+            if (transformIndex === undefined) {
+                transformIndex = def.transforms.findIndex(id => id !== -1);
+                if (transformIndex !== -1) {
+                    if (def.transformVarbit !== -1) {
+                        this.varbits.set(def.transformVarbit, transformIndex);
+                    } else if (def.transformVarp !== -1) {
+                        this.varps.set(def.transformVarp, transformIndex);
+                    }
+                }
+            }
+            if (transformIndex === -1) {
+                return undefined;
+            }
+            const transformId = def.transforms[transformIndex];
+            if (transformId === -1) {
+                return undefined;
+            }
+            return regionLoader.getObjectDef(transformId);
+        }
+        return def;
+    }
+
     addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, objOcclusionOnly: boolean, expandedTileHeights: Int32Array[][],
         plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
 
         const def = regionLoader.getObjectDef(objectId);
-        let defTransform = def;
-        if (def.transforms && def.transforms.length > 0) {
-            const transformId = def.transforms.find(id => id !== -1);
-            if (transformId !== undefined) {
-                defTransform = regionLoader.getObjectDef(transformId);
-            }
+        const defTransform = this.transformObject(regionLoader, def);
+
+        if (!defTransform) {
+            return;
         }
 
         const baseX = this.regionX * 64;

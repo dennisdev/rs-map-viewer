@@ -10,6 +10,11 @@ export class Hasher {
         return promise;
     }
 
+    static hash32Int(n: number): number {
+        const buf = new Int32Array([n]);
+        return this.hash32(new Uint8Array(buf.buffer));
+    }
+
     static hash32(data: Uint8Array): number {
         if (Hasher.hashApi) {
             return Hasher.hashApi.h32Raw(data);
