@@ -970,13 +970,9 @@ export class ChunkDataLoader {
                 }
 
                 const def = animatedObject.sceneObject.def;
-                let defTransform = def;
-                if (def.transforms && def.transforms.length > 0) {
-                    const transformId = def.transforms.find(id => id !== -1);
-                    if (transformId !== undefined) {
-                        // TODO: check with actual varps, some objects like balloons are split into 2, atm the transform indices are different
-                        defTransform = this.regionLoader.getObjectDef(transformId);
-                    }
+                const defTransform = region.transformObject(this.regionLoader, def);
+                if (!defTransform) {
+                    continue;
                 }
 
                 const anim = this.objectModelLoader.animationLoader.getDefinition(animatedObject.animationId);
