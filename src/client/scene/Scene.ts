@@ -1,23 +1,27 @@
-import { COSINE, generateHeight } from "../Client";
+import { generateHeight } from "../Client";
 import { CollisionMap } from "./CollisionMap";
 import { ObjectDefinition } from "../fs/definition/ObjectDefinition";
-import { ModelLoader } from "../fs/loader/ModelLoader";
 import { Model } from "../model/Model";
 import { ModelData } from "../model/ModelData";
 import { RegionLoader } from "../RegionLoader";
 import { ByteBuffer } from "../util/ByteBuffer";
-import { AnimationLoader } from "../fs/loader/AnimationLoader";
-import { AnimationDefinition } from "../fs/definition/AnimationDefinition";
-import { AnimationFrameMapLoader } from "../fs/loader/AnimationFrameMapLoader";
 import { Renderable } from "./Renderable";
 import { AnimatedObject } from "./AnimatedObject";
+import { SceneTileModel } from "./SceneTileModel";
+import { adjustOverlayLight, adjustUnderlayLight, packHsl } from "../util/ColorUtil";
+import { TextureLoader } from "../fs/loader/TextureLoader";
+import { ObjectType } from "./ObjectType";
+import { ObjectModelLoader, ContourGroundInfo } from "./ObjectModelLoader";
+import { calculateEntityTag, EntityType, getIdFromEntityTag } from "./EntityTag";
 
-class SceneTile {
+export class SceneTile {
     plane: number;
 
     x: number;
 
     y: number;
+
+    tileModel?: SceneTileModel;
 
     wallObject?: WallObject;
 
@@ -108,322 +112,6 @@ export class GameObject implements SceneObject {
 
     }
 }
-
-enum EntityType {
-    OBJECT = 2
-}
-
-function calculateEntityTag(tileX: number, tileY: number, entityType: EntityType, notInteractive: boolean, id: number): bigint {
-    let tag = BigInt(tileX & 0x7F) | BigInt(tileY & 0x7F) << 7n | BigInt(entityType & 3) << 14n | BigInt(id) << 17n;
-    if (notInteractive) {
-        tag |= 0x10000n;
-    }
-    return tag;
-}
-
-function getIdFromEntityTag(tag: bigint) {
-    return Number(tag >> 17n);
-}
-
-enum ObjectType {
-    WALL = 0,
-    WALL_TRI_CORNER = 1,
-    WALL_CORNER = 2,
-    WALL_RECT_CORNER = 3,
-
-    WALL_DECORATION_INSIDE = 4,
-    WALL_DECORATION_OUTSIDE = 5,
-    WALL_DECORATION_DIAGONAL_OUTSIDE = 6,
-    WALL_DECORATION_DIAGONAL_INSIDE = 7,
-    WALL_DECORATION_DIAGONAL_DOUBLE = 8,
-
-    WALL_DIAGONAL = 9,
-
-    OBJECT = 10,
-    OBJECT_DIAGIONAL = 11,
-
-    ROOF_SLOPED = 12,
-    ROOF_SLOPED_OUTER_CORNER = 13,
-    ROOF_SLOPED_INNER_CORNER = 14,
-    ROOF_SLOPED_HARD_INNER_CORNER = 15,
-    ROOF_SLOPED_HARD_OUTER_CORNER = 16,
-    ROOF_FLAT = 17,
-    ROOF_SLOPED_OVERHANG = 18,
-    ROOF_SLOPED_OVERHANG_OUTER_CORNER = 19,
-    ROOF_SLOPED_OVERHANG_INNER_CORNER = 20,
-    ROOF_SLOPED_OVERHANG_HARD_OUTER_CORNER = 21,
-
-    FLOOR_DECORATION = 22,
-}
-
-export class ObjectModelLoader {
-    static mergeObjectModelsCache: ModelData[] = new Array(4);
-
-    modelLoader: ModelLoader;
-
-    animationLoader: AnimationLoader;
-
-    animationFrameMapLoader: AnimationFrameMapLoader;
-
-    modelDataCache: Map<number, ModelData>;
-
-    modelCache: Map<number, Model | ModelData>;
-
-    constructor(modelLoader: ModelLoader, animationLoader: AnimationLoader, animationFrameMapLoader: AnimationFrameMapLoader) {
-        this.modelLoader = modelLoader;
-        this.animationLoader = animationLoader;
-        this.modelDataCache = new Map();
-        this.modelCache = new Map();
-        this.animationFrameMapLoader = animationFrameMapLoader;
-    }
-
-    getModelData(id: number, mirrored: boolean): ModelData | undefined {
-        let key = id;
-        if (mirrored) {
-            key += 0x10000;
-        }
-        let model = this.modelDataCache.get(key);
-        if (!model) {
-            model = this.modelLoader.getModel(id);
-            if (model) {
-                if (mirrored) {
-                    model.mirror();
-                }
-                this.modelDataCache.set(key, model);
-            }
-        }
-        return model;
-    }
-
-    getObjectModelData(def: ObjectDefinition, type: number, rotation: number): ModelData | undefined {
-        let model: ModelData | undefined;
-        const isDiagonalObject = type === ObjectType.OBJECT_DIAGIONAL;
-        if (isDiagonalObject) {
-            type = ObjectType.OBJECT;
-        }
-        if (!def.objectTypes) {
-            if (type !== ObjectType.OBJECT) {
-                return undefined;
-            }
-
-            if (!def.objectModels) {
-                return undefined;
-            }
-
-            const isMirrored = def.isRotated;
-
-            const modelCount = def.objectModels.length;
-
-            for (let i = 0; i < modelCount; i++) {
-                let modelId = def.objectModels[i];
-
-                model = this.getModelData(modelId, isMirrored);
-                if (!model) {
-                    return undefined;
-                }
-
-                if (modelCount > 1) {
-                    ObjectModelLoader.mergeObjectModelsCache[i] = model;
-                }
-            }
-
-            if (modelCount > 1) {
-                model = ModelData.merge(ObjectModelLoader.mergeObjectModelsCache, modelCount);
-            }
-        } else {
-            let index = -1;
-
-            for (let i = 0; i < def.objectTypes.length; i++) {
-                if (def.objectTypes[i] === type) {
-                    index = i;
-                    break;
-                }
-            }
-
-            if (index === -1) {
-                return undefined;
-            }
-
-            let modelId = def.objectModels[index];
-            const isMirrored = def.isRotated !== rotation > 3;
-
-            model = this.getModelData(modelId, isMirrored);
-        }
-
-        if (!model) {
-            return undefined;
-        }
-
-        const hasResize = def.modelSizeX !== 128 || def.modelSizeHeight !== 128 || def.modelSizeY !== 128;
-
-        const hasOffset = def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
-
-        const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset && !isDiagonalObject, !def.recolorFrom, !def.retextureFrom);
-
-        if (type === ObjectType.WALL_DECORATION_INSIDE && rotation > 3) {
-            copy.rotate(256);
-            copy.translate(45, 0, -45);
-        } else if (isDiagonalObject) {
-            copy.rotate(256);
-        }
-
-        rotation &= 3;
-        if (rotation === 1) {
-            copy.rotate90();
-        } else if (rotation === 2) {
-            copy.rotate180();
-        } else if (rotation === 3) {
-            copy.rotate270();
-        }
-
-        if (def.recolorFrom) {
-            for (let i = 0; i < def.recolorFrom.length; i++) {
-                copy.recolor(def.recolorFrom[i], def.recolorTo[i]);
-            }
-        }
-
-        if (def.retextureFrom) {
-            for (let i = 0; i < def.retextureFrom.length; i++) {
-                copy.retexture(def.retextureFrom[i], def.retextureTo[i]);
-            }
-        }
-
-        if (hasResize) {
-            copy.resize(def.modelSizeX, def.modelSizeHeight, def.modelSizeY);
-        }
-
-        if (hasOffset) {
-            copy.translate(def.offsetX, def.offsetHeight, def.offsetY);
-        }
-
-        return copy;
-    }
-
-    getObjectModel(def: ObjectDefinition, type: number, rotation: number, contourGroundInfo?: ContourGroundInfo): Model | ModelData | undefined {
-        // if (def.animationId !== -1) {
-        //     return this.getObjectModelAnimated(def, type, rotation);
-        //     // return undefined;
-        // }
-
-        let key: number;
-        if (def.objectTypes) {
-            key = rotation + (type << 3) + (def.id << 10);
-        } else {
-            key = rotation + (def.id << 10);
-        }
-
-        let model = this.modelCache.get(key);
-        if (!model) {
-            const modelData = this.getObjectModelData(def, type, rotation);
-            if (!modelData) {
-                return undefined;
-            }
-
-            if (!def.mergeNormals) {
-                model = modelData.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
-            } else {
-                modelData.ambient = def.ambient + 64;
-                modelData.contrast = def.contrast + 768;
-                modelData.calculateVertexNormals();
-
-                model = modelData;
-            }
-
-            this.modelCache.set(key, model);
-        }
-
-        if (def.mergeNormals) {
-            model = (model as ModelData).copy();
-        }
-
-        if (def.contouredGround >= 0 && contourGroundInfo) {
-            model = model.contourGround(contourGroundInfo.heightMap, contourGroundInfo.sceneX, contourGroundInfo.sceneHeight, contourGroundInfo.sceneY, true, def.contouredGround);
-        }
-
-        return model;
-    }
-
-    getObjectModelAnimated(def: ObjectDefinition, type: number, rotation: number, animationId: number, frame: number): Model | undefined {
-        let key: number;
-        if (def.objectTypes) {
-            key = rotation + (type << 3) + (def.id << 10);
-        } else {
-            key = rotation + (def.id << 10);
-        }
-
-        let model = this.modelCache.get(key);
-        if (!model) {
-            const modelData = this.getObjectModelData(def, type, rotation);
-            if (!modelData) {
-                return undefined;
-            }
-
-            model = modelData.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
-
-            this.modelCache.set(key, model);
-        } else if (model instanceof Model) {
-            return model;
-        } else {
-            throw new Error('Model is not lit');
-        }
-
-        const anim = this.animationLoader.getDefinition(animationId);
-        if (anim) {
-            model = this.transformObjectModel(model, anim, frame, rotation);
-        }
-
-        // if (def.contouredGround >= 0) {
-        //     model = model.contourGround(heightMap, sceneX, sceneHeight, sceneY, true, def.contouredGround);
-        // }
-
-        return model;
-    }
-
-    transformObjectModel(model: Model, anim: AnimationDefinition, frame: number, rotation: number): Model {
-        if (anim.isAnimMaya()) {
-            return model;
-        }
-        if (!anim.frameIds || anim.frameIds.length === 0) {
-            return model;
-        }
-        // if (anim.frameIds.length === 9) {
-        //     console.log(anim);
-        // }
-        frame = anim.frameIds[frame];
-        const animFrameMap = this.animationFrameMapLoader.getFrameMap(frame >> 16);
-        frame &= 0xFFFF;
-
-        if (animFrameMap) {
-            rotation &= 3;
-            if (rotation === 1) {
-                model.rotate270();
-            } else if (rotation === 2) {
-                model.rotate180();
-            } else if (rotation === 3) {
-                model.rotate90();
-            }
-
-            model.animate(animFrameMap.frames[frame]);
-
-            if (rotation === 1) {
-                model.rotate90();
-            } else if (rotation === 2) {
-                model.rotate180();
-            } else if (rotation === 3) {
-                model.rotate270();
-            }
-        }
-
-        return model;
-    }
-}
-
-type ContourGroundInfo = {
-    heightMap: Int32Array[];
-    sceneX: number;
-    sceneHeight: number;
-    sceneY: number;
-};
 
 export class Scene {
     public static readonly MAX_PLANE = 4;
@@ -694,7 +382,8 @@ export class Scene {
                 if (def.animationId === -1) {
                     renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                 } else {
-                    renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                    const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
+                    renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                 }
 
                 this.newFloorDecoration(plane, tileX, tileY, centerHeight, renderable, tag, type, def);
@@ -707,7 +396,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
@@ -718,7 +408,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
@@ -755,7 +446,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
@@ -780,8 +472,10 @@ export class Scene {
                         renderable0 = modelLoader.getObjectModel(defTransform, type, rotation + 4, contourGroundInfo);
                         renderable1 = modelLoader.getObjectModel(defTransform, type, rotation + 1 & 3, contourGroundInfo);
                     } else {
-                        renderable0 = new AnimatedObject(def.id, type, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
-                        renderable1 = new AnimatedObject(def.id, type, rotation + 1 & 3, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model0 = modelLoader.getObjectModelAnimated(defTransform, type, rotation + 4, def.animationId, 0);
+                        const model1 = modelLoader.getObjectModelAnimated(defTransform, type, rotation + 1 & 3, def.animationId, 0);
+                        renderable0 = new AnimatedObject(model0, def.id, type, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable1 = new AnimatedObject(model1, def.id, type, rotation + 1 & 3, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable0, renderable1, tag, type, def);
@@ -796,7 +490,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
@@ -819,7 +514,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
@@ -834,7 +530,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, 0, 0, tag, type, def);
@@ -855,7 +552,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     const displacementX = displacement * Scene.displacementX[rotation];
@@ -875,7 +573,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
@@ -891,7 +590,8 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, contourGroundInfo);
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, def.animationId, 0);
+                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, 0, 0, tag, type, def);
@@ -912,8 +612,10 @@ export class Scene {
                         renderable0 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, contourGroundInfo);
                         renderable1 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, contourGroundInfo);
                     } else {
-                        renderable0 = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
-                        renderable1 = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        const model0 = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, def.animationId, 0);
+                        const model1 = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, def.animationId, 0);
+                        renderable0 = new AnimatedObject(model0, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable1 = new AnimatedObject(model1, def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
@@ -950,7 +652,8 @@ export class Scene {
             if (def.animationId === -1) {
                 renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
             } else {
-                renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
+                renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
             }
             // const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
@@ -1198,6 +901,113 @@ export class Scene {
                 }
             }
         }
+    }
+
+    newTileModel(plane: number, tileX: number, tileY: number, tileModel: SceneTileModel) {
+        this.ensureTileExists(plane, plane, tileX, tileY);
+
+        this.tiles[plane][tileX][tileY].tileModel = tileModel;
+    }
+
+    addTileModels(regionLoader: RegionLoader, textureProvider: TextureLoader) {
+        const baseX = this.regionX * 64;
+        const baseY = this.regionY * 64;
+
+        const heights = this.tileHeights;
+        const underlayIds = this.tileUnderlays;
+        const overlayIds = this.tileOverlays;
+        const tileShapes = this.tileShapes;
+        const tileRotations = this.tileRotations;
+
+        // console.time(`blend region ${regionX}_${regionY}`);
+        const blendedColors = regionLoader.getBlendedUnderlayColors(this.regionX, this.regionY);
+        // console.timeEnd(`blend region ${regionX}_${regionY}`);
+
+        // console.time(`light region ${regionX}_${regionY}`);
+        const lightLevels = regionLoader.getLightLevels(this.regionX, this.regionY);
+        // console.timeEnd(`light region ${regionX}_${regionY}`);
+
+        console.time('terrain');
+
+        for (let plane = 0; plane < this.planes; plane++) {
+            for (let x = 0; x < this.sizeX; x++) {
+                for (let y = 0; y < this.sizeY; y++) {
+                    const underlayId = underlayIds[plane][x][y] - 1;
+
+                    const overlayId = overlayIds[plane][x][y] - 1;
+
+                    if (underlayId == -1 && overlayId == -1) {
+                        continue;
+                    }
+
+                    const heightSw = heights[plane][x][y];
+                    let heightSe: number;
+                    let heightNe: number;
+                    let heightNw: number;
+
+                    const lightSw = lightLevels[plane][x][y];
+                    let lightSe: number;
+                    let lightNe: number;
+                    let lightNw: number;
+
+                    if (x === Scene.MAP_SIZE - 1 || y === Scene.MAP_SIZE - 1) {
+                        heightSe = regionLoader.getHeight(baseX + x + 1, baseY + y, plane);
+                        heightNe = regionLoader.getHeight(baseX + x + 1, baseY + y + 1, plane);
+                        heightNw = regionLoader.getHeight(baseX + x, baseY + y + 1, plane);
+
+                        lightSe = regionLoader.getLightLevel(baseX + x + 1, baseY + y, plane);
+                        lightNe = regionLoader.getLightLevel(baseX + x + 1, baseY + y + 1, plane);
+                        lightNw = regionLoader.getLightLevel(baseX + x, baseY + y + 1, plane);
+                    } else {
+                        heightSe = heights[plane][x + 1][y];
+                        heightNe = heights[plane][x + 1][y + 1];
+                        heightNw = heights[plane][x][y + 1];
+
+                        lightSe = lightLevels[plane][x + 1][y];
+                        lightNe = lightLevels[plane][x + 1][y + 1];
+                        lightNw = lightLevels[plane][x][y + 1];
+                    }
+
+                    let underlayHsl = -1;
+                    if (underlayId !== -1) {
+                        underlayHsl = blendedColors[plane][x][y];
+                    }
+
+                    let tileModel: SceneTileModel;
+                    if (overlayId == -1) {
+                        tileModel = new SceneTileModel(0, 0, -1, x, y, heightSw, heightSe, heightNe, heightNw,
+                                adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
+                                adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
+                                0, 0, 0, 0)
+                    } else {
+                        const shape = tileShapes[plane][x][y] + 1;
+                        const rotation = tileRotations[plane][x][y];
+
+                        const overlay = regionLoader.getOverlayDef(overlayId);
+
+                        const textureId = textureProvider.getTextureIndex(overlay.textureId) || -1;
+                        let overlayHsl: number;
+                        if (textureId !== -1) {
+                            overlayHsl = -1;
+                        } else if (overlay.primaryRgb == 0xFF00FF) {
+                            overlayHsl = -2;
+                        } else {
+                            overlayHsl = packHsl(overlay.hue, overlay.saturation, overlay.lightness);
+                        }
+
+                        tileModel = new SceneTileModel(shape, rotation, textureId, x, y, heightSw, heightSe, heightNe, heightNw,
+                                adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
+                                adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
+                                adjustOverlayLight(overlayHsl, lightSw), adjustOverlayLight(overlayHsl, lightSe),
+                                adjustOverlayLight(overlayHsl, lightNe), adjustOverlayLight(overlayHsl, lightNw))
+                    }
+
+                    this.newTileModel(plane, x, y, tileModel);
+                }
+            }
+        }
+
+        console.timeEnd('terrain');
     }
 
 }

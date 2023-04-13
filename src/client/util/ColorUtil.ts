@@ -113,3 +113,41 @@ export function packHsl(hue: number, saturation: number, lightness: number) {
 
     return (saturation / 32 << 7) + (hue / 4 << 10) + (lightness / 2 | 0);
 };
+
+export function adjustUnderlayLight(hsl: number, light: number) {
+    if (hsl == -1) {
+        return 12345678;
+    } else {
+        light = (hsl & 127) * light >> 7;
+        if (light < 2) {
+            light = 2;
+        } else if (light > 126) {
+            light = 126;
+        }
+
+        return (hsl & 0xFF80) + light;
+    }
+}
+
+export function adjustOverlayLight(hsl: number, light: number) {
+    if (hsl == -2) {
+        return 12345678;
+    } else if (hsl == -1) {
+        if (light < 2) {
+            light = 2;
+        } else if (light > 126) {
+            light = 126;
+        }
+
+        return light;
+    } else {
+        light = (hsl & 127) * light >> 7;
+        if (light < 2) {
+            light = 2;
+        } else if (light > 126) {
+            light = 126;
+        }
+
+        return (hsl & 0xFF80) + light;
+    }
+}

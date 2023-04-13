@@ -7,9 +7,8 @@ import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Tex
 import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } from '../client/fs/FileSystem';
 import { IndexType } from '../client/fs/IndexType';
 import { TextureLoader } from '../client/fs/loader/TextureLoader';
-import { spawn, Pool, Worker, Transfer, TransferDescriptor, ModuleThread } from "threads";
 import { RegionLoader } from '../client/RegionLoader';
-import { ChunkData, ChunkDataLoader } from './ChunkDataLoader';
+import { ChunkData, ChunkDataLoader } from './chunk/ChunkDataLoader';
 import { MemoryStore } from '../client/fs/MemoryStore';
 import { Skeleton } from '../client/model/animation/Skeleton';
 import { ConfigType } from '../client/fs/ConfigType';
@@ -18,7 +17,7 @@ import { CachedOverlayLoader } from '../client/fs/loader/OverlayLoader';
 import { CachedObjectLoader } from '../client/fs/loader/ObjectLoader';
 import { IndexModelLoader } from '../client/fs/loader/ModelLoader';
 import Denque from 'denque';
-import { ObjectModelLoader, Scene } from '../client/scene/Scene';
+import { Scene } from '../client/scene/Scene';
 import { OsrsLoadingBar } from '../components/OsrsLoadingBar';
 import { Hasher } from '../client/util/Hasher';
 import { CachedAnimationLoader } from '../client/fs/loader/AnimationLoader';
@@ -30,6 +29,8 @@ import { IJoystickUpdateEvent } from 'react-joystick-component/build/lib/Joystic
 import { FrustumIntersection } from './FrustumIntersection';
 import mainVertShader from './shaders/main.vert.glsl';
 import mainFragShader from './shaders/main.frag.glsl';
+import { clamp } from '../client/util/MathUtil';
+import { ChunkLoaderWorkerPool } from './chunk/ChunkLoaderWorkerPool';
 
 // console.log(mainVertShader);
 
@@ -39,13 +40,6 @@ const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
 const RS_TO_DEGREES = RS_TO_RADIANS * 180 / Math.PI;
 
-const TILE_SIZE = 128;
-const HALF_TILE_SIZE = TILE_SIZE / 2;
-const QUARTER_TILE_SIZE = TILE_SIZE / 4;
-const THREE_QTR_TILE_SIZE = TILE_SIZE * 3 / 4;
-
-const SCALE = TILE_SIZE;
-
 function prependShader(shader: string, multiDraw: boolean): string {
     let header = '#version 300 es\n';
     if (multiDraw) {
@@ -53,8 +47,6 @@ function prependShader(shader: string, multiDraw: boolean): string {
     }
     return header + shader;
 }
-
-const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
 
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
@@ -138,6 +130,7 @@ function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textur
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
         .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
+        .uniform('u_drawIdOffset', 0)
         .texture('u_textures', textureArray)
         .texture('u_modelDataTexture', modelDataTexture)
         .texture('u_heightMap', heightMapTexture)
@@ -148,6 +141,7 @@ function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textur
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
         .uniform('u_timeLoaded', time)
         .uniform('u_modelMatrix', baseModelMatrix)
+        .uniform('u_drawIdOffset', chunkData.drawRanges.length - chunkData.drawRangesLowDetail.length)
         .texture('u_textures', textureArray)
         .texture('u_modelDataTexture', modelDataTexture)
         .texture('u_heightMap', heightMapTexture)
@@ -195,42 +189,6 @@ function getRegionDistance(x: number, y: number, region: vec2): number {
     const dx = Math.max(Math.abs(x - (region[0] * 64 + 32)) - 32, 0);
     const dy = Math.max(Math.abs(y - (region[1] * 64 + 32)) - 32, 0);
     return Math.sqrt(dx * dx + dy * dy);
-}
-
-class ChunkLoaderWorkerPool {
-    pool: Pool<ModuleThread<ChunkLoaderWorker>>;
-
-    workerPromises: Promise<ModuleThread<ChunkLoaderWorker>>[];
-
-    size: number;
-
-    static init(size: number): ChunkLoaderWorkerPool {
-        const workerPromises: Promise<ModuleThread<ChunkLoaderWorker>>[] = [];
-        const pool = Pool(() => {
-            const worker = new Worker(new URL("./worker", import.meta.url) as any);
-            // console.log('post init worker', performance.now());
-            const workerPromise = spawn<ChunkLoaderWorker>(worker);
-            workerPromises.push(workerPromise);
-            return workerPromise;
-        }, size);
-        return new ChunkLoaderWorkerPool(pool, workerPromises, size);
-    }
-
-    constructor(pool: Pool<ModuleThread<ChunkLoaderWorker>>, workerPromises: Promise<ModuleThread<ChunkLoaderWorker>>[], size: number) {
-        this.pool = pool;
-        this.workerPromises = workerPromises;
-        this.size = size;
-    }
-
-    init(store: MemoryStore, xteasMap: Map<number, number[]>) {
-        for (const promise of this.workerPromises) {
-            promise.then(worker => {
-                // console.log('send init worker', performance.now());
-                worker.init(Transfer(store, []), xteasMap);
-                return worker;
-            });
-        }
-    }
 }
 
 class MapViewer {
@@ -386,7 +344,7 @@ class MapViewer {
         //         //     console.log('wtf', id, objectDef.name, def);
         //         //     count++;
         //         // }
-                
+
         //         // if (def.frameLengths && def.frameLengths.length > 50) {
         //         //     console.log('wtf', id, objectDef.name, def);
         //         //     count++;
@@ -1050,6 +1008,16 @@ class MapViewer {
             drawCall.uniform('u_colorBanding', this.colorBanding);
 
             if (this.hasMultiDraw) {
+                // if (this.frameCount % 10 === 0) {
+                //     // shuffleArray(chunk.drawRanges);
+
+                //     chunk.drawRanges[200] = chunk.drawRanges[(Math.random() * 99999999 | 0) % chunk.drawRanges.length];
+
+                //     drawCall.drawRanges(...chunk.drawRanges);
+                // }
+
+
+
                 drawCall.draw();
             } else {
                 const drawRanges = regionDist >= 3 ? chunk.drawRangesLowDetail : chunk.drawRanges;
@@ -1097,12 +1065,6 @@ class MapViewer {
     }
 }
 
-type ChunkLoaderWorker = {
-    init(memoryStore: TransferDescriptor<MemoryStore>, xteasMap: Map<number, number[]>): void,
-
-    load(regionX: number, regionY: number, minimizeDrawCalls: boolean): ChunkData | undefined,
-};
-
 function formatBytes(bytes: number, decimals: number = 2): string {
     if (!+bytes) {
         return '0 Bytes';
@@ -1135,7 +1097,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             'Position': { value: positionControls, editable: false },
             'Direction': { value: directionControls, editable: false }
         }, { collapsed: false }),
-        'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        'View Distance': { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
         'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
         'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },

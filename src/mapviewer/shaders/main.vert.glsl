@@ -13,6 +13,16 @@
 
 #define TEXTURE_ANIM_UNIT (1.0f / 128.0f)
 
+#define CONTOUR_GROUND_CENTER_TILE 0.0
+#define CONTOUR_GROUND_VERTEX 1.0
+#define CONTOUR_GROUND_NONE 2.0
+
+/*
+    CENTER_TILE = 0,
+    VERTEX_POS = 1,
+    NO_CONTOUR = 2
+*/
+
 precision highp float;
 
 layout(std140, column_major) uniform;
@@ -34,6 +44,8 @@ uniform float u_currentTime;
 uniform float u_timeLoaded;
 uniform float u_deltaTime;
 uniform float u_brightness;
+
+uniform int u_drawIdOffset;
 
 uniform highp usampler2D u_modelDataTexture;
 uniform mediump sampler2DArray u_heightMap;
@@ -109,7 +121,7 @@ ModelInfo decodeModelInfo(int offset) {
 }
 
 void main() {
-    uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID), 0).gr;
+    uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID + u_drawIdOffset), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
 
     VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, u_brightness);
@@ -124,8 +136,9 @@ void main() {
 
     vec3 localPos = vertex.pos / vec3(128.0) + vec3(modelInfo.tilePos.x, 0, modelInfo.tilePos.y);
 
-    vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, 0.0)) + localPos.xz * vec2(when_eq(modelInfo.contourGround, 1.0));
-    localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, 2.0) / 128.0;
+    vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_CENTER_TILE)) 
+            + localPos.xz * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_VERTEX));
+    localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE) / 128.0;
     
     gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
     // gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(vertex.priority) * 0.0001;

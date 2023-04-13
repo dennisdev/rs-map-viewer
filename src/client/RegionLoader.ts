@@ -6,7 +6,8 @@ import { ObjectLoader } from "./fs/loader/ObjectLoader";
 import { OverlayLoader } from "./fs/loader/OverlayLoader";
 import { UnderlayLoader } from "./fs/loader/UnderlayLoader";
 import { StoreSync } from "./fs/Store";
-import { ObjectModelLoader, Scene } from "./scene/Scene";
+import { ObjectModelLoader } from "./scene/ObjectModelLoader";
+import { Scene } from "./scene/Scene";
 import { packHsl } from "./util/ColorUtil";
 
 export class RegionLoader {

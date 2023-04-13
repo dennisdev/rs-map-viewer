@@ -193,6 +193,34 @@ export class Model extends Renderable {
 
     field2474!: number;
 
+    public static copy(model: Model): Model {
+        return Model.merge([model], 1);
+    }
+
+    public static copyAnimated(model: Model, shallowTransparencies: boolean): Model {
+        const copy: Model = Object.assign(Object.create(Object.getPrototypeOf(model)), model);
+        // const copy = new Model();
+
+        copy.verticesX = new Int32Array(model.verticesCount);
+        copy.verticesY = new Int32Array(model.verticesCount);
+        copy.verticesZ = new Int32Array(model.verticesCount);
+
+        for (let i = 0; i < model.verticesCount; i++) {
+            copy.verticesX[i] = model.verticesX[i];
+            copy.verticesY[i] = model.verticesY[i];
+            copy.verticesZ[i] = model.verticesZ[i];
+        }
+
+        if (!shallowTransparencies && model.faceAlphas) {
+            copy.faceAlphas = new Int8Array(model.faceCount);
+            for (let i = 0; i < model.faceCount; i++) {
+                copy.faceAlphas[i] = model.faceAlphas[i];
+            }
+        }
+
+        return copy;
+    }
+
     public static merge(models: Model[], count: number): Model {
         const model = new Model();
         model.merge(models, count);
