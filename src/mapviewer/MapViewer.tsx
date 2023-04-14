@@ -286,10 +286,10 @@ class MapViewer {
 
     chunks: Map<number, Chunk> = new Map();
 
-    pitch: number = 244;
-    yaw: number = 749;
+    pitch: number = 245;
+    yaw: number = 186;
 
-    cameraPos: vec3 = vec3.fromValues(-60.5 - 3200, 30, -60.5 - 3200);
+    cameraPos: vec3 = vec3.fromValues(-3242, 26, -3202);
 
     cameraUpdated: boolean = false;
     // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
