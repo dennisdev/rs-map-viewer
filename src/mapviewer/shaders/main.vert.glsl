@@ -37,6 +37,8 @@ uniform TextureUniforms {
 
 uniform SceneUniforms {
     mat4 u_viewProjMatrix;
+    mat4 u_viewMatrix;
+    mat4 u_projectionMatrix;
 };
 
 uniform mat4 u_modelMatrix;
@@ -140,8 +142,7 @@ void main() {
             + localPos.xz * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_VERTEX));
     localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE) / 128.0;
     
-    gl_Position = u_viewProjMatrix * u_modelMatrix * vec4(localPos, 1.0);
-    // gl_Position.z -= float(plane) * 0.0005 + float(priority) * 0.0003 + float(vertex.priority) * 0.0001;
-    // TODO: Subtract z before projection
-    gl_Position.z -= float(modelInfo.plane) * 0.001 + (float(vertex.priority) + float(modelInfo.priority)) * 0.0001;
+    gl_Position = u_viewMatrix * u_modelMatrix * vec4(localPos, 1.0);
+    gl_Position.z -= float(modelInfo.plane) * 0.005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.0007;
+    gl_Position = u_projectionMatrix * gl_Position;
 }

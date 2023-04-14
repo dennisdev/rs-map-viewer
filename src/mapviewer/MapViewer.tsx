@@ -563,7 +563,7 @@ class MapViewer {
         });
 
         this.textureUniformBuffer = app.createUniformBuffer(new Array(128 * 2).fill(PicoGL.FLOAT_VEC2));
-        this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4]);
+        this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4, PicoGL.FLOAT_MAT4, PicoGL.FLOAT_MAT4]);
 
         console.time('load texture array');
         const textureArrayImage = this.textureProvider.createTextureArrayImage(1.0, TEXTURE_SIZE, true);
@@ -978,6 +978,8 @@ class MapViewer {
 
         this.sceneUniformBuffer
             .set(0, this.viewProjMatrix as Float32Array)
+            .set(1, this.viewMatrix as Float32Array)
+            .set(2, this.projectionMatrix as Float32Array)
             .update();
 
         const cameraX = -this.cameraPos[0];
