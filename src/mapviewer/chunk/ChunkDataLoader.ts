@@ -17,8 +17,9 @@ export type ChunkData = {
     indices: Int32Array,
     modelTextureData: Int32Array,
     heightMapTextureData: Float32Array,
-    drawRanges: MultiDrawCommand[];
-    drawRangesLowDetail: MultiDrawCommand[];
+    drawRanges: MultiDrawCommand[],
+    drawRangesLowDetail: MultiDrawCommand[],
+    animatedModels: AnimatedModelData[],
 };
 
 type MultiDrawCommand = [number, number, number];
@@ -46,10 +47,30 @@ type ObjectModel = {
     sceneHeight: number,
 } & DrawData;
 
-type AnimatedSceneModel = {
-    models: Model[],
-
+type AnimatedSceneObject = {
+    animatedObject: AnimatedObject,
+    sceneObject: SceneObject,
 } & DrawData;
+
+type AnimatedModelGroup = {
+    animationId: number,
+    frames: DrawRangeInstanced[],
+    objects: AnimatedSceneObject[],
+};
+
+export type AnimatedModelData = {
+    drawRangeIndex: number,
+    frames: DrawRangeInstanced[],
+
+    animationId: number,
+    randomStart: boolean,
+}
+
+type SceneObjects = {
+    objectModels: ObjectModel[],
+    animatedObjects: AnimatedSceneObject[],
+};
+
 
 function isLowDetail(type: number, def: ObjectDefinition, localX: number, localY: number, plane: number, occlusionMap: OcclusionMap): boolean {
     // if (1) {
@@ -69,7 +90,7 @@ function isLowDetail(type: number, def: ObjectDefinition, localX: number, localY
 }
 
 
-function sceneObjectToObjectModel(model: Model, sceneObject: SceneObject, offsetX: number, offsetY: number,
+function createObjectModel(model: Model, sceneObject: SceneObject, offsetX: number, offsetY: number,
     tileX: number, tileY: number, plane: number, priority: number, occlusionMap: OcclusionMap): ObjectModel {
     const def = sceneObject.def;
 
@@ -98,8 +119,34 @@ function sceneObjectToObjectModel(model: Model, sceneObject: SceneObject, offset
     };
 }
 
-function getObjectsFromScene(objectModelLoader: ObjectModelLoader, scene: Scene, occlusionMap: OcclusionMap): ObjectModel[] {
-    const models: ObjectModel[] = [];
+function createAnimatedSceneObject(animatedObject: AnimatedObject, sceneObject: SceneObject, offsetX: number, offsetY: number,
+    plane: number, priority: number): AnimatedSceneObject {
+    const def = sceneObject.def;
+
+    const sceneX = sceneObject.sceneX + offsetX;
+    const sceneY = sceneObject.sceneY + offsetY;
+
+    let contourGround = ContourGroundType.CENTER_TILE;
+    if (def.contouredGround >= 0) {
+        contourGround = ContourGroundType.VERTEX;
+    }
+
+    return {
+        animatedObject,
+        sceneObject,
+        sceneX,
+        sceneY,
+        plane,
+        contourGround,
+        priority
+    }
+}
+
+
+function getSceneObjects(scene: Scene, occlusionMap: OcclusionMap): SceneObjects {
+    const objectModels: ObjectModel[] = [];
+
+    const animatedObjects: AnimatedSceneObject[] = [];
 
     const gameObjects: Set<GameObject> = new Set();
 
@@ -113,22 +160,22 @@ function getObjectsFromScene(objectModelLoader: ObjectModelLoader, scene: Scene,
 
                 if (tile.floorDecoration) {
                     if (tile.floorDecoration.renderable instanceof Model) {
-                        models.push(sceneObjectToObjectModel(tile.floorDecoration.renderable, tile.floorDecoration, 0, 0, tileX, tileY, plane, 1, occlusionMap));
-                    } else if (tile.floorDecoration.renderable instanceof AnimatedObject && tile.floorDecoration.renderable.model) {
-                        models.push(sceneObjectToObjectModel(tile.floorDecoration.renderable.model, tile.floorDecoration, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                        objectModels.push(createObjectModel(tile.floorDecoration.renderable, tile.floorDecoration, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    } else if (tile.floorDecoration.renderable instanceof AnimatedObject) {
+                        animatedObjects.push(createAnimatedSceneObject(tile.floorDecoration.renderable, tile.floorDecoration, 0, 0, plane, 1));
                     }
                 }
 
                 if (tile.wallObject) {
                     if (tile.wallObject.renderable0 instanceof Model) {
-                        models.push(sceneObjectToObjectModel(tile.wallObject.renderable0, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
-                    } else if (tile.wallObject.renderable0 instanceof AnimatedObject && tile.wallObject.renderable0.model) {
-                        models.push(sceneObjectToObjectModel(tile.wallObject.renderable0.model, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                        objectModels.push(createObjectModel(tile.wallObject.renderable0, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    } else if (tile.wallObject.renderable0 instanceof AnimatedObject) {
+                        animatedObjects.push(createAnimatedSceneObject(tile.wallObject.renderable0, tile.wallObject, 0, 0, plane, 1));
                     }
                     if (tile.wallObject.renderable1 instanceof Model) {
-                        models.push(sceneObjectToObjectModel(tile.wallObject.renderable1, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
-                    } else if (tile.wallObject.renderable1 instanceof AnimatedObject && tile.wallObject.renderable1.model) {
-                        models.push(sceneObjectToObjectModel(tile.wallObject.renderable1.model, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                        objectModels.push(createObjectModel(tile.wallObject.renderable1, tile.wallObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    } else if (tile.wallObject.renderable1 instanceof AnimatedObject) {
+                        animatedObjects.push(createAnimatedSceneObject(tile.wallObject.renderable1, tile.wallObject, 0, 0, plane, 1));
                     }
                 }
 
@@ -136,14 +183,14 @@ function getObjectsFromScene(objectModelLoader: ObjectModelLoader, scene: Scene,
                     const offsetX = tile.wallDecoration.offsetX;
                     const offsetY = tile.wallDecoration.offsetY;
                     if (tile.wallDecoration.renderable0 instanceof Model) {
-                        models.push(sceneObjectToObjectModel(tile.wallDecoration.renderable0, tile.wallDecoration, offsetX, offsetY, tileX, tileY, plane, 10, occlusionMap));
-                    } else if (tile.wallDecoration.renderable0 instanceof AnimatedObject && tile.wallDecoration.renderable0.model) {
-                        models.push(sceneObjectToObjectModel(tile.wallDecoration.renderable0.model, tile.wallDecoration, offsetX, offsetY, tileX, tileY, plane, 10, occlusionMap));
+                        objectModels.push(createObjectModel(tile.wallDecoration.renderable0, tile.wallDecoration, offsetX, offsetY, tileX, tileY, plane, 10, occlusionMap));
+                    } else if (tile.wallDecoration.renderable0 instanceof AnimatedObject) {
+                        animatedObjects.push(createAnimatedSceneObject(tile.wallDecoration.renderable0, tile.wallDecoration, 0, 0, plane, 10));
                     }
                     if (tile.wallDecoration.renderable1 instanceof Model) {
-                        models.push(sceneObjectToObjectModel(tile.wallDecoration.renderable1, tile.wallDecoration, 0, 0, tileX, tileY, plane, 10, occlusionMap));
-                    } else if (tile.wallDecoration.renderable1 instanceof AnimatedObject && tile.wallDecoration.renderable1.model) {
-                        models.push(sceneObjectToObjectModel(tile.wallDecoration.renderable1.model, tile.wallDecoration, 0, 0, tileX, tileY, plane, 10, occlusionMap));
+                        objectModels.push(createObjectModel(tile.wallDecoration.renderable1, tile.wallDecoration, 0, 0, tileX, tileY, plane, 10, occlusionMap));
+                    } else if (tile.wallDecoration.renderable1 instanceof AnimatedObject) {
+                        animatedObjects.push(createAnimatedSceneObject(tile.wallDecoration.renderable1, tile.wallDecoration, 0, 0, plane, 10));
                     }
                 }
 
@@ -155,9 +202,9 @@ function getObjectsFromScene(objectModelLoader: ObjectModelLoader, scene: Scene,
                     }
 
                     if (renderable instanceof Model) {
-                        models.push(sceneObjectToObjectModel(renderable, gameObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
-                    } else if (renderable instanceof AnimatedObject && renderable.model) {
-                        models.push(sceneObjectToObjectModel(renderable.model, gameObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                        objectModels.push(createObjectModel(renderable, gameObject, 0, 0, tileX, tileY, plane, 1, occlusionMap));
+                    } else if (renderable instanceof AnimatedObject) {
+                        animatedObjects.push(createAnimatedSceneObject(renderable, gameObject, 0, 0, plane, 1));
                     }
                     gameObjects.add(gameObject);
                 }
@@ -165,7 +212,10 @@ function getObjectsFromScene(objectModelLoader: ObjectModelLoader, scene: Scene,
         }
     }
 
-    return models;
+    return {
+        objectModels,
+        animatedObjects
+    };
 }
 
 
@@ -198,6 +248,73 @@ function getUniqueObjects(modelDataBuf: ModelHashBuffer, objects: ObjectModel[])
     }
 
     return Array.from(uniqueObjectsMap.values());
+}
+
+function getAnimatedModelKey(id: number, type: number, rotation: number, animationId: number): bigint {
+    // BigInt(tileX & 0x7F) | BigInt(tileY & 0x7F) << 7n | BigInt(entityType & 3) << 14n | BigInt(id) << 17n;
+    return BigInt(id) | BigInt(type) << 16n | BigInt(rotation) << 21n | BigInt(animationId) << 24n;
+}
+
+function addModelAnimFrame(textureLoader: TextureLoader, renderBuf: RenderBuffer, model: Model): DrawRangeInstanced {
+    const faces = getModelFaces(textureLoader, model);
+
+    const indexByteOffset = renderBuf.indexByteOffset();
+    addModel(renderBuf, model, faces);
+    const modelVertexCount = (renderBuf.indexByteOffset() - indexByteOffset) / 4;
+
+    return [indexByteOffset, modelVertexCount, 1];
+}
+
+function getAnimatedObjectGroups(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, textureLoader: TextureLoader, renderBuf: RenderBuffer,
+    animatedObjects: AnimatedSceneObject[]): AnimatedModelGroup[] {
+    const uniqueObjectsMap: Map<bigint, AnimatedSceneObject[]> = new Map();
+
+    for (const object of animatedObjects) {
+        const animatedObject = object.animatedObject;
+        const key = getAnimatedModelKey(animatedObject.id, animatedObject.type, animatedObject.rotation, animatedObject.animationId);
+
+        const uniqueObjects = uniqueObjectsMap.get(key);
+        if (uniqueObjects) {
+            uniqueObjects.push(object);
+        } else {
+            uniqueObjectsMap.set(key, [object]);
+        }
+    }
+
+    const groups: AnimatedModelGroup[] = [];
+    for (const objects of uniqueObjectsMap.values()) {
+        const { animatedObject, sceneObject } = objects[0];
+
+        const animDef = objectModelLoader.animationLoader.getDefinition(animatedObject.animationId);
+        if (!animDef.frameIds) {
+            continue;
+        }
+
+        let defTransform = sceneObject.def;
+        if (sceneObject.def.transforms) {
+            const transformId = sceneObject.def.transforms[0];
+            if (transformId === -1) {
+                continue;
+            }
+            defTransform = regionLoader.getObjectDef(transformId);
+        }
+        const frames: DrawRangeInstanced[] = [];
+        for (let i = 0; i < animDef.frameIds.length; i++) {
+            const model = objectModelLoader.getObjectModelAnimated(defTransform, animatedObject.type, animatedObject.rotation, animatedObject.animationId, i);
+            if (model) {
+                frames.push(addModelAnimFrame(textureLoader, renderBuf, model));
+            }
+        }
+        if (frames.length > 0) {
+            groups.push({
+                animationId: animatedObject.animationId,
+                frames,
+                objects: objects
+            });
+        }
+    }
+
+    return groups;
 }
 
 function getModelGroupId(lowDetail: boolean, alpha: boolean, plane: number, priority: number): number {
@@ -344,8 +461,7 @@ export class ChunkDataLoader {
 
         const terrainVertexCount = addTerrain(renderBuf, region);
 
-        const loadAnimations = false;
-
+        let animatedModelGroups: AnimatedModelGroup[] = [];
         if (landscapeData) {
             console.time('light scene');
             region.applyLighting(-50, -10, -50);
@@ -354,9 +470,14 @@ export class ChunkDataLoader {
             const occlusionMap = createOcclusionMap(region.tileRenderFlags, region.tileUnderlays, region.tileOverlays);
             // const occlusionMap = new OcclusionMap();
 
-            const objects = getObjectsFromScene(this.objectModelLoader, region, occlusionMap);
+            const {
+                objectModels,
+                animatedObjects
+            } = getSceneObjects(region, occlusionMap);
 
-            const uniqueObjects = getUniqueObjects(this.modelHashBuf, objects);
+            const uniqueObjects = getUniqueObjects(this.modelHashBuf, objectModels);
+
+            animatedModelGroups = getAnimatedObjectGroups(this.regionLoader, this.objectModelLoader, this.textureProvider, renderBuf, animatedObjects);
 
             // console.log('uniq models: ', uniqueObjects.length, uniqueObjects);
 
@@ -381,6 +502,28 @@ export class ChunkDataLoader {
         drawCommands.push(...renderBuf.drawCommandsLowDetail);
         drawCommands.push(...renderBuf.drawCommands);
 
+        const animatedModels: AnimatedModelData[] = [];
+
+        for (const group of animatedModelGroups) {
+            for (const data of group.objects) {
+                const drawRangeIndex = drawCommands.length;
+
+                drawCommands.push({
+                    offset: 0,
+                    elements: 0,
+                    datas: [data]
+                });
+
+                animatedModels.push({
+                    drawRangeIndex,
+                    animationId: group.animationId,
+                    randomStart: data.animatedObject.randomStartFrame,
+                    frames: group.frames
+                });
+            }
+        }
+
+
         // modelBuf.drawCommands.push(...modelBuf.drawCommandsLowDetail);
 
 
@@ -389,7 +532,7 @@ export class ChunkDataLoader {
 
         const modelTextureData = createModelTextureData(drawCommands);
         const heightMapTextureData = loadHeightMapTextureData(this.regionLoader, regionX, regionY);
-        
+
 
         const uniqTotalTriangles = drawCommands.map(cmd => cmd.elements / 3).reduce((a, b) => a + b, 0);
         const indexBufferBytes = renderBuf.indices.length * 4;
@@ -408,7 +551,9 @@ export class ChunkDataLoader {
             modelTextureData,
             heightMapTextureData,
             drawRanges: drawRanges,
-            drawRangesLowDetail: drawRangesLowDetail
+            drawRangesLowDetail: drawRangesLowDetail,
+
+            animatedModels
         };
     }
 }

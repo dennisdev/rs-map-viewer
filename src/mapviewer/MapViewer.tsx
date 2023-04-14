@@ -8,7 +8,7 @@ import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } f
 import { IndexType } from '../client/fs/IndexType';
 import { TextureLoader } from '../client/fs/loader/TextureLoader';
 import { RegionLoader } from '../client/RegionLoader';
-import { ChunkData, ChunkDataLoader } from './chunk/ChunkDataLoader';
+import { AnimatedModelData, ChunkData, ChunkDataLoader } from './chunk/ChunkDataLoader';
 import { MemoryStore } from '../client/fs/MemoryStore';
 import { Skeleton } from '../client/model/animation/Skeleton';
 import { ConfigType } from '../client/fs/ConfigType';
@@ -20,7 +20,7 @@ import Denque from 'denque';
 import { Scene } from '../client/scene/Scene';
 import { OsrsLoadingBar } from '../components/OsrsLoadingBar';
 import { Hasher } from '../client/util/Hasher';
-import { CachedAnimationLoader } from '../client/fs/loader/AnimationLoader';
+import { AnimationLoader, CachedAnimationLoader } from '../client/fs/loader/AnimationLoader';
 import { CachedSkeletonLoader } from '../client/fs/loader/SkeletonLoader';
 import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from '../client/fs/loader/AnimationFrameMapLoader';
 import { Leva, useControls, folder } from 'leva';
@@ -31,6 +31,7 @@ import mainVertShader from './shaders/main.vert.glsl';
 import mainFragShader from './shaders/main.frag.glsl';
 import { clamp } from '../client/util/MathUtil';
 import { ChunkLoaderWorkerPool } from './chunk/ChunkLoaderWorkerPool';
+import { AnimationDefinition } from '../client/fs/definition/AnimationDefinition';
 
 // console.log(mainVertShader);
 
@@ -62,6 +63,8 @@ type Chunk = {
     drawCall: DrawCall,
     drawCallLowDetail: DrawCall,
 
+    animatedModels: AnimatedModel[],
+
     interleavedBuffer: VertexBuffer,
     indexBuffer: VertexBuffer,
     vertexArray: VertexArray,
@@ -72,8 +75,58 @@ type Chunk = {
     frameLoaded: number,
 }
 
-function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer,
-    chunkData: ChunkData, frame: number): Chunk {
+class AnimatedModel {
+    drawRangeIndex: number;
+    frames: number[][];
+
+    animationDef?: AnimationDefinition;
+
+    frame: number = 0;
+
+    cycleStart: number = 0;
+
+    constructor(drawRangeIndex: number, frames: number[][], animationDef: AnimationDefinition, cycle: number, randomStart: boolean) {
+        this.drawRangeIndex = drawRangeIndex;
+        this.frames = frames;
+        this.animationDef = animationDef;
+        this.cycleStart = cycle - 1;
+
+        if (randomStart && animationDef.frameStep !== -1) {
+            this.frame = Math.floor(Math.random() * animationDef.frameIds.length);
+            this.cycleStart -= Math.floor(Math.random() * animationDef.frameLengths[this.frame]);
+        }
+    }
+
+    getFrame(cycle: number): number {
+        if (!this.animationDef) {
+            return 0;
+        }
+
+        let elapsed = cycle - this.cycleStart;
+        if (elapsed > 100 && this.animationDef.frameStep > 0) {
+            elapsed = 100;
+        }
+
+        while (elapsed > this.animationDef.frameLengths[this.frame]) {
+            elapsed -= this.animationDef.frameLengths[this.frame];
+            this.frame++;
+            if (this.frame >= this.animationDef.frameLengths.length) {
+                this.frame -= this.animationDef.frameStep;
+                if (this.frame < 0 || this.frame >= this.animationDef.frameLengths.length) {
+                    this.animationDef = undefined;
+                    return 0;
+                }
+                continue;
+            }
+        }
+
+        this.cycleStart = cycle - elapsed;
+        return this.frame;
+    }
+}
+
+function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoader, textureArray: Texture, textureUniformBuffer: UniformBuffer,
+    sceneUniformBuffer: UniformBuffer, chunkData: ChunkData, frame: number, cycle: number): Chunk {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
@@ -147,6 +200,12 @@ function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textur
         .texture('u_heightMap', heightMapTexture)
         .drawRanges(...chunkData.drawRangesLowDetail);
 
+    const animatedModels: AnimatedModel[] = [];
+    for (const animatedModel of chunkData.animatedModels) {
+        const animationDef = animationLoader.getDefinition(animatedModel.animationId);
+        animatedModels.push(new AnimatedModel(animatedModel.drawRangeIndex, animatedModel.frames, animationDef, cycle, animatedModel.randomStart))
+    }
+
     return {
         regionX,
         regionY,
@@ -157,6 +216,8 @@ function loadChunk(app: PicoApp, program: Program, textureArray: Texture, textur
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
         drawCall,
         drawCallLowDetail,
+
+        animatedModels,
 
         interleavedBuffer,
         indexBuffer,
@@ -201,6 +262,8 @@ class MapViewer {
     // regionLoader: RegionLoader;
 
     textureProvider: TextureLoader;
+
+    animationLoader: AnimationLoader;
 
     // chunkDataLoader: ChunkDataLoader;
 
@@ -306,13 +369,13 @@ class MapViewer {
         // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
         // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
         // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
-        // const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
+        const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
 
         // console.time('region loader');
         // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
         // const overlayLoader = new CachedOverlayLoader(overlayArchive);
         // const objectLoader = new CachedObjectLoader(objectArchive);
-        // const animationLoader = new CachedAnimationLoader(animationArchive);
+        this.animationLoader = new CachedAnimationLoader(animationArchive);
 
         // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
 
@@ -752,6 +815,8 @@ class MapViewer {
         this.lastFrameTime = time;
         this.fps = 1 / deltaTime;
 
+        const cycle = time / 0.02;
+
         if (this.fpsListener) {
             this.fpsListener(this.fps);
         }
@@ -994,7 +1059,13 @@ class MapViewer {
 
             const regionDist = Math.max(Math.abs(cameraRegionX - chunk.regionX), Math.abs(cameraRegionY - chunk.regionY));
 
-            const drawCall = regionDist >= 3 ? chunk.drawCallLowDetail : chunk.drawCall;
+            const isLowDetail = regionDist >= 3;
+            let drawRangeOffset = 0;
+            if (isLowDetail) {
+                drawRangeOffset = chunk.drawRangesLowDetail.length - chunk.drawRanges.length;
+            }
+
+            const drawCall = isLowDetail ? chunk.drawCallLowDetail : chunk.drawCall;
 
             // fade in chunks even if it loaded a while ago
             if (!lastViewDistanceRegionIds.has(regionId)) {
@@ -1007,21 +1078,22 @@ class MapViewer {
             drawCall.uniform('u_brightness', this.brightness);
             drawCall.uniform('u_colorBanding', this.colorBanding);
 
+            const drawRanges = isLowDetail ? chunk.drawRangesLowDetail : chunk.drawRanges;
+
+            for (const animatedModel of chunk.animatedModels) {
+                const frameId = animatedModel.getFrame(cycle);
+
+                const frame = animatedModel.frames[frameId];
+
+                (drawCall as any).offsets[animatedModel.drawRangeIndex + drawRangeOffset] = frame[0];
+                (drawCall as any).numElements[animatedModel.drawRangeIndex + drawRangeOffset] = frame[1];
+
+                drawRanges[animatedModel.drawRangeIndex + drawRangeOffset] = frame;
+            }
+
             if (this.hasMultiDraw) {
-                // if (this.frameCount % 10 === 0) {
-                //     // shuffleArray(chunk.drawRanges);
-
-                //     chunk.drawRanges[200] = chunk.drawRanges[(Math.random() * 99999999 | 0) % chunk.drawRanges.length];
-
-                //     drawCall.drawRanges(...chunk.drawRanges);
-                // }
-
-
-
                 drawCall.draw();
             } else {
-                const drawRanges = regionDist >= 3 ? chunk.drawRangesLowDetail : chunk.drawRanges;
-
                 for (let i = 0; i < drawRanges.length; i++) {
                     drawCall.uniform('u_drawId', i);
                     drawCall.drawRanges(drawRanges[i]);
@@ -1045,7 +1117,8 @@ class MapViewer {
                 // console.log('loaded', chunkData.regionX, chunkData.regionY, performance.now())
                 const regionId = RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY);
                 this.chunks.set(regionId,
-                    loadChunk(this.app, this.program, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData, this.frameCount));
+                    loadChunk(this.app, this.program, this.animationLoader, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData,
+                        this.frameCount, cycle));
                 this.loadingRegionIds.delete(regionId);
             }
         }

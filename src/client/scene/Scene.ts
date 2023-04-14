@@ -382,8 +382,7 @@ export class Scene {
                 if (def.animationId === -1) {
                     renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                 } else {
-                    const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
-                    renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                    renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                 }
 
                 this.newFloorDecoration(plane, tileX, tileY, centerHeight, renderable, tag, type, def);
@@ -396,8 +395,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
@@ -408,8 +406,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
@@ -446,8 +443,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
@@ -472,10 +468,8 @@ export class Scene {
                         renderable0 = modelLoader.getObjectModel(defTransform, type, rotation + 4, contourGroundInfo);
                         renderable1 = modelLoader.getObjectModel(defTransform, type, rotation + 1 & 3, contourGroundInfo);
                     } else {
-                        const model0 = modelLoader.getObjectModelAnimated(defTransform, type, rotation + 4, def.animationId, 0);
-                        const model1 = modelLoader.getObjectModelAnimated(defTransform, type, rotation + 1 & 3, def.animationId, 0);
-                        renderable0 = new AnimatedObject(model0, def.id, type, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
-                        renderable1 = new AnimatedObject(model1, def.id, type, rotation + 1 & 3, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable0 = new AnimatedObject(def.id, type, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable1 = new AnimatedObject(def.id, type, rotation + 1 & 3, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable0, renderable1, tag, type, def);
@@ -490,8 +484,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
@@ -514,8 +507,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
@@ -530,8 +522,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, 0, 0, tag, type, def);
@@ -552,8 +543,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     const displacementX = displacement * Scene.displacementX[rotation];
@@ -573,8 +563,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
@@ -590,8 +579,7 @@ export class Scene {
                     if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, contourGroundInfo);
                     } else {
-                        const model = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, def.animationId, 0);
-                        renderable = new AnimatedObject(model, def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, 0, 0, tag, type, def);
@@ -612,10 +600,8 @@ export class Scene {
                         renderable0 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, contourGroundInfo);
                         renderable1 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, contourGroundInfo);
                     } else {
-                        const model0 = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, def.animationId, 0);
-                        const model1 = modelLoader.getObjectModelAnimated(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, def.animationId, 0);
-                        renderable0 = new AnimatedObject(model0, def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
-                        renderable1 = new AnimatedObject(model1, def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable0 = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable1 = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
                     }
 
                     const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
@@ -652,8 +638,7 @@ export class Scene {
             if (def.animationId === -1) {
                 renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
             } else {
-                const model = modelLoader.getObjectModelAnimated(defTransform, type, rotation, def.animationId, 0);
-                renderable = new AnimatedObject(model, def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
             }
             // const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 

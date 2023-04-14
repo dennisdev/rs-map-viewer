@@ -225,7 +225,7 @@ export class ObjectModelLoader {
             throw new Error('Model is not lit');
         }
 
-        if (animationId === -1) {
+        if (animationId === -1 || frame === -1) {
             return model;
         }
 
@@ -248,7 +248,7 @@ export class ObjectModelLoader {
         if (!anim.frameIds || anim.frameIds.length === 0) {
             return model;
         }
-        // frame = Math.round(Math.random() * anim.frameIds.length);
+        // frame = Math.round(Math.random() * (anim.frameIds.length - 1));
         // if (anim.frameIds.length === 9) {
         //     console.log(anim);
         // }

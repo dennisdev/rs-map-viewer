@@ -2,11 +2,11 @@ import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition } from "./Definition";
 
 export class AnimationDefinition extends Definition {
-    frameIds?: number[];
+    frameIds!: number[];
 
     chatFrameIds?: number[];
 
-    frameLengths?: number[];
+    frameLengths!: number[];
 
     frameSounds?: number[];
 
