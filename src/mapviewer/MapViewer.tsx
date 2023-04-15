@@ -1193,11 +1193,11 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         <div>
             <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} />
             <div className='hud left-top'>
-                <div className='fps-counter'>{fps.toFixed(1)}</div>
                 <img className='compass' style={{ transform: `rotate(${compassDegrees}deg)` }} src='/compass.png' onClick={() => {
                     mapViewer.yaw = 0;
                     mapViewer.runCameraListeners();
                 }} />
+                <div className='fps-counter'>{fps.toFixed(1)}</div>
             </div>
             {isTouchDevice && <div className='joystick-container left'>
                 <Joystick size={75} baseColor='#181C20' stickColor='#007BFF' stickSize={40} move={mapViewer.onPositionJoystickMove} stop={mapViewer.onPositionJoystickStop}></Joystick>
