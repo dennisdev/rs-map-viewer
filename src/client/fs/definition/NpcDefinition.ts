@@ -1,4 +1,6 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
+import { VarpManager } from "../../VarpManager";
+import { NpcLoader } from "../loader/NpcLoader";
 import { Definition, ParamsMap } from "./Definition";
 
 export class NpcDefinition extends Definition {
@@ -248,5 +250,28 @@ export class NpcDefinition extends Definition {
         } else {
             throw new Error('NpcDefinition: Opcode ' + opcode + ' not implemented.');
         }
+    }
+
+    transform(varpManager: VarpManager, npcLoader: NpcLoader): NpcDefinition | undefined {
+        if (!this.transforms) {
+            return undefined;
+        }
+
+        let transformIndex = -1;
+        if (this.transformVarbit !== -1) {
+            transformIndex = varpManager.getVarbit(this.transformVarbit);
+        } else if (this.transformVarp !== -1) {
+            transformIndex = varpManager.getVarp(this.transformVarp);
+        }
+
+        let transformId = this.transforms[this.transforms.length - 1];
+        if (transformIndex >= 0 && transformIndex < this.transforms.length - 1) {
+            transformId = this.transforms[transformIndex];
+        }
+
+        if (transformId === -1) {
+            return undefined;
+        }
+        return npcLoader.getDefinition(transformId);
     }
 }

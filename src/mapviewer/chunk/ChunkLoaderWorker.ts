@@ -16,6 +16,10 @@ import { CachedAnimationLoader } from "../../client/fs/loader/AnimationLoader";
 import { CachedSkeletonLoader } from "../../client/fs/loader/SkeletonLoader";
 import { CachedAnimationFrameMapLoader } from "../../client/fs/loader/AnimationFrameMapLoader";
 import { ObjectModelLoader } from "../../client/scene/ObjectModelLoader";
+import { CachedVarbitLoader } from "../../client/fs/loader/VarbitLoader";
+import { VarpManager } from "../../client/VarpManager";
+import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
+import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,
@@ -27,6 +31,8 @@ let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
+
+const npcListPromise = fetch('/NPCList_OSRS.json').then(resp => resp.json());
 
 async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>) {
     // console.log('start init worker');
@@ -48,20 +54,31 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
     const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
     const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+    const npcArchive = configIndex.getArchive(ConfigType.NPC);
     // console.timeEnd('load config archives');
 
     const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
 
+    const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
+
     const underlayLoader = new CachedUnderlayLoader(underlayArchive);
     const overlayLoader = new CachedOverlayLoader(overlayArchive);
     const objectLoader = new CachedObjectLoader(objectArchive);
+    const npcLoader = new CachedNpcLoader(npcArchive);
 
     const animationLoader = new CachedAnimationLoader(animationArchive);
+
+    const varbitLoader = new CachedVarbitLoader(varbitArchive);
 
     const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
     const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
 
-    const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex), animationLoader, frameMapLoader);
+    const varpManager = new VarpManager(varbitLoader);
+
+    const modelLoader = new IndexModelLoader(modelIndex);
+
+    const objectModelLoader = new ObjectModelLoader(modelLoader, animationLoader, frameMapLoader);
+    const npcModelLoader = new NpcModelLoader(varpManager, modelLoader, animationLoader, frameMapLoader, npcLoader);
 
     const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, objectModelLoader, xteasMap);
 
@@ -75,8 +92,10 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     // }
     // console.timeEnd('load textures sprites');
 
+    const npcList: any[] = await npcListPromise;
+
     console.log('init worker', fileSystem, performance.now());
-    return new ChunkDataLoader(regionLoader, objectModelLoader, textureProvider);
+    return new ChunkDataLoader(regionLoader, objectModelLoader, npcModelLoader, textureProvider, npcList);
 }
 
 // console.log('start worker', performance.now());
@@ -89,7 +108,7 @@ expose({
     init(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>) {
         chunkDataLoaderPromise = init0(memoryStoreProperties, xteasMap);
     },
-    async load(regionX: number, regionY: number, minimizeDrawCalls: boolean) {
+    async load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean) {
         // console.log('request', regionX, regionY);
         if (!chunkDataLoaderPromise) {
             throw new Error('ChunkDataLoaderWorker has not been initialized yet');
@@ -98,7 +117,7 @@ expose({
         await hasherPromise;
 
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = chunkDataLoader.load(regionX, regionY, minimizeDrawCalls);
+        const chunkData = chunkDataLoader.load(regionX, regionY, minimizeDrawCalls, loadNpcs);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
         console.log('model caches: ', chunkDataLoader.objectModelLoader.modelDataCache.size, chunkDataLoader.objectModelLoader.modelCache.size)
 

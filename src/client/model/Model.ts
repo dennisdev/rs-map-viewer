@@ -544,6 +544,16 @@ export class Model extends Renderable {
         this.invalidateBounds();
     }
 
+    scale(x: number, y: number, z: number): void {
+        for (let i = 0; i < this.verticesCount; i++) {
+            this.verticesX[i] = (this.verticesX[i] * x / 128) | 0;
+            this.verticesY[i] = (this.verticesY[i] * y / 128) | 0;
+            this.verticesZ[i] = (this.verticesZ[i] * z / 128) | 0;
+        }
+
+        this.invalidateBounds();
+    }
+
     hasAlpha(textureLoader: TextureLoader): boolean {
         if (this.faceAlphas) {
             return true;

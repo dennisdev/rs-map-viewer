@@ -1,7 +1,8 @@
 import { vec3 } from "gl-matrix";
 import { TextureLoader } from "../../client/fs/loader/TextureLoader";
 import { computeTextureCoords, Model } from "../../client/model/Model";
-import { Scene, SceneTile } from "../../client/scene/Scene";
+import { Scene } from "../../client/scene/Scene";
+import { SceneTile } from "../../client/scene/SceneTile";
 import { clamp } from "../../client/util/MathUtil";
 import { VertexBuffer } from "./VertexBuffer";
 

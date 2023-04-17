@@ -30,9 +30,9 @@ export class ObjectModelLoader {
     constructor(modelLoader: ModelLoader, animationLoader: AnimationLoader, animationFrameMapLoader: AnimationFrameMapLoader) {
         this.modelLoader = modelLoader;
         this.animationLoader = animationLoader;
+        this.animationFrameMapLoader = animationFrameMapLoader;
         this.modelDataCache = new Map();
         this.modelCache = new Map();
-        this.animationFrameMapLoader = animationFrameMapLoader;
     }
 
     getModelData(id: number, mirrored: boolean): ModelData | undefined {

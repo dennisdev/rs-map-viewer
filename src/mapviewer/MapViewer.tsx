@@ -113,8 +113,10 @@ class AnimatedModel {
             if (this.frame >= this.animationDef.frameLengths.length) {
                 this.frame -= this.animationDef.frameStep;
                 if (this.frame < 0 || this.frame >= this.animationDef.frameLengths.length) {
-                    this.animationDef = undefined;
-                    return 0;
+                    this.frame = 0;
+                    this.cycleStart = cycle - 1;
+                    // this.animationDef = undefined;
+                    // return 0;
                 }
                 continue;
             }
@@ -324,6 +326,8 @@ class MapViewer {
 
     brightness: number = 1.0;
     colorBanding: number = 255;
+
+    loadNpcs: boolean = false;
 
     cullBackFace: boolean = true;
     lastCullBackFace: boolean = true;
@@ -792,7 +796,7 @@ class MapViewer {
             // console.log('queue load', regionX, regionY, performance.now());
             this.loadingRegionIds.add(regionId);
 
-            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !this.hasMultiDraw)).then(chunkData => {
+            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !this.hasMultiDraw, this.loadNpcs)).then(chunkData => {
                 if (chunkData) {
                     this.chunksToLoad.push(chunkData);
                 } else {
@@ -800,6 +804,14 @@ class MapViewer {
                 }
             });
         }
+    }
+
+    setLoadNpcs(load: boolean) {
+        this.loadNpcs = load;
+        for (const chunk of this.chunks.values()) {
+            deleteChunk(chunk);
+        }
+        this.chunks.clear();
     }
 
     updateCullFace() {
@@ -939,7 +951,7 @@ class MapViewer {
 
         if (this.keys.get('p') && this.chunkDataLoader) {
             for (let i = 0; i < 20; i++) {
-                this.chunkDataLoader.load(50, 50);
+                this.chunkDataLoader.load(50, 50, false, false);
 
                 this.chunkDataLoader.regionLoader.regions.clear();
                 this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
@@ -955,6 +967,7 @@ class MapViewer {
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
         mat4.identity(this.projectionMatrix);
         mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0 * 4);
+        // mat4.ortho(this.projectionMatrix, 0, canvasWidth / 10, 0, canvasHeight / 10, 0.1, 1024.0 * 8);
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
         mat4.identity(this.viewMatrix);
@@ -1119,9 +1132,11 @@ class MapViewer {
             if (chunkData) {
                 // console.log('loaded', chunkData.regionX, chunkData.regionY, performance.now())
                 const regionId = RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY);
-                this.chunks.set(regionId,
-                    loadChunk(this.app, this.program, this.animationLoader, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData,
-                        this.frameCount, cycle));
+                if (chunkData.loadNpcs === this.loadNpcs) {
+                    this.chunks.set(regionId,
+                        loadChunk(this.app, this.program, this.animationLoader, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData,
+                            this.frameCount, cycle));
+                }
                 this.loadingRegionIds.delete(regionId);
             }
         }
@@ -1178,6 +1193,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
         'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
+        'Load npcs': { value: false, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
         'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
     });
 

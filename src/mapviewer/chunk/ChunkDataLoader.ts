@@ -2,13 +2,15 @@ import { ObjectDefinition } from "../../client/fs/definition/ObjectDefinition";
 import { TextureLoader } from "../../client/fs/loader/TextureLoader";
 import { Model } from "../../client/model/Model";
 import { RegionLoader } from "../../client/RegionLoader";
-import { GameObject, Scene, SceneObject, SceneTile } from "../../client/scene/Scene";
+import { Scene } from "../../client/scene/Scene";
 import { AnimatedObject } from "../../client/scene/AnimatedObject";
 import { vec3 } from "gl-matrix";
 import { ObjectModelLoader } from "../../client/scene/ObjectModelLoader";
 import { getModelHash, ModelHashBuffer } from "../buffer/ModelHashBuffer";
 import { addModel, addTerrain, ContourGroundType, DrawCommand, DrawData, getModelFaces, RenderBuffer } from "../buffer/RenderBuffer";
 import { createOcclusionMap, OcclusionMap } from "./LodOcclusionMap";
+import { GameObject, SceneObject } from "../../client/scene/SceneObject";
+import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
 
 export type ChunkData = {
     regionX: number,
@@ -20,6 +22,7 @@ export type ChunkData = {
     drawRanges: MultiDrawCommand[],
     drawRangesLowDetail: MultiDrawCommand[],
     animatedModels: AnimatedModelData[],
+    loadNpcs: boolean
 };
 
 type MultiDrawCommand = [number, number, number];
@@ -52,10 +55,20 @@ type AnimatedSceneObject = {
     sceneObject: SceneObject,
 } & DrawData;
 
-type AnimatedModelGroup = {
+type AnimatedObjectGroup = {
     animationId: number,
     frames: DrawRangeInstanced[],
     objects: AnimatedSceneObject[],
+};
+
+type AnimatedNpc = {
+
+} & DrawData;
+
+type AnimatedNpcGroup = {
+    animationId: number,
+    frames: DrawRangeInstanced[],
+    npcs: AnimatedNpc[],
 };
 
 export type AnimatedModelData = {
@@ -266,7 +279,7 @@ function addModelAnimFrame(textureLoader: TextureLoader, renderBuf: RenderBuffer
 }
 
 function getAnimatedObjectGroups(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, textureLoader: TextureLoader, renderBuf: RenderBuffer,
-    animatedObjects: AnimatedSceneObject[]): AnimatedModelGroup[] {
+    animatedObjects: AnimatedSceneObject[]): AnimatedObjectGroup[] {
     const uniqueObjectsMap: Map<bigint, AnimatedSceneObject[]> = new Map();
 
     for (const object of animatedObjects) {
@@ -281,7 +294,7 @@ function getAnimatedObjectGroups(regionLoader: RegionLoader, objectModelLoader: 
         }
     }
 
-    const groups: AnimatedModelGroup[] = [];
+    const groups: AnimatedObjectGroup[] = [];
     for (const objects of uniqueObjectsMap.values()) {
         const { animatedObject, sceneObject } = objects[0];
 
@@ -310,6 +323,70 @@ function getAnimatedObjectGroups(regionLoader: RegionLoader, objectModelLoader: 
                 animationId: animatedObject.animationId,
                 frames,
                 objects: objects
+            });
+        }
+    }
+
+    return groups;
+}
+
+function getAnimatedNpcGroups(npcModelLoader: NpcModelLoader, textureLoader: TextureLoader, tileRenderFlags: Uint8Array[][], renderBuf: RenderBuffer, npcs: any[]) {
+    const uniqueNpcsMap: Map<number, any[]> = new Map();
+
+    for (const npc of npcs) {
+        const uniqueNpcs = uniqueNpcsMap.get(npc.id);
+        if (uniqueNpcs) {
+            uniqueNpcs.push(npc);
+        } else {
+            uniqueNpcsMap.set(npc.id, [npc]);
+        }
+    }
+
+    const groups: AnimatedNpcGroup[] = [];
+    for (const npcs of uniqueNpcsMap.values()) {
+        const def = npcModelLoader.npcLoader.getDefinition(npcs[0].id);
+
+        let animationId = def.idleSequence;
+
+        if (animationId === -1) {
+            continue;
+        }
+
+        const animDef = npcModelLoader.animationLoader.getDefinition(animationId);
+        if (!animDef.frameIds) {
+            continue;
+        }
+
+        const frames: DrawRangeInstanced[] = [];
+        for (let i = 0; i < animDef.frameIds.length; i++) {
+            const model = npcModelLoader.getModel(def, animationId, i);
+            if (model) {
+                frames.push(addModelAnimFrame(textureLoader, renderBuf, model));
+            }
+        }
+        if (frames.length > 0) {
+            groups.push({
+                animationId: def.idleSequence,
+                frames,
+                npcs: npcs.map(npc => {
+                    const tileX = npc.x % 64;
+                    const tileY = npc.y % 64;
+                    let plane = npc.p;
+                    if (plane < 3 && (tileRenderFlags[1][tileX][tileY] & 2) === 2) {
+                        plane += 1;
+                    }
+
+                    const size = npc.size || 1;
+                    const sceneX = tileX * 128 + size * 64;
+                    const sceneY = tileY * 128 + size * 64;
+                    return {  
+                        sceneX,
+                        sceneY,
+                        plane,
+                        contourGround: ContourGroundType.CENTER_TILE,
+                        priority: 3
+                    };
+                })
             });
         }
     }
@@ -427,21 +504,37 @@ export class ChunkDataLoader {
 
     objectModelLoader: ObjectModelLoader;
 
+    npcModelLoader: NpcModelLoader;
+
     textureProvider: TextureLoader;
 
     modelHashBuf: ModelHashBuffer;
 
-    constructor(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, textureProvider: TextureLoader) {
+    npcList: any[];
+
+    constructor(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, npcModelLoader: NpcModelLoader, textureProvider: TextureLoader, npcList: any[]) {
         this.regionLoader = regionLoader;
         this.objectModelLoader = objectModelLoader;
+        this.npcModelLoader = npcModelLoader;
         this.textureProvider = textureProvider;
+        this.npcList = npcList;
         this.modelHashBuf = new ModelHashBuffer(5000);
     }
 
-    load(regionX: number, regionY: number, minimizeDrawCalls: boolean = false): ChunkData | undefined {
+    load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean): ChunkData | undefined {
         const region = this.regionLoader.getRegion(regionX, regionY);
         if (!region) {
             return undefined;
+        }
+
+        let npcs: any[] = [];
+        if (loadNpcs) {
+            npcs = this.npcList.filter(npc => {
+                const npcRegionX = npc.x / 64 | 0;
+                const npcRegionY = npc.y / 64 | 0;
+                return regionX === npcRegionX && regionY === npcRegionY;
+            });
+            console.log(npcs);
         }
 
         console.time('read landscape data');
@@ -461,7 +554,8 @@ export class ChunkDataLoader {
 
         const terrainVertexCount = addTerrain(renderBuf, region);
 
-        let animatedModelGroups: AnimatedModelGroup[] = [];
+        let animatedObjectGroups: AnimatedObjectGroup[] = [];
+        let animatedNpcGroups: AnimatedNpcGroup[] = [];
         if (landscapeData) {
             console.time('light scene');
             region.applyLighting(-50, -10, -50);
@@ -477,11 +571,51 @@ export class ChunkDataLoader {
 
             const uniqueObjects = getUniqueObjects(this.modelHashBuf, objectModels);
 
-            animatedModelGroups = getAnimatedObjectGroups(this.regionLoader, this.objectModelLoader, this.textureProvider, renderBuf, animatedObjects);
+            animatedObjectGroups = getAnimatedObjectGroups(this.regionLoader, this.objectModelLoader, this.textureProvider, renderBuf, animatedObjects);
+            animatedNpcGroups = getAnimatedNpcGroups(this.npcModelLoader, this.textureProvider, region.tileRenderFlags, renderBuf, npcs);
+
+            console.log(animatedNpcGroups);
 
             // console.log('uniq models: ', uniqueObjects.length, uniqueObjects);
 
             const modelGroups = createModelGroups(this.textureProvider, uniqueObjects, minimizeDrawCalls);
+
+            // for (const npc of npcs) {
+            //     const model = this.npcModelLoader.getModel(this.npcModelLoader.npcLoader.getDefinition(npc.id), -1, -1);
+            //     if (model) {
+            //         const tileX = npc.x % 64;
+            //         const tileY = npc.y % 64;
+            //         let plane = npc.p;
+            //         if (plane < 3 && (region.tileRenderFlags[1][tileX][tileY] & 2) === 2) {
+            //             plane += 1;
+            //         }
+
+
+            //         const size = npc.size || 1;
+            //         const sceneX = tileX * 128 + size * 64;
+            //         const sceneY = tileY * 128 + size * 64;
+
+            //         const objectModel: ObjectModel = {
+            //             model,
+            //             lowDetail: false,
+            //             sceneHeight: 0,
+            //             sceneX,
+            //             sceneY,
+            //             plane,
+            //             contourGround: ContourGroundType.CENTER_TILE,
+            //             priority: 1
+            //         };
+
+            //         modelGroups.push({
+            //             merge: false,
+            //             lowDetail: false,
+            //             alpha: false,
+            //             plane,
+            //             priority: 1,
+            //             objects: [objectModel]
+            //         })
+            //     }
+            // }
 
             // alpha last, planes low to high
             modelGroups.sort((a, b) => (a.alpha ? 1 : 0) - (b.alpha ? 1 : 0)
@@ -504,7 +638,7 @@ export class ChunkDataLoader {
 
         const animatedModels: AnimatedModelData[] = [];
 
-        for (const group of animatedModelGroups) {
+        for (const group of animatedObjectGroups) {
             for (const data of group.objects) {
                 const drawRangeIndex = drawCommands.length;
 
@@ -518,6 +652,24 @@ export class ChunkDataLoader {
                     drawRangeIndex,
                     animationId: group.animationId,
                     randomStart: data.animatedObject.randomStartFrame,
+                    frames: group.frames
+                });
+            }
+        }
+        for (const group of animatedNpcGroups) {
+            for (const data of group.npcs) {
+                const drawRangeIndex = drawCommands.length;
+
+                drawCommands.push({
+                    offset: 0,
+                    elements: 0,
+                    datas: [data]
+                });
+
+                animatedModels.push({
+                    drawRangeIndex,
+                    animationId: group.animationId,
+                    randomStart: true,
                     frames: group.frames
                 });
             }
@@ -553,7 +705,9 @@ export class ChunkDataLoader {
             drawRanges: drawRanges,
             drawRangesLowDetail: drawRangesLowDetail,
 
-            animatedModels
+            animatedModels,
+
+            loadNpcs
         };
     }
 }

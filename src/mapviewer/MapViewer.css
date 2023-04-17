@@ -18,6 +18,7 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
   font-weight: bold;
   color: white;
+  text-shadow: 0 1px 0 black;
 }
 
 .joystick-container {
