@@ -32,7 +32,7 @@ let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
-const npcListPromise = fetch('/NPCList_OSRS.json').then(resp => resp.json());
+const npcListPromise = fetch('/NPCList_OSRS-min.json').then(resp => resp.json());
 
 async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>) {
     // console.log('start init worker');
