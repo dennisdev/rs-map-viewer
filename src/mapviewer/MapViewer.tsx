@@ -324,6 +324,9 @@ class MapViewer {
 
     viewDistanceRegionIds: Set<number>[] = [new Set(), new Set()];
 
+    visibleChunkCount: number = 0;
+    visibleChunks: Chunk[] = [];
+
     brightness: number = 1.0;
     colorBanding: number = 255;
 
@@ -510,6 +513,9 @@ class MapViewer {
 
     init(gl: WebGL2RenderingContext) {
         // console.log('init start', performance.now());
+        if (!(gl.canvas instanceof HTMLCanvasElement)) {
+            return;
+        }
 
         gl.canvas.addEventListener('keydown', this.onKeyDown);
         gl.canvas.addEventListener('keyup', this.onKeyUp);
@@ -1059,7 +1065,7 @@ class MapViewer {
             });
         }
 
-        let renderedChunks = 0;
+        this.visibleChunkCount = 0;
 
         // draw back to front
         for (let i = this.regionPositions.length - 1; i >= 0; i--) {
@@ -1067,12 +1073,16 @@ class MapViewer {
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const chunk = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!chunk || !this.isChunkVisible(pos[0], pos[1]) || (this.frameCount - chunk.frameLoaded) < 4) {
+            if (!chunk || !this.isChunkVisible(pos[0], pos[1])) {
                 continue;
             }
 
-            renderedChunks++;
+            this.visibleChunks[this.visibleChunkCount++] = chunk;
+        }
 
+        for (let i = 0; i < this.visibleChunkCount; i++) {
+            const chunk = this.visibleChunks[i];
+            const regionId = RegionLoader.getRegionId(chunk.regionX, chunk.regionY);
             const regionDist = Math.max(Math.abs(cameraRegionX - chunk.regionX), Math.abs(cameraRegionY - chunk.regionY));
 
             const isLowDetail = regionDist >= this.regionLodDistance;
@@ -1119,7 +1129,7 @@ class MapViewer {
         }
 
         if (this.keys.get('h')) {
-            console.log('rendered chunks', renderedChunks, this.frustumIntersection.planes);
+            console.log('rendered chunks', this.visibleChunkCount, this.frustumIntersection.planes);
         }
 
         for (const regionPos of this.regionPositions) {
