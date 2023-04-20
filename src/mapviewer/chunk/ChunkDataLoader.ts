@@ -362,11 +362,13 @@ function getAnimatedNpcGroups(npcModelLoader: NpcModelLoader, textureLoader: Tex
             const model = npcModelLoader.getModel(def, animationId, i);
             if (model) {
                 frames.push(addModelAnimFrame(textureLoader, renderBuf, model));
+            } else {
+                frames.push([0, 0, 0]);
             }
         }
         if (frames.length > 0) {
             groups.push({
-                animationId: def.idleSequence,
+                animationId,
                 frames,
                 npcs: npcs.map(npc => {
                     const tileX = npc.x % 64;
@@ -444,7 +446,8 @@ function createModelGroups(textureProvider: TextureLoader, uniqueObjects: Object
             }
         } else {
             if (alpha) {
-                groups.push({ merge, lowDetail: false, alpha, plane: 0, priority: 1, objects: uniqObject });
+                groups.push({ merge, lowDetail: false, alpha: true, plane: 0, priority: 1, objects: uniqObject });
+                groups.push({ merge, lowDetail: false, alpha: false, plane: 0, priority: 1, objects: uniqObject });
             } else {
                 groups.push({ merge, lowDetail: false, alpha, plane: 0, priority: 1, objects: uniqObject.filter(obj => !obj.lowDetail) });
                 groups.push({ merge, lowDetail: true, alpha, plane: 0, priority: 1, objects: uniqObject.filter(obj => obj.lowDetail) });
@@ -453,6 +456,12 @@ function createModelGroups(textureProvider: TextureLoader, uniqueObjects: Object
     }
 
     groups.push(...mergeGroups.values());
+
+    for (const group of mergeGroups.values()) {
+        if (group.alpha) {
+            groups.push({ merge: true, lowDetail: false, alpha: false, plane: group.plane, priority: group.priority, objects: group.objects });
+        }
+    }
 
     return groups;
 }
@@ -463,7 +472,11 @@ function addModelGroup(textureProvider: TextureLoader, renderBuf: RenderBuffer, 
     for (const object of modelGroup.objects) {
         const model = object.model;
 
-        const faces = getModelFaces(textureProvider, model);
+        let faces = getModelFaces(textureProvider, model);
+
+        // faces = faces.filter(face => face.alpha === 0xFF && face.textureId === -1);
+
+        faces = faces.filter(face => (face.alpha !== 0xFF) === modelGroup.alpha);
 
         if (faces.length === 0) {
             continue;

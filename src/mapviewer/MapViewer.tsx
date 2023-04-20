@@ -1188,7 +1188,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             'Position': { value: positionControls, editable: false },
             'Direction': { value: directionControls, editable: false }
         }, { collapsed: false }),
-        'View Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+        'View Distance': { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
         'Lod Distance': { value: 3, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionLodDistance = v; } },
         'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
         'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
