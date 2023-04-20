@@ -34,6 +34,8 @@ export class RenderBuffer {
     drawCommands: DrawCommand[] = [];
     drawCommandsLowDetail: DrawCommand[] = [];
 
+    drawCommandsAlpha: DrawCommand[] = [];
+
     constructor(initVertexCount: number) {
         this.vertexBuf = new VertexBuffer(initVertexCount);
     }
@@ -111,22 +113,11 @@ export function getModelFaces(textureProvider: TextureLoader, model: Model): Mod
     // console.log('alphas', faceAlphas);
 
     for (let f = 0; f < model.faceCount; f++) {
-        let faceAlpha = 0xFF;
-        if (faceAlphas) {
-            faceAlpha = 0xFF - (faceAlphas[f] & 0xFF);
-        }
-
-        if (faceAlpha === 0 || faceAlpha === 0x1) {
-            continue;
-        }
-
         let hslC = model.faceColors3[f];
 
         if (hslC === -2) {
             continue;
         }
-
-        const priority = (priorities && priorities[f]) || 0;
 
         let textureId = -1;
         if (model.faceTextures) {
@@ -137,6 +128,17 @@ export function getModelFaces(textureProvider: TextureLoader, model: Model): Mod
         if (textureIndex === undefined) {
             textureIndex = -1;
         }
+
+        let faceAlpha = 0xFF;
+        if (faceAlphas && textureId === -1) {
+            faceAlpha = 0xFF - (faceAlphas[f] & 0xFF);
+        }
+
+        if (faceAlpha === 0 || faceAlpha === 0x1) {
+            continue;
+        }
+
+        const priority = (priorities && priorities[f]) || 0;
 
         faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
     }

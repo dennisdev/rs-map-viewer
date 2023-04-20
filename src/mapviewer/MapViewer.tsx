@@ -58,10 +58,14 @@ type Chunk = {
     modelMatrix: mat4,
 
     triangleCount: number,
+
     drawRanges: number[][],
     drawRangesLowDetail: number[][],
+    drawRangesAlpha: number[][],
+
     drawCall: DrawCall,
     drawCallLowDetail: DrawCall,
+    drawCallAlpha: DrawCall,
 
     animatedModels: AnimatedModel[],
 
@@ -69,6 +73,7 @@ type Chunk = {
     indexBuffer: VertexBuffer,
     vertexArray: VertexArray,
     modelDataTexture: Texture,
+    modelDataTextureAlpha: Texture,
     heightMapTexture: Texture,
 
     timeLoaded: number,
@@ -77,7 +82,10 @@ type Chunk = {
 
 class AnimatedModel {
     drawRangeIndex: number;
+    drawRangeAlphaIndex: number;
+
     frames: number[][];
+    framesAlpha: number[][] | undefined;
 
     animationDef?: AnimationDefinition;
 
@@ -85,9 +93,12 @@ class AnimatedModel {
 
     cycleStart: number = 0;
 
-    constructor(drawRangeIndex: number, frames: number[][], animationDef: AnimationDefinition, cycle: number, randomStart: boolean) {
+    constructor(drawRangeIndex: number, drawRangeAlphaIndex: number, frames: number[][], framesAlpha: number[][] | undefined,
+        animationDef: AnimationDefinition, cycle: number, randomStart: boolean) {
         this.drawRangeIndex = drawRangeIndex;
+        this.drawRangeAlphaIndex = drawRangeAlphaIndex;
         this.frames = frames;
+        this.framesAlpha = framesAlpha;
         this.animationDef = animationDef;
         this.cycleStart = cycle - 1;
 
@@ -171,6 +182,9 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
     const modelDataTexture = app.createTexture2D(new Uint8Array(chunkData.modelTextureData.buffer), 16, chunkData.modelTextureData.length / 16,
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
 
+    const modelDataTextureAlpha = app.createTexture2D(new Uint8Array(chunkData.modelTextureDataAlpha.buffer), 16, chunkData.modelTextureDataAlpha.length / 16,
+        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
     const heightMapTexture = app.createTextureArray(chunkData.heightMapTextureData, 72, 72, Scene.MAX_PLANE,
         {
             internalFormat: PicoGL.R32F, minFilter: PicoGL.LINEAR, magFilter: PicoGL.LINEAR, type: PicoGL.FLOAT,
@@ -202,10 +216,22 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
         .texture('u_heightMap', heightMapTexture)
         .drawRanges(...chunkData.drawRangesLowDetail);
 
+    const drawCallAlpha = app.createDrawCall(program, vertexArray)
+        .uniformBlock('TextureUniforms', textureUniformBuffer)
+        .uniformBlock('SceneUniforms', sceneUniformBuffer)
+        .uniform('u_timeLoaded', time)
+        .uniform('u_modelMatrix', baseModelMatrix)
+        .uniform('u_drawIdOffset', 0)
+        .texture('u_textures', textureArray)
+        .texture('u_modelDataTexture', modelDataTextureAlpha)
+        .texture('u_heightMap', heightMapTexture)
+        .drawRanges(...chunkData.drawRangesAlpha);
+
     const animatedModels: AnimatedModel[] = [];
     for (const animatedModel of chunkData.animatedModels) {
         const animationDef = animationLoader.getDefinition(animatedModel.animationId);
-        animatedModels.push(new AnimatedModel(animatedModel.drawRangeIndex, animatedModel.frames, animationDef, cycle, animatedModel.randomStart))
+        animatedModels.push(new AnimatedModel(animatedModel.drawRangeIndex, animatedModel.drawRangeAlphaIndex, animatedModel.frames, animatedModel.framesAlpha,
+            animationDef, cycle, animatedModel.randomStart))
     }
 
     return {
@@ -216,8 +242,11 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
         triangleCount: chunkData.indices.length / 3,
         drawRanges: chunkData.drawRanges,
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
+        drawRangesAlpha: chunkData.drawRangesAlpha,
+
         drawCall,
         drawCallLowDetail,
+        drawCallAlpha,
 
         animatedModels,
 
@@ -225,6 +254,7 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
         indexBuffer,
         vertexArray,
         modelDataTexture,
+        modelDataTextureAlpha,
         heightMapTexture,
 
         timeLoaded: time,
@@ -237,6 +267,7 @@ function deleteChunk(chunk: Chunk) {
     chunk.indexBuffer.delete();
     chunk.vertexArray.delete();
     chunk.modelDataTexture.delete();
+    chunk.modelDataTextureAlpha.delete();
     chunk.heightMapTexture.delete();
 }
 
@@ -1077,12 +1108,23 @@ class MapViewer {
                 continue;
             }
 
+            // fade in chunks even if it loaded a while ago
+            if (!lastViewDistanceRegionIds.has(regionId)) {
+                chunk.timeLoaded = time;
+            }
+
+
+            for (const animatedModel of chunk.animatedModels) {
+                // advance frame
+                animatedModel.getFrame(cycle);
+            }
+
             this.visibleChunks[this.visibleChunkCount++] = chunk;
         }
 
-        for (let i = 0; i < this.visibleChunkCount; i++) {
+        // opaque pass
+        for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
             const chunk = this.visibleChunks[i];
-            const regionId = RegionLoader.getRegionId(chunk.regionX, chunk.regionY);
             const regionDist = Math.max(Math.abs(cameraRegionX - chunk.regionX), Math.abs(cameraRegionY - chunk.regionY));
 
             const isLowDetail = regionDist >= this.regionLodDistance;
@@ -1093,11 +1135,6 @@ class MapViewer {
 
             const drawCall = isLowDetail ? chunk.drawCallLowDetail : chunk.drawCall;
 
-            // fade in chunks even if it loaded a while ago
-            if (!lastViewDistanceRegionIds.has(regionId)) {
-                chunk.timeLoaded = time;
-            }
-
             drawCall.uniform('u_currentTime', time);
             drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
             drawCall.uniform('u_deltaTime', deltaTime);
@@ -1107,7 +1144,7 @@ class MapViewer {
             const drawRanges = isLowDetail ? chunk.drawRangesLowDetail : chunk.drawRanges;
 
             for (const animatedModel of chunk.animatedModels) {
-                const frameId = animatedModel.getFrame(cycle);
+                const frameId = animatedModel.frame;
 
                 const frame = animatedModel.frames[frameId];
 
@@ -1115,6 +1152,44 @@ class MapViewer {
                 (drawCall as any).numElements[animatedModel.drawRangeIndex + drawRangeOffset] = frame[1];
 
                 drawRanges[animatedModel.drawRangeIndex + drawRangeOffset] = frame;
+            }
+
+            if (this.hasMultiDraw) {
+                drawCall.draw();
+            } else {
+                for (let i = 0; i < drawRanges.length; i++) {
+                    drawCall.uniform('u_drawId', i);
+                    drawCall.drawRanges(drawRanges[i]);
+                    drawCall.draw();
+                }
+            }
+        }
+
+        // alpha pass
+        for (let i = 0; i < this.visibleChunkCount; i++) {
+            const chunk = this.visibleChunks[i];
+
+            const drawCall = chunk.drawCallAlpha;
+
+            drawCall.uniform('u_currentTime', time);
+            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
+            drawCall.uniform('u_deltaTime', deltaTime);
+            drawCall.uniform('u_brightness', this.brightness);
+            drawCall.uniform('u_colorBanding', this.colorBanding);
+
+            const drawRanges = chunk.drawRangesAlpha;
+
+            for (const animatedModel of chunk.animatedModels) {
+                if (animatedModel.framesAlpha) {
+                    const frameId = animatedModel.frame;
+
+                    const frame = animatedModel.framesAlpha[frameId];
+
+                    (drawCall as any).offsets[animatedModel.drawRangeAlphaIndex] = frame[0];
+                    (drawCall as any).numElements[animatedModel.drawRangeAlphaIndex] = frame[1];
+
+                    drawRanges[animatedModel.drawRangeAlphaIndex] = frame;
+                }
             }
 
             if (this.hasMultiDraw) {

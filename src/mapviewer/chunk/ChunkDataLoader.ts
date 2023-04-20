@@ -18,9 +18,11 @@ export type ChunkData = {
     vertices: Uint8Array,
     indices: Int32Array,
     modelTextureData: Int32Array,
+    modelTextureDataAlpha: Int32Array,
     heightMapTextureData: Float32Array,
     drawRanges: MultiDrawCommand[],
     drawRangesLowDetail: MultiDrawCommand[],
+    drawRangesAlpha: MultiDrawCommand[],
     animatedModels: AnimatedModelData[],
     loadNpcs: boolean
 };
@@ -58,6 +60,7 @@ type AnimatedSceneObject = {
 type AnimatedObjectGroup = {
     animationId: number,
     frames: DrawRangeInstanced[],
+    framesAlpha: DrawRangeInstanced[] | undefined,
     objects: AnimatedSceneObject[],
 };
 
@@ -68,12 +71,16 @@ type AnimatedNpc = {
 type AnimatedNpcGroup = {
     animationId: number,
     frames: DrawRangeInstanced[],
+    framesAlpha: DrawRangeInstanced[] | undefined,
     npcs: AnimatedNpc[],
 };
 
 export type AnimatedModelData = {
     drawRangeIndex: number,
+    drawRangeAlphaIndex: number,
+
     frames: DrawRangeInstanced[],
+    framesAlpha: DrawRangeInstanced[] | undefined,
 
     animationId: number,
     randomStart: boolean,
@@ -268,11 +275,17 @@ function getAnimatedModelKey(id: number, type: number, rotation: number, animati
     return BigInt(id) | BigInt(type) << 16n | BigInt(rotation) << 21n | BigInt(animationId) << 24n;
 }
 
-function addModelAnimFrame(textureLoader: TextureLoader, renderBuf: RenderBuffer, model: Model): DrawRangeInstanced {
-    const faces = getModelFaces(textureLoader, model);
+function addModelAnimFrame(textureLoader: TextureLoader, renderBuf: RenderBuffer, model: Model, alphaOnly: boolean | undefined = undefined): DrawRangeInstanced {
+    let faces = getModelFaces(textureLoader, model);
+
+    if (alphaOnly !== undefined) {
+        faces = faces.filter(face => (face.alpha !== 0xFF || textureLoader.hasAlpha(face.textureId)) === alphaOnly);
+    }
 
     const indexByteOffset = renderBuf.indexByteOffset();
-    addModel(renderBuf, model, faces);
+    if (faces.length > 0) {
+        addModel(renderBuf, model, faces);
+    }
     const modelVertexCount = (renderBuf.indexByteOffset() - indexByteOffset) / 4;
 
     return [indexByteOffset, modelVertexCount, 1];
@@ -312,16 +325,24 @@ function getAnimatedObjectGroups(regionLoader: RegionLoader, objectModelLoader: 
             defTransform = regionLoader.getObjectDef(transformId);
         }
         const frames: DrawRangeInstanced[] = [];
+        let framesAlpha: DrawRangeInstanced[] = [];
+        let alphaFrameCount = 0;
         for (let i = 0; i < animDef.frameIds.length; i++) {
             const model = objectModelLoader.getObjectModelAnimated(defTransform, animatedObject.type, animatedObject.rotation, animatedObject.animationId, i);
             if (model) {
-                frames.push(addModelAnimFrame(textureLoader, renderBuf, model));
+                frames.push(addModelAnimFrame(textureLoader, renderBuf, model, false));
+                const alphaFrame = addModelAnimFrame(textureLoader, renderBuf, model, true);
+                if (alphaFrame[1] > 0) {
+                    alphaFrameCount++;
+                }
+                framesAlpha.push(alphaFrame);
             }
         }
         if (frames.length > 0) {
             groups.push({
                 animationId: animatedObject.animationId,
                 frames,
+                framesAlpha: alphaFrameCount > 0 ? framesAlpha : undefined,
                 objects: objects
             });
         }
@@ -358,10 +379,17 @@ function getAnimatedNpcGroups(npcModelLoader: NpcModelLoader, textureLoader: Tex
         }
 
         const frames: DrawRangeInstanced[] = [];
+        let framesAlpha: DrawRangeInstanced[] = [];
+        let alphaFrameCount = 0;
         for (let i = 0; i < animDef.frameIds.length; i++) {
             const model = npcModelLoader.getModel(def, animationId, i);
             if (model) {
-                frames.push(addModelAnimFrame(textureLoader, renderBuf, model));
+                frames.push(addModelAnimFrame(textureLoader, renderBuf, model, false));
+                const alphaFrame = addModelAnimFrame(textureLoader, renderBuf, model, true);
+                if (alphaFrame[1] > 0) {
+                    alphaFrameCount++;
+                }
+                framesAlpha.push(alphaFrame);
             } else {
                 frames.push([0, 0, 0]);
             }
@@ -370,6 +398,7 @@ function getAnimatedNpcGroups(npcModelLoader: NpcModelLoader, textureLoader: Tex
             groups.push({
                 animationId,
                 frames,
+                framesAlpha: alphaFrameCount > 0 ? framesAlpha : undefined,
                 npcs: npcs.map(npc => {
                     const tileX = npc.x % 64;
                     const tileY = npc.y % 64;
@@ -381,7 +410,7 @@ function getAnimatedNpcGroups(npcModelLoader: NpcModelLoader, textureLoader: Tex
                     const size = npc.size || 1;
                     const sceneX = tileX * 128 + size * 64;
                     const sceneY = tileY * 128 + size * 64;
-                    return {  
+                    return {
                         sceneX,
                         sceneY,
                         plane,
@@ -476,7 +505,7 @@ function addModelGroup(textureProvider: TextureLoader, renderBuf: RenderBuffer, 
 
         // faces = faces.filter(face => face.alpha === 0xFF && face.textureId === -1);
 
-        faces = faces.filter(face => (face.alpha !== 0xFF) === modelGroup.alpha);
+        faces = faces.filter(face => (face.alpha !== 0xFF || textureProvider.hasAlpha(face.textureId)) === modelGroup.alpha);
 
         if (faces.length === 0) {
             continue;
@@ -501,7 +530,12 @@ function addModelGroup(textureProvider: TextureLoader, renderBuf: RenderBuffer, 
             datas = modelGroup.objects;
         }
 
-        const commands = modelGroup.lowDetail ? renderBuf.drawCommandsLowDetail : renderBuf.drawCommands;
+        let commands = renderBuf.drawCommands;
+        if (modelGroup.alpha) {
+            commands = renderBuf.drawCommandsAlpha;
+        } else if (modelGroup.lowDetail) {
+            commands = renderBuf.drawCommandsLowDetail;
+        }
 
         commands.push({
             offset: indexByteOffset,
@@ -649,6 +683,9 @@ export class ChunkDataLoader {
         drawCommands.push(...renderBuf.drawCommandsLowDetail);
         drawCommands.push(...renderBuf.drawCommands);
 
+        const drawCommandsAlpha: DrawCommand[] = [];
+        drawCommandsAlpha.push(...renderBuf.drawCommandsAlpha);
+
         const animatedModels: AnimatedModelData[] = [];
 
         for (const group of animatedObjectGroups) {
@@ -661,11 +698,22 @@ export class ChunkDataLoader {
                     datas: [data]
                 });
 
+                const drawRangeAlphaIndex = drawCommandsAlpha.length;
+                if (group.framesAlpha) {
+                    drawCommandsAlpha.push({
+                        offset: 0,
+                        elements: 0,
+                        datas: [data]
+                    });
+                }
+
                 animatedModels.push({
                     drawRangeIndex,
+                    drawRangeAlphaIndex,
                     animationId: group.animationId,
                     randomStart: data.animatedObject.randomStartFrame,
-                    frames: group.frames
+                    frames: group.frames,
+                    framesAlpha: group.framesAlpha
                 });
             }
         }
@@ -679,11 +727,22 @@ export class ChunkDataLoader {
                     datas: [data]
                 });
 
+                const drawRangeAlphaIndex = drawCommandsAlpha.length;
+                if (group.framesAlpha) {
+                    drawCommandsAlpha.push({
+                        offset: 0,
+                        elements: 0,
+                        datas: [data]
+                    });
+                }
+
                 animatedModels.push({
                     drawRangeIndex,
+                    drawRangeAlphaIndex,
                     animationId: group.animationId,
                     randomStart: true,
-                    frames: group.frames
+                    frames: group.frames,
+                    framesAlpha: group.framesAlpha
                 });
             }
         }
@@ -695,7 +754,10 @@ export class ChunkDataLoader {
         const drawRanges: MultiDrawCommand[] = drawCommands.map(cmd => newMultiDrawCommand(cmd.offset, cmd.elements, cmd.datas.length));
         const drawRangesLowDetail = drawRanges.slice(renderBuf.drawCommandsLowDetail.length);
 
+        const drawRangesAlpha: MultiDrawCommand[] = drawCommandsAlpha.map(cmd => newMultiDrawCommand(cmd.offset, cmd.elements, cmd.datas.length));
+
         const modelTextureData = createModelTextureData(drawCommands);
+        const modelTextureDataAlpha = createModelTextureData(drawCommandsAlpha);
         const heightMapTextureData = loadHeightMapTextureData(this.regionLoader, regionX, regionY);
 
 
@@ -703,10 +765,13 @@ export class ChunkDataLoader {
         const indexBufferBytes = renderBuf.indices.length * 4;
         const currentBytes = renderBuf.vertexBuf.byteOffset() + indexBufferBytes;
 
+        const alphaTriangles = drawCommandsAlpha.map(cmd => cmd.elements / 3 * cmd.datas.length).reduce((a, b) => a + b, 0);
+
         console.log('total triangles', totalTriangles, 'low detail: ', triangles, 'uniq triangles: ', uniqTotalTriangles,
             'terrain verts: ', terrainVertexCount, 'total vertices: ', renderBuf.vertexBuf.offset, 'now: ', currentBytes, currentBytes - indexBufferBytes,
             'uniq vertices: ', renderBuf.vertexBuf.vertexIndices.size, 'data texture size: ', modelTextureData.length, 'draw calls: ', drawRanges.length,
-            'indices: ', renderBuf.indices.length);
+            'indices: ', renderBuf.indices.length, 'alpha triangles: ', alphaTriangles, 'alpha data texture size: ', modelTextureDataAlpha.length,
+            'alpha draw calls: ', drawRangesAlpha.length);
 
         return {
             regionX,
@@ -714,9 +779,11 @@ export class ChunkDataLoader {
             vertices: renderBuf.vertexBuf.byteArray(),
             indices: new Int32Array(renderBuf.indices),
             modelTextureData,
+            modelTextureDataAlpha,
             heightMapTextureData,
             drawRanges: drawRanges,
             drawRangesLowDetail: drawRangesLowDetail,
+            drawRangesAlpha,
 
             animatedModels,
 
