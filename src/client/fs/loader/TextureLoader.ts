@@ -78,7 +78,7 @@ export class TextureLoader {
         const pixelCount = size * size;
         const pixels = new Int32Array(pixelCount);
 
-        let hasAlpha: boolean = false;
+        let alphaPixelCount: number = 0;
 
         for (let i = 0; i < def.spriteIds.length; i++) {
             const sprite = SpriteLoader.loadIntoIndexedSprite(this.spriteIndex, def.spriteIds[i]);
@@ -129,8 +129,8 @@ export class TextureLoader {
                 if (size == sprite.subWidth) {
                     for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
                         const paletteIndex = palettePixels[pixelIndex];
-                        if (!hasAlpha && alphaPaletteIndices.has(paletteIndex)) {
-                            hasAlpha = true;
+                        if (alphaPaletteIndices.has(paletteIndex)) {
+                            alphaPixelCount++;
                         }
                         pixels[pixelIndex] = palette[paletteIndex];
                     }
@@ -140,8 +140,8 @@ export class TextureLoader {
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
                             const paletteIndex = palettePixels[(x >> 1 << 6) + (y >> 1)];
-                            if (!hasAlpha && alphaPaletteIndices.has(paletteIndex)) {
-                                hasAlpha = true;
+                            if (alphaPaletteIndices.has(paletteIndex)) {
+                                alphaPixelCount++;
                             }
                             pixels[pixelIndex++] = palette[paletteIndex];
                         }
@@ -156,8 +156,8 @@ export class TextureLoader {
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
                             const paletteIndex = palettePixels[(y << 1) + (x << 1 << 7)];
-                            if (!hasAlpha && alphaPaletteIndices.has(paletteIndex)) {
-                                hasAlpha = true;
+                            if (alphaPaletteIndices.has(paletteIndex)) {
+                                alphaPixelCount++;
                             }
                             pixels[pixelIndex++] = palette[paletteIndex];
                         }
@@ -166,7 +166,7 @@ export class TextureLoader {
             }
         }
 
-        this.idAlphaMap.set(def.id, hasAlpha);
+        this.idAlphaMap.set(def.id, alphaPixelCount > 0);
 
         return pixels;
     }

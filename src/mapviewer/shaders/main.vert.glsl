@@ -55,6 +55,7 @@ uniform mediump sampler2DArray u_heightMap;
 out vec4 v_color;
 out vec2 v_texCoord;
 flat out uint v_texId;
+out float v_texAnimated;
 flat out float v_loadAlpha;
 
 #include "./includes/hsl-to-rgb.glsl";
@@ -130,8 +131,10 @@ void main() {
     
     v_color = vertex.color;
 
-    v_texCoord = vertex.texCoord + (u_currentTime / 0.02) * textureAnimations[vertex.textureId] * TEXTURE_ANIM_UNIT;
+    vec2 textureAnimation = textureAnimations[vertex.textureId];
+    v_texCoord = vertex.texCoord + (u_currentTime / 0.02) * textureAnimation * TEXTURE_ANIM_UNIT;
     v_texId = vertex.textureId;
+    v_texAnimated = or(when_neq(textureAnimation.x, 0.0), when_neq(textureAnimation.y, 0.0));
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
     ModelInfo modelInfo = decodeModelInfo(offset);
