@@ -8,7 +8,7 @@ import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } f
 import { IndexType } from '../client/fs/IndexType';
 import { TextureLoader } from '../client/fs/loader/TextureLoader';
 import { RegionLoader } from '../client/RegionLoader';
-import { AnimatedModelData, ChunkData, ChunkDataLoader } from './chunk/ChunkDataLoader';
+import { AnimatedModelData, ChunkData, ChunkDataLoader, NpcData } from './chunk/ChunkDataLoader';
 import { MemoryStore } from '../client/fs/MemoryStore';
 import { Skeleton } from '../client/model/animation/Skeleton';
 import { ConfigType } from '../client/fs/ConfigType';
@@ -28,10 +28,16 @@ import { Joystick } from 'react-joystick-component';
 import { IJoystickUpdateEvent } from 'react-joystick-component/build/lib/Joystick';
 import { FrustumIntersection } from './FrustumIntersection';
 import mainVertShader from './shaders/main.vert.glsl';
+import npcVertShader from './shaders/npc.vert.glsl';
 import mainFragShader from './shaders/main.frag.glsl';
 import { clamp } from '../client/util/MathUtil';
 import { ChunkLoaderWorkerPool } from './chunk/ChunkLoaderWorkerPool';
 import { AnimationDefinition } from '../client/fs/definition/AnimationDefinition';
+import { CachedNpcLoader, NpcLoader } from '../client/fs/loader/NpcLoader';
+import { NpcDefinition } from '../client/fs/definition/NpcDefinition';
+import { CollisionMap } from '../client/pathfinder/collision/CollisionMap';
+import { Pathfinder } from '../client/pathfinder/Pathfinder';
+import { ExactRouteStrategy } from '../client/pathfinder/RouteStrategy';
 
 // console.log(mainVertShader);
 
@@ -55,6 +61,10 @@ const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
 type Chunk = {
     regionX: number,
     regionY: number,
+
+    tileRenderFlags: Uint8Array[][],
+    collisionMaps: CollisionMap[],
+
     modelMatrix: mat4,
 
     triangleCount: number,
@@ -63,17 +73,25 @@ type Chunk = {
     drawRangesLowDetail: number[][],
     drawRangesAlpha: number[][],
 
+    drawRangesNpc: number[][],
+
     drawCall: DrawCall,
     drawCallLowDetail: DrawCall,
     drawCallAlpha: DrawCall,
 
+    drawCallNpc: DrawCall | undefined,
+
     animatedModels: AnimatedModel[],
+    npcs: Npc[],
 
     interleavedBuffer: VertexBuffer,
     indexBuffer: VertexBuffer,
     vertexArray: VertexArray,
     modelDataTexture: Texture,
     modelDataTextureAlpha: Texture,
+
+    npcDataTexture: Texture | undefined,
+
     heightMapTexture: Texture,
 
     timeLoaded: number,
@@ -138,8 +156,297 @@ class AnimatedModel {
     }
 }
 
-function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoader, textureArray: Texture, textureUniformBuffer: UniformBuffer,
-    sceneUniformBuffer: UniformBuffer, chunkData: ChunkData, frame: number, cycle: number): Chunk {
+enum MovementType {
+    CRAWL = 0,
+    WALK = 1,
+    RUN = 2,
+}
+
+class Npc {
+    data: NpcData;
+
+    def: NpcDefinition;
+
+    rotation: number = 0;
+    orientation: number = 0;
+
+    pathX: number[] = new Array(10);
+    pathY: number[] = new Array(10);
+    pathMovementType: MovementType[] = new Array(10);
+    pathLength: number = 0;
+
+    serverPathX: number[] = new Array(25);
+    serverPathY: number[] = new Array(25);
+    serverPathMovementType: MovementType[] = new Array(25);
+    serverPathLength: number = 0;
+
+    x: number;
+    y: number;
+
+    movementAnimation: number = -1;
+    movementFrame: number = 0;
+    movementFrameTick: number = 0;
+    movementLoop: number = 0;
+
+    constructor(data: NpcData, def: NpcDefinition) {
+        this.data = data;
+        this.def = def;
+
+        this.rotation = 0;
+
+        this.pathX[0] = clamp(data.tileX, 0, 64 - this.def.size);
+        this.pathY[0] = clamp(data.tileY, 0, 64 - this.def.size);
+
+        this.x = this.pathX[0] * 128 + this.def.size * 64;
+        this.y = this.pathY[0] * 128 + this.def.size * 64;
+    }
+
+    queuePathDir(dir: number, movementType: MovementType) {
+        let x = this.pathX[0];
+        let y = this.pathY[0];
+        switch (dir) {
+            case 0:
+                --x;
+                ++y;
+                break;
+            case 1:
+                ++y;
+                break;
+            case 2:
+                ++x;
+                ++y;
+                break;
+            case 3:
+                --x;
+                break;
+            case 4:
+                ++x;
+                break;
+            case 5:
+                --x;
+                --y;
+                break;
+            case 6:
+                --y;
+                break;
+            case 7:
+                ++x;
+                --y;
+                break;
+        }
+
+        if (this.pathLength < 9) {
+            this.pathLength++;
+        }
+
+        for (let i = this.pathLength; i > 0; i--) {
+            this.pathX[i] = this.pathX[i - 1];
+            this.pathY[i] = this.pathY[i - 1];
+            this.pathMovementType[i] = this.pathMovementType[i - 1];
+        }
+
+        this.pathX[0] = clamp(x, 0, 64 - this.def.size - 1);
+        this.pathY[0] = clamp(y, 0, 64 - this.def.size - 1);
+        this.pathMovementType[0] = movementType;
+    }
+ 
+    queuePath(x: number, y: number, movementType: MovementType) {
+        if (this.pathLength < 9) {
+            this.pathLength++;
+        }
+
+        for (let i = this.pathLength; i > 0; i--) {
+            this.pathX[i] = this.pathX[i - 1];
+            this.pathY[i] = this.pathY[i - 1];
+            this.pathMovementType[i] = this.pathMovementType[i - 1];
+        }
+
+        this.pathX[0] = clamp(x, 0, 64 - this.def.size - 1);
+        this.pathY[0] = clamp(y, 0, 64 - this.def.size - 1);
+        this.pathMovementType[0] = movementType;
+    }
+
+    updateMovement(animationLoader: AnimationLoader) {
+        this.movementAnimation = this.def.idleSequence;
+        if (this.pathLength > 0) {
+            const currX = this.x;
+            const currY = this.y;
+            const nextX = this.pathX[this.pathLength - 1] * 128 + this.def.size * 64;
+            const nextY = this.pathY[this.pathLength - 1] * 128 + this.def.size * 64;
+
+            if (currX < nextX) {
+                if (currY < nextY) {
+                    this.orientation = 1280;
+                } else if (currY > nextY) {
+                    this.orientation = 1792;
+                } else {
+                    this.orientation = 1536;
+                }
+            } else if (currX > nextX) {
+                if (currY < nextY) {
+                    this.orientation = 768;
+                } else if (currY > nextY) {
+                    this.orientation = 256;
+                } else {
+                    this.orientation = 512;
+                }
+            } else if (currY < nextY) {
+                this.orientation = 1024;
+            } else if (currY > nextY) {
+                this.orientation = 0;
+            }
+
+            this.movementAnimation = this.def.walkSequence;
+
+            const movementType = this.pathMovementType[this.pathLength - 1];
+            if (nextX - currX <= 256 && nextX - currX >= -256 && nextY - currY <= 256 && nextY - currY >= -256) {
+                let movementSpeed = 4;
+
+                if (this.def.isClickable) {
+                    if (this.rotation !== this.orientation && this.def.rotationSpeed !== 0) {
+                        movementSpeed = 2;
+                    }
+                    if (this.pathLength > 2) {
+                        movementSpeed = 6;
+                    }
+                    if (this.pathLength > 3) {
+                        movementSpeed = 8;
+                    }
+                } else {
+                    if (this.pathLength > 1) {
+                        movementSpeed = 6;
+                    }
+                    if (this.pathLength > 2) {
+                        movementSpeed = 8;
+                    }
+                }
+
+                if (movementType === MovementType.RUN) {
+                    movementSpeed <<= 1;
+                } else if (movementType === MovementType.CRAWL) {
+                    movementSpeed >>= 1;
+                }
+
+                if (currX !== nextX || currY !== nextY) {
+                    if (currX < nextX) {
+                        this.x += movementSpeed;
+                        if (this.x > nextX) {
+                            this.x = nextX;
+                        }
+                    } else if (currX > nextX) {
+                        this.x -= movementSpeed;
+                        if (this.x < nextX) {
+                            this.x = nextX;
+                        }
+                    }
+
+                    if (currY < nextY) {
+                        this.y += movementSpeed;
+                        if (this.y > nextY) {
+                            this.y = nextY;
+                        }
+                    } else if (currY > nextY) {
+                        this.y -= movementSpeed;
+                        if (this.y < nextY) {
+                            this.y = nextY;
+                        }
+                    }
+                }
+
+                if (this.x === nextX && this.y === nextY) {
+                    this.pathLength--;
+                }
+            } else {
+                this.x = nextX;
+                this.y = nextY;
+                this.pathLength--;
+            }
+        }
+
+        const deltaRotation = this.orientation - this.rotation & 2047;
+        if (deltaRotation !== 0) {
+            const rotateDir = deltaRotation > 1024 ? -1 : 1;
+            this.rotation += rotateDir * this.def.rotationSpeed;
+            if (deltaRotation < this.def.rotationSpeed || deltaRotation > 2048 - this.def.rotationSpeed) {
+                this.rotation = this.orientation;
+            }
+
+            this.rotation &= 2047;
+        }
+
+        this.updateMovementAnim(animationLoader);
+    }
+
+    updateMovementAnim(animationLoader: AnimationLoader) {
+        if (this.movementAnimation !== -1) {
+            const anim = animationLoader.getDefinition(this.movementAnimation);
+            if (!anim.isAnimMaya() && anim.frameIds) {
+                this.movementFrameTick++;
+                if (this.movementFrame < anim.frameIds.length && this.movementFrameTick > anim.frameLengths[this.movementFrame]) {
+                    this.movementFrameTick = 1;
+                    this.movementFrame++;
+                }
+
+                if (this.movementFrame >= anim.frameIds.length) {
+                    if (anim.frameStep > 0) {
+                        this.movementFrame -= anim.frameStep;
+                        if (anim.looping) {
+                            this.movementLoop++;
+                        }
+
+                        if (this.movementFrame < 0 || this.movementFrame >= anim.frameIds.length || anim.looping && this.movementLoop >= anim.maxLoops) {
+                            this.movementFrameTick = 0;
+                            this.movementFrame = 0;
+                            this.movementLoop = 0;
+                        } else {
+                            this.movementFrameTick = 0;
+                            this.movementFrame = 0;
+                        }
+                    } else {
+                        this.movementFrameTick = 0;
+                        this.movementFrame = 0;
+                    }
+                }
+            }
+        }
+    }
+}
+
+function createNpcDataTexture(app: PicoApp, chunk: Chunk, npcs: Npc[]): Texture | undefined {
+    if (npcs.length === 0) {
+        return undefined;
+    }
+
+    const data = new Uint16Array(Math.ceil(npcs.length / 16) * 16 * 4);
+
+    npcs.forEach((npc, i) => {
+        let offset = i * 4;
+
+        const tileX = npc.x >> 7;
+        const tileY = npc.y >> 7;
+
+        let renderPlane = npc.data.plane;
+        try {
+            if (renderPlane < 3 && (chunk.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
+                renderPlane = npc.data.plane + 1;
+            }
+        } catch (e) {
+            debugger;
+        }
+
+        data[offset++] = npc.x;
+        data[offset++] = npc.y;
+        data[offset++] = renderPlane;
+        data[offset++] = npc.rotation;
+    });
+
+    return app.createTexture2D(data, 16, Math.ceil(npcs.length / 16),
+        { internalFormat: PicoGL.RGBA16UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+}
+
+function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoader: NpcLoader, animationLoader: AnimationLoader,
+    textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer, chunkData: ChunkData,
+    frame: number, cycle: number): Chunk {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
@@ -179,10 +486,10 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
         })
         .indexBuffer(indexBuffer);
 
-    const modelDataTexture = app.createTexture2D(new Uint8Array(chunkData.modelTextureData.buffer), 16, chunkData.modelTextureData.length / 16,
+    const modelDataTexture = app.createTexture2D(new Uint8Array(chunkData.modelTextureData.buffer), 16, Math.max(Math.ceil(chunkData.modelTextureData.length / 16), 1),
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
 
-    const modelDataTextureAlpha = app.createTexture2D(new Uint8Array(chunkData.modelTextureDataAlpha.buffer), 16, chunkData.modelTextureDataAlpha.length / 16,
+    const modelDataTextureAlpha = app.createTexture2D(new Uint8Array(chunkData.modelTextureDataAlpha.buffer), 16, Math.max(Math.ceil(chunkData.modelTextureDataAlpha.length / 16), 1),
         { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
 
     const heightMapTexture = app.createTextureArray(chunkData.heightMapTextureData, 72, 72, Scene.MAX_PLANE,
@@ -194,7 +501,7 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
 
     const time = performance.now() * 0.001;
 
-    let drawCall = app.createDrawCall(program, vertexArray)
+    const drawCall = app.createDrawCall(program, vertexArray)
         .uniformBlock('TextureUniforms', textureUniformBuffer)
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
         .uniform('u_timeLoaded', time)
@@ -205,7 +512,7 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
         .texture('u_heightMap', heightMapTexture)
         .drawRanges(...chunkData.drawRanges);
 
-    let drawCallLowDetail = app.createDrawCall(program, vertexArray)
+    const drawCallLowDetail = app.createDrawCall(program, vertexArray)
         .uniformBlock('TextureUniforms', textureUniformBuffer)
         .uniformBlock('SceneUniforms', sceneUniformBuffer)
         .uniform('u_timeLoaded', time)
@@ -234,9 +541,54 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
             animationDef, cycle, animatedModel.randomStart))
     }
 
+    const npcs: Npc[] = [];
+    for (const npcData of chunkData.npcs) {
+        npcs.push(new Npc(npcData, npcLoader.getDefinition(npcData.id)));
+    }
+
+    let drawCallNpc: DrawCall | undefined = undefined;
+    if (npcs.length > 0) {
+        drawCallNpc = app.createDrawCall(programNpc, vertexArray)
+            .uniformBlock('TextureUniforms', textureUniformBuffer)
+            .uniformBlock('SceneUniforms', sceneUniformBuffer)
+            .uniform('u_timeLoaded', time)
+            .uniform('u_modelMatrix', baseModelMatrix)
+            .uniform('u_drawIdOffset', 0)
+            .texture('u_textures', textureArray)
+            .texture('u_heightMap', heightMapTexture)
+            .drawRanges(...chunkData.drawRangesNpc);
+    }
+
+    // console.log(chunkData.collisionFlags.find(flags => flags.find(x => (x & 0x1000000) !== 0)));
+    const collisionMaps = chunkData.collisionFlags.map(flags => {
+        // TODO: create constructor with flags
+        const map = new CollisionMap(Scene.MAP_SIZE, Scene.MAP_SIZE);
+        map.flags = flags;
+        return map;
+    });
+
+    for (const npc of npcs) {
+        const collisionMap = collisionMaps[npc.data.plane];
+
+        const currentX = npc.pathX[0];
+        const currentY = npc.pathY[0];
+
+        const size = npc.def.size;
+        
+        for (let flagX = currentX; flagX < currentX + size; flagX++) {
+            for (let flagY = currentY; flagY < currentY + size; flagY++) {
+                collisionMap.flag(flagX, flagY, 0x1000000);
+            }
+        }
+    }
+
     return {
         regionX,
         regionY,
+
+        tileRenderFlags: chunkData.tileRenderFlags,
+        collisionMaps, 
+
         modelMatrix: baseModelMatrix,
 
         triangleCount: chunkData.indices.length / 3,
@@ -244,17 +596,23 @@ function loadChunk(app: PicoApp, program: Program, animationLoader: AnimationLoa
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
         drawRangesAlpha: chunkData.drawRangesAlpha,
 
+        drawRangesNpc: chunkData.drawRangesNpc,
+
         drawCall,
         drawCallLowDetail,
         drawCallAlpha,
 
+        drawCallNpc,
+
         animatedModels,
+        npcs,
 
         interleavedBuffer,
         indexBuffer,
         vertexArray,
         modelDataTexture,
         modelDataTextureAlpha,
+        npcDataTexture: undefined,
         heightMapTexture,
 
         timeLoaded: time,
@@ -268,6 +626,9 @@ function deleteChunk(chunk: Chunk) {
     chunk.vertexArray.delete();
     chunk.modelDataTexture.delete();
     chunk.modelDataTextureAlpha.delete();
+    if (chunk.npcDataTexture) {
+        chunk.npcDataTexture.delete();
+    }
     chunk.heightMapTexture.delete();
 }
 
@@ -296,7 +657,10 @@ class MapViewer {
 
     textureProvider: TextureLoader;
 
+    npcLoader: NpcLoader;
     animationLoader: AnimationLoader;
+
+    pathfinder: Pathfinder = new Pathfinder();
 
     // chunkDataLoader: ChunkDataLoader;
 
@@ -311,6 +675,7 @@ class MapViewer {
     timer!: Timer;
 
     program?: Program;
+    programNpc?: Program;
 
     textureUniformBuffer!: UniformBuffer;
     sceneUniformBuffer!: UniformBuffer;
@@ -342,6 +707,8 @@ class MapViewer {
     fps: number = 0;
 
     lastFrameTime: number = 0;
+    lastClientTick: number = 0;
+    lastTick: number = 0;
 
     fpsListener?: (fps: number) => void;
     cameraMoveListener?: (pos: vec3, pitch: number, yaw: number) => void;
@@ -408,12 +775,14 @@ class MapViewer {
         // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
         // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
         // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+        const npcArchive = configIndex.getArchive(ConfigType.NPC);
         const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
 
         // console.time('region loader');
         // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
         // const overlayLoader = new CachedOverlayLoader(overlayArchive);
         // const objectLoader = new CachedObjectLoader(objectArchive);
+        this.npcLoader = new CachedNpcLoader(npcArchive);
         this.animationLoader = new CachedAnimationLoader(animationArchive);
 
         // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
@@ -599,8 +968,15 @@ class MapViewer {
 
         this.timer = app.createTimer();
 
-        app.createPrograms([prependShader(mainVertShader, this.hasMultiDraw), prependShader(mainFragShader, this.hasMultiDraw)]).then(([program]) => {
+        app.createPrograms([
+            prependShader(mainVertShader, this.hasMultiDraw),
+            prependShader(mainFragShader, this.hasMultiDraw)
+        ], [
+            prependShader(npcVertShader, this.hasMultiDraw),
+            prependShader(mainFragShader, this.hasMultiDraw)
+        ]).then(([program, programNpc]) => {
             this.program = program;
+            this.programNpc = programNpc;
         });
 
         this.textureUniformBuffer = app.createUniformBuffer(new Array(128 * 2).fill(PicoGL.FLOAT_VEC2));
@@ -859,16 +1235,32 @@ class MapViewer {
         }
     }
 
+    setFps(fps: number) {
+        this.fps = fps;
+        if (this.fpsListener) {
+            this.fpsListener(this.fps);
+        }
+    }
+
     render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
         time *= 0.001;
         const deltaTime = time - this.lastFrameTime;
         this.lastFrameTime = time;
-        this.fps = 1 / deltaTime;
+
+        this.setFps(1.0 / deltaTime);
 
         const cycle = time / 0.02;
 
-        if (this.fpsListener) {
-            this.fpsListener(this.fps);
+        const clientTick = Math.floor(time / 0.02);
+        const clientTicksElapsed = clientTick - this.lastClientTick;
+        if (clientTicksElapsed > 0) {
+            this.lastClientTick = clientTick;
+        }
+
+        const tick = Math.floor(time / 0.6);
+        const ticksElapsed = Math.min(tick - this.lastTick, 10);
+        if (ticksElapsed > 0) {
+            this.lastTick = tick;
         }
 
         const canvasWidth = gl.canvas.width;
@@ -880,7 +1272,7 @@ class MapViewer {
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        if (!this.program) {
+        if (!this.program || !this.programNpc) {
             console.warn('program not compiled yet');
             return;
         }
@@ -1004,7 +1396,13 @@ class MapViewer {
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
         mat4.identity(this.projectionMatrix);
         mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0 * 4);
-        // mat4.ortho(this.projectionMatrix, 0, canvasWidth / 10, 0, canvasHeight / 10, 0.1, 1024.0 * 8);
+        // const factor = 15;
+        // mat4.ortho(this.projectionMatrix, 
+        //     -canvasWidth / factor,
+        //     canvasWidth / factor, 
+        //     -canvasHeight / factor, 
+        //     canvasHeight / factor,
+        //     -1024.0 * 8, 1024.0 * 8);
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
         mat4.identity(this.viewMatrix);
@@ -1098,6 +1496,8 @@ class MapViewer {
 
         this.visibleChunkCount = 0;
 
+        const strategy = new ExactRouteStrategy();
+
         // draw back to front
         for (let i = this.regionPositions.length - 1; i >= 0; i--) {
             const pos = this.regionPositions[i];
@@ -1113,11 +1513,137 @@ class MapViewer {
                 chunk.timeLoaded = time;
             }
 
-
             for (const animatedModel of chunk.animatedModels) {
                 // advance frame
                 animatedModel.getFrame(cycle);
             }
+
+            for (let t = 0; t < ticksElapsed; t++) {
+                for (const npc of chunk.npcs) {
+                    const canWalk = npc.def.walkSequence !== -1 && npc.def.walkSequence !== npc.def.idleSequence;
+                    const collisionMap = chunk.collisionMaps[npc.data.plane];
+                    const size = npc.def.size;
+
+                    if (canWalk && Math.random() < 0.1) {
+                        const deltaX = Math.round(Math.random() * 10.0 - 5.0);
+                        const deltaY = Math.round(Math.random() * 10.0 - 5.0);
+
+                        const srcX = npc.pathX[0];
+                        const srcY = npc.pathY[0];
+
+                        const spawnX = npc.data.tileX;
+                        const spawnY = npc.data.tileY;
+                        // deltaX = 0;
+                        // deltaY = -1;
+
+                        // deltaX = clamp(deltaX, -1, 1);
+                        // deltaY = clamp(deltaY, -1, 1);
+
+                        const targetX = clamp(spawnX + deltaX, 0, 64 - size - 1);
+                        const targetY = clamp(spawnY + deltaY, 0, 64 - size - 1);
+
+                        // srcX += baseX;
+                        // srcY += baseY;
+                        // targetX += baseX;
+                        // targetY += baseY;
+
+                        strategy.approxDestX = targetX;
+                        strategy.approxDestY = targetY;
+                        strategy.destSizeX = 1;
+                        strategy.destSizeY = 1;
+
+                        this.pathfinder.setCollisionFlags(srcX, srcY, npc.data.tileX, npc.data.tileY, 5, collisionMap);
+
+                        // console.log(this.pathfinder.flags);
+
+                        // console.log(this.pathfinder.flags);
+
+                        let steps = this.pathfinder.findPath(srcX, srcY, size, npc.data.plane, strategy, true);
+                        if (steps > 0) {
+                            if (steps > 24) {
+                                steps = 24;
+                            }
+                            for (let s = 0; s < steps; s++) {
+                                npc.serverPathX[s] = this.pathfinder.bufferX[s];
+                                npc.serverPathY[s] = this.pathfinder.bufferY[s];
+                                npc.serverPathMovementType[s] = MovementType.WALK;
+                            }
+                            npc.serverPathLength = steps;
+                            // console.log(steps, targetX, targetY, chunk.collisionMaps[npc.data.plane].getFlag(targetX, targetY), npc);
+                        } else {
+                            
+                            // console.log('failed', steps, targetX, targetY, chunk.collisionMaps[npc.data.plane].getFlag(targetX, targetY), npc);
+                        }
+                    }
+
+
+                    if (npc.serverPathLength > 0) {
+                        const currentX = npc.pathX[0];
+                        const currentY = npc.pathY[0];
+                        const targetX = npc.serverPathX[npc.serverPathLength - 1];
+                        const targetY = npc.serverPathY[npc.serverPathLength - 1];
+                        const deltaX = clamp(targetX - currentX, -1, 1);
+                        const deltaY = clamp(targetY - currentY, -1, 1);
+                        // const deltaX = 0;
+                        // const deltaY = 0;
+                        const nextX = currentX + deltaX;
+                        const nextY = currentY + deltaY;
+
+                        for (let flagX = currentX; flagX < currentX + size; flagX++) {
+                            for (let flagY = currentY; flagY < currentY + size; flagY++) {
+                                collisionMap.unflag(flagX, flagY, 0x1000000);
+                            }
+                        }
+
+                        let canMove = true;
+                        exit: for (let flagX = nextX; flagX < nextX + size; flagX++) {
+                            for (let flagY = nextY; flagY < nextY + size; flagY++) {
+                                if (collisionMap.hasFlag(flagX, flagY, 0x1000000)) {
+                                    canMove = false;
+                                    break exit;
+                                }
+                            }
+                        }
+
+                        if (canMove) {
+                            for (let flagX = nextX; flagX < nextX + size; flagX++) {
+                                for (let flagY = nextY; flagY < nextY + size; flagY++) {
+                                    collisionMap.flag(flagX, flagY, 0x1000000);
+                                }
+                            }
+    
+                            npc.queuePath(nextX, nextY, MovementType.WALK);
+                        } else {
+                            for (let flagX = currentX; flagX < currentX + size; flagX++) {
+                                for (let flagY = currentY; flagY < currentY + size; flagY++) {
+                                    collisionMap.flag(flagX, flagY, 0x1000000);
+                                }
+                            }
+                        }
+
+                        if (nextX === targetX && nextY === targetY) {
+                            npc.serverPathLength--;
+                        }
+                    }
+
+                }
+            }
+
+            for (let t = 0; t < clientTicksElapsed; t++) {
+                for (const npc of chunk.npcs) {
+                    npc.updateMovement(this.animationLoader);
+                }
+            }
+
+            // for (const npc of chunk.npcs) {
+            //     npc.rotation += 10;
+            //     npc.rotation %= 2048;
+            // }
+
+            if (chunk.npcDataTexture) {
+                chunk.npcDataTexture.delete();
+            }
+            chunk.npcDataTexture = createNpcDataTexture(this.app, chunk, chunk.npcs);
 
             this.visibleChunks[this.visibleChunkCount++] = chunk;
         }
@@ -1153,6 +1679,47 @@ class MapViewer {
 
                 drawRanges[animatedModel.drawRangeIndex + drawRangeOffset] = frame;
             }
+
+            if (this.hasMultiDraw) {
+                drawCall.draw();
+            } else {
+                for (let i = 0; i < drawRanges.length; i++) {
+                    drawCall.uniform('u_drawId', i);
+                    drawCall.drawRanges(drawRanges[i]);
+                    drawCall.draw();
+                }
+            }
+        }
+        // opaque npc pass
+        for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
+            const chunk = this.visibleChunks[i];
+
+            const drawCall = chunk.drawCallNpc;
+            if (!drawCall || !chunk.npcDataTexture) {
+                continue;
+            }
+
+            drawCall.uniform('u_currentTime', time);
+            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
+            drawCall.uniform('u_deltaTime', deltaTime);
+            drawCall.uniform('u_brightness', this.brightness);
+            drawCall.uniform('u_colorBanding', this.colorBanding);
+            drawCall.texture('u_modelDataTexture', chunk.npcDataTexture)
+
+            const drawRanges = chunk.drawRangesNpc;
+
+            chunk.npcs.forEach((npc, i) => {
+                const frameId = npc.movementFrame;
+
+                const anim = (npc.data.walkAnim && npc.movementAnimation === npc.def.walkSequence) ? npc.data.walkAnim : npc.data.idleAnim;
+
+                const frame = anim.frames[frameId];
+
+                (drawCall as any).offsets[i] = frame[0];
+                (drawCall as any).numElements[i] = frame[1];
+
+                drawRanges[i] = frame;
+            });
 
             if (this.hasMultiDraw) {
                 drawCall.draw();
@@ -1202,6 +1769,51 @@ class MapViewer {
                 }
             }
         }
+        // alpha npc pass
+        const nullFrame = [0, 0, 0];
+        for (let i = 0; i < this.visibleChunkCount; i++) {
+            const chunk = this.visibleChunks[i];
+
+            const drawCall = chunk.drawCallNpc;
+            if (!drawCall || !chunk.npcDataTexture) {
+                continue;
+            }
+
+            drawCall.uniform('u_currentTime', time);
+            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
+            drawCall.uniform('u_deltaTime', deltaTime);
+            drawCall.uniform('u_brightness', this.brightness);
+            drawCall.uniform('u_colorBanding', this.colorBanding);
+            drawCall.texture('u_modelDataTexture', chunk.npcDataTexture)
+
+            const drawRanges = chunk.drawRangesNpc;
+
+            chunk.npcs.forEach((npc, i) => {
+                const frameId = npc.movementFrame;
+
+                const anim = (npc.data.walkAnim && npc.movementAnimation === npc.def.walkSequence) ? npc.data.walkAnim : npc.data.idleAnim;
+
+                let frame: number[] = nullFrame;
+                if (anim.framesAlpha) {
+                    frame = anim.framesAlpha[frameId];
+                }
+
+                (drawCall as any).offsets[i] = frame[0];
+                (drawCall as any).numElements[i] = frame[1];
+
+                drawRanges[i] = frame;
+            });
+
+            if (this.hasMultiDraw) {
+                drawCall.draw();
+            } else {
+                for (let i = 0; i < drawRanges.length; i++) {
+                    drawCall.uniform('u_drawId', i);
+                    drawCall.drawRanges(drawRanges[i]);
+                    drawCall.draw();
+                }
+            }
+        }
 
         if (this.keys.get('h')) {
             console.log('rendered chunks', this.visibleChunkCount, this.frustumIntersection.planes);
@@ -1219,7 +1831,8 @@ class MapViewer {
                 const regionId = RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY);
                 if (chunkData.loadNpcs === this.loadNpcs) {
                     this.chunks.set(regionId,
-                        loadChunk(this.app, this.program, this.animationLoader, this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData,
+                        loadChunk(this.app, this.program, this.programNpc, this.npcLoader, this.animationLoader,
+                            this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData,
                             this.frameCount, cycle));
                 }
                 this.loadingRegionIds.delete(regionId);
@@ -1353,46 +1966,6 @@ function MapViewerApp() {
             pool.init(store, xteasMap);
 
             const fileSystem = loadFromStore(store);
-
-            // const animIndex = fileSystem.getIndex(IndexType.ANIMATIONS);
-            // const skeletonIndex = fileSystem.getIndex(IndexType.SKELETONS);
-            // console.log('anim archive count: ', animIndex.getArchiveCount());
-            // console.log('skeleton archive count: ', skeletonIndex.getArchiveCount());
-
-            // const skeletons: Map<number, Skeleton> = new Map();
-
-            // const getSkeleton = (id: number) => {
-            //     const file = skeletonIndex.getFile(id, 0);
-            //     if (!file) {
-            //         throw new Error('Invalid skeleton file: ' + id);
-            //     }
-            //     return new Skeleton(id, file.data);
-            // };
-
-            // const getSkeletonCached = (id: number) => {
-            //     let skeleton = skeletons.get(id);
-            //     if (!skeleton) {
-            //         skeleton = getSkeleton(id);
-            //         skeletons.set(id, skeleton);
-            //     }
-            //     return skeleton;
-            // }
-
-            // console.time('load anim archives');
-            // let fileCount = 0;
-            // const skeletonIds: Set<number> = new Set();
-            // for (const id of animIndex.getArchiveIds()) {
-            //     const archive = animIndex.getArchive(id);
-            //     for (const file of archive.files) {
-            //         fileCount++;
-            //         const animData = file.data;
-            //         const skeletonId = (animData[0] & 0xFF) << 8 | (animData[1] & 0xFF);
-            //         getSkeletonCached(skeletonId);
-            //         skeletonIds.add(skeletonId);
-            //     }
-            // }
-            // console.timeEnd('load anim archives');
-            // console.log(fileCount, skeletonIds);
 
             const mapViewer = new MapViewer(fileSystem, xteasMap, pool);
             const cx = searchParams.get('cx');

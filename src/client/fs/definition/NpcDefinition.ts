@@ -52,7 +52,7 @@ export class NpcDefinition extends Definition {
 
     headIconPrayer: number;
 
-    rotation: number;
+    rotationSpeed: number;
 
     transforms!: number[];
 
@@ -68,19 +68,21 @@ export class NpcDefinition extends Definition {
 
     runAnimation: number;
 
-	runRotate180Animation: number;
+    runRotate180Animation: number;
 
-	runRotateLeftAnimation: number;
+    runRotateLeftAnimation: number;
 
-	runRotateRightAnimation: number;
+    runRotateRightAnimation: number;
 
-	crawlAnimation: number;
+    crawlAnimation: number;
 
-	crawlRotate180Animation: number;
+    crawlRotate180Animation: number;
 
-	crawlRotateLeftAnimation: number;
+    crawlRotateLeftAnimation: number;
 
-	crawlRotateRightAnimation: number;
+    crawlRotateRightAnimation: number;
+
+    category: number;
 
     params!: ParamsMap;
 
@@ -104,7 +106,7 @@ export class NpcDefinition extends Definition {
         this.ambient = 0;
         this.contrast = 0;
         this.headIconPrayer = -1;
-        this.rotation = 32;
+        this.rotationSpeed = 32;
         this.transformVarbit = -1;
         this.transformVarp = -1;
         this.isInteractable = true;
@@ -118,6 +120,7 @@ export class NpcDefinition extends Definition {
         this.crawlRotate180Animation = -1;
         this.crawlRotateLeftAnimation = -1;
         this.crawlRotateRightAnimation = -1;
+        this.category = -1;
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
@@ -146,7 +149,7 @@ export class NpcDefinition extends Definition {
             this.walkLeftSequence = buffer.readUnsignedShort();
             this.walkRightSequence = buffer.readUnsignedShort();
         } else if (opcode == 18) {
-            buffer.readUnsignedShort();
+            this.category = buffer.readUnsignedShort();
         } else if (opcode >= 30 && opcode < 35) {
             this.actions[opcode - 30] = buffer.readString();
             if (this.actions[opcode - 30].toLowerCase() === "hidden") {
@@ -194,7 +197,7 @@ export class NpcDefinition extends Definition {
         } else if (opcode == 102) {
             this.headIconPrayer = buffer.readUnsignedShort();
         } else if (opcode == 103) {
-            this.rotation = buffer.readUnsignedShort();
+            this.rotationSpeed = buffer.readUnsignedShort();
         } else if (opcode == 106 || opcode == 118) {
             this.transformVarbit = buffer.readUnsignedShort();
             if (this.transformVarbit == 65535) {
@@ -235,16 +238,16 @@ export class NpcDefinition extends Definition {
             this.runAnimation = buffer.readUnsignedShort();
         } else if (opcode == 115) {
             this.runAnimation = buffer.readUnsignedShort();
-			this.runRotate180Animation = buffer.readUnsignedShort();
-			this.runRotateLeftAnimation = buffer.readUnsignedShort();
-			this.runRotateRightAnimation = buffer.readUnsignedShort();
+            this.runRotate180Animation = buffer.readUnsignedShort();
+            this.runRotateLeftAnimation = buffer.readUnsignedShort();
+            this.runRotateRightAnimation = buffer.readUnsignedShort();
         } else if (opcode == 116) {
             this.crawlAnimation = buffer.readUnsignedShort();
         } else if (opcode == 117) {
-			this.crawlAnimation = buffer.readUnsignedShort();
-			this.crawlRotate180Animation = buffer.readUnsignedShort();
-			this.crawlRotateLeftAnimation = buffer.readUnsignedShort();
-			this.crawlRotateRightAnimation = buffer.readUnsignedShort();
+            this.crawlAnimation = buffer.readUnsignedShort();
+            this.crawlRotate180Animation = buffer.readUnsignedShort();
+            this.crawlRotateLeftAnimation = buffer.readUnsignedShort();
+            this.crawlRotateRightAnimation = buffer.readUnsignedShort();
         } else if (opcode == 249) {
             this.params = Definition.readParamsMap(buffer, this.params);
         } else {

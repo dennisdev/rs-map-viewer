@@ -4,6 +4,7 @@ import { computeTextureCoords, Model } from "../../client/model/Model";
 import { Scene } from "../../client/scene/Scene";
 import { SceneTile } from "../../client/scene/SceneTile";
 import { clamp } from "../../client/util/MathUtil";
+import { NpcSpawn } from "../NpcSpawn";
 import { VertexBuffer } from "./VertexBuffer";
 
 export enum ContourGroundType {
@@ -21,10 +22,24 @@ export type DrawData = {
 };
 
 export type DrawCommand = {
-    offset: number;
+    offset: number,
     elements: number,
     datas: DrawData[],
 };
+
+export type NpcDrawData = {
+    sceneX: number,
+    sceneY: number,
+    plane: number,
+    size: number,
+    rotation: number,
+};
+
+export type NpcDrawCommand = {
+    offset: number,
+    elements: number,
+    spawns: NpcSpawn[],
+}
 
 export class RenderBuffer {
     vertexBuf: VertexBuffer;

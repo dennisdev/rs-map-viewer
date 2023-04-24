@@ -13,15 +13,10 @@
 
 #define TEXTURE_ANIM_UNIT (1.0f / 128.0f)
 
-#define CONTOUR_GROUND_CENTER_TILE 0.0
-#define CONTOUR_GROUND_VERTEX 1.0
-#define CONTOUR_GROUND_NONE 2.0
-
-/*
-    CENTER_TILE = 0,
-    VERTEX_POS = 1,
-    NO_CONTOUR = 2
-*/
+#define PI  3.141592653589793238462643383279
+#define TAU 6.283185307179586476925286766559
+// TAU / 2048.0
+#define RS_TO_RADIANS 0.00306796157
 
 precision highp float;
 
@@ -73,7 +68,7 @@ ivec2 getDataTexCoordFromIndex(int index) {
 }
 
 struct VertexData {
-    vec3 pos;
+    vec4 pos;
     vec4 color;
     vec2 texCoord;
     uint textureId;
@@ -97,7 +92,7 @@ VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
     vec4 color = when_eq(float(textureId), 0.0) * vec4(hslToRgb(hsl, brightness), alpha)
         + when_neq(float(textureId), 0.0) * vec4(vec3(float(hsl) / 127.0), alpha);
 
-    return VertexData(vec3(x, y, z), color, vec2(u, v), uint(textureId), uint(priority));
+    return VertexData(vec4(x, y, z, 1.0), color, vec2(u, v), uint(textureId), uint(priority));
 }
 
 struct ModelInfo {
@@ -123,6 +118,31 @@ ModelInfo decodeModelInfo(int offset) {
     return info;
 }
 
+struct NpcInfo {
+    vec2 tilePos;
+    uint plane;
+    uint rotation;
+};
+
+NpcInfo decodeNpcInfo(int offset) {
+    uvec4 data = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
+
+    NpcInfo info;
+
+    info.tilePos = vec2(float(data.r), float(data.g)) / vec2(128);
+    info.plane = data.b;
+    info.rotation = data.a;
+
+    return info;
+}
+
+mat4 rotationY( in float angle ) {
+    return mat4(cos(angle),		0,		sin(angle),	0,
+                         0,		1.0,			 0,	0,
+                -sin(angle),	0,		cos(angle),	0,
+                        0, 		0,				0,	1);
+}
+
 void main() {
     uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID + u_drawIdOffset), 0).gr;
     int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
@@ -137,16 +157,16 @@ void main() {
     v_texAnimated = or(when_neq(textureAnimation.x, 0.0), when_neq(textureAnimation.y, 0.0));
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
 
-    ModelInfo modelInfo = decodeModelInfo(offset);
+    // ModelInfo modelInfo = decodeModelInfo(offset);
 
-    vec3 localPos = vertex.pos / vec3(128.0) + vec3(modelInfo.tilePos.x, 0, modelInfo.tilePos.y);
+    NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_drawIdOffset);
 
-    vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_CENTER_TILE)) 
-            + localPos.xz * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_VERTEX));
-    localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE) / 128.0;
+    vec4 localPos = vertex.pos / vec4(vec3(128.0), 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
+
+    localPos.y -= getHeightInterp(npcInfo.tilePos, npcInfo.plane) / 128.0;
     
-    gl_Position = u_viewMatrix * u_modelMatrix * vec4(localPos, 1.0);
-    gl_Position.z -= float(modelInfo.plane) * 0.005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.0007;
+    gl_Position = u_viewMatrix * u_modelMatrix * localPos;
+    gl_Position.z -= float(npcInfo.plane) * 0.005 + (float(vertex.priority) + 3.0) * 0.0007;
     gl_Position = u_projectionMatrix * gl_Position;
     // gl_Position.z -= float(modelInfo.plane) * 0.0005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.00007;
 }

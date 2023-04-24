@@ -1,5 +1,5 @@
 import { generateHeight } from "../Client";
-import { CollisionMap } from "./CollisionMap";
+import { CollisionMap } from "../pathfinder/collision/CollisionMap";
 import { ObjectDefinition } from "../fs/definition/ObjectDefinition";
 import { Model } from "../model/Model";
 import { ModelData } from "../model/ModelData";
@@ -220,6 +220,15 @@ export class Scene {
 
     addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, objOcclusionOnly: boolean, expandedTileHeights: Int32Array[][],
         plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
+        let realPlane = plane;
+        if ((this.tileRenderFlags[1][tileX][tileY] & 2) === 2) {
+            realPlane = plane - 1;
+        }
+
+        let collisionMap: CollisionMap | undefined = undefined;
+        if (realPlane >= 0) {
+            collisionMap = this.collisionMaps[realPlane];
+        }
 
         const def = regionLoader.getObjectDef(objectId);
         const defTransform = this.transformObject(regionLoader, def);
@@ -289,6 +298,9 @@ export class Scene {
                 }
 
                 this.newFloorDecoration(plane, tileX, tileY, centerHeight, renderable, tag, type, def);
+                if (def.clipType === 1 && collisionMap) {
+                    collisionMap.setBlockedByFloorDec(tileX, tileY);
+                }
             }
         } else if (type !== ObjectType.OBJECT && type !== ObjectType.OBJECT_DIAGIONAL) {
             // roofs
@@ -302,6 +314,10 @@ export class Scene {
                     }
 
                     this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
+
+                    if (def.clipType !== 0 && collisionMap) {
+                        collisionMap.addObject(tileX, tileY, sizeX, sizeY, def.blocksProjectile);
+                    }
                 }
             } else if (type === ObjectType.WALL) {
                 if (!objOcclusionOnly) {
@@ -313,6 +329,10 @@ export class Scene {
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
+
+                    if (def.clipType !== 0 && collisionMap) {
+                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                    }
 
                     if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                         this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
@@ -350,6 +370,10 @@ export class Scene {
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
+
+                    if (def.clipType !== 0 && collisionMap) {
+                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                    }
                 }
 
                 if (def.clipped) {
@@ -377,6 +401,10 @@ export class Scene {
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable0, renderable1, tag, type, def);
 
+                    if (def.clipType !== 0 && collisionMap) {
+                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                    }
+
                     if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                         this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
                     }
@@ -391,6 +419,10 @@ export class Scene {
                     }
 
                     this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
+
+                    if (def.clipType !== 0 && collisionMap) {
+                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                    }
                 }
 
                 if (def.clipped) {
@@ -414,6 +446,9 @@ export class Scene {
                     }
 
                     this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
+                    if (def.clipType !== 0 && collisionMap) {
+                        collisionMap.addObject(tileX, tileY, sizeX, sizeY, def.blocksProjectile);
+                    }
 
                     if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
                         this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
@@ -534,16 +569,12 @@ export class Scene {
                 }
             }
         } else {
-            // if (def.animationId !== -1) {
-            //     return;
-            // }
             let renderable: Renderable | undefined;
             if (def.animationId === -1) {
                 renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
             } else {
                 renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
             }
-            // const model = modelLoader.getObjectModel(defTransform, type, rotation, heightMap, sceneX, centerHeight, sceneY);
 
             if (renderable && this.newGameObject(plane, tileX, tileY, centerHeight, sizeX, sizeY, renderable, tag, type, def) && def.clipped) {
                 let lightOcclusion = 15;
@@ -559,6 +590,10 @@ export class Scene {
                         regionLoader.setObjectLightOcclusion(baseX + tileX + sx, baseY + tileY + sy, plane, lightOcclusion);
                     }
                 }
+            }
+
+            if (def.clipType !== 0 && collisionMap) {
+                collisionMap.addObject(tileX, tileY, sizeX, sizeY, def.blocksProjectile);
             }
         }
     }
@@ -729,6 +764,23 @@ export class Scene {
                 }
             }
         }
+
+        for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
+            for (let x = 0; x < Scene.MAP_SIZE; x++) {
+                for (let y = 0; y < Scene.MAP_SIZE; y++) {
+                    if ((this.tileRenderFlags[plane][x][y] & 1) === 1) {
+                        let realPlane = plane;
+                        if ((this.tileRenderFlags[1][x][y] & 2) === 2) {
+                            realPlane = plane - 1;
+                        }
+
+                        if (realPlane >= 0) {
+                            this.collisionMaps[realPlane].setBlockedByFloor(x, y);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     decodeTile(buffer: ByteBuffer, plane: number, x: number, y: number, baseX: number, baseY: number, rotationOffset: number, newFormat: boolean = true): void {
@@ -864,9 +916,9 @@ export class Scene {
                     let tileModel: SceneTileModel;
                     if (overlayId == -1) {
                         tileModel = new SceneTileModel(0, 0, -1, x, y, heightSw, heightSe, heightNe, heightNw,
-                                adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
-                                adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
-                                0, 0, 0, 0)
+                            adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
+                            adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
+                            0, 0, 0, 0)
                     } else {
                         const shape = tileShapes[plane][x][y] + 1;
                         const rotation = tileRotations[plane][x][y];
@@ -884,10 +936,10 @@ export class Scene {
                         }
 
                         tileModel = new SceneTileModel(shape, rotation, textureId, x, y, heightSw, heightSe, heightNe, heightNw,
-                                adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
-                                adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
-                                adjustOverlayLight(overlayHsl, lightSw), adjustOverlayLight(overlayHsl, lightSe),
-                                adjustOverlayLight(overlayHsl, lightNe), adjustOverlayLight(overlayHsl, lightNw))
+                            adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
+                            adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
+                            adjustOverlayLight(overlayHsl, lightSw), adjustOverlayLight(overlayHsl, lightSe),
+                            adjustOverlayLight(overlayHsl, lightNe), adjustOverlayLight(overlayHsl, lightNw))
                     }
 
                     this.newTileModel(plane, x, y, tileModel);

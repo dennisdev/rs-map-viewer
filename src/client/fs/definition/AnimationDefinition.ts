@@ -24,6 +24,8 @@ export class AnimationDefinition extends Definition {
 
     maxLoops: number;
 
+    looping: boolean;
+
     precedenceAnimating: number;
 
     priority: number;
@@ -48,6 +50,7 @@ export class AnimationDefinition extends Definition {
         this.leftHandItem = -1;
         this.rightHandItem = -1;
         this.maxLoops = 99;
+        this.looping = false;
         this.precedenceAnimating = -1;
         this.priority = -1;
         this.replyMode = 2;
@@ -92,6 +95,7 @@ export class AnimationDefinition extends Definition {
             this.rightHandItem = buffer.readUnsignedShort();
         } else if (opcode === 8) {
             this.maxLoops = buffer.readUnsignedByte();
+            this.looping = true;
         } else if (opcode === 9) {
             this.precedenceAnimating = buffer.readUnsignedByte();
         } else if (opcode === 10) {

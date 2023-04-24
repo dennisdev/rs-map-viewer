@@ -20,6 +20,7 @@ import { CachedVarbitLoader } from "../../client/fs/loader/VarbitLoader";
 import { VarpManager } from "../../client/VarpManager";
 import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
 import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
+import { fetchNpcSpawns } from "../NpcSpawn";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,
@@ -32,7 +33,7 @@ let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
-const npcListPromise = fetch('/NPCList_OSRS-min.json').then(resp => resp.json());
+const npcSpawnsPromise = fetchNpcSpawns();
 
 async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>) {
     // console.log('start init worker');
@@ -92,10 +93,10 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     // }
     // console.timeEnd('load textures sprites');
 
-    const npcList: any[] = await npcListPromise;
+    const npcSpawns = await npcSpawnsPromise;
 
     console.log('init worker', fileSystem, performance.now());
-    return new ChunkDataLoader(regionLoader, objectModelLoader, npcModelLoader, textureProvider, npcList);
+    return new ChunkDataLoader(regionLoader, objectModelLoader, npcModelLoader, textureProvider, npcSpawns);
 }
 
 // console.log('start worker', performance.now());
@@ -135,6 +136,7 @@ expose({
                 chunkData.vertices.buffer,
                 chunkData.indices.buffer,
                 chunkData.modelTextureData.buffer,
+                chunkData.modelTextureDataAlpha.buffer,
                 chunkData.heightMapTextureData.buffer
             ];
             return Transfer(chunkData, transferables);

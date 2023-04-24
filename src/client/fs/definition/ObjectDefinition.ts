@@ -318,9 +318,10 @@ export class ObjectDefinition extends Definition {
             this.supportItems = this.clipType !== 0 ? 1 : 0;
         }
 
-        if (this.isHollow) {
-            this.clipType = 0;
-            this.blocksProjectile = false;
-        }
+        // TODO: Breaks bank booth collision?
+        // if (this.isHollow) {
+        //     this.clipType = 0;
+        //     this.blocksProjectile = false;
+        // }
     }
 }
