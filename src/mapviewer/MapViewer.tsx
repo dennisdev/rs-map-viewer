@@ -3,7 +3,7 @@ import { URLSearchParamsInit, useSearchParams } from 'react-router-dom';
 import './MapViewer.css';
 import WebGLCanvas from '../components/Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
-import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall, VertexBuffer } from 'picogl';
+import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall, VertexBuffer, Framebuffer } from 'picogl';
 import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } from '../client/fs/FileSystem';
 import { IndexType } from '../client/fs/IndexType';
 import { TextureLoader } from '../client/fs/loader/TextureLoader';
@@ -29,7 +29,9 @@ import { IJoystickUpdateEvent } from 'react-joystick-component/build/lib/Joystic
 import { FrustumIntersection } from './FrustumIntersection';
 import mainVertShader from './shaders/main.vert.glsl';
 import npcVertShader from './shaders/npc.vert.glsl';
+import quadVertShader from './shaders/quad.vert.glsl';
 import mainFragShader from './shaders/main.frag.glsl';
+import quadFragShader from './shaders/quad.frag.glsl';
 import { clamp } from '../client/util/MathUtil';
 import { ChunkLoaderWorkerPool } from './chunk/ChunkLoaderWorkerPool';
 import { AnimationDefinition } from '../client/fs/definition/AnimationDefinition';
@@ -40,6 +42,10 @@ import { Pathfinder } from '../client/pathfinder/Pathfinder';
 import { ExactRouteStrategy } from '../client/pathfinder/RouteStrategy';
 import { Schema } from 'leva/dist/declarations/src/types';
 import { fetchNpcSpawns } from './NpcSpawn';
+import { readPixelsAsync } from './AsyncReadUtil';
+import { MenuOption, OsrsMenu, OsrsMenuProps } from '../components/OsrsMenu';
+import { VarpManager } from '../client/VarpManager';
+import { CachedVarbitLoader } from '../client/fs/loader/VarbitLoader';
 
 // console.log(mainVertShader);
 
@@ -637,6 +643,8 @@ class MapViewer {
 
     pathfinder: Pathfinder = new Pathfinder();
 
+    varpManager: VarpManager;
+
     // chunkDataLoader: ChunkDataLoader;
 
     app!: PicoApp;
@@ -651,6 +659,14 @@ class MapViewer {
 
     program?: Program;
     programNpc?: Program;
+    programQuad?: Program;
+
+    frameBuffer!: Framebuffer;
+
+    frameDrawCall!: DrawCall;
+
+    quadPositions!: VertexBuffer;
+    quadArray!: VertexArray;
 
     textureUniformBuffer!: UniformBuffer;
     sceneUniformBuffer!: UniformBuffer;
@@ -689,6 +705,11 @@ class MapViewer {
     cameraMoveListener?: (pos: vec3, pitch: number, yaw: number) => void;
     cameraMoveEndListener?: (pos: vec3, pitch: number, yaw: number) => void;
 
+    onMenuOpened?: (x: number, y: number, options: MenuOption[]) => void;
+    onMenuClosed?: () => void;
+
+    menuOpen: boolean = false;
+
     projectionType: ProjectionType = ProjectionType.PERSPECTIVE;
     orthoZoom: number = 15;
 
@@ -719,6 +740,14 @@ class MapViewer {
 
     startPitch: number = -1;
     startYaw: number = -1;
+
+    pickX: number = -1;
+    pickY: number = -1;
+
+    menuX: number = -1;
+    menuY: number = -1;
+
+    interactBuffer: Uint8Array = new Uint8Array(4);
 
     chunkDataLoader?: ChunkDataLoader;
 
@@ -761,6 +790,7 @@ class MapViewer {
         // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
         const npcArchive = configIndex.getArchive(ConfigType.NPC);
         const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
+        const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
         // console.time('region loader');
         // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
@@ -768,6 +798,9 @@ class MapViewer {
         // const objectLoader = new CachedObjectLoader(objectArchive);
         this.npcLoader = new CachedNpcLoader(npcArchive);
         this.animationLoader = new CachedAnimationLoader(animationArchive);
+        const varbitLoader = new CachedVarbitLoader(varbitArchive);
+
+        this.varpManager = new VarpManager(varbitLoader);
 
         // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
 
@@ -888,6 +921,7 @@ class MapViewer {
         this.onTouchMove = this.onTouchMove.bind(this);
         this.onTouchEnd = this.onTouchEnd.bind(this);
         this.onFocusOut = this.onFocusOut.bind(this);
+        this.onContextMenu = this.onContextMenu.bind(this);
         this.onPositionJoystickMove = this.onPositionJoystickMove.bind(this);
         this.onPositionJoystickStop = this.onPositionJoystickStop.bind(this);
         this.onCameraJoystickMove = this.onCameraJoystickMove.bind(this);
@@ -911,6 +945,7 @@ class MapViewer {
         gl.canvas.addEventListener('touchmove', this.onTouchMove);
         gl.canvas.addEventListener('touchend', this.onTouchEnd);
         gl.canvas.addEventListener('focusout', this.onFocusOut);
+        gl.canvas.addEventListener('contextmenu', this.onContextMenu);
         gl.canvas.focus();
 
         const cameraX = -this.cameraPos[0];
@@ -952,15 +987,46 @@ class MapViewer {
 
         this.timer = app.createTimer();
 
+        const colorTarget = app.createTexture2D(app.width, app.height, {
+            internalFormat: PicoGL.RGBA8
+        });
+        const interactTarget = app.createTexture2D(app.width, app.height, {
+            internalFormat: PicoGL.RGBA8
+        });
+        const depthTarget = app.createRenderbuffer(app.width, app.height, PicoGL.DEPTH_COMPONENT16);
+        this.frameBuffer = app.createFramebuffer()
+            .colorTarget(0, colorTarget)
+            .colorTarget(1, interactTarget)
+            .depthTarget(depthTarget);
+
+        this.quadPositions = app.createVertexBuffer(PicoGL.FLOAT, 2, new Float32Array([
+            -1, 1,
+            -1, -1,
+            1, -1,
+            -1, 1,
+            1, -1,
+            1, 1,
+        ]));
+
+        this.quadArray = app.createVertexArray()
+            .vertexAttributeBuffer(0, this.quadPositions);
+
         app.createPrograms([
             prependShader(mainVertShader, this.hasMultiDraw),
             prependShader(mainFragShader, this.hasMultiDraw)
         ], [
             prependShader(npcVertShader, this.hasMultiDraw),
             prependShader(mainFragShader, this.hasMultiDraw)
-        ]).then(([program, programNpc]) => {
+        ], [
+            prependShader(quadVertShader, this.hasMultiDraw),
+            prependShader(quadFragShader, this.hasMultiDraw)
+        ]).then(([program, programNpc, programQuad]) => {
             this.program = program;
             this.programNpc = programNpc;
+            this.programQuad = programQuad;
+
+            this.frameDrawCall = app.createDrawCall(this.programQuad, this.quadArray)
+                .texture('u_frame', this.frameBuffer.colorAttachments[0]);
         });
 
         this.textureUniformBuffer = app.createUniformBuffer(new Array(128 * 2).fill(PicoGL.FLOAT_VEC2));
@@ -1045,6 +1111,10 @@ class MapViewer {
         const [x, y] = getMousePos(this.app.canvas, event);
         this.currentMouseX = x;
         this.currentMouseY = y;
+        if (this.onMenuClosed && this.menuOpen && Math.max(Math.abs(this.menuX - x), Math.abs(this.menuY - y)) > 30) {
+            this.onMenuClosed();
+            this.menuOpen = false;
+        }
     }
 
     onMouseDown(event: MouseEvent) {
@@ -1092,6 +1162,13 @@ class MapViewer {
     onFocusOut(event: FocusEvent) {
         this.resetKeyEvents();
         this.resetMouseEvents();
+    }
+
+    onContextMenu(event: MouseEvent) {
+        event.preventDefault();
+        console.log(event);
+        this.pickX = event.x;
+        this.pickY = event.y;
     }
 
     resetKeyEvents() {
@@ -1275,8 +1352,8 @@ class MapViewer {
 
             this.npcRenderData[offset++] = npc.x;
             this.npcRenderData[offset++] = npc.y;
-            this.npcRenderData[offset++] = renderPlane;
-            this.npcRenderData[offset++] = npc.rotation;
+            this.npcRenderData[offset++] = (npc.rotation << 2) | renderPlane;
+            this.npcRenderData[offset++] = npc.data.id;
 
             this.npcRenderCount++;
         });
@@ -1308,9 +1385,10 @@ class MapViewer {
 
         if (resized) {
             this.app.resize(canvasWidth, canvasHeight);
+            this.frameBuffer.resize();
         }
 
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         if (!this.program || !this.programNpc) {
             console.warn('program not compiled yet');
@@ -1431,8 +1509,6 @@ class MapViewer {
             }
         }
 
-
-
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
         mat4.identity(this.projectionMatrix);
         if (this.projectionType === ProjectionType.PERSPECTIVE) {
@@ -1534,6 +1610,69 @@ class MapViewer {
                 const regionDistB = getRegionDistance(cameraX, cameraY, b);
                 return regionDistA - regionDistB;
             });
+        }
+
+        if (this.pickX !== -1 && this.pickY !== -1) {
+            this.app.readFramebuffer(this.frameBuffer);
+
+            gl.readBuffer(gl.COLOR_ATTACHMENT0 + 1);
+
+            const pickedX = this.pickX;
+            const pickedY = this.pickY;
+
+            readPixelsAsync(gl, this.pickX, gl.canvas.height - this.pickY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.interactBuffer).then(buf => {
+                const closeOnClick = () => {
+                    if (this.onMenuClosed) {
+                        this.onMenuClosed();
+                        this.menuOpen = false;
+                    }
+                };
+
+                const cancelOption: MenuOption = { name: 'Cancel', onClick: closeOnClick };
+
+                if (this.interactBuffer[2] !== 0xFF) {
+                    if (this.onMenuOpened) {
+                        this.onMenuOpened(pickedX, pickedY, [cancelOption]);
+                        this.menuOpen = true;
+                        this.menuX = pickedX;
+                        this.menuY = pickedY;
+                    }
+                    return;
+                }
+                const interactId = this.interactBuffer[0] << 8 | this.interactBuffer[1];
+                let def: NpcDefinition | undefined = this.npcLoader.getDefinition(interactId);
+                if (def.transforms) {
+                    def = def.transform(this.varpManager, this.npcLoader);
+                }
+                if (!def) {
+                    return;
+                }
+                console.log(def, interactId, buf);
+
+                const npcId = def.id;
+                const npcName = def.name;
+                const npcLevel = def.combatLevel;
+
+
+                const menuOptions: MenuOption[] = def.actions.filter(action => !!action).map(action => ({ name: action, npcName, level: npcLevel, onClick: closeOnClick }));
+
+                const openWikiOnClick = () => {
+                    window.open('https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=' + npcId, '_blank')
+                };
+
+                menuOptions.push({ name: 'Examine', npcName, level: npcLevel, onClick: openWikiOnClick });
+                menuOptions.push(cancelOption);
+
+                if (this.onMenuOpened) {
+                    this.onMenuOpened(pickedX, pickedY, menuOptions);
+                    this.menuOpen = true;
+                    this.menuX = pickedX;
+                    this.menuY = pickedY;
+                }
+            });
+
+            this.pickX = -1;
+            this.pickY = -1;
         }
 
         this.visibleChunkCount = 0;
@@ -1682,6 +1821,9 @@ class MapViewer {
 
             this.visibleChunks[this.visibleChunkCount++] = chunk;
         }
+
+        this.app.drawFramebuffer(this.frameBuffer)
+            .clear();
 
         const newNpcDataTextureIndex = this.frameCount % this.npcDataTextureBuffer.length;
         const npcDataTextureIndex = (this.frameCount + 1) % this.npcDataTextureBuffer.length;
@@ -1860,6 +2002,11 @@ class MapViewer {
             }
         }
 
+        this.app.defaultDrawFramebuffer()
+            .clear();
+
+        this.frameDrawCall.draw();
+
         if (this.keys.get('h')) {
             console.log('rendered chunks', this.visibleChunkCount, this.frustumIntersection.planes);
         }
@@ -1920,6 +2067,7 @@ interface MapViewerContainerProps {
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
+    const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(undefined);
     const [searchParams, setSearchParams] = useSearchParams();
 
     const isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
@@ -1945,10 +2093,12 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                     setSearchParams(mapViewer.getSearchParams(), { replace: true });
                 }
             },
-            'Ortho Zoom': { value: mapViewer.orthoZoom, min: 1, max: 60, step: 1, onChange: (v) => { 
-                mapViewer.orthoZoom = v;
-                setSearchParams(mapViewer.getSearchParams(), { replace: true });
-            }},
+            'Ortho Zoom': {
+                value: mapViewer.orthoZoom, min: 1, max: 60, step: 1, onChange: (v) => {
+                    mapViewer.orthoZoom = v;
+                    setSearchParams(mapViewer.getSearchParams(), { replace: true });
+                }
+            },
         }, { collapsed: true }),
         'Distance': folder({
             'View': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
@@ -1971,10 +2121,18 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             setCompassDegrees((2047 - yaw) * RS_TO_DEGREES);
         };
         mapViewer.runCameraMoveListener();
+        mapViewer.onMenuOpened = (x, y, options) => {
+            setMenuProps({ x, y, options });
+        };
+        mapViewer.onMenuClosed = () => {
+            console.log('reset props')
+            setMenuProps(undefined);
+        };
     }, [mapViewer]);
 
     return (
         <div>
+            {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
             <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} />
             <div className='hud left-top'>
                 <img className='compass' style={{ transform: `rotate(${compassDegrees}deg)` }} src='/compass.png' onClick={() => {

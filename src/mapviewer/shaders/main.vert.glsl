@@ -57,6 +57,7 @@ out vec2 v_texCoord;
 flat out uint v_texId;
 flat out float v_texAnimated;
 flat out float v_loadAlpha;
+flat out vec4 v_interactId;
 
 #include "./includes/hsl-to-rgb.glsl";
 #include "./includes/branchless-logic.glsl";
@@ -136,6 +137,7 @@ void main() {
     v_texId = vertex.textureId;
     v_texAnimated = or(when_neq(textureAnimation.x, 0.0), when_neq(textureAnimation.y, 0.0));
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
+    v_interactId = vec4(0, 0, 0, 1);
 
     ModelInfo modelInfo = decodeModelInfo(offset);
 

@@ -52,6 +52,7 @@ out vec2 v_texCoord;
 flat out uint v_texId;
 flat out float v_texAnimated;
 flat out float v_loadAlpha;
+flat out vec4 v_interactId;
 
 #include "./includes/hsl-to-rgb.glsl";
 #include "./includes/branchless-logic.glsl";
@@ -99,6 +100,7 @@ struct NpcInfo {
     vec2 tilePos;
     uint plane;
     uint rotation;
+    uint interactId;
 };
 
 NpcInfo decodeNpcInfo(int offset) {
@@ -107,8 +109,9 @@ NpcInfo decodeNpcInfo(int offset) {
     NpcInfo info;
 
     info.tilePos = vec2(float(data.r), float(data.g)) / vec2(128);
-    info.plane = data.b;
-    info.rotation = data.a;
+    info.plane = data.b & uint(0x3);
+    info.rotation = data.b >> uint(2);
+    info.interactId = data.a;
 
     return info;
 }
@@ -134,6 +137,8 @@ void main() {
     // ModelInfo modelInfo = decodeModelInfo(offset);
 
     NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_npcDataOffset);
+
+    v_interactId = vec4(float(npcInfo.interactId >> uint(8)) / 255.0, float(npcInfo.interactId & uint(0xFF)) / 255.0, 1, 1);
 
     vec4 localPos = vertex.pos / vec4(vec3(128.0), 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
 
