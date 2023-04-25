@@ -1898,14 +1898,20 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         'Camera Controls': folder({
             'Position': { value: positionControls, editable: false },
             'Direction': { value: directionControls, editable: false }
+        }, { collapsed: isTouchDevice }),
+        'Distance': folder({
+            'View': { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+            'Unload': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
+            'Lod': { value: 3, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionLodDistance = v; } },
         }, { collapsed: false }),
-        'View Distance': { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
-        'Lod Distance': { value: 3, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionLodDistance = v; } },
-        'Unload Distance': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
-        'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
-        'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
-        'Load npcs': { value: false, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
-        'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
+        'Npc': folder({
+            'Load': { value: false, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
+        }, { collapsed: false }),
+        'Render Controls': folder({
+            'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
+            'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
+            'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
+        }, { collapsed: true }),
     });
 
     useEffect(() => {
