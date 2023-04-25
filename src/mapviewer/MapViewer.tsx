@@ -58,6 +58,9 @@ function prependShader(shader: string, multiDraw: boolean): string {
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
 
+const NPC_DATA_TEXTURE_BUFFER_SIZE = 5;
+const CHUNK_RENDER_FRAME_DELAY = 4;
+
 type Chunk = {
     regionX: number,
     regionY: number,
@@ -90,7 +93,7 @@ type Chunk = {
     modelDataTexture: Texture,
     modelDataTextureAlpha: Texture,
 
-    npcDataTexture: Texture | undefined,
+    npcDataTextureOffsets: number[],
 
     heightMapTexture: Texture,
 
@@ -249,7 +252,7 @@ class Npc {
         this.pathY[0] = clamp(y, 0, 64 - this.def.size - 1);
         this.pathMovementType[0] = movementType;
     }
- 
+
     queuePath(x: number, y: number, movementType: MovementType) {
         if (this.pathLength < 9) {
             this.pathLength++;
@@ -412,38 +415,6 @@ class Npc {
     }
 }
 
-function createNpcDataTexture(app: PicoApp, chunk: Chunk, npcs: Npc[]): Texture | undefined {
-    if (npcs.length === 0) {
-        return undefined;
-    }
-
-    const data = new Uint16Array(Math.ceil(npcs.length / 16) * 16 * 4);
-
-    npcs.forEach((npc, i) => {
-        let offset = i * 4;
-
-        const tileX = npc.x >> 7;
-        const tileY = npc.y >> 7;
-
-        let renderPlane = npc.data.plane;
-        try {
-            if (renderPlane < 3 && (chunk.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
-                renderPlane = npc.data.plane + 1;
-            }
-        } catch (e) {
-            debugger;
-        }
-
-        data[offset++] = npc.x;
-        data[offset++] = npc.y;
-        data[offset++] = renderPlane;
-        data[offset++] = npc.rotation;
-    });
-
-    return app.createTexture2D(data, 16, Math.ceil(npcs.length / 16),
-        { internalFormat: PicoGL.RGBA16UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
-}
-
 function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoader: NpcLoader, animationLoader: AnimationLoader,
     textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer, chunkData: ChunkData,
     frame: number, cycle: number): Chunk {
@@ -553,7 +524,7 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
             .uniformBlock('SceneUniforms', sceneUniformBuffer)
             .uniform('u_timeLoaded', time)
             .uniform('u_modelMatrix', baseModelMatrix)
-            .uniform('u_drawIdOffset', 0)
+            .uniform('u_npcDataOffset', 0)
             .texture('u_textures', textureArray)
             .texture('u_heightMap', heightMapTexture)
             .drawRanges(...chunkData.drawRangesNpc);
@@ -574,7 +545,7 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
         const currentY = npc.pathY[0];
 
         const size = npc.def.size;
-        
+
         for (let flagX = currentX; flagX < currentX + size; flagX++) {
             for (let flagY = currentY; flagY < currentY + size; flagY++) {
                 collisionMap.flag(flagX, flagY, 0x1000000);
@@ -587,7 +558,7 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
         regionY,
 
         tileRenderFlags: chunkData.tileRenderFlags,
-        collisionMaps, 
+        collisionMaps,
 
         modelMatrix: baseModelMatrix,
 
@@ -612,7 +583,7 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
         vertexArray,
         modelDataTexture,
         modelDataTextureAlpha,
-        npcDataTexture: undefined,
+        npcDataTextureOffsets: new Array(NPC_DATA_TEXTURE_BUFFER_SIZE),
         heightMapTexture,
 
         timeLoaded: time,
@@ -626,9 +597,6 @@ function deleteChunk(chunk: Chunk) {
     chunk.vertexArray.delete();
     chunk.modelDataTexture.delete();
     chunk.modelDataTextureAlpha.delete();
-    if (chunk.npcDataTexture) {
-        chunk.npcDataTexture.delete();
-    }
     chunk.heightMapTexture.delete();
 }
 
@@ -757,6 +725,12 @@ class MapViewer {
 
     isVisiblePos: vec3 = [0, 0, 0];
     moveCameraRotOrigin: vec3 = [0, 0, 0];
+
+    npcRenderCount: number = 0;
+    npcRenderData: Uint16Array = new Uint16Array(16 * 4);
+
+    npcRenderDataTexture: Texture | undefined;
+    npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
     constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: ChunkLoaderWorkerPool) {
         this.fileSystem = fileSystem;
@@ -1242,6 +1216,42 @@ class MapViewer {
         }
     }
 
+    addNpcRenderData(chunk: Chunk, npcs: Npc[]) {
+        if (npcs.length === 0) {
+            return;
+        }
+
+        chunk.npcDataTextureOffsets[this.frameCount % chunk.npcDataTextureOffsets.length] = this.npcRenderCount;
+
+        const newCount = this.npcRenderCount + npcs.length;
+
+        if (this.npcRenderData.length / 4 < newCount) {
+            const newData = new Uint16Array(Math.ceil(newCount * 2 / 16) * 16 * 4);
+            newData.set(this.npcRenderData);
+            this.npcRenderData = newData;
+            console.log('expand npc render data', this.npcRenderData.length, newCount, this.npcRenderCount);
+        }
+
+        npcs.forEach((npc, i) => {
+            let offset = this.npcRenderCount * 4;
+
+            const tileX = npc.x >> 7;
+            const tileY = npc.y >> 7;
+
+            let renderPlane = npc.data.plane;
+            if (renderPlane < 3 && (chunk.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
+                renderPlane = npc.data.plane + 1;
+            }
+
+            this.npcRenderData[offset++] = npc.x;
+            this.npcRenderData[offset++] = npc.y;
+            this.npcRenderData[offset++] = renderPlane;
+            this.npcRenderData[offset++] = npc.rotation;
+
+            this.npcRenderCount++;
+        });
+    }
+
     render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
         time *= 0.001;
         const deltaTime = time - this.lastFrameTime;
@@ -1496,6 +1506,7 @@ class MapViewer {
 
         this.visibleChunkCount = 0;
 
+        this.npcRenderCount = 0;
         const strategy = new ExactRouteStrategy();
 
         // draw back to front
@@ -1504,7 +1515,7 @@ class MapViewer {
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const chunk = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!chunk || !this.isChunkVisible(pos[0], pos[1])) {
+            if (!chunk || !this.isChunkVisible(pos[0], pos[1]) || this.frameCount - chunk.frameLoaded < CHUNK_RENDER_FRAME_DELAY) {
                 continue;
             }
 
@@ -1571,7 +1582,7 @@ class MapViewer {
                             npc.serverPathLength = steps;
                             // console.log(steps, targetX, targetY, chunk.collisionMaps[npc.data.plane].getFlag(targetX, targetY), npc);
                         } else {
-                            
+
                             // console.log('failed', steps, targetX, targetY, chunk.collisionMaps[npc.data.plane].getFlag(targetX, targetY), npc);
                         }
                     }
@@ -1611,7 +1622,7 @@ class MapViewer {
                                     collisionMap.flag(flagX, flagY, 0x1000000);
                                 }
                             }
-    
+
                             npc.queuePath(nextX, nextY, MovementType.WALK);
                         } else {
                             for (let flagX = currentX; flagX < currentX + size; flagX++) {
@@ -1635,18 +1646,18 @@ class MapViewer {
                 }
             }
 
-            // for (const npc of chunk.npcs) {
-            //     npc.rotation += 10;
-            //     npc.rotation %= 2048;
-            // }
-
-            if (chunk.npcDataTexture) {
-                chunk.npcDataTexture.delete();
-            }
-            chunk.npcDataTexture = createNpcDataTexture(this.app, chunk, chunk.npcs);
+            this.addNpcRenderData(chunk, chunk.npcs);
 
             this.visibleChunks[this.visibleChunkCount++] = chunk;
         }
+
+        const newNpcDataTextureIndex = this.frameCount % this.npcDataTextureBuffer.length;
+        const npcDataTextureIndex = (this.frameCount + 1) % this.npcDataTextureBuffer.length;
+        this.npcDataTextureBuffer[newNpcDataTextureIndex]?.delete();
+        this.npcDataTextureBuffer[newNpcDataTextureIndex] = this.app.createTexture2D(this.npcRenderData, 16, Math.max(Math.ceil(this.npcRenderCount / 16), 1),
+            { internalFormat: PicoGL.RGBA16UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+
+        const npcRenderDataTexture = this.npcDataTextureBuffer[npcDataTextureIndex];
 
         // opaque pass
         for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
@@ -1695,7 +1706,7 @@ class MapViewer {
             const chunk = this.visibleChunks[i];
 
             const drawCall = chunk.drawCallNpc;
-            if (!drawCall || !chunk.npcDataTexture) {
+            if (!drawCall || !npcRenderDataTexture) {
                 continue;
             }
 
@@ -1704,7 +1715,8 @@ class MapViewer {
             drawCall.uniform('u_deltaTime', deltaTime);
             drawCall.uniform('u_brightness', this.brightness);
             drawCall.uniform('u_colorBanding', this.colorBanding);
-            drawCall.texture('u_modelDataTexture', chunk.npcDataTexture)
+            drawCall.uniform('u_npcDataOffset', chunk.npcDataTextureOffsets[npcDataTextureIndex]);
+            drawCall.texture('u_modelDataTexture', npcRenderDataTexture)
 
             const drawRanges = chunk.drawRangesNpc;
 
@@ -1775,7 +1787,7 @@ class MapViewer {
             const chunk = this.visibleChunks[i];
 
             const drawCall = chunk.drawCallNpc;
-            if (!drawCall || !chunk.npcDataTexture) {
+            if (!drawCall || !npcRenderDataTexture) {
                 continue;
             }
 
@@ -1784,7 +1796,8 @@ class MapViewer {
             drawCall.uniform('u_deltaTime', deltaTime);
             drawCall.uniform('u_brightness', this.brightness);
             drawCall.uniform('u_colorBanding', this.colorBanding);
-            drawCall.texture('u_modelDataTexture', chunk.npcDataTexture)
+            drawCall.uniform('u_npcDataOffset', chunk.npcDataTextureOffsets[npcDataTextureIndex]);
+            drawCall.texture('u_modelDataTexture', npcRenderDataTexture)
 
             const drawRanges = chunk.drawRangesNpc;
 

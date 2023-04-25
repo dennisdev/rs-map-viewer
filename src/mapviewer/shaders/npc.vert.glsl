@@ -42,7 +42,7 @@ uniform float u_timeLoaded;
 uniform float u_deltaTime;
 uniform float u_brightness;
 
-uniform int u_drawIdOffset;
+uniform int u_npcDataOffset;
 
 uniform highp usampler2D u_modelDataTexture;
 uniform mediump sampler2DArray u_heightMap;
@@ -95,29 +95,6 @@ VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
     return VertexData(vec4(x, y, z, 1.0), color, vec2(u, v), uint(textureId), uint(priority));
 }
 
-struct ModelInfo {
-    vec2 tilePos;
-    uint plane;
-    uint priority;
-    float contourGround;
-};
-
-ModelInfo decodeModelInfo(int offset) {
-    uvec4 data = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(offset + gl_InstanceID), 0);
-
-    ModelInfo info;
-
-    info.plane = data.r >> uint(6);
-    info.contourGround = float(int(data.r) >> 4 & 0x3);
-    info.priority = (data.r & uint(0xF));
-
-    uint tilePosPacked = (data.a << uint(16)) | data.b << uint(8) | data.g;
-
-    info.tilePos = vec2(float(tilePosPacked >> uint(12)), float(tilePosPacked & uint(0xFFF))) / vec2(32);
-
-    return info;
-}
-
 struct NpcInfo {
     vec2 tilePos;
     uint plane;
@@ -144,9 +121,6 @@ mat4 rotationY( in float angle ) {
 }
 
 void main() {
-    uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID + u_drawIdOffset), 0).gr;
-    int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
-
     VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, u_brightness);
     
     v_color = vertex.color;
@@ -159,7 +133,7 @@ void main() {
 
     // ModelInfo modelInfo = decodeModelInfo(offset);
 
-    NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_drawIdOffset);
+    NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_npcDataOffset);
 
     vec4 localPos = vertex.pos / vec4(vec3(128.0), 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
 
