@@ -38,6 +38,7 @@ import { NpcDefinition } from '../client/fs/definition/NpcDefinition';
 import { CollisionMap } from '../client/pathfinder/collision/CollisionMap';
 import { Pathfinder } from '../client/pathfinder/Pathfinder';
 import { ExactRouteStrategy } from '../client/pathfinder/RouteStrategy';
+import { Schema } from 'leva/dist/declarations/src/types';
 
 // console.log(mainVertShader);
 
@@ -614,6 +615,11 @@ function getRegionDistance(x: number, y: number, region: vec2): number {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
+enum ProjectionType {
+    PERSPECTIVE,
+    ORTHO
+}
+
 class MapViewer {
     fileSystem: MemoryFileSystem;
 
@@ -681,6 +687,9 @@ class MapViewer {
     fpsListener?: (fps: number) => void;
     cameraMoveListener?: (pos: vec3, pitch: number, yaw: number) => void;
     cameraMoveEndListener?: (pos: vec3, pitch: number, yaw: number) => void;
+
+    projectionType: ProjectionType = ProjectionType.PERSPECTIVE;
+    orthoZoom: number = 1;
 
     regionViewDistance: number = 1;
     regionLodDistance: number = 1;
@@ -1405,14 +1414,16 @@ class MapViewer {
 
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
         mat4.identity(this.projectionMatrix);
-        mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0 * 4);
-        // const factor = 15;
-        // mat4.ortho(this.projectionMatrix, 
-        //     -canvasWidth / factor,
-        //     canvasWidth / factor, 
-        //     -canvasHeight / factor, 
-        //     canvasHeight / factor,
-        //     -1024.0 * 8, 1024.0 * 8);
+        if (this.projectionType === ProjectionType.PERSPECTIVE) {
+            mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0 * 4);
+        } else {
+            mat4.ortho(this.projectionMatrix,
+                -canvasWidth / this.orthoZoom,
+                canvasWidth / this.orthoZoom,
+                -canvasHeight / this.orthoZoom,
+                canvasHeight / this.orthoZoom,
+                -1024.0 * 8, 1024.0 * 8);
+        }
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
         mat4.identity(this.viewMatrix);
@@ -1894,19 +1905,33 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const positionControls = isTouchDevice ? 'Left joystick, Drag up and down.' : 'WASD, E (up), C (down)\nUse SHIFT to go faster.';
     const directionControls = isTouchDevice ? 'Right joystick.' : 'Arrow Keys or Click and Drag.';
 
+    const cameraControlsSchema: Schema = {
+        'Position': { value: positionControls, editable: false },
+        'Direction': { value: directionControls, editable: false },
+    };
     const data = useControls({
-        'Camera Controls': folder({
-            'Position': { value: positionControls, editable: false },
-            'Direction': { value: directionControls, editable: false }
-        }, { collapsed: isTouchDevice }),
+        'Camera Controls': folder(cameraControlsSchema, { collapsed: true }),
+        'Camera': folder({
+            'Projection': {
+                value: ProjectionType.PERSPECTIVE,
+                options: {
+                    'Perspective': ProjectionType.PERSPECTIVE,
+                    'Ortho': ProjectionType.ORTHO,
+                },
+                onChange: (v) => {
+                    mapViewer.projectionType = v;
+                }
+            },
+            'Ortho Zoom': { value: 15, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.orthoZoom = v; } },
+        }, { collapsed: true }),
         'Distance': folder({
-            'View': { value: 1, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+            'View': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
             'Unload': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
             'Lod': { value: 3, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionLodDistance = v; } },
         }, { collapsed: false }),
         'Npc': folder({
-            'Load': { value: false, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
-        }, { collapsed: false }),
+            'Load': { value: true, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
+        }, { collapsed: true }),
         'Render Controls': folder({
             'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
             'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
