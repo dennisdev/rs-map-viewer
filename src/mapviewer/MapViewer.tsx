@@ -1336,7 +1336,6 @@ class MapViewer {
             const newData = new Uint16Array(Math.ceil(newCount * 2 / 16) * 16 * 4);
             newData.set(this.npcRenderData);
             this.npcRenderData = newData;
-            console.log('expand npc render data', this.npcRenderData.length, newCount, this.npcRenderCount);
         }
 
         npcs.forEach((npc, i) => {
@@ -1647,17 +1646,15 @@ class MapViewer {
                 if (!def) {
                     return;
                 }
-                console.log(def, interactId, buf);
 
                 const npcId = def.id;
                 const npcName = def.name;
                 const npcLevel = def.combatLevel;
 
-
                 const menuOptions: MenuOption[] = def.actions.filter(action => !!action).map(action => ({ name: action, npcName, level: npcLevel, onClick: closeOnClick }));
 
                 const openWikiOnClick = () => {
-                    window.open('https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=' + npcId, '_blank')
+                    window.open('https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=' + npcId, '_blank');
                 };
 
                 menuOptions.push({ name: 'Examine', npcName, level: npcLevel, onClick: openWikiOnClick });
@@ -2125,7 +2122,6 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             setMenuProps({ x, y, options });
         };
         mapViewer.onMenuClosed = () => {
-            console.log('reset props')
             setMenuProps(undefined);
         };
     }, [mapViewer]);
