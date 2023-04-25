@@ -1932,7 +1932,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         'Npc': folder({
             'Load': { value: true, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
         }, { collapsed: true }),
-        'Render Controls': folder({
+        'Render': folder({
             'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
             'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
             'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },

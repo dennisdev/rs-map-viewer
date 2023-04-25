@@ -102,7 +102,18 @@ export class Pathfinder {
 
         for (let fillX = startX; fillX < endX; fillX++) {
             for (let fillY = startY; fillY < endY; fillY++) {
-                this.flags[fillX - graphBaseX][fillY - graphBaseY] = collisionMap.getFlag(fillX & 0x3F, fillY & 0x3F);
+                const x = fillX & 0x3F;
+                const y = fillY & 0x3F;
+                // invert floor flags if spawned on nomove
+                if (collisionMap.hasFlag(centerX, centerY, CollisionFlag.FLOOR)) {
+                    if (collisionMap.hasFlag(x, y, CollisionFlag.FLOOR)) {
+                        this.flags[fillX - graphBaseX][fillY - graphBaseY] = collisionMap.getFlag(x, y) & ~CollisionFlag.FLOOR;
+                    } else {
+                        this.flags[fillX - graphBaseX][fillY - graphBaseY] = collisionMap.getFlag(x, y) | CollisionFlag.FLOOR;
+                    }
+                } else {
+                    this.flags[fillX - graphBaseX][fillY - graphBaseY] = collisionMap.getFlag(x, y);
+                }
             }
         }
     }
