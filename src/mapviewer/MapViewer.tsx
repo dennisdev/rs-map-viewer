@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { URLSearchParamsInit, useSearchParams } from 'react-router-dom';
 import './MapViewer.css';
 import WebGLCanvas from '../components/Canvas';
 import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
@@ -689,7 +689,7 @@ class MapViewer {
     cameraMoveEndListener?: (pos: vec3, pitch: number, yaw: number) => void;
 
     projectionType: ProjectionType = ProjectionType.PERSPECTIVE;
-    orthoZoom: number = 1;
+    orthoZoom: number = 15;
 
     regionViewDistance: number = 1;
     regionLodDistance: number = 1;
@@ -998,6 +998,26 @@ class MapViewer {
         console.log('textures: ', textures.length);
 
         console.log(gl.getSupportedExtensions());
+    }
+
+    getSearchParams(): URLSearchParamsInit {
+        const cx = (-this.cameraPos[0].toFixed(2)).toString();
+        const cy = (this.cameraPos[1].toFixed(2)).toString();
+        const cz = (-this.cameraPos[2].toFixed(2)).toString();
+
+        const p = (this.pitch | 0).toString();
+        const y = (this.yaw | 0).toString();
+
+        const params: any = {
+            cx, cy, cz, p, y
+        };
+
+        if (this.projectionType === ProjectionType.ORTHO) {
+            params['pt'] = 'o';
+            params['z'] = this.orthoZoom.toString();
+        }
+
+        return params;
     }
 
     onKeyDown(event: KeyboardEvent) {
@@ -1899,6 +1919,7 @@ interface MapViewerContainerProps {
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
 
@@ -1913,16 +1934,20 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         'Camera Controls': folder(cameraControlsSchema, { collapsed: true }),
         'Camera': folder({
             'Projection': {
-                value: ProjectionType.PERSPECTIVE,
+                value: mapViewer.projectionType,
                 options: {
                     'Perspective': ProjectionType.PERSPECTIVE,
                     'Ortho': ProjectionType.ORTHO,
                 },
                 onChange: (v) => {
                     mapViewer.projectionType = v;
+                    setSearchParams(mapViewer.getSearchParams(), { replace: true });
                 }
             },
-            'Ortho Zoom': { value: 15, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.orthoZoom = v; } },
+            'Ortho Zoom': { value: mapViewer.orthoZoom, min: 1, max: 60, step: 1, onChange: (v) => { 
+                mapViewer.orthoZoom = v;
+                setSearchParams(mapViewer.getSearchParams(), { replace: true });
+            }},
         }, { collapsed: true }),
         'Distance': folder({
             'View': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
@@ -2019,6 +2044,16 @@ function MapViewerApp() {
             const pitch = searchParams.get('p');
             const yaw = searchParams.get('y');
 
+            if (searchParams.get('pt') === 'o') {
+                console.log('setting ortho')
+                mapViewer.projectionType = ProjectionType.ORTHO;
+            }
+
+            const zoom = searchParams.get('z');
+            if (zoom) {
+                mapViewer.orthoZoom = parseInt(zoom);
+            }
+
             if (cx && cy && cz) {
                 const pos: vec3 = [
                     -parseFloat(cx),
@@ -2035,14 +2070,7 @@ function MapViewerApp() {
             }
 
             mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
-                const cx = (-pos[0].toFixed(2)).toString();
-                const cy = (pos[1].toFixed(2)).toString();
-                const cz = (-pos[2].toFixed(2)).toString();
-
-                const p = (pitch | 0).toString();
-                const y = (yaw | 0).toString();
-
-                setSearchParams({ cx, cy, cz, p, y }, { replace: true });
+                setSearchParams(mapViewer.getSearchParams(), { replace: true });
             };
 
             setMapViewer(mapViewer);
