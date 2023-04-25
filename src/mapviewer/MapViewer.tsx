@@ -39,6 +39,7 @@ import { CollisionMap } from '../client/pathfinder/collision/CollisionMap';
 import { Pathfinder } from '../client/pathfinder/Pathfinder';
 import { ExactRouteStrategy } from '../client/pathfinder/RouteStrategy';
 import { Schema } from 'leva/dist/declarations/src/types';
+import { fetchNpcSpawns } from './NpcSpawn';
 
 // console.log(mainVertShader);
 
@@ -2009,6 +2010,7 @@ function MapViewerApp() {
         // console.log('start fetch', performance.now());
         console.time('first load');
         const load = async () => {
+            const npcSpawnsPromise = fetchNpcSpawns();
             const cachePath = '/cache212/';
             const xteaPromise = fetch(cachePath + 'keys.json').then(resp => resp.json());
             const store = await fetchMemoryStore(cachePath, [
@@ -2028,11 +2030,15 @@ function MapViewerApp() {
             console.timeEnd('load xteas');
             console.log('xtea count: ', xteasMap.size);
 
+            console.time('load npc spawns');
+            const npcSpawns = await npcSpawnsPromise;
+            console.timeEnd('load npc spawns');
+
             // const poolSize = 1;
             // const poolSize = navigator.hardwareConcurrency;
 
             // const pool = ChunkLoaderWorkerPool.init(store, xteasMap, poolSize);
-            pool.init(store, xteasMap);
+            pool.init(store, xteasMap, npcSpawns);
 
             const fileSystem = loadFromStore(store);
 

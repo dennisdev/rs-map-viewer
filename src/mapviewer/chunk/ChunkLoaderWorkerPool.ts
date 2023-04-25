@@ -1,10 +1,11 @@
 
 import { spawn, Pool, Worker, Transfer, TransferDescriptor, ModuleThread } from "threads";
 import { MemoryStore } from "../../client/fs/MemoryStore";
+import { NpcSpawn } from "../NpcSpawn";
 import { ChunkData } from "./ChunkDataLoader";
 
 export type ChunkLoaderWorker = {
-    init(memoryStore: TransferDescriptor<MemoryStore>, xteasMap: Map<number, number[]>): void,
+    init(memoryStore: TransferDescriptor<MemoryStore>, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]): void,
 
     load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean): ChunkData | undefined,
 };
@@ -34,11 +35,11 @@ export class ChunkLoaderWorkerPool {
         this.size = size;
     }
 
-    init(store: MemoryStore, xteasMap: Map<number, number[]>) {
+    init(store: MemoryStore, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]) {
         for (const promise of this.workerPromises) {
             promise.then(worker => {
                 // console.log('send init worker', performance.now());
-                worker.init(Transfer(store, []), xteasMap);
+                worker.init(Transfer(store, []), xteasMap, npcSpawns);
                 return worker;
             });
         }

@@ -20,7 +20,7 @@ import { CachedVarbitLoader } from "../../client/fs/loader/VarbitLoader";
 import { VarpManager } from "../../client/VarpManager";
 import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
 import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
-import { fetchNpcSpawns } from "../NpcSpawn";
+import { NpcSpawn } from "../NpcSpawn";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer,
@@ -33,9 +33,7 @@ let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
-const npcSpawnsPromise = fetchNpcSpawns();
-
-async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>) {
+async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]) {
     // console.log('start init worker');
     await wasmCompressionPromise;
     const store = new MemoryStore(memoryStoreProperties.dataFile, memoryStoreProperties.indexFiles, memoryStoreProperties.metaFile);
@@ -93,8 +91,6 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     // }
     // console.timeEnd('load textures sprites');
 
-    const npcSpawns = await npcSpawnsPromise;
-
     console.log('init worker', fileSystem, performance.now());
     return new ChunkDataLoader(regionLoader, objectModelLoader, npcModelLoader, textureProvider, npcSpawns);
 }
@@ -106,8 +102,8 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
 // }
 
 expose({
-    init(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>) {
-        chunkDataLoaderPromise = init0(memoryStoreProperties, xteasMap);
+    init(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]) {
+        chunkDataLoaderPromise = init0(memoryStoreProperties, xteasMap, npcSpawns);
     },
     async load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean) {
         // console.log('request', regionX, regionY);
