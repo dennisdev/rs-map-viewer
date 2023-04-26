@@ -2229,7 +2229,6 @@ function MapViewerApp() {
             const yaw = searchParams.get('y');
 
             if (searchParams.get('pt') === 'o') {
-                console.log('setting ortho')
                 mapViewer.projectionType = ProjectionType.ORTHO;
             }
 
