@@ -1081,8 +1081,10 @@ class MapViewer {
         const cy = (this.cameraPos[1].toFixed(2)).toString();
         const cz = (-this.cameraPos[2].toFixed(2)).toString();
 
+        const yaw = (this.yaw | 0) & 2047;
+
         const p = (this.pitch | 0).toString();
-        const y = (this.yaw | 0).toString();
+        const y = yaw.toString();
 
         const params: any = {
             cx, cy, cz, p, y
