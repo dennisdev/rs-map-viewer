@@ -22,9 +22,16 @@ export function OsrsMenu({ x, y, options }: OsrsMenuProps): JSX.Element {
 
     useLayoutEffect(() => {
         if (ref.current) {
-            const { width } = ref.current.getBoundingClientRect();
-            setX(x - width / 2);
-            setY(y);
+            const { width, height } = ref.current.getBoundingClientRect();
+            let realX = x - width / 2;
+            let realY = y;
+            if (ref.current.parentElement) {
+                const parentRect = ref.current.parentElement.getBoundingClientRect();
+                realX = Math.min(realX, parentRect.width - width);
+                realY = Math.min(realY, parentRect.height - height);
+            }
+            setX(realX);
+            setY(realY);
         }
     }, [x, y, options]);
 
