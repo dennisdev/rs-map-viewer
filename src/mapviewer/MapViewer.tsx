@@ -2101,6 +2101,8 @@ interface MapViewerContainerProps {
     mapViewer: MapViewer;
 }
 
+const DEFAULT_VIEW_DISTANCE = isWallPaperEngine ? 5 : 2;
+
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
@@ -2138,7 +2140,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             },
         }, { collapsed: true }),
         'Distance': folder({
-            'View': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
+            'View': { value: DEFAULT_VIEW_DISTANCE, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
             'Unload': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
             'Lod': { value: 3, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionLodDistance = v; } },
         }, { collapsed: false }),
