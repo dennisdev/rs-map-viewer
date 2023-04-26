@@ -2068,7 +2068,7 @@ class MapViewer {
             if (chunkData) {
                 // console.log('loaded', chunkData.regionX, chunkData.regionY, performance.now())
                 const regionId = RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY);
-                if (chunkData.loadNpcs === this.loadNpcs) {
+                if (chunkData.loadNpcs === this.loadNpcs && chunkData.maxPlane === this.maxPlane) {
                     this.chunks.set(regionId,
                         loadChunk(this.app, this.program, this.programNpc, this.npcLoader, this.animationLoader,
                             this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData,

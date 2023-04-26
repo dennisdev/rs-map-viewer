@@ -31,6 +31,7 @@ export type ChunkData = {
     tileRenderFlags: Uint8Array[][],
     collisionFlags: Int32Array[],
     loadNpcs: boolean,
+    maxPlane: number,
 };
 
 type MultiDrawCommand = [number, number, number];
@@ -818,7 +819,8 @@ export class ChunkDataLoader {
             tileRenderFlags: region.tileRenderFlags,
             collisionFlags: region.collisionMaps.map(map => map.flags),
 
-            loadNpcs
+            loadNpcs,
+            maxPlane
         };
     }
 }
