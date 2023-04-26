@@ -189,7 +189,7 @@ function createAnimatedSceneObject(animatedObject: AnimatedObject, sceneObject: 
 }
 
 
-function getSceneObjects(scene: Scene, occlusionMap: OcclusionMap): SceneObjects {
+function getSceneObjects(scene: Scene, occlusionMap: OcclusionMap, maxPlane: number): SceneObjects {
     const objectModels: ObjectModel[] = [];
 
     const animatedObjects: AnimatedSceneObject[] = [];
@@ -200,7 +200,7 @@ function getSceneObjects(scene: Scene, occlusionMap: OcclusionMap): SceneObjects
         for (let tileX = 0; tileX < scene.sizeX; tileX++) {
             for (let tileY = 0; tileY < scene.sizeY; tileY++) {
                 const tile = scene.tiles[plane][tileX][tileY];
-                if (!tile) {
+                if (!tile || tile.minPlane > maxPlane) {
                     continue;
                 }
 
@@ -589,7 +589,7 @@ export class ChunkDataLoader {
         this.modelHashBuf = new ModelHashBuffer(5000);
     }
 
-    load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean): ChunkData | undefined {
+    load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean, maxPlane: number): ChunkData | undefined {
         const region = this.regionLoader.getRegion(regionX, regionY);
         if (!region) {
             return undefined;
@@ -600,7 +600,7 @@ export class ChunkDataLoader {
             npcSpawns = this.npcSpawns.filter(npc => {
                 const npcRegionX = npc.x / 64 | 0;
                 const npcRegionY = npc.y / 64 | 0;
-                return regionX === npcRegionX && regionY === npcRegionY;
+                return regionX === npcRegionX && regionY === npcRegionY && npc.p <= maxPlane;
             });
             // npcSpawns = npcSpawns.filter(npc => npc.id === 2812);
             // npcSpawns = npcSpawns.filter(npc => npc.p === 2 && npc.id === 3227);
@@ -621,9 +621,11 @@ export class ChunkDataLoader {
         // Create scene tile models from map data
         region.addTileModels(this.regionLoader, this.textureProvider);
 
+        region.setTileMinPlanes();
+
         const renderBuf = new RenderBuffer(100000);
 
-        const terrainVertexCount = addTerrain(renderBuf, region);
+        const terrainVertexCount = addTerrain(renderBuf, region, maxPlane);
 
         let animatedObjectGroups: AnimatedObjectGroup[] = [];
         let npcSpawnGroups: NpcSpawnGroup[] = [];
@@ -638,7 +640,7 @@ export class ChunkDataLoader {
             const {
                 objectModels,
                 animatedObjects
-            } = getSceneObjects(region, occlusionMap);
+            } = getSceneObjects(region, occlusionMap, maxPlane);
 
             const uniqueObjects = getUniqueObjects(this.modelHashBuf, objectModels);
 

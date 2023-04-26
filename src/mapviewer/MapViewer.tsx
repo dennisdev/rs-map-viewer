@@ -735,6 +735,7 @@ class MapViewer {
     colorBanding: number = 255;
 
     loadNpcs: boolean = false;
+    maxPlane: number = Scene.MAX_PLANE - 1;
 
     cullBackFace: boolean = true;
     lastCullBackFace: boolean = true;
@@ -1301,7 +1302,7 @@ class MapViewer {
             // console.log('queue load', regionX, regionY, performance.now());
             this.loadingRegionIds.add(regionId);
 
-            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !this.hasMultiDraw, this.loadNpcs)).then(chunkData => {
+            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !this.hasMultiDraw, this.loadNpcs, this.maxPlane)).then(chunkData => {
                 if (chunkData) {
                     this.chunksToLoad.push(chunkData);
                 } else {
@@ -1311,12 +1312,21 @@ class MapViewer {
         }
     }
 
-    setLoadNpcs(load: boolean) {
-        this.loadNpcs = load;
+    deleteChunks() {
         for (const chunk of this.chunks.values()) {
             deleteChunk(chunk);
         }
         this.chunks.clear();
+    }
+
+    setLoadNpcs(load: boolean) {
+        this.loadNpcs = load;
+        this.deleteChunks();
+    }
+
+    setMaxPlane(maxPlane: number) {
+        this.maxPlane = maxPlane;
+        this.deleteChunks();
     }
 
     updateCullFace() {
@@ -1516,7 +1526,7 @@ class MapViewer {
 
         if (this.keys.get('p') && this.chunkDataLoader) {
             for (let i = 0; i < 20; i++) {
-                this.chunkDataLoader.load(50, 50, false, false);
+                this.chunkDataLoader.load(50, 50, false, false, Scene.MAX_PLANE - 1);
 
                 this.chunkDataLoader.regionLoader.regions.clear();
                 this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
@@ -2148,6 +2158,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             'Load': { value: true, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
         }, { collapsed: true }),
         'Render': folder({
+            'Max Plane': { value: Scene.MAX_PLANE - 1, min: 0, max: 3, step: 1, onChange: (v) => { mapViewer.setMaxPlane(v); } },
             'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
             'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
             'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },

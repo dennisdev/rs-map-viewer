@@ -950,4 +950,30 @@ export class Scene {
         console.timeEnd('terrain');
     }
 
+    getTileMinPlane(plane: number, tileX: number, tileY: number): number {
+        if ((this.tileRenderFlags[plane][tileX][tileY] & 0x8) !== 0) {
+            return 0;
+        } else if (plane > 0 && (this.tileRenderFlags[plane][tileX][tileY] & 0x2) !== 0) {
+            return plane - 1;
+        } else {
+            return plane;
+        }
+    }
+
+    setTileMinPlane(plane: number, tileX: number, tileY: number, minPlane: number) {
+        const tile = this.tiles[plane][tileX][tileY];
+        if (tile) {
+            tile.minPlane = minPlane;
+        }
+    }
+
+    setTileMinPlanes() {
+        for (let plane = 0; plane < this.planes; plane++) {
+            for (let x = 0; x < this.sizeX; x++) {
+                for (let y = 0; y < this.sizeY; y++) {
+                    this.setTileMinPlane(plane, x, y, this.getTileMinPlane(plane, x, y));
+                }
+            }
+        }
+    }
 }

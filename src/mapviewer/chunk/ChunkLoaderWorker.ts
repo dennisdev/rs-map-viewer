@@ -105,7 +105,7 @@ expose({
     init(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]) {
         chunkDataLoaderPromise = init0(memoryStoreProperties, xteasMap, npcSpawns);
     },
-    async load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean) {
+    async load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean, maxPlane: number) {
         // console.log('request', regionX, regionY);
         if (!chunkDataLoaderPromise) {
             throw new Error('ChunkDataLoaderWorker has not been initialized yet');
@@ -114,7 +114,7 @@ expose({
         await hasherPromise;
 
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = chunkDataLoader.load(regionX, regionY, minimizeDrawCalls, loadNpcs);
+        const chunkData = chunkDataLoader.load(regionX, regionY, minimizeDrawCalls, loadNpcs, maxPlane);
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
         console.log('model caches: ', chunkDataLoader.objectModelLoader.modelDataCache.size, chunkDataLoader.objectModelLoader.modelCache.size)
 

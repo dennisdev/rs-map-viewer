@@ -78,7 +78,7 @@ export function addTerrainTile(renderBuf: RenderBuffer, tile: SceneTile) {
     }
 }
 
-export function addTerrain(renderBuf: RenderBuffer, region: Scene): number {
+export function addTerrain(renderBuf: RenderBuffer, region: Scene, maxPlane: number): number {
     console.time('terrain');
 
     const terrainStartVertexCount = renderBuf.vertexCount();
@@ -88,7 +88,7 @@ export function addTerrain(renderBuf: RenderBuffer, region: Scene): number {
         for (let x = 0; x < region.sizeX; x++) {
             for (let y = 0; y < region.sizeY; y++) {
                 const tile = region.tiles[plane][x][y];
-                if (!tile) {
+                if (!tile || tile.minPlane > maxPlane) {
                     continue;
                 }
                 addTerrainTile(renderBuf, tile);

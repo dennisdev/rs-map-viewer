@@ -8,6 +8,8 @@ export class SceneTile {
 
     y: number;
 
+    minPlane: number;
+
     tileModel?: SceneTileModel;
 
     wallObject?: WallObject;
@@ -22,6 +24,7 @@ export class SceneTile {
         this.plane = plane;
         this.x = x;
         this.y = y;
+        this.minPlane = 0;
         this.gameObjects = [];
     }
 }

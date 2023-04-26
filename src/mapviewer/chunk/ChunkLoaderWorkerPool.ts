@@ -7,7 +7,7 @@ import { ChunkData } from "./ChunkDataLoader";
 export type ChunkLoaderWorker = {
     init(memoryStore: TransferDescriptor<MemoryStore>, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]): void,
 
-    load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean): ChunkData | undefined,
+    load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean, maxPlane: number): ChunkData | undefined,
 };
 
 export class ChunkLoaderWorkerPool {
