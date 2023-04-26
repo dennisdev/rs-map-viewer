@@ -627,6 +627,9 @@ enum ProjectionType {
     ORTHO
 }
 
+const INTERACTION_RADIUS = 5;
+const INTERACTION_SIZE = INTERACTION_RADIUS * 2 + 1;
+
 class MapViewer {
     fileSystem: MemoryFileSystem;
 
@@ -747,7 +750,7 @@ class MapViewer {
     menuX: number = -1;
     menuY: number = -1;
 
-    interactBuffer: Uint8Array = new Uint8Array(4);
+    interactBuffer: Uint8Array = new Uint8Array(INTERACTION_SIZE * INTERACTION_SIZE * 4);
 
     chunkDataLoader?: ChunkDataLoader;
 
@@ -1619,7 +1622,28 @@ class MapViewer {
             const pickedX = this.pickX;
             const pickedY = this.pickY;
 
-            readPixelsAsync(gl, this.pickX, gl.canvas.height - this.pickY, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, this.interactBuffer).then(buf => {
+            readPixelsAsync(gl, this.pickX - INTERACTION_RADIUS, gl.canvas.height - this.pickY - INTERACTION_RADIUS, 
+                INTERACTION_SIZE, INTERACTION_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, this.interactBuffer).then(buf => {
+
+                const closestInteractions: number[] = new Array(INTERACTION_SIZE).fill(-1);
+                for (let x = 0; x < INTERACTION_SIZE; x++) {
+                    for (let y = 0; y < INTERACTION_SIZE; y++) {
+                        const index = (x + y * INTERACTION_SIZE) * 4;
+                        if (this.interactBuffer[index + 2] === 0xFF) {
+                            const dist = Math.max(Math.abs(x - INTERACTION_RADIUS), Math.abs(y - INTERACTION_RADIUS));
+                            closestInteractions[dist] = index;
+                        }
+                    }
+                }
+
+                let closestInteraction = -1;
+                for (let i = 0; i < closestInteractions.length; i++) {
+                    if (closestInteractions[i] !== -1) {
+                        closestInteraction = closestInteractions[i];
+                        break;
+                    }
+                }
+                
                 const closeOnClick = () => {
                     if (this.onMenuClosed) {
                         this.onMenuClosed();
@@ -1629,7 +1653,7 @@ class MapViewer {
 
                 const cancelOption: MenuOption = { name: 'Cancel', onClick: closeOnClick };
 
-                if (this.interactBuffer[2] !== 0xFF) {
+                if (closestInteraction === -1) {
                     if (this.onMenuOpened) {
                         this.onMenuOpened(pickedX, pickedY, [cancelOption]);
                         this.menuOpen = true;
@@ -1638,7 +1662,7 @@ class MapViewer {
                     }
                     return;
                 }
-                const interactId = this.interactBuffer[0] << 8 | this.interactBuffer[1];
+                const interactId = this.interactBuffer[closestInteraction] << 8 | this.interactBuffer[closestInteraction + 1];
                 let def: NpcDefinition | undefined = this.npcLoader.getDefinition(interactId);
                 if (def.transforms) {
                     def = def.transform(this.varpManager, this.npcLoader);

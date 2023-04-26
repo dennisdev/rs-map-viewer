@@ -27,8 +27,8 @@ export function OsrsMenu({ x, y, options }: OsrsMenuProps): JSX.Element {
             let realY = y;
             if (ref.current.parentElement) {
                 const parentRect = ref.current.parentElement.getBoundingClientRect();
-                realX = Math.min(realX, parentRect.width - width);
-                realY = Math.min(realY, parentRect.height - height);
+                realX = Math.max(Math.min(realX, parentRect.width - width), 0);
+                realY = Math.max(Math.min(realY, parentRect.height - height), 0);
             }
             setX(realX);
             setY(realY);
