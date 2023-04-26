@@ -63,6 +63,8 @@ function prependShader(shader: string, multiDraw: boolean): string {
     return header + shader;
 }
 
+const isWallPaperEngine = !!window.wallpaperRegisterAudioListener;
+
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
 
@@ -700,6 +702,8 @@ class MapViewer {
 
     fps: number = 0;
 
+    fpsLimit: number = isWallPaperEngine ? 60 : 0;
+
     lastFrameTime: number = 0;
     lastClientTick: number = 0;
     lastTick: number = 0;
@@ -938,18 +942,20 @@ class MapViewer {
             return;
         }
 
-        gl.canvas.addEventListener('keydown', this.onKeyDown);
-        gl.canvas.addEventListener('keyup', this.onKeyUp);
-        gl.canvas.addEventListener('mousemove', this.onMouseMove);
-        gl.canvas.addEventListener('mousedown', this.onMouseDown);
-        gl.canvas.addEventListener('mouseup', this.onMouseUp);
-        gl.canvas.addEventListener('mouseleave', this.onMouseLeave);
-        gl.canvas.addEventListener('touchstart', this.onTouchStart);
-        gl.canvas.addEventListener('touchmove', this.onTouchMove);
-        gl.canvas.addEventListener('touchend', this.onTouchEnd);
-        gl.canvas.addEventListener('focusout', this.onFocusOut);
-        gl.canvas.addEventListener('contextmenu', this.onContextMenu);
-        gl.canvas.focus();
+        if (!isWallPaperEngine) {
+            gl.canvas.addEventListener('keydown', this.onKeyDown);
+            gl.canvas.addEventListener('keyup', this.onKeyUp);
+            gl.canvas.addEventListener('mousemove', this.onMouseMove);
+            gl.canvas.addEventListener('mousedown', this.onMouseDown);
+            gl.canvas.addEventListener('mouseup', this.onMouseUp);
+            gl.canvas.addEventListener('mouseleave', this.onMouseLeave);
+            gl.canvas.addEventListener('touchstart', this.onTouchStart);
+            gl.canvas.addEventListener('touchmove', this.onTouchMove);
+            gl.canvas.addEventListener('touchend', this.onTouchEnd);
+            gl.canvas.addEventListener('focusout', this.onFocusOut);
+            gl.canvas.addEventListener('contextmenu', this.onContextMenu);
+            gl.canvas.focus();
+        }
 
         const cameraX = -this.cameraPos[0];
         const cameraY = -this.cameraPos[2];
@@ -1364,6 +1370,14 @@ class MapViewer {
     render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
         time *= 0.001;
         const deltaTime = time - this.lastFrameTime;
+
+        if (this.fpsLimit) {
+            const tolerance = 0.001
+            if (deltaTime < (1 / this.fpsLimit) - tolerance) {
+                return;
+            }
+        }
+
         this.lastFrameTime = time;
 
         this.setFps(1.0 / deltaTime);
@@ -1371,13 +1385,13 @@ class MapViewer {
         const cycle = time / 0.02;
 
         const clientTick = Math.floor(time / 0.02);
-        const clientTicksElapsed = clientTick - this.lastClientTick;
+        const clientTicksElapsed = Math.min(clientTick - this.lastClientTick, 50);
         if (clientTicksElapsed > 0) {
             this.lastClientTick = clientTick;
         }
 
         const tick = Math.floor(time / 0.6);
-        const ticksElapsed = Math.min(tick - this.lastTick, 10);
+        const ticksElapsed = Math.min(tick - this.lastTick, 1);
         if (ticksElapsed > 0) {
             this.lastTick = tick;
         }
@@ -2153,14 +2167,16 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     return (
         <div>
             {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
-            <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} />
-            <div className='hud left-top'>
-                <img className='compass' style={{ transform: `rotate(${compassDegrees}deg)` }} src='/compass.png' onClick={() => {
-                    mapViewer.yaw = 0;
-                    mapViewer.runCameraListeners();
-                }} />
-                <div className='fps-counter'>{fps.toFixed(1)}</div>
-            </div>
+            <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} hidden={isWallPaperEngine} />
+            {!isWallPaperEngine && <span>
+                <div className='hud left-top'>
+                    <img className='compass' style={{ transform: `rotate(${compassDegrees}deg)` }} src='/compass.png' onClick={() => {
+                        mapViewer.yaw = 0;
+                        mapViewer.runCameraListeners();
+                    }} />
+                    <div className='fps-counter'>{fps.toFixed(1)}</div>
+                </div>
+            </span>}
             {isTouchDevice && <div className='joystick-container left'>
                 <Joystick size={75} baseColor='#181C20' stickColor='#007BFF' stickSize={40} move={mapViewer.onPositionJoystickMove} stop={mapViewer.onPositionJoystickStop}></Joystick>
             </div>}
