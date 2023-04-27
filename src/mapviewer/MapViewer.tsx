@@ -715,6 +715,11 @@ class MapViewer {
     onMenuOpened?: (x: number, y: number, options: MenuOption[]) => void;
     onMenuClosed?: () => void;
 
+    hudHidden: boolean = false;
+    lastHudHidden: number = 0;
+
+    setHudHidden?: (hidden: boolean) => void;
+
     menuOpen: boolean = false;
 
     projectionType: ProjectionType = ProjectionType.PERSPECTIVE;
@@ -1453,6 +1458,15 @@ class MapViewer {
             this.updateYaw(this.yaw, deltaYaw);
         }
 
+        // 200ms cooldown
+        if (this.keys.get('F1') && time - this.lastHudHidden > 0.2) {
+            this.hudHidden = !this.hudHidden;
+            this.lastHudHidden = time;
+            if (this.setHudHidden) {
+                this.setHudHidden(this.hudHidden);
+            }
+        }
+
         // joystick controls
         if (this.positionJoystickEvent) {
             const moveX = this.positionJoystickEvent.x || 0;
@@ -2117,6 +2131,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(undefined);
+    const [hudHidden, setHudHidden] = useState<boolean>(isWallPaperEngine);
     const [searchParams, setSearchParams] = useSearchParams();
 
     const isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
@@ -2177,13 +2192,15 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         mapViewer.onMenuClosed = () => {
             setMenuProps(undefined);
         };
+        mapViewer.hudHidden = hudHidden;
+        mapViewer.setHudHidden = setHudHidden;
     }, [mapViewer]);
 
     return (
         <div>
             {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
-            <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} hidden={isWallPaperEngine} />
-            {!isWallPaperEngine && <span>
+            <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} hidden={hudHidden} />
+            {!hudHidden && <span>
                 <div className='hud left-top'>
                     <img className='compass' style={{ transform: `rotate(${compassDegrees}deg)` }} src='/compass.png' onClick={() => {
                         mapViewer.yaw = 0;
