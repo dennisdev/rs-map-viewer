@@ -1,3 +1,8 @@
+@font-face {
+  font-family: 'OSRS';
+  src: url(./RuneScape-Chat-Bold-07.ttf);
+}
+
 html, body {
   margin: 0;
   padding: 0;
