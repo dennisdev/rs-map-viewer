@@ -1662,75 +1662,75 @@ class MapViewer {
             const pickedX = this.pickX;
             const pickedY = this.pickY;
 
-            readPixelsAsync(gl, this.pickX - INTERACTION_RADIUS, gl.canvas.height - this.pickY - INTERACTION_RADIUS, 
+            readPixelsAsync(gl, this.pickX - INTERACTION_RADIUS, gl.canvas.height - this.pickY - INTERACTION_RADIUS,
                 INTERACTION_SIZE, INTERACTION_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, this.interactBuffer).then(buf => {
 
-                const closestInteractions: number[] = new Array(INTERACTION_SIZE).fill(-1);
-                for (let x = 0; x < INTERACTION_SIZE; x++) {
-                    for (let y = 0; y < INTERACTION_SIZE; y++) {
-                        const index = (x + y * INTERACTION_SIZE) * 4;
-                        if (this.interactBuffer[index + 2] === 0xFF) {
-                            const dist = Math.max(Math.abs(x - INTERACTION_RADIUS), Math.abs(y - INTERACTION_RADIUS));
-                            closestInteractions[dist] = index;
+                    const closestInteractions: number[] = new Array(INTERACTION_SIZE).fill(-1);
+                    for (let x = 0; x < INTERACTION_SIZE; x++) {
+                        for (let y = 0; y < INTERACTION_SIZE; y++) {
+                            const index = (x + y * INTERACTION_SIZE) * 4;
+                            if (this.interactBuffer[index + 2] === 0xFF) {
+                                const dist = Math.max(Math.abs(x - INTERACTION_RADIUS), Math.abs(y - INTERACTION_RADIUS));
+                                closestInteractions[dist] = index;
+                            }
                         }
                     }
-                }
 
-                let closestInteraction = -1;
-                for (let i = 0; i < closestInteractions.length; i++) {
-                    if (closestInteractions[i] !== -1) {
-                        closestInteraction = closestInteractions[i];
-                        break;
+                    let closestInteraction = -1;
+                    for (let i = 0; i < closestInteractions.length; i++) {
+                        if (closestInteractions[i] !== -1) {
+                            closestInteraction = closestInteractions[i];
+                            break;
+                        }
                     }
-                }
-                
-                const closeOnClick = () => {
-                    if (this.onMenuClosed) {
-                        this.onMenuClosed();
-                        this.menuOpen = false;
+
+                    const closeOnClick = () => {
+                        if (this.onMenuClosed) {
+                            this.onMenuClosed();
+                            this.menuOpen = false;
+                        }
+                    };
+
+                    const cancelOption: MenuOption = { name: 'Cancel', onClick: closeOnClick };
+
+                    if (closestInteraction === -1) {
+                        if (this.onMenuOpened) {
+                            this.onMenuOpened(pickedX, pickedY, [cancelOption]);
+                            this.menuOpen = true;
+                            this.menuX = pickedX;
+                            this.menuY = pickedY;
+                        }
+                        return;
                     }
-                };
+                    const interactId = this.interactBuffer[closestInteraction] << 8 | this.interactBuffer[closestInteraction + 1];
+                    let def: NpcDefinition | undefined = this.npcLoader.getDefinition(interactId);
+                    if (def.transforms) {
+                        def = def.transform(this.varpManager, this.npcLoader);
+                    }
+                    if (!def) {
+                        return;
+                    }
 
-                const cancelOption: MenuOption = { name: 'Cancel', onClick: closeOnClick };
+                    const npcId = def.id;
+                    const npcName = def.name;
+                    const npcLevel = def.combatLevel;
 
-                if (closestInteraction === -1) {
+                    const menuOptions: MenuOption[] = def.actions.filter(action => !!action).map(action => ({ name: action, npcName, level: npcLevel, onClick: closeOnClick }));
+
+                    const openWikiOnClick = () => {
+                        window.open('https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=' + npcId, '_blank');
+                    };
+
+                    menuOptions.push({ name: 'Examine', npcName, level: npcLevel, onClick: openWikiOnClick });
+                    menuOptions.push(cancelOption);
+
                     if (this.onMenuOpened) {
-                        this.onMenuOpened(pickedX, pickedY, [cancelOption]);
+                        this.onMenuOpened(pickedX, pickedY, menuOptions);
                         this.menuOpen = true;
                         this.menuX = pickedX;
                         this.menuY = pickedY;
                     }
-                    return;
-                }
-                const interactId = this.interactBuffer[closestInteraction] << 8 | this.interactBuffer[closestInteraction + 1];
-                let def: NpcDefinition | undefined = this.npcLoader.getDefinition(interactId);
-                if (def.transforms) {
-                    def = def.transform(this.varpManager, this.npcLoader);
-                }
-                if (!def) {
-                    return;
-                }
-
-                const npcId = def.id;
-                const npcName = def.name;
-                const npcLevel = def.combatLevel;
-
-                const menuOptions: MenuOption[] = def.actions.filter(action => !!action).map(action => ({ name: action, npcName, level: npcLevel, onClick: closeOnClick }));
-
-                const openWikiOnClick = () => {
-                    window.open('https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=' + npcId, '_blank');
-                };
-
-                menuOptions.push({ name: 'Examine', npcName, level: npcLevel, onClick: openWikiOnClick });
-                menuOptions.push(cancelOption);
-
-                if (this.onMenuOpened) {
-                    this.onMenuOpened(pickedX, pickedY, menuOptions);
-                    this.menuOpen = true;
-                    this.menuX = pickedX;
-                    this.menuY = pickedY;
-                }
-            });
+                });
 
             this.pickX = -1;
             this.pickY = -1;
@@ -2220,7 +2220,28 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     );
 }
 
-const poolSize = Math.min(navigator.hardwareConcurrency, 4);
+export const checkIphone = () => {
+    const u = navigator.userAgent
+    return !!u.match(/iPhone/i)
+}
+export const checkAndroid = () => {
+    const u = navigator.userAgent
+    return !!u.match(/Android/i)
+}
+export const checkIpad = () => {
+    const u = navigator.userAgent
+    return !!u.match(/iPad/i)
+}
+export const checkMobile = () => {
+    const u = navigator.userAgent
+    return !!u.match(/Android/i) || !!u.match(/iPhone/i)
+}
+
+const isIos = checkIphone() || checkIpad();
+
+const MAX_POOL_SIZE = isIos ? 1 : 4;
+
+const poolSize = Math.min(navigator.hardwareConcurrency, MAX_POOL_SIZE);
 const pool = ChunkLoaderWorkerPool.init(poolSize);
 // console.log('start App', performance.now());
 
@@ -2247,7 +2268,7 @@ function MapViewerApp() {
                 IndexType.MODELS,
                 IndexType.SPRITES,
                 IndexType.TEXTURES
-            ], true, setDownloadProgress);
+            ], !isIos, setDownloadProgress);
             setDownloadProgress(undefined);
 
             console.time('load xteas');
