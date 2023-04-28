@@ -1008,7 +1008,7 @@ class MapViewer {
         const interactTarget = app.createTexture2D(app.width, app.height, {
             internalFormat: PicoGL.RGBA8
         });
-        const depthTarget = app.createRenderbuffer(app.width, app.height, PicoGL.DEPTH_COMPONENT16);
+        const depthTarget = app.createRenderbuffer(app.width, app.height, PicoGL.DEPTH_COMPONENT24);
         this.frameBuffer = app.createFramebuffer()
             .colorTarget(0, colorTarget)
             .colorTarget(1, interactTarget)
