@@ -1,4 +1,4 @@
-.loading-bar-container {
+.center-content-container {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -14,7 +14,7 @@
   cursor: pointer;
 }
 
-.fps-counter {
+.content-text {
   font-family: ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
   font-weight: bold;
   color: white;

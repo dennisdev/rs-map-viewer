@@ -2206,7 +2206,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                         mapViewer.yaw = 0;
                         mapViewer.runCameraListeners();
                     }} />
-                    <div className='fps-counter'>{fps.toFixed(1)}</div>
+                    <div className='fps-counter content-text'>{fps.toFixed(1)}</div>
                 </div>
             </span>}
             {isTouchDevice && <div className='joystick-container left'>
@@ -2332,13 +2332,19 @@ function MapViewerApp() {
     }, []);
 
     let content: JSX.Element | undefined = undefined;
-    if (mapViewer) {
+    if (isIos) {
+        content = (
+            <div className='center-content-container'>
+                <div className='content-text'>iOS is not supported.</div>
+            </div>
+        );
+    } else if (mapViewer) {
         content = <MapViewerContainer mapViewer={mapViewer}></MapViewerContainer>
     } else if (downloadProgress) {
         const formattedCacheSize = formatBytes(downloadProgress.total);
         const progress = downloadProgress.current / downloadProgress.total * 100 | 0;
         content = (
-            <div className='loading-bar-container'>
+            <div className='center-content-container'>
                 <OsrsLoadingBar text={`Downloading cache (${formattedCacheSize})`} progress={progress} />
             </div>
         );
