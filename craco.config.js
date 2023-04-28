@@ -12,7 +12,12 @@ module.exports = {
 
       // Kind of a hack to get the glsl loader to work
       // https://github.com/dilanx/craco/issues/486
-      webpackConfig.module.rules[1].oneOf.unshift(glslLoader);
+      for (const rule of webpackConfig.module.rules) {
+        if (rule.oneOf) {
+          rule.oneOf.unshift(glslLoader);
+          break;
+        }
+      }
 
       // addBeforeLoader(webpackConfig, loaderByName('file-loader'), glslLoader);
 
