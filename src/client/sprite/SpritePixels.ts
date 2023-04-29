@@ -13,7 +13,11 @@ export class SpritePixels {
 
     height!: number;
 
-    public static fromPixels(pixels: Int32Array, width: number, height: number): SpritePixels {
+    public static fromPixels(
+        pixels: Int32Array,
+        width: number,
+        height: number
+    ): SpritePixels {
         const sprite = new SpritePixels();
         sprite.pixels = pixels;
         sprite.subWidth = sprite.width = width;
@@ -28,7 +32,10 @@ export class SpritePixels {
     }
 
     mirrorHorizontally(): SpritePixels {
-        const mirrored = SpritePixels.fromDimensions(this.subWidth, this.subHeight);
+        const mirrored = SpritePixels.fromDimensions(
+            this.subWidth,
+            this.subHeight
+        );
         mirrored.width = this.width;
         mirrored.height = this.height;
         mirrored.xOffset = this.width - this.subWidth - this.xOffset;
@@ -36,7 +43,8 @@ export class SpritePixels {
 
         for (let y = 0; y < this.subHeight; y++) {
             for (let x = 0; x < this.subWidth; x++) {
-                mirrored.pixels[x + y * this.subWidth] = this.pixels[y * this.subWidth + this.subWidth - 1 - x];
+                mirrored.pixels[x + y * this.subWidth] =
+                    this.pixels[y * this.subWidth + this.subWidth - 1 - x];
             }
         }
 
@@ -48,7 +56,9 @@ export class SpritePixels {
 
         for (let y = 0; y < this.subHeight; y++) {
             for (let x = 0; x < this.subWidth; x++) {
-                normalized.pixels[x + (y + this.yOffset) * this.width + this.xOffset] = this.pixels[x + y * this.subWidth];
+                normalized.pixels[
+                    x + (y + this.yOffset) * this.width + this.xOffset
+                ] = this.pixels[x + y * this.subWidth];
             }
         }
 
@@ -61,7 +71,8 @@ export class SpritePixels {
 
             for (let y = 0; y < this.subHeight; y++) {
                 for (let x = 0; x < this.subWidth; x++) {
-                    pixels[x + (y + this.yOffset) * this.width + this.xOffset] = this.pixels[x + y * this.subWidth];
+                    pixels[x + (y + this.yOffset) * this.width + this.xOffset] =
+                        this.pixels[x + y * this.subWidth];
                 }
             }
 
@@ -101,7 +112,8 @@ export class SpritePixels {
 
             for (let y = 0; y < this.subHeight; y++) {
                 for (let x = 0; x < this.subWidth; x++) {
-                    pixels[width * (y + var4) + x + var2] = this.pixels[x + y * this.subWidth];
+                    pixels[width * (y + var4) + x + var2] =
+                        this.pixels[x + y * this.subWidth];
                 }
             }
 
@@ -151,11 +163,20 @@ export class SpritePixels {
                 if (newRgb === 0) {
                     if (x > 0 && this.pixels[index - 1] !== 0) {
                         newRgb = rgb;
-                    } else if (y > 0 && this.pixels[index - this.subWidth] !== 0) {
+                    } else if (
+                        y > 0 &&
+                        this.pixels[index - this.subWidth] !== 0
+                    ) {
                         newRgb = rgb;
-                    } else if (x < this.subWidth - 1 && this.pixels[index + 1] !== 0) {
+                    } else if (
+                        x < this.subWidth - 1 &&
+                        this.pixels[index + 1] !== 0
+                    ) {
                         newRgb = rgb;
-                    } else if (y < this.subHeight - 1 && this.pixels[index + this.subWidth] !== 0) {
+                    } else if (
+                        y < this.subHeight - 1 &&
+                        this.pixels[index + this.subWidth] !== 0
+                    ) {
                         newRgb = rgb;
                     }
                 }
@@ -172,7 +193,10 @@ export class SpritePixels {
             const yOffset = y * this.subWidth;
 
             for (let x = this.subWidth - 1; x > 0; x--) {
-                if (this.pixels[x + yOffset] === 0 && this.pixels[x + yOffset - 1 - this.subWidth] !== 0) {
+                if (
+                    this.pixels[x + yOffset] === 0 &&
+                    this.pixels[x + yOffset - 1 - this.subWidth] !== 0
+                ) {
                     this.pixels[x + yOffset] = rgb;
                 }
             }

@@ -8,13 +8,26 @@ import { ByteBuffer } from "../util/ByteBuffer";
 import { Renderable } from "./Renderable";
 import { AnimatedObject } from "./AnimatedObject";
 import { SceneTileModel } from "./SceneTileModel";
-import { adjustOverlayLight, adjustUnderlayLight, packHsl } from "../util/ColorUtil";
+import {
+    adjustOverlayLight,
+    adjustUnderlayLight,
+    packHsl,
+} from "../util/ColorUtil";
 import { TextureLoader } from "../fs/loader/TextureLoader";
 import { ObjectType } from "./ObjectType";
 import { ObjectModelLoader, ContourGroundInfo } from "./ObjectModelLoader";
-import { calculateEntityTag, EntityType, getIdFromEntityTag } from "./EntityTag";
+import {
+    calculateEntityTag,
+    EntityType,
+    getIdFromEntityTag,
+} from "./EntityTag";
 import { SceneTile } from "./SceneTile";
-import { FloorDecoration, GameObject, WallDecoration, WallObject } from "./SceneObject";
+import {
+    FloorDecoration,
+    GameObject,
+    WallDecoration,
+    WallObject,
+} from "./SceneObject";
 
 export class Scene {
     public static readonly MAX_PLANE = 4;
@@ -55,7 +68,13 @@ export class Scene {
     varps: Map<number, number>;
     varbits: Map<number, number>;
 
-    constructor(regionX: number, regionY: number, planes: number, sizeX: number, sizeY: number) {
+    constructor(
+        regionX: number,
+        regionY: number,
+        planes: number,
+        sizeX: number,
+        sizeY: number
+    ) {
         this.regionX = regionX;
         this.regionY = regionY;
         this.planes = planes;
@@ -94,7 +113,12 @@ export class Scene {
         }
     }
 
-    ensureTileExists(startPlane: number, endPlane: number, tileX: number, tileY: number) {
+    ensureTileExists(
+        startPlane: number,
+        endPlane: number,
+        tileX: number,
+        tileY: number
+    ) {
         for (let i = startPlane; i <= endPlane; i++) {
             if (!this.tiles[i][tileX][tileY]) {
                 this.tiles[i][tileX][tileY] = new SceneTile(i, tileX, tileY);
@@ -102,13 +126,29 @@ export class Scene {
         }
     }
 
-    newFloorDecoration(plane: number, tileX: number, tileY: number, sceneHeight: number, renderable: Renderable | undefined, tag: bigint,
-        type: number, def: ObjectDefinition) {
+    newFloorDecoration(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        sceneHeight: number,
+        renderable: Renderable | undefined,
+        tag: bigint,
+        type: number,
+        def: ObjectDefinition
+    ) {
         if (renderable) {
             const sceneX = tileX * 128 + 64;
             const sceneY = tileY * 128 + 64;
 
-            const floorDec = new FloorDecoration(sceneX, sceneY, sceneHeight, renderable, tag, type, def);
+            const floorDec = new FloorDecoration(
+                sceneX,
+                sceneY,
+                sceneHeight,
+                renderable,
+                tag,
+                type,
+                def
+            );
 
             this.ensureTileExists(plane, plane, tileX, tileY);
 
@@ -116,13 +156,31 @@ export class Scene {
         }
     }
 
-    newWall(plane: number, tileX: number, tileY: number, sceneHeight: number, renderable0: Renderable | undefined, renderable1: Renderable | undefined, tag: bigint,
-        type: number, def: ObjectDefinition) {
+    newWall(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        sceneHeight: number,
+        renderable0: Renderable | undefined,
+        renderable1: Renderable | undefined,
+        tag: bigint,
+        type: number,
+        def: ObjectDefinition
+    ) {
         if (renderable0 || renderable1) {
             const sceneX = tileX * 128 + 64;
             const sceneY = tileY * 128 + 64;
 
-            const wall = new WallObject(sceneX, sceneY, sceneHeight, renderable0, renderable1, tag, type, def);
+            const wall = new WallObject(
+                sceneX,
+                sceneY,
+                sceneHeight,
+                renderable0,
+                renderable1,
+                tag,
+                type,
+                def
+            );
 
             this.ensureTileExists(0, plane, tileX, tileY);
 
@@ -130,13 +188,35 @@ export class Scene {
         }
     }
 
-    newWallDecoration(plane: number, tileX: number, tileY: number, sceneHeight: number, renderable0: Renderable | undefined, renderable1: Renderable | undefined,
-        offsetX: number, offsetY: number, tag: bigint, type: number, def: ObjectDefinition) {
+    newWallDecoration(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        sceneHeight: number,
+        renderable0: Renderable | undefined,
+        renderable1: Renderable | undefined,
+        offsetX: number,
+        offsetY: number,
+        tag: bigint,
+        type: number,
+        def: ObjectDefinition
+    ) {
         if (renderable0) {
             const sceneX = tileX * 128 + 64;
             const sceneY = tileY * 128 + 64;
 
-            const wallDecoration = new WallDecoration(sceneX, sceneY, sceneHeight, renderable0, renderable1, offsetX, offsetY, tag, type, def);
+            const wallDecoration = new WallDecoration(
+                sceneX,
+                sceneY,
+                sceneHeight,
+                renderable0,
+                renderable1,
+                offsetX,
+                offsetY,
+                tag,
+                type,
+                def
+            );
 
             this.ensureTileExists(0, plane, tileX, tileY);
 
@@ -144,8 +224,18 @@ export class Scene {
         }
     }
 
-    newGameObject(plane: number, tileX: number, tileY: number, sceneHeight: number, sizeX: number, sizeY: number, renderable: Renderable | undefined, tag: bigint,
-        type: number, def: ObjectDefinition): boolean {
+    newGameObject(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        sceneHeight: number,
+        sizeX: number,
+        sizeY: number,
+        renderable: Renderable | undefined,
+        tag: bigint,
+        type: number,
+        def: ObjectDefinition
+    ): boolean {
         if (!renderable) {
             return true;
         }
@@ -157,7 +247,20 @@ export class Scene {
         const endX = tileX + sizeX - 1;
         const endY = tileY + sizeY - 1;
 
-        const gameObject = new GameObject(plane, sceneX, sceneY, sceneHeight, renderable, startX, startY, endX, endY, tag, type, def);
+        const gameObject = new GameObject(
+            plane,
+            sceneX,
+            sceneY,
+            sceneHeight,
+            renderable,
+            startX,
+            startY,
+            endX,
+            endY,
+            tag,
+            type,
+            def
+        );
 
         for (let x = tileX; x < tileX + sizeX; x++) {
             for (let y = tileY; y < tileY + sizeY; y++) {
@@ -174,12 +277,17 @@ export class Scene {
         return true;
     }
 
-    updateWallDecorationDisplacement(plane: number, tileX: number, tileY: number, displacement: number) {
+    updateWallDecorationDisplacement(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        displacement: number
+    ) {
         const tile = this.tiles[plane][tileX][tileY];
         if (tile && tile.wallDecoration) {
             const decor = tile.wallDecoration;
-            decor.offsetX = (displacement * decor.offsetX / 16) | 0;
-            decor.offsetY = (displacement * decor.offsetY / 16) | 0;
+            decor.offsetX = ((displacement * decor.offsetX) / 16) | 0;
+            decor.offsetY = ((displacement * decor.offsetY) / 16) | 0;
         }
     }
 
@@ -188,7 +296,10 @@ export class Scene {
         return (tile && tile.wallObject && tile.wallObject.tag) || 0n;
     }
 
-    transformObject(regionLoader: RegionLoader, def: ObjectDefinition): ObjectDefinition | undefined {
+    transformObject(
+        regionLoader: RegionLoader,
+        def: ObjectDefinition
+    ): ObjectDefinition | undefined {
         if (def.transforms && def.transforms.length > 0) {
             let transformIndex: number | undefined = undefined;
             if (def.transformVarbit !== -1) {
@@ -197,7 +308,7 @@ export class Scene {
                 transformIndex = this.varps.get(def.transformVarp);
             }
             if (transformIndex === undefined) {
-                transformIndex = def.transforms.findIndex(id => id !== -1);
+                transformIndex = def.transforms.findIndex((id) => id !== -1);
                 if (transformIndex !== -1) {
                     if (def.transformVarbit !== -1) {
                         this.varbits.set(def.transformVarbit, transformIndex);
@@ -218,8 +329,18 @@ export class Scene {
         return def;
     }
 
-    addObject(regionLoader: RegionLoader, modelLoader: ObjectModelLoader, objOcclusionOnly: boolean, expandedTileHeights: Int32Array[][],
-        plane: number, tileX: number, tileY: number, objectId: number, rotation: number, type: number) {
+    addObject(
+        regionLoader: RegionLoader,
+        modelLoader: ObjectModelLoader,
+        objOcclusionOnly: boolean,
+        expandedTileHeights: Int32Array[][],
+        plane: number,
+        tileX: number,
+        tileY: number,
+        objectId: number,
+        rotation: number,
+        type: number
+    ) {
         let realPlane = plane;
         if ((this.tileRenderFlags[1][tileX][tileY] & 2) === 2) {
             realPlane = plane - 1;
@@ -257,7 +378,7 @@ export class Scene {
         let endX: number;
         if (sizeX + tileX < heightMapSize) {
             startX = (sizeX >> 1) + tileX;
-            endX = (sizeX + 1 >> 1) + tileX;
+            endX = ((sizeX + 1) >> 1) + tileX;
         } else {
             startX = tileX;
             endX = tileX + 1;
@@ -267,124 +388,325 @@ export class Scene {
         let endY: number;
         if (sizeY + tileY < heightMapSize) {
             startY = (sizeY >> 1) + tileY;
-            endY = tileY + (sizeY + 1 >> 1);
+            endY = tileY + ((sizeY + 1) >> 1);
         } else {
             startY = tileY;
             endY = tileY + 1;
         }
 
         const heightMap = expandedTileHeights[plane];
-        const centerHeight = heightMap[endX][endY] + heightMap[startX][endY] + heightMap[startX][startY] + heightMap[endX][startY] >> 2;
+        const centerHeight =
+            (heightMap[endX][endY] +
+                heightMap[startX][endY] +
+                heightMap[startX][startY] +
+                heightMap[endX][startY]) >>
+            2;
         const sceneX = (tileX << 7) + (sizeX << 6);
         const sceneY = (tileY << 7) + (sizeY << 6);
 
         let tag = 0n;
 
         if (!objOcclusionOnly) {
-            tag = calculateEntityTag(tileX, tileY, EntityType.OBJECT, def.int1 === 0, objectId);
+            tag = calculateEntityTag(
+                tileX,
+                tileY,
+                EntityType.OBJECT,
+                def.int1 === 0,
+                objectId
+            );
         }
 
         const isDynamic = def.animationId !== -1 || !!def.transforms;
 
-        const contourGroundInfo: ContourGroundInfo = { heightMap, sceneX, sceneHeight: centerHeight, sceneY };
+        const contourGroundInfo: ContourGroundInfo = {
+            heightMap,
+            sceneX,
+            sceneHeight: centerHeight,
+            sceneY,
+        };
 
         if (type === ObjectType.FLOOR_DECORATION) {
             if (!objOcclusionOnly) {
                 let renderable: Renderable | undefined;
                 if (def.animationId === -1) {
-                    renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                    renderable = modelLoader.getObjectModel(
+                        defTransform,
+                        type,
+                        rotation,
+                        contourGroundInfo
+                    );
                 } else {
-                    renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                    renderable = new AnimatedObject(
+                        def.id,
+                        type,
+                        rotation,
+                        plane,
+                        tileX,
+                        tileY,
+                        def.animationId,
+                        def.randomAnimStartFrame
+                    );
                 }
 
-                this.newFloorDecoration(plane, tileX, tileY, centerHeight, renderable, tag, type, def);
+                this.newFloorDecoration(
+                    plane,
+                    tileX,
+                    tileY,
+                    centerHeight,
+                    renderable,
+                    tag,
+                    type,
+                    def
+                );
                 if (def.clipType === 1 && collisionMap) {
                     collisionMap.setBlockedByFloorDec(tileX, tileY);
                 }
             }
-        } else if (type !== ObjectType.OBJECT && type !== ObjectType.OBJECT_DIAGIONAL) {
+        } else if (
+            type !== ObjectType.OBJECT &&
+            type !== ObjectType.OBJECT_DIAGIONAL
+        ) {
             // roofs
             if (type >= ObjectType.ROOF_SLOPED) {
                 if (!objOcclusionOnly) {
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            type,
+                            rotation,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            type,
+                            rotation,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
+                    this.newGameObject(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        1,
+                        1,
+                        renderable,
+                        tag,
+                        type,
+                        def
+                    );
 
                     if (def.clipType !== 0 && collisionMap) {
-                        collisionMap.addObject(tileX, tileY, sizeX, sizeY, def.blocksProjectile);
+                        collisionMap.addObject(
+                            tileX,
+                            tileY,
+                            sizeX,
+                            sizeY,
+                            def.blocksProjectile
+                        );
                     }
                 }
             } else if (type === ObjectType.WALL) {
                 if (!objOcclusionOnly) {
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            type,
+                            rotation,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            type,
+                            rotation,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
+                    this.newWall(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable,
+                        undefined,
+                        tag,
+                        type,
+                        def
+                    );
 
                     if (def.clipType !== 0 && collisionMap) {
-                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                        collisionMap.addWall(
+                            tileX,
+                            tileY,
+                            type,
+                            rotation,
+                            def.blocksProjectile
+                        );
                     }
 
-                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    if (
+                        def.decorDisplacement !=
+                        ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
+                    ) {
+                        this.updateWallDecorationDisplacement(
+                            plane,
+                            tileX,
+                            tileY,
+                            def.decorDisplacement
+                        );
                     }
                 }
 
                 if (rotation === 0) {
                     if (def.clipped) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
                     }
                 } else if (rotation === 1) {
                     if (def.clipped) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
                     }
                 } else if (rotation === 2) {
                     if (def.clipped) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
                     }
                 } else if (rotation === 3) {
                     if (def.clipped) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
                     }
                 }
             } else if (type === ObjectType.WALL_TRI_CORNER) {
                 if (!objOcclusionOnly) {
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            type,
+                            rotation,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            type,
+                            rotation,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
+                    this.newWall(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable,
+                        undefined,
+                        tag,
+                        type,
+                        def
+                    );
 
                     if (def.clipType !== 0 && collisionMap) {
-                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                        collisionMap.addWall(
+                            tileX,
+                            tileY,
+                            type,
+                            rotation,
+                            def.blocksProjectile
+                        );
                     }
                 }
 
                 if (def.clipped) {
                     if (rotation === 0) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
                     } else if (rotation === 1) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
                     } else if (rotation === 2) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
                     } else if (rotation === 3) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
                     }
                 }
             } else if (type === ObjectType.WALL_CORNER) {
@@ -392,170 +714,491 @@ export class Scene {
                     let renderable0: Renderable | undefined;
                     let renderable1: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable0 = modelLoader.getObjectModel(defTransform, type, rotation + 4, contourGroundInfo);
-                        renderable1 = modelLoader.getObjectModel(defTransform, type, rotation + 1 & 3, contourGroundInfo);
+                        renderable0 = modelLoader.getObjectModel(
+                            defTransform,
+                            type,
+                            rotation + 4,
+                            contourGroundInfo
+                        );
+                        renderable1 = modelLoader.getObjectModel(
+                            defTransform,
+                            type,
+                            (rotation + 1) & 3,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable0 = new AnimatedObject(def.id, type, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
-                        renderable1 = new AnimatedObject(def.id, type, rotation + 1 & 3, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable0 = new AnimatedObject(
+                            def.id,
+                            type,
+                            rotation + 4,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
+                        renderable1 = new AnimatedObject(
+                            def.id,
+                            type,
+                            (rotation + 1) & 3,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newWall(plane, tileX, tileY, centerHeight, renderable0, renderable1, tag, type, def);
+                    this.newWall(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable0,
+                        renderable1,
+                        tag,
+                        type,
+                        def
+                    );
 
                     if (def.clipType !== 0 && collisionMap) {
-                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                        collisionMap.addWall(
+                            tileX,
+                            tileY,
+                            type,
+                            rotation,
+                            def.blocksProjectile
+                        );
                     }
 
-                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    if (
+                        def.decorDisplacement !=
+                        ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
+                    ) {
+                        this.updateWallDecorationDisplacement(
+                            plane,
+                            tileX,
+                            tileY,
+                            def.decorDisplacement
+                        );
                     }
                 }
             } else if (type === ObjectType.WALL_RECT_CORNER) {
                 if (!objOcclusionOnly) {
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            type,
+                            rotation,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            type,
+                            rotation,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newWall(plane, tileX, tileY, centerHeight, renderable, undefined, tag, type, def);
+                    this.newWall(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable,
+                        undefined,
+                        tag,
+                        type,
+                        def
+                    );
 
                     if (def.clipType !== 0 && collisionMap) {
-                        collisionMap.addWall(tileX, tileY, type, rotation, def.blocksProjectile);
+                        collisionMap.addWall(
+                            tileX,
+                            tileY,
+                            type,
+                            rotation,
+                            def.blocksProjectile
+                        );
                     }
                 }
 
                 if (def.clipped) {
                     if (rotation === 0) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
                     } else if (rotation === 1) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY + 1, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY + 1,
+                            plane,
+                            50
+                        );
                     } else if (rotation === 2) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + 1, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + 1,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
                     } else if (rotation === 3) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX, baseY + tileY, plane, 50);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX,
+                            baseY + tileY,
+                            plane,
+                            50
+                        );
                     }
                 }
             } else if (type === ObjectType.WALL_DIAGONAL) {
                 if (!objOcclusionOnly) {
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            type,
+                            rotation,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            type,
+                            rotation,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newGameObject(plane, tileX, tileY, centerHeight, 1, 1, renderable, tag, type, def);
+                    this.newGameObject(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        1,
+                        1,
+                        renderable,
+                        tag,
+                        type,
+                        def
+                    );
                     if (def.clipType !== 0 && collisionMap) {
-                        collisionMap.addObject(tileX, tileY, sizeX, sizeY, def.blocksProjectile);
+                        collisionMap.addObject(
+                            tileX,
+                            tileY,
+                            sizeX,
+                            sizeY,
+                            def.blocksProjectile
+                        );
                     }
 
-                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    if (
+                        def.decorDisplacement !=
+                        ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
+                    ) {
+                        this.updateWallDecorationDisplacement(
+                            plane,
+                            tileX,
+                            tileY,
+                            def.decorDisplacement
+                        );
                     }
                 }
             } else if (type === ObjectType.WALL_DECORATION_INSIDE) {
                 if (!objOcclusionOnly) {
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, 0, 0, tag, type, def);
+                    this.newWallDecoration(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable,
+                        undefined,
+                        0,
+                        0,
+                        tag,
+                        type,
+                        def
+                    );
 
-                    if (def.decorDisplacement != ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT) {
-                        this.updateWallDecorationDisplacement(plane, tileX, tileY, def.decorDisplacement);
+                    if (
+                        def.decorDisplacement !=
+                        ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
+                    ) {
+                        this.updateWallDecorationDisplacement(
+                            plane,
+                            tileX,
+                            tileY,
+                            def.decorDisplacement
+                        );
                     }
                 }
             } else if (type === ObjectType.WALL_DECORATION_OUTSIDE) {
                 if (!objOcclusionOnly) {
-                    let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT;
+                    let displacement =
+                        ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT;
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
                     if (wallTag !== 0n) {
-                        displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement;
+                        displacement = regionLoader.getObjectDef(
+                            getIdFromEntityTag(wallTag)
+                        ).decorDisplacement;
                     }
 
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    const displacementX = displacement * Scene.displacementX[rotation];
-                    const displacementY = displacement * Scene.displacementY[rotation];
+                    const displacementX =
+                        displacement * Scene.displacementX[rotation];
+                    const displacementY =
+                        displacement * Scene.displacementY[rotation];
 
-                    this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, displacementX, displacementY, tag, type, def);
+                    this.newWallDecoration(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable,
+                        undefined,
+                        displacementX,
+                        displacementY,
+                        tag,
+                        type,
+                        def
+                    );
                 }
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_OUTSIDE) {
                 if (!objOcclusionOnly) {
-                    let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
+                    let displacement =
+                        ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
                     if (wallTag !== 0n) {
-                        displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement / 2;
+                        displacement =
+                            regionLoader.getObjectDef(
+                                getIdFromEntityTag(wallTag)
+                            ).decorDisplacement / 2;
                     }
 
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation + 4,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation + 4,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
-                    const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
+                    const displacementX =
+                        displacement * Scene.diagonalDisplacementX[rotation];
+                    const displacementY =
+                        displacement * Scene.diagonalDisplacementY[rotation];
 
-                    this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, displacementX, displacementY, tag, type, def);
+                    this.newWallDecoration(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable,
+                        undefined,
+                        displacementX,
+                        displacementY,
+                        tag,
+                        type,
+                        def
+                    );
                 }
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_INSIDE) {
                 if (!objOcclusionOnly) {
-                    const insideRotation = rotation + 2 & 3;
+                    const insideRotation = (rotation + 2) & 3;
 
                     let renderable: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, contourGroundInfo);
+                        renderable = modelLoader.getObjectModel(
+                            defTransform,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            insideRotation + 4,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable = new AnimatedObject(
+                            def.id,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            insideRotation + 4,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable, undefined, 0, 0, tag, type, def);
+                    this.newWallDecoration(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable,
+                        undefined,
+                        0,
+                        0,
+                        tag,
+                        type,
+                        def
+                    );
                 }
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_DOUBLE) {
                 if (!objOcclusionOnly) {
-                    let displacement = ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
+                    let displacement =
+                        ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
                     if (wallTag !== 0n) {
-                        displacement = regionLoader.getObjectDef(getIdFromEntityTag(wallTag)).decorDisplacement / 2;
+                        displacement =
+                            regionLoader.getObjectDef(
+                                getIdFromEntityTag(wallTag)
+                            ).decorDisplacement / 2;
                     }
 
-                    const insideRotation = rotation + 2 & 3;
+                    const insideRotation = (rotation + 2) & 3;
 
                     let renderable0: Renderable | undefined;
                     let renderable1: Renderable | undefined;
                     if (def.animationId === -1) {
-                        renderable0 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, contourGroundInfo);
-                        renderable1 = modelLoader.getObjectModel(defTransform, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, contourGroundInfo);
+                        renderable0 = modelLoader.getObjectModel(
+                            defTransform,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation + 4,
+                            contourGroundInfo
+                        );
+                        renderable1 = modelLoader.getObjectModel(
+                            defTransform,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            insideRotation + 4,
+                            contourGroundInfo
+                        );
                     } else {
-                        renderable0 = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, rotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
-                        renderable1 = new AnimatedObject(def.id, ObjectType.WALL_DECORATION_INSIDE, insideRotation + 4, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                        renderable0 = new AnimatedObject(
+                            def.id,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            rotation + 4,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
+                        renderable1 = new AnimatedObject(
+                            def.id,
+                            ObjectType.WALL_DECORATION_INSIDE,
+                            insideRotation + 4,
+                            plane,
+                            tileX,
+                            tileY,
+                            def.animationId,
+                            def.randomAnimStartFrame
+                        );
                     }
 
-                    const displacementX = displacement * Scene.diagonalDisplacementX[rotation];
-                    const displacementY = displacement * Scene.diagonalDisplacementY[rotation];
+                    const displacementX =
+                        displacement * Scene.diagonalDisplacementX[rotation];
+                    const displacementY =
+                        displacement * Scene.diagonalDisplacementY[rotation];
 
-                    this.newWallDecoration(plane, tileX, tileY, centerHeight, renderable0, renderable1, displacementX, displacementY, tag, type, def);
+                    this.newWallDecoration(
+                        plane,
+                        tileX,
+                        tileY,
+                        centerHeight,
+                        renderable0,
+                        renderable1,
+                        displacementX,
+                        displacementY,
+                        tag,
+                        type,
+                        def
+                    );
                 }
             }
         } else if (objOcclusionOnly) {
-            if (def.clipped && (tileX + sizeX >= 63 || tileY + sizeY >= 63 || tileX <= 1 || tileY <= 1)) {
+            if (
+                def.clipped &&
+                (tileX + sizeX >= 63 ||
+                    tileY + sizeY >= 63 ||
+                    tileX <= 1 ||
+                    tileY <= 1)
+            ) {
                 let lightOcclusion = 15;
 
                 if (def.animationId === -1 && !def.mergeNormals) {
-                    const model = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                    const model = modelLoader.getObjectModel(
+                        defTransform,
+                        type,
+                        rotation,
+                        contourGroundInfo
+                    );
                     if (model instanceof Model) {
-                        lightOcclusion = model.getXZRadius() / 4 | 0;
+                        lightOcclusion = (model.getXZRadius() / 4) | 0;
                         if (lightOcclusion > 30) {
                             lightOcclusion = 30;
                         }
@@ -564,22 +1207,56 @@ export class Scene {
 
                 for (let sx = 0; sx <= sizeX; sx++) {
                     for (let sy = 0; sy <= sizeY; sy++) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + sx, baseY + tileY + sy, plane, lightOcclusion);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + sx,
+                            baseY + tileY + sy,
+                            plane,
+                            lightOcclusion
+                        );
                     }
                 }
             }
         } else {
             let renderable: Renderable | undefined;
             if (def.animationId === -1) {
-                renderable = modelLoader.getObjectModel(defTransform, type, rotation, contourGroundInfo);
+                renderable = modelLoader.getObjectModel(
+                    defTransform,
+                    type,
+                    rotation,
+                    contourGroundInfo
+                );
             } else {
-                renderable = new AnimatedObject(def.id, type, rotation, plane, tileX, tileY, def.animationId, def.randomAnimStartFrame);
+                renderable = new AnimatedObject(
+                    def.id,
+                    type,
+                    rotation,
+                    plane,
+                    tileX,
+                    tileY,
+                    def.animationId,
+                    def.randomAnimStartFrame
+                );
             }
 
-            if (renderable && this.newGameObject(plane, tileX, tileY, centerHeight, sizeX, sizeY, renderable, tag, type, def) && def.clipped) {
+            if (
+                renderable &&
+                this.newGameObject(
+                    plane,
+                    tileX,
+                    tileY,
+                    centerHeight,
+                    sizeX,
+                    sizeY,
+                    renderable,
+                    tag,
+                    type,
+                    def
+                ) &&
+                def.clipped
+            ) {
                 let lightOcclusion = 15;
                 if (renderable instanceof Model && def.animationId === -1) {
-                    lightOcclusion = renderable.getXZRadius() / 4 | 0;
+                    lightOcclusion = (renderable.getXZRadius() / 4) | 0;
                     if (lightOcclusion > 30) {
                         lightOcclusion = 30;
                     }
@@ -587,18 +1264,36 @@ export class Scene {
 
                 for (let sx = 0; sx <= sizeX; sx++) {
                     for (let sy = 0; sy <= sizeY; sy++) {
-                        regionLoader.setObjectLightOcclusion(baseX + tileX + sx, baseY + tileY + sy, plane, lightOcclusion);
+                        regionLoader.setObjectLightOcclusion(
+                            baseX + tileX + sx,
+                            baseY + tileY + sy,
+                            plane,
+                            lightOcclusion
+                        );
                     }
                 }
             }
 
             if (def.clipType !== 0 && collisionMap) {
-                collisionMap.addObject(tileX, tileY, sizeX, sizeY, def.blocksProjectile);
+                collisionMap.addObject(
+                    tileX,
+                    tileY,
+                    sizeX,
+                    sizeY,
+                    def.blocksProjectile
+                );
             }
         }
     }
 
-    mergeLargeObjectNormals(model: ModelData, startPlane: number, tileX: number, tileY: number, sizeX: number, sizeY: number) {
+    mergeLargeObjectNormals(
+        model: ModelData,
+        startPlane: number,
+        tileX: number,
+        tileY: number,
+        sizeX: number,
+        sizeY: number
+    ) {
         let hideOccludedFaces = true;
         let startX = tileX;
         const endX = tileX + sizeX;
@@ -613,25 +1308,97 @@ export class Scene {
             for (let localX = startX; localX <= endX; localX++) {
                 if (localX >= 0 && localX < this.sizeX) {
                     for (let localY = startY; localY <= endY; localY++) {
-                        if (localY >= 0 && localY < this.sizeY && (!hideOccludedFaces || localX >= endX || localY >= endY || localY < tileY && tileX != localX)) {
+                        if (
+                            localY >= 0 &&
+                            localY < this.sizeY &&
+                            (!hideOccludedFaces ||
+                                localX >= endX ||
+                                localY >= endY ||
+                                (localY < tileY && tileX != localX))
+                        ) {
                             const tile = this.tiles[plane][localX][localY];
                             if (tile) {
-                                const var16 = ((this.tileHeights[plane][localX + 1][localY] + this.tileHeights[plane][localX + 1][localY + 1] + this.tileHeights[plane][localX][localY] + this.tileHeights[plane][localX][localY + 1]) / 4 | 0) - ((this.tileHeights[startPlane][tileX + 1][tileY] + this.tileHeights[startPlane][tileX][tileY] + this.tileHeights[startPlane][tileX + 1][tileY + 1] + this.tileHeights[startPlane][tileX][tileY + 1]) / 4 | 0);
+                                const var16 =
+                                    (((this.tileHeights[plane][localX + 1][
+                                        localY
+                                    ] +
+                                        this.tileHeights[plane][localX + 1][
+                                            localY + 1
+                                        ] +
+                                        this.tileHeights[plane][localX][
+                                            localY
+                                        ] +
+                                        this.tileHeights[plane][localX][
+                                            localY + 1
+                                        ]) /
+                                        4) |
+                                        0) -
+                                    (((this.tileHeights[startPlane][tileX + 1][
+                                        tileY
+                                    ] +
+                                        this.tileHeights[startPlane][tileX][
+                                            tileY
+                                        ] +
+                                        this.tileHeights[startPlane][tileX + 1][
+                                            tileY + 1
+                                        ] +
+                                        this.tileHeights[startPlane][tileX][
+                                            tileY + 1
+                                        ]) /
+                                        4) |
+                                        0);
                                 const wall = tile.wallObject;
                                 if (wall) {
                                     if (wall.renderable0 instanceof ModelData) {
-                                        ModelData.mergeNormals(model, wall.renderable0, (1 - sizeX) * 64 + (localX - tileX) * 128, var16, (localY - tileY) * 128 + (1 - sizeY) * 64, hideOccludedFaces);
+                                        ModelData.mergeNormals(
+                                            model,
+                                            wall.renderable0,
+                                            (1 - sizeX) * 64 +
+                                                (localX - tileX) * 128,
+                                            var16,
+                                            (localY - tileY) * 128 +
+                                                (1 - sizeY) * 64,
+                                            hideOccludedFaces
+                                        );
                                     }
                                     if (wall.renderable1 instanceof ModelData) {
-                                        ModelData.mergeNormals(model, wall.renderable1, (1 - sizeX) * 64 + (localX - tileX) * 128, var16, (localY - tileY) * 128 + (1 - sizeY) * 64, hideOccludedFaces);
+                                        ModelData.mergeNormals(
+                                            model,
+                                            wall.renderable1,
+                                            (1 - sizeX) * 64 +
+                                                (localX - tileX) * 128,
+                                            var16,
+                                            (localY - tileY) * 128 +
+                                                (1 - sizeY) * 64,
+                                            hideOccludedFaces
+                                        );
                                     }
                                 }
 
                                 for (const gameObject of tile.gameObjects) {
-                                    if (gameObject.renderable instanceof ModelData) {
-                                        const var21 = gameObject.endX - gameObject.startX + 1;
-                                        const var22 = gameObject.endY - gameObject.startY + 1;
-                                        ModelData.mergeNormals(model, gameObject.renderable, (var21 - sizeX) * 64 + (gameObject.startX - tileX) * 128, var16, (gameObject.startY - tileY) * 128 + (var22 - sizeY) * 64, hideOccludedFaces);
+                                    if (
+                                        gameObject.renderable instanceof
+                                        ModelData
+                                    ) {
+                                        const var21 =
+                                            gameObject.endX -
+                                            gameObject.startX +
+                                            1;
+                                        const var22 =
+                                            gameObject.endY -
+                                            gameObject.startY +
+                                            1;
+                                        ModelData.mergeNormals(
+                                            model,
+                                            gameObject.renderable,
+                                            (var21 - sizeX) * 64 +
+                                                (gameObject.startX - tileX) *
+                                                    128,
+                                            var16,
+                                            (gameObject.startY - tileY) * 128 +
+                                                (var22 - sizeY) * 64,
+                                            hideOccludedFaces
+                                        );
                                     }
                                 }
                             }
@@ -645,35 +1412,83 @@ export class Scene {
         }
     }
 
-    mergeFloorNormals(model: ModelData, plane: number, tileX: number, tileY: number) {
+    mergeFloorNormals(
+        model: ModelData,
+        plane: number,
+        tileX: number,
+        tileY: number
+    ) {
         if (tileX < this.sizeX - 1) {
             const tile = this.tiles[plane][tileX + 1][tileY];
-            if (tile && tile.floorDecoration && tile.floorDecoration.renderable instanceof ModelData) {
-                ModelData.mergeNormals(model, tile.floorDecoration.renderable, 128, 0, 0, true);
+            if (
+                tile &&
+                tile.floorDecoration &&
+                tile.floorDecoration.renderable instanceof ModelData
+            ) {
+                ModelData.mergeNormals(
+                    model,
+                    tile.floorDecoration.renderable,
+                    128,
+                    0,
+                    0,
+                    true
+                );
             }
         }
 
         if (tileY < this.sizeY - 1) {
             const tile = this.tiles[plane][tileX][tileY + 1];
-            if (tile && tile.floorDecoration && tile.floorDecoration.renderable instanceof ModelData) {
-                ModelData.mergeNormals(model, tile.floorDecoration.renderable, 0, 0, 128, true);
+            if (
+                tile &&
+                tile.floorDecoration &&
+                tile.floorDecoration.renderable instanceof ModelData
+            ) {
+                ModelData.mergeNormals(
+                    model,
+                    tile.floorDecoration.renderable,
+                    0,
+                    0,
+                    128,
+                    true
+                );
             }
         }
 
         if (tileX < this.sizeX - 1 && tileY < this.sizeY - 1) {
             const tile = this.tiles[plane][tileX + 1][tileY + 1];
-            if (tile && tile.floorDecoration && tile.floorDecoration.renderable instanceof ModelData) {
-                ModelData.mergeNormals(model, tile.floorDecoration.renderable, 128, 0, 128, true);
+            if (
+                tile &&
+                tile.floorDecoration &&
+                tile.floorDecoration.renderable instanceof ModelData
+            ) {
+                ModelData.mergeNormals(
+                    model,
+                    tile.floorDecoration.renderable,
+                    128,
+                    0,
+                    128,
+                    true
+                );
             }
         }
 
         if (tileX < this.sizeX - 1 && tileY > 0) {
             const tile = this.tiles[plane][tileX + 1][tileY - 1];
-            if (tile && tile.floorDecoration && tile.floorDecoration.renderable instanceof ModelData) {
-                ModelData.mergeNormals(model, tile.floorDecoration.renderable, 128, 0, -128, true);
+            if (
+                tile &&
+                tile.floorDecoration &&
+                tile.floorDecoration.renderable instanceof ModelData
+            ) {
+                ModelData.mergeNormals(
+                    model,
+                    tile.floorDecoration.renderable,
+                    128,
+                    0,
+                    -128,
+                    true
+                );
             }
         }
-
     }
 
     applyLighting(lightX: number, lightY: number, lightZ: number) {
@@ -687,38 +1502,108 @@ export class Scene {
                     const wall = tile.wallObject;
                     if (wall && wall.renderable0 instanceof ModelData) {
                         const model0 = wall.renderable0;
-                        this.mergeLargeObjectNormals(model0, plane, tileX, tileY, 1, 1);
+                        this.mergeLargeObjectNormals(
+                            model0,
+                            plane,
+                            tileX,
+                            tileY,
+                            1,
+                            1
+                        );
 
                         if (wall.renderable1 instanceof ModelData) {
                             const model1 = wall.renderable1;
-                            this.mergeLargeObjectNormals(model1, plane, tileX, tileY, 1, 1);
-                            ModelData.mergeNormals(model0, model1, 0, 0, 0, false);
-                            wall.renderable1 = model1.light(model1.ambient, model1.contrast, lightX, lightY, lightZ);
+                            this.mergeLargeObjectNormals(
+                                model1,
+                                plane,
+                                tileX,
+                                tileY,
+                                1,
+                                1
+                            );
+                            ModelData.mergeNormals(
+                                model0,
+                                model1,
+                                0,
+                                0,
+                                0,
+                                false
+                            );
+                            wall.renderable1 = model1.light(
+                                model1.ambient,
+                                model1.contrast,
+                                lightX,
+                                lightY,
+                                lightZ
+                            );
                         }
 
-                        wall.renderable0 = model0.light(model0.ambient, model0.contrast, lightX, lightY, lightZ);
+                        wall.renderable0 = model0.light(
+                            model0.ambient,
+                            model0.contrast,
+                            lightX,
+                            lightY,
+                            lightZ
+                        );
                     }
 
                     for (const gameObject of tile.gameObjects) {
                         if (gameObject.renderable instanceof ModelData) {
-                            this.mergeLargeObjectNormals(gameObject.renderable, plane, tileX, tileY, gameObject.endX - gameObject.startX + 1, gameObject.endY - gameObject.startY + 1);
-                            gameObject.renderable = gameObject.renderable.light(gameObject.renderable.ambient, gameObject.renderable.contrast, lightX, lightY, lightZ);
+                            this.mergeLargeObjectNormals(
+                                gameObject.renderable,
+                                plane,
+                                tileX,
+                                tileY,
+                                gameObject.endX - gameObject.startX + 1,
+                                gameObject.endY - gameObject.startY + 1
+                            );
+                            gameObject.renderable = gameObject.renderable.light(
+                                gameObject.renderable.ambient,
+                                gameObject.renderable.contrast,
+                                lightX,
+                                lightY,
+                                lightZ
+                            );
                         }
                     }
 
                     const floorDecoration = tile.floorDecoration;
-                    if (floorDecoration && floorDecoration.renderable instanceof ModelData) {
-                        this.mergeFloorNormals(floorDecoration.renderable, plane, tileX, tileY);
-                        floorDecoration.renderable = floorDecoration.renderable.light(floorDecoration.renderable.ambient, floorDecoration.renderable.contrast, lightX, lightY, lightZ);
+                    if (
+                        floorDecoration &&
+                        floorDecoration.renderable instanceof ModelData
+                    ) {
+                        this.mergeFloorNormals(
+                            floorDecoration.renderable,
+                            plane,
+                            tileX,
+                            tileY
+                        );
+                        floorDecoration.renderable =
+                            floorDecoration.renderable.light(
+                                floorDecoration.renderable.ambient,
+                                floorDecoration.renderable.contrast,
+                                lightX,
+                                lightY,
+                                lightZ
+                            );
                     }
                 }
             }
         }
     }
 
-    decodeLandscape(regionLoader: RegionLoader, objectModelLoader: ObjectModelLoader, data: Int8Array, objOcclusionOnly: boolean = false): void {
+    decodeLandscape(
+        regionLoader: RegionLoader,
+        objectModelLoader: ObjectModelLoader,
+        data: Int8Array,
+        objOcclusionOnly: boolean = false
+    ): void {
         // Needed for larger objects that spill over to the neighboring regions
-        const expandedTileHeights = regionLoader.loadHeightMap(this.regionX, this.regionY, 72);
+        const expandedTileHeights = regionLoader.loadHeightMap(
+            this.regionX,
+            this.regionY,
+            72
+        );
 
         const buffer = new ByteBuffer(data);
 
@@ -732,8 +1617,8 @@ export class Scene {
             while ((posDelta = buffer.readUnsignedSmart()) !== 0) {
                 pos += posDelta - 1;
 
-                const localX = (pos >> 6 & 0x3f);
-                const localY = (pos & 0x3f);
+                const localX = (pos >> 6) & 0x3f;
+                const localY = pos & 0x3f;
                 const plane = pos >> 12;
 
                 const attributes = buffer.readUnsignedByte();
@@ -741,12 +1626,27 @@ export class Scene {
                 const type = attributes >> 2;
                 const rotation = attributes & 0x3;
 
-                this.addObject(regionLoader, objectModelLoader, objOcclusionOnly, expandedTileHeights, plane, localX, localY, id, rotation, type);
+                this.addObject(
+                    regionLoader,
+                    objectModelLoader,
+                    objOcclusionOnly,
+                    expandedTileHeights,
+                    plane,
+                    localX,
+                    localY,
+                    id,
+                    rotation,
+                    type
+                );
             }
         }
     }
 
-    readTerrainValue(buffer: ByteBuffer, newFormat: boolean, signed: boolean = false) {
+    readTerrainValue(
+        buffer: ByteBuffer,
+        newFormat: boolean,
+        signed: boolean = false
+    ) {
         if (newFormat) {
             return signed ? buffer.readShort() : buffer.readUnsignedShort();
         } else {
@@ -754,13 +1654,27 @@ export class Scene {
         }
     }
 
-    decodeTerrain(data: Int8Array, offsetX: number, offsetY: number, baseX: number, baseY: number): void {
+    decodeTerrain(
+        data: Int8Array,
+        offsetX: number,
+        offsetY: number,
+        baseX: number,
+        baseY: number
+    ): void {
         const buffer = new ByteBuffer(data);
 
         for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
             for (let x = 0; x < Scene.MAP_SIZE; x++) {
                 for (let y = 0; y < Scene.MAP_SIZE; y++) {
-                    this.decodeTile(buffer, plane, x + offsetX, y + offsetY, baseX, baseY, 0);
+                    this.decodeTile(
+                        buffer,
+                        plane,
+                        x + offsetX,
+                        y + offsetY,
+                        baseX,
+                        baseY,
+                        0
+                    );
                 }
             }
         }
@@ -775,7 +1689,10 @@ export class Scene {
                         }
 
                         if (realPlane >= 0) {
-                            this.collisionMaps[realPlane].setBlockedByFloor(x, y);
+                            this.collisionMaps[realPlane].setBlockedByFloor(
+                                x,
+                                y
+                            );
                         }
                     }
                 }
@@ -783,7 +1700,16 @@ export class Scene {
         }
     }
 
-    decodeTile(buffer: ByteBuffer, plane: number, x: number, y: number, baseX: number, baseY: number, rotationOffset: number, newFormat: boolean = true): void {
+    decodeTile(
+        buffer: ByteBuffer,
+        plane: number,
+        x: number,
+        y: number,
+        baseX: number,
+        baseY: number,
+        rotationOffset: number,
+        newFormat: boolean = true
+    ): void {
         if (x >= 0 && x < this.sizeX && y >= 0 && y < this.sizeY) {
             this.tileRenderFlags[plane][x][y] = 0;
 
@@ -793,9 +1719,11 @@ export class Scene {
                     if (plane == 0) {
                         const actualX = x + baseX + 932731;
                         const actualY = y + baseY + 556238;
-                        this.tileHeights[plane][x][y] = -generateHeight(actualX, actualY) * 8;
+                        this.tileHeights[plane][x][y] =
+                            -generateHeight(actualX, actualY) * 8;
                     } else {
-                        this.tileHeights[plane][x][y] = this.tileHeights[plane - 1][x][y] - 240;
+                        this.tileHeights[plane][x][y] =
+                            this.tileHeights[plane - 1][x][y] - 240;
                     }
                     break;
                 }
@@ -809,15 +1737,20 @@ export class Scene {
                     if (plane === 0) {
                         this.tileHeights[0][x][y] = -height * 8;
                     } else {
-                        this.tileHeights[plane][x][y] = this.tileHeights[plane - 1][x][y] - height * 8;
+                        this.tileHeights[plane][x][y] =
+                            this.tileHeights[plane - 1][x][y] - height * 8;
                     }
                     break;
                 }
 
                 if (v <= 49) {
-                    this.tileOverlays[plane][x][y] = this.readTerrainValue(buffer, newFormat);
+                    this.tileOverlays[plane][x][y] = this.readTerrainValue(
+                        buffer,
+                        newFormat
+                    );
                     this.tileShapes[plane][x][y] = (v - 2) / 4;
-                    this.tileRotations[plane][x][y] = v - 2 + rotationOffset & 3;
+                    this.tileRotations[plane][x][y] =
+                        (v - 2 + rotationOffset) & 3;
                 } else if (v <= 81) {
                     this.tileRenderFlags[plane][x][y] = v - 49;
                 } else {
@@ -843,7 +1776,12 @@ export class Scene {
         }
     }
 
-    newTileModel(plane: number, tileX: number, tileY: number, tileModel: SceneTileModel) {
+    newTileModel(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        tileModel: SceneTileModel
+    ) {
         this.ensureTileExists(plane, plane, tileX, tileY);
 
         this.tiles[plane][tileX][tileY].tileModel = tileModel;
@@ -860,14 +1798,20 @@ export class Scene {
         const tileRotations = this.tileRotations;
 
         // console.time(`blend region ${regionX}_${regionY}`);
-        const blendedColors = regionLoader.getBlendedUnderlayColors(this.regionX, this.regionY);
+        const blendedColors = regionLoader.getBlendedUnderlayColors(
+            this.regionX,
+            this.regionY
+        );
         // console.timeEnd(`blend region ${regionX}_${regionY}`);
 
         // console.time(`light region ${regionX}_${regionY}`);
-        const lightLevels = regionLoader.getLightLevels(this.regionX, this.regionY);
+        const lightLevels = regionLoader.getLightLevels(
+            this.regionX,
+            this.regionY
+        );
         // console.timeEnd(`light region ${regionX}_${regionY}`);
 
-        console.time('terrain');
+        console.time("terrain");
 
         for (let plane = 0; plane < this.planes; plane++) {
             for (let x = 0; x < this.sizeX; x++) {
@@ -891,13 +1835,37 @@ export class Scene {
                     let lightNw: number;
 
                     if (x === Scene.MAP_SIZE - 1 || y === Scene.MAP_SIZE - 1) {
-                        heightSe = regionLoader.getHeight(baseX + x + 1, baseY + y, plane);
-                        heightNe = regionLoader.getHeight(baseX + x + 1, baseY + y + 1, plane);
-                        heightNw = regionLoader.getHeight(baseX + x, baseY + y + 1, plane);
+                        heightSe = regionLoader.getHeight(
+                            baseX + x + 1,
+                            baseY + y,
+                            plane
+                        );
+                        heightNe = regionLoader.getHeight(
+                            baseX + x + 1,
+                            baseY + y + 1,
+                            plane
+                        );
+                        heightNw = regionLoader.getHeight(
+                            baseX + x,
+                            baseY + y + 1,
+                            plane
+                        );
 
-                        lightSe = regionLoader.getLightLevel(baseX + x + 1, baseY + y, plane);
-                        lightNe = regionLoader.getLightLevel(baseX + x + 1, baseY + y + 1, plane);
-                        lightNw = regionLoader.getLightLevel(baseX + x, baseY + y + 1, plane);
+                        lightSe = regionLoader.getLightLevel(
+                            baseX + x + 1,
+                            baseY + y,
+                            plane
+                        );
+                        lightNe = regionLoader.getLightLevel(
+                            baseX + x + 1,
+                            baseY + y + 1,
+                            plane
+                        );
+                        lightNw = regionLoader.getLightLevel(
+                            baseX + x,
+                            baseY + y + 1,
+                            plane
+                        );
                     } else {
                         heightSe = heights[plane][x + 1][y];
                         heightNe = heights[plane][x + 1][y + 1];
@@ -915,31 +1883,67 @@ export class Scene {
 
                     let tileModel: SceneTileModel;
                     if (overlayId == -1) {
-                        tileModel = new SceneTileModel(0, 0, -1, x, y, heightSw, heightSe, heightNe, heightNw,
-                            adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
-                            adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
-                            0, 0, 0, 0)
+                        tileModel = new SceneTileModel(
+                            0,
+                            0,
+                            -1,
+                            x,
+                            y,
+                            heightSw,
+                            heightSe,
+                            heightNe,
+                            heightNw,
+                            adjustUnderlayLight(underlayHsl, lightSw),
+                            adjustUnderlayLight(underlayHsl, lightSe),
+                            adjustUnderlayLight(underlayHsl, lightNe),
+                            adjustUnderlayLight(underlayHsl, lightNw),
+                            0,
+                            0,
+                            0,
+                            0
+                        );
                     } else {
                         const shape = tileShapes[plane][x][y] + 1;
                         const rotation = tileRotations[plane][x][y];
 
                         const overlay = regionLoader.getOverlayDef(overlayId);
 
-                        const textureId = textureProvider.getTextureIndex(overlay.textureId) || -1;
+                        const textureId =
+                            textureProvider.getTextureIndex(
+                                overlay.textureId
+                            ) || -1;
                         let overlayHsl: number;
                         if (textureId !== -1) {
                             overlayHsl = -1;
-                        } else if (overlay.primaryRgb == 0xFF00FF) {
+                        } else if (overlay.primaryRgb == 0xff00ff) {
                             overlayHsl = -2;
                         } else {
-                            overlayHsl = packHsl(overlay.hue, overlay.saturation, overlay.lightness);
+                            overlayHsl = packHsl(
+                                overlay.hue,
+                                overlay.saturation,
+                                overlay.lightness
+                            );
                         }
 
-                        tileModel = new SceneTileModel(shape, rotation, textureId, x, y, heightSw, heightSe, heightNe, heightNw,
-                            adjustUnderlayLight(underlayHsl, lightSw), adjustUnderlayLight(underlayHsl, lightSe),
-                            adjustUnderlayLight(underlayHsl, lightNe), adjustUnderlayLight(underlayHsl, lightNw),
-                            adjustOverlayLight(overlayHsl, lightSw), adjustOverlayLight(overlayHsl, lightSe),
-                            adjustOverlayLight(overlayHsl, lightNe), adjustOverlayLight(overlayHsl, lightNw))
+                        tileModel = new SceneTileModel(
+                            shape,
+                            rotation,
+                            textureId,
+                            x,
+                            y,
+                            heightSw,
+                            heightSe,
+                            heightNe,
+                            heightNw,
+                            adjustUnderlayLight(underlayHsl, lightSw),
+                            adjustUnderlayLight(underlayHsl, lightSe),
+                            adjustUnderlayLight(underlayHsl, lightNe),
+                            adjustUnderlayLight(underlayHsl, lightNw),
+                            adjustOverlayLight(overlayHsl, lightSw),
+                            adjustOverlayLight(overlayHsl, lightSe),
+                            adjustOverlayLight(overlayHsl, lightNe),
+                            adjustOverlayLight(overlayHsl, lightNw)
+                        );
                     }
 
                     this.newTileModel(plane, x, y, tileModel);
@@ -947,20 +1951,28 @@ export class Scene {
             }
         }
 
-        console.timeEnd('terrain');
+        console.timeEnd("terrain");
     }
 
     getTileMinPlane(plane: number, tileX: number, tileY: number): number {
         if ((this.tileRenderFlags[plane][tileX][tileY] & 0x8) !== 0) {
             return 0;
-        } else if (plane > 0 && (this.tileRenderFlags[plane][tileX][tileY] & 0x2) !== 0) {
+        } else if (
+            plane > 0 &&
+            (this.tileRenderFlags[plane][tileX][tileY] & 0x2) !== 0
+        ) {
             return plane - 1;
         } else {
             return plane;
         }
     }
 
-    setTileMinPlane(plane: number, tileX: number, tileY: number, minPlane: number) {
+    setTileMinPlane(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        minPlane: number
+    ) {
         const tile = this.tiles[plane][tileX][tileY];
         if (tile) {
             tile.minPlane = minPlane;
@@ -971,7 +1983,12 @@ export class Scene {
         for (let plane = 0; plane < this.planes; plane++) {
             for (let x = 0; x < this.sizeX; x++) {
                 for (let y = 0; y < this.sizeY; y++) {
-                    this.setTileMinPlane(plane, x, y, this.getTileMinPlane(plane, x, y));
+                    this.setTileMinPlane(
+                        plane,
+                        x,
+                        y,
+                        this.getTileMinPlane(plane, x, y)
+                    );
                 }
             }
         }

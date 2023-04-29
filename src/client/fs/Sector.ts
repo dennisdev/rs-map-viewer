@@ -35,8 +35,7 @@ export class Sector {
         public readonly chunk: number,
         public readonly nextSector: number,
         private readonly _data: Int8Array
-    ) {
-    }
+    ) {}
 
     get data(): Int8Array {
         return this._data;

@@ -9,7 +9,10 @@ export class AnimationFrame {
     static transformYCache: Int32Array = new Int32Array(500);
     static transformZCache: Int32Array = new Int32Array(500);
 
-    static load(data: Int8Array, skeletonLoader: SkeletonLoader): AnimationFrame {
+    static load(
+        data: Int8Array,
+        skeletonLoader: SkeletonLoader
+    ): AnimationFrame {
         const buf = new ByteBuffer(data);
         const dataBuf = new ByteBuffer(data);
 
@@ -17,7 +20,7 @@ export class AnimationFrame {
 
         const skeleton = skeletonLoader.getSkeleton(skeletonId);
         if (!skeleton) {
-            throw new Error('Invalid skeleton id: ' + skeletonId);
+            throw new Error("Invalid skeleton id: " + skeletonId);
         }
 
         const length = buf.readUnsignedByte();
@@ -35,9 +38,16 @@ export class AnimationFrame {
                 continue;
             }
             if (skeleton.types[i] !== 0) {
-                for (let transformIndex = i - 1; transformIndex > lastTransformIndex; transformIndex--) {
-                    if (skeleton.types[transformIndex] === TransformType.ORIGIN) {
-                        AnimationFrame.transformGroupCache[transformCount] = transformIndex;
+                for (
+                    let transformIndex = i - 1;
+                    transformIndex > lastTransformIndex;
+                    transformIndex--
+                ) {
+                    if (
+                        skeleton.types[transformIndex] === TransformType.ORIGIN
+                    ) {
+                        AnimationFrame.transformGroupCache[transformCount] =
+                            transformIndex;
                         AnimationFrame.transformXCache[transformCount] = 0;
                         AnimationFrame.transformYCache[transformCount] = 0;
                         AnimationFrame.transformZCache[transformCount] = 0;
@@ -55,19 +65,22 @@ export class AnimationFrame {
             }
 
             if ((flag & 0x1) != 0) {
-                AnimationFrame.transformXCache[transformCount] = dataBuf.readSmart2();
+                AnimationFrame.transformXCache[transformCount] =
+                    dataBuf.readSmart2();
             } else {
                 AnimationFrame.transformXCache[transformCount] = defaultValue;
             }
 
             if ((flag & 0x2) != 0) {
-                AnimationFrame.transformYCache[transformCount] = dataBuf.readSmart2();
+                AnimationFrame.transformYCache[transformCount] =
+                    dataBuf.readSmart2();
             } else {
                 AnimationFrame.transformYCache[transformCount] = defaultValue;
             }
 
             if ((flag & 0x4) != 0) {
-                AnimationFrame.transformZCache[transformCount] = dataBuf.readSmart2();
+                AnimationFrame.transformZCache[transformCount] =
+                    dataBuf.readSmart2();
             } else {
                 AnimationFrame.transformZCache[transformCount] = defaultValue;
             }
@@ -80,7 +93,16 @@ export class AnimationFrame {
         }
 
         if (length !== 0 && dataBuf.offset !== data.length) {
-            throw new Error('AnimationFrame: Mismatched buffer offset: ' + data.length + ', ' + dataBuf.offset + ', ' + length + ', ' + skeletonId);
+            throw new Error(
+                "AnimationFrame: Mismatched buffer offset: " +
+                    data.length +
+                    ", " +
+                    dataBuf.offset +
+                    ", " +
+                    length +
+                    ", " +
+                    skeletonId
+            );
         }
 
         const transformGroups: number[] = new Array(transformCount);
@@ -94,7 +116,15 @@ export class AnimationFrame {
             transformZ[i] = AnimationFrame.transformZCache[i];
         }
 
-        return new AnimationFrame(skeleton, transformCount, transformGroups, transformX, transformY, transformZ, hasAlphaTransform);
+        return new AnimationFrame(
+            skeleton,
+            transformCount,
+            transformGroups,
+            transformX,
+            transformY,
+            transformZ,
+            hasAlphaTransform
+        );
     }
 
     constructor(
@@ -104,8 +134,6 @@ export class AnimationFrame {
         public transformX: number[],
         public transformY: number[],
         public transformZ: number[],
-        public hasAlphaTransform: boolean,
-    ) {
-
-    }
+        public hasAlphaTransform: boolean
+    ) {}
 }

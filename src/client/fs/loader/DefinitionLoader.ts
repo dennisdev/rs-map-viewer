@@ -4,9 +4,9 @@ import { Definition } from "../definition/Definition";
 export class ArchiveDefinitionLoader<T extends Definition> {
     archive: Archive;
 
-    defType: { new(id: number): T };
+    defType: { new (id: number): T };
 
-    constructor(archive: Archive, defType: { new(id: number): T } ) {
+    constructor(archive: Archive, defType: { new (id: number): T }) {
         this.archive = archive;
         this.defType = defType;
     }
@@ -22,10 +22,12 @@ export class ArchiveDefinitionLoader<T extends Definition> {
     }
 }
 
-export class CachedArchiveDefinitionLoader<T extends Definition> extends ArchiveDefinitionLoader<T> {
+export class CachedArchiveDefinitionLoader<
+    T extends Definition
+> extends ArchiveDefinitionLoader<T> {
     cache: Map<number, T>;
 
-    constructor(archive: Archive, defType: { new(id: number): T }) {
+    constructor(archive: Archive, defType: { new (id: number): T }) {
         super(archive, defType);
         this.cache = new Map();
     }
@@ -34,7 +36,7 @@ export class CachedArchiveDefinitionLoader<T extends Definition> extends Archive
         let def = this.cache.get(id);
         if (!def) {
             def = super.getDefinition(id);
-            this.cache.set(id, def); 
+            this.cache.set(id, def);
         }
         return def;
     }

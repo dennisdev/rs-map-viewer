@@ -18,28 +18,41 @@ export class ByteBuffer {
     }
 
     readUnsignedByte(): number {
-        return this.readByte() & 0xFF;
+        return this.readByte() & 0xff;
     }
 
     readShort(): number {
-        return ((this.readUnsignedByte() << 8 | this.readUnsignedByte()) << 16) >> 16;
+        return (
+            (((this.readUnsignedByte() << 8) | this.readUnsignedByte()) <<
+                16) >>
+            16
+        );
     }
 
     readUnsignedShort(): number {
-        return this.readShort() & 0xFFFF;
+        return this.readShort() & 0xffff;
     }
 
     readMedium(): number {
-        return this.readUnsignedByte() << 16 | this.readUnsignedByte() << 8 | this.readUnsignedByte();
+        return (
+            (this.readUnsignedByte() << 16) |
+            (this.readUnsignedByte() << 8) |
+            this.readUnsignedByte()
+        );
     }
 
     readInt(): number {
-        return this.readUnsignedByte() << 24 | this.readUnsignedByte() << 16 | this.readUnsignedByte() << 8 | this.readUnsignedByte();
+        return (
+            (this.readUnsignedByte() << 24) |
+            (this.readUnsignedByte() << 16) |
+            (this.readUnsignedByte() << 8) |
+            this.readUnsignedByte()
+        );
     }
 
     readBigSmart(): number {
         if (this.getByte(this.offset) < 0) {
-            return this.readInt() & 0x7FFFFFFF;
+            return this.readInt() & 0x7fffffff;
         } else if (this.getUnsignedShort(this.offset) === 32767) {
             this.readShort();
             return -1;
@@ -52,7 +65,7 @@ export class ByteBuffer {
         if (this.getUnsignedByte(this.offset) < 128) {
             return this.readUnsignedByte();
         } else {
-            return this.readUnsignedShort() - 32768
+            return this.readUnsignedShort() - 32768;
         }
     }
 
@@ -86,11 +99,11 @@ export class ByteBuffer {
 
     readNullString(): string | undefined {
         if (this.getByte(this.offset) == 0) {
-			this.offset++;
-			return undefined;
-		} else {
-			return this.readString();
-		}
+            this.offset++;
+            return undefined;
+        } else {
+            return this.readString();
+        }
     }
 
     getByte(offset: number): number {
@@ -98,19 +111,27 @@ export class ByteBuffer {
     }
 
     getUnsignedByte(offset: number): number {
-        return this.getByte(offset) & 0xFF;
+        return this.getByte(offset) & 0xff;
     }
 
     getShort(offset: number): number {
-        return this.getUnsignedByte(offset) << 8 | this.getUnsignedByte(offset + 1);
+        return (
+            (this.getUnsignedByte(offset) << 8) |
+            this.getUnsignedByte(offset + 1)
+        );
     }
 
     getUnsignedShort(offset: number): number {
-        return this.getShort(offset) & 0xFFFF;
+        return this.getShort(offset) & 0xffff;
     }
 
     getInt(offset: number): number {
-        return this.getUnsignedByte(offset) << 24 | this.getUnsignedByte(offset + 1) << 16 | this.getUnsignedByte(offset + 2) << 8 | this.getUnsignedByte(offset + 3);
+        return (
+            (this.getUnsignedByte(offset) << 24) |
+            (this.getUnsignedByte(offset + 1) << 16) |
+            (this.getUnsignedByte(offset + 2) << 8) |
+            this.getUnsignedByte(offset + 3)
+        );
     }
 
     readBytes(amount: number): Int8Array {
@@ -120,7 +141,10 @@ export class ByteBuffer {
     }
 
     readUnsignedBytes(amount: number): Uint8Array {
-        const bytes = new Uint8Array(this._data.buffer).subarray(this.offset, this.offset + amount);
+        const bytes = new Uint8Array(this._data.buffer).subarray(
+            this.offset,
+            this.offset + amount
+        );
         this.offset += amount;
         return bytes;
     }

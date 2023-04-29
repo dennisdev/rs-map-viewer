@@ -1,36 +1,36 @@
 .center-content-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
 }
 
 .hud.left-top {
-  position: absolute;
-  padding: 10px;
+    position: absolute;
+    padding: 10px;
 }
 
 .compass {
-  cursor: pointer;
+    cursor: pointer;
 }
 
 .content-text {
-  font-family: ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
-  font-weight: bold;
-  color: white;
-  text-shadow: 1px 1px 0 black;
+    font-family: ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 0 black;
 }
 
 .joystick-container {
-  position: absolute;
-  bottom: 0;
-  padding: 40px;
+    position: absolute;
+    bottom: 0;
+    padding: 40px;
 }
 
 .joystick-container.left {
-  left: 0;
+    left: 0;
 }
 
 .joystick-container.right {
-  right: 0;
+    right: 0;
 }

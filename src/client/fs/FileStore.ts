@@ -5,9 +5,9 @@ import { StoreAsync } from "./Store";
 
 export class FileStore extends StoreAsync {
     constructor(
-       private readonly dataFile: File,
-       private readonly indexFiles: File[],
-       private readonly metaFile: File
+        private readonly dataFile: File,
+        private readonly indexFiles: File[],
+        private readonly metaFile: File
     ) {
         super();
     }
@@ -15,18 +15,24 @@ export class FileStore extends StoreAsync {
     override read(indexId: number, archiveId: number): Promise<Int8Array> {
         return new Promise<Int8Array>((resolve, reject) => {
             if (indexId < 0) {
-                reject('Index id cannot be lower than 0');
+                reject("Index id cannot be lower than 0");
                 return;
             }
             if (indexId >= this.indexFiles.length && indexId !== 255) {
                 reject(`Index ${indexId} not found`);
                 return;
             }
-            const indexFile = indexId === 255 ? this.metaFile : this.indexFiles[indexId];
+            const indexFile =
+                indexId === 255 ? this.metaFile : this.indexFiles[indexId];
 
             const clusterPtr = archiveId * SectorCluster.SIZE;
-            if (clusterPtr < 0 || clusterPtr + SectorCluster.SIZE > indexFile.size) {
-                reject(`Invalid ptr: ${clusterPtr}, fileSize: ${indexFile.size}, indexId: ${indexId}, archiveId: ${archiveId}`);
+            if (
+                clusterPtr < 0 ||
+                clusterPtr + SectorCluster.SIZE > indexFile.size
+            ) {
+                reject(
+                    `Invalid ptr: ${clusterPtr}, fileSize: ${indexFile.size}, indexId: ${indexId}, archiveId: ${archiveId}`
+                );
                 return;
             }
 
@@ -48,24 +54,35 @@ export class FileStore extends StoreAsync {
 
                     sectorReader.onload = (e: any) => {
                         const sectorBuffer = new ByteBuffer(e.target.result);
-                        const sector = extended ? Sector.decodeExtended(sectorBuffer) : Sector.decode(sectorBuffer);
-                        const dataSize = extended ? Sector.EXTENDED_DATA_SIZE : Sector.DATA_SIZE;
+                        const sector = extended
+                            ? Sector.decodeExtended(sectorBuffer)
+                            : Sector.decode(sectorBuffer);
+                        const dataSize = extended
+                            ? Sector.EXTENDED_DATA_SIZE
+                            : Sector.DATA_SIZE;
                         if (remaining > dataSize) {
-                            data.set(sector.data, sectorCluster.size - remaining);
+                            data.set(
+                                sector.data,
+                                sectorCluster.size - remaining
+                            );
                             remaining -= dataSize;
 
                             if (sector.indexId !== indexId) {
-                                reject(`Sector index id mismatch. expected: ${indexId} got: ${sector.indexId}`);
+                                reject(
+                                    `Sector index id mismatch. expected: ${indexId} got: ${sector.indexId}`
+                                );
                                 return;
                             }
 
                             if (sector.archiveId !== archiveId) {
-                                reject(`Sector archive id mismatch. expected: ${archiveId} got: ${sector.archiveId}`);
+                                reject(
+                                    `Sector archive id mismatch. expected: ${archiveId} got: ${sector.archiveId}`
+                                );
                                 return;
                             }
 
                             if (sector.chunk !== chunk) {
-                                reject('Sector chunk mismatch');
+                                reject("Sector chunk mismatch");
                                 return;
                             }
 
@@ -77,7 +94,10 @@ export class FileStore extends StoreAsync {
                                 resolve(data);
                             }
                         } else {
-                            data.set(sector.data.slice(0, remaining), sectorCluster.size - remaining);
+                            data.set(
+                                sector.data.slice(0, remaining),
+                                sectorCluster.size - remaining
+                            );
                             resolve(data);
                         }
                     };
@@ -85,7 +105,10 @@ export class FileStore extends StoreAsync {
                         reject(e.target.error);
                     };
 
-                    const sectorBlob = this.dataFile.slice(pointer, pointer + Sector.SIZE);
+                    const sectorBlob = this.dataFile.slice(
+                        pointer,
+                        pointer + Sector.SIZE
+                    );
                     sectorReader.readAsArrayBuffer(sectorBlob);
                 };
 
@@ -95,7 +118,10 @@ export class FileStore extends StoreAsync {
                 reject(e.target.error);
             };
 
-            const sectorClusterBlob = indexFile.slice(clusterPtr, clusterPtr + SectorCluster.SIZE);
+            const sectorClusterBlob = indexFile.slice(
+                clusterPtr,
+                clusterPtr + SectorCluster.SIZE
+            );
             sectorClusterReader.readAsArrayBuffer(sectorClusterBlob);
         });
     }

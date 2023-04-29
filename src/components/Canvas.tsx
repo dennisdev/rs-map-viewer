@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect } from "react";
 
 function resizeCanvas(canvas: HTMLCanvasElement) {
     const width = window.innerWidth;
@@ -15,9 +15,14 @@ function resizeCanvas(canvas: HTMLCanvasElement) {
     return false;
 }
 
-const useCanvas = (init: (gl: WebGL2RenderingContext) => void,
-    draw: (gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) => void) => {
-
+const useCanvas = (
+    init: (gl: WebGL2RenderingContext) => void,
+    draw: (
+        gl: WebGL2RenderingContext,
+        time: DOMHighResTimeStamp,
+        resized: boolean
+    ) => void
+) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -25,9 +30,9 @@ const useCanvas = (init: (gl: WebGL2RenderingContext) => void,
         if (!canvas) {
             return;
         }
-        const gl = canvas.getContext('webgl2', {antialias: false});
+        const gl = canvas.getContext("webgl2", { antialias: false });
         if (!gl) {
-            throw new Error('This browser does not support webgl2');
+            throw new Error("This browser does not support webgl2");
         }
 
         init(gl);
@@ -50,10 +55,13 @@ const useCanvas = (init: (gl: WebGL2RenderingContext) => void,
     return canvasRef;
 };
 
-
 interface CanvasProps {
     init: (gl: WebGL2RenderingContext) => void;
-    draw: (gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) => void;
+    draw: (
+        gl: WebGL2RenderingContext,
+        time: DOMHighResTimeStamp,
+        resized: boolean
+    ) => void;
 }
 
 function WebGLCanvas({ init, draw }: CanvasProps): JSX.Element {

@@ -17,7 +17,11 @@ export class DataBuffer {
     ensureSize(count: number): boolean {
         const byteOffset = this.offset * this.stride;
         if (byteOffset + count * this.stride >= this.view.byteLength) {
-            const newLength = Math.max(this.view.byteLength * 2, this.stride * 128, byteOffset + count * this.stride);
+            const newLength = Math.max(
+                this.view.byteLength * 2,
+                this.stride * 128,
+                byteOffset + count * this.stride
+            );
             const newView = new DataView(new ArrayBuffer(newLength));
             const newBytes = new Uint8Array(newView.buffer);
             newBytes.set(this.bytes, 0);

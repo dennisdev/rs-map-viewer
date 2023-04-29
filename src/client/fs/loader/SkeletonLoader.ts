@@ -28,7 +28,7 @@ export class CachedSkeletonLoader extends SkeletonLoader {
         if (!skeleton) {
             skeleton = super.getSkeleton(id);
             if (skeleton) {
-                this.cache.set(id, skeleton); 
+                this.cache.set(id, skeleton);
             }
         }
         return skeleton;

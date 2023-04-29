@@ -13,10 +13,9 @@ declare global {
 //     export = decompress;
 // }
 
-// declare module 'bz2'; 
+// declare module 'bz2';
 
 // declare module 'gzip-js';
-
 
 // interface Window {
 //     bzip2: Bzip2;

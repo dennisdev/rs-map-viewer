@@ -14,7 +14,11 @@ export class ItemManager {
 
     itemCount: number;
 
-    constructor(archive: Archive, paramManager: ParamManager, inMembersWorld: boolean) {
+    constructor(
+        archive: Archive,
+        paramManager: ParamManager,
+        inMembersWorld: boolean
+    ) {
         this.archive = archive;
         this.paramManager = paramManager;
         this.inMembersWorld = inMembersWorld;
@@ -44,13 +48,22 @@ export class ItemManager {
         }
         def.post();
         if (def.noteTemplate !== -1) {
-            def.genCert(this.getDefinition(def.noteTemplate), this.getDefinition(def.note));
+            def.genCert(
+                this.getDefinition(def.noteTemplate),
+                this.getDefinition(def.note)
+            );
         }
         if (def.notedId !== -1) {
-            def.genBought(this.getDefinition(def.notedId), this.getDefinition(def.unnotedId));
+            def.genBought(
+                this.getDefinition(def.notedId),
+                this.getDefinition(def.unnotedId)
+            );
         }
         if (def.placeholderTemplate !== -1) {
-            def.genPlaceholder(this.getDefinition(def.placeholderTemplate), this.getDefinition(def.placeholder));
+            def.genPlaceholder(
+                this.getDefinition(def.placeholderTemplate),
+                this.getDefinition(def.placeholder)
+            );
         }
 
         if (!this.inMembersWorld && def.isMembers) {

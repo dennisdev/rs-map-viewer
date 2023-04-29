@@ -2,8 +2,13 @@ import { ByteBuffer } from "../util/ByteBuffer";
 import { File } from "./File";
 
 export class Archive {
-    public static decode(id: number, lastFileId: number, fileCount: number, fileIds: Int32Array,
-                         buffer: ByteBuffer): Archive {
+    public static decode(
+        id: number,
+        lastFileId: number,
+        fileCount: number,
+        fileIds: Int32Array,
+        buffer: ByteBuffer
+    ): Archive {
         const files: Map<number, File> = new Map();
         if (fileCount === 1) {
             files.set(lastFileId, new File(lastFileId, id, buffer.data));
@@ -54,8 +59,7 @@ export class Archive {
         public readonly fileCount: number,
         private readonly _fileIds: Int32Array,
         private readonly _files: Map<number, File>
-    ) {
-    }
+    ) {}
 
     getFile(id: number): File | undefined {
         return this._files.get(id);

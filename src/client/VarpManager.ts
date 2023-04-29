@@ -29,12 +29,9 @@ export class VarpManager {
     }
 
     getVarbit(id: number): number {
-        const {
-            baseVar,
-            startBit,
-            endBit
-        } = this.varbitLoader.getDefinition(id);
+        const { baseVar, startBit, endBit } =
+            this.varbitLoader.getDefinition(id);
         const mask = MASKS[endBit - startBit];
-        return this.varps[baseVar] >> startBit & mask;
+        return (this.varps[baseVar] >> startBit) & mask;
     }
 }

@@ -13,8 +13,7 @@ export abstract class Index<T, S extends Store<T>> {
         public readonly id: IndexType,
         public readonly table: ReferenceTable,
         public readonly store: S
-    ) {
-    }
+    ) {}
 
     archiveExists(archiveId: number): boolean {
         return this.getArchiveIds().indexOf(archiveId) >= 0;
@@ -85,8 +84,13 @@ export abstract class Index<T, S extends Store<T>> {
         }
     }
 
-    getFileReference(archiveId: number, fileId: number): FileReference | undefined {
-        return this.getFileReferences(archiveId).find(ref => ref.id === fileId);
+    getFileReference(
+        archiveId: number,
+        fileId: number
+    ): FileReference | undefined {
+        return this.getFileReferences(archiveId).find(
+            (ref) => ref.id === fileId
+        );
     }
 
     getLastFileId(archiveId: number): number {
@@ -103,51 +107,68 @@ export abstract class Index<T, S extends Store<T>> {
     }
 }
 
-export class IndexAsync<S extends StoreAsync> extends Index<Promise<Int8Array>, S> {
-    constructor(
-        id: IndexType,
-        table: ReferenceTable,
-        store: S
-    ) {
+export class IndexAsync<S extends StoreAsync> extends Index<
+    Promise<Int8Array>,
+    S
+> {
+    constructor(id: IndexType, table: ReferenceTable, store: S) {
         super(id, table, store);
     }
-    
+
     async getArchive(id: number, key: number[] = []): Promise<Archive> {
         const archiveRef = this.getArchiveReference(id);
         if (!archiveRef) {
-            throw new Error('Archive reference not found for: ' + this.id + ', ' + id);
+            throw new Error(
+                "Archive reference not found for: " + this.id + ", " + id
+            );
         }
         const data = await this.read(id);
         const container = Container.decode(new ByteBuffer(data), key);
-        return Archive.decode(id, archiveRef.lastFileId, archiveRef.fileCount, archiveRef.fileIds, new ByteBuffer(container.data));
+        return Archive.decode(
+            id,
+            archiveRef.lastFileId,
+            archiveRef.fileCount,
+            archiveRef.fileIds,
+            new ByteBuffer(container.data)
+        );
     }
 
-    async getFile(archiveId: number, fileId: number, key: number[] = []): Promise<File | undefined> {
+    async getFile(
+        archiveId: number,
+        fileId: number,
+        key: number[] = []
+    ): Promise<File | undefined> {
         const archive = await this.getArchive(archiveId, key);
         return archive.getFile(fileId);
     }
 }
 
 export class IndexSync<S extends StoreSync> extends Index<Int8Array, S> {
-    constructor(
-        id: IndexType,
-        table: ReferenceTable,
-        store: S
-    ) {
+    constructor(id: IndexType, table: ReferenceTable, store: S) {
         super(id, table, store);
     }
 
     getArchive(id: number, key: number[] = []): Archive {
         const archiveRef = this.getArchiveReference(id);
         if (!archiveRef) {
-            throw new Error('Archive reference not found for: ' + id);
+            throw new Error("Archive reference not found for: " + id);
         }
         const data = this.read(id);
         const container = Container.decode(new ByteBuffer(data), key);
-        return Archive.decode(id, archiveRef.lastFileId, archiveRef.fileCount, archiveRef.fileIds, new ByteBuffer(container.data));
+        return Archive.decode(
+            id,
+            archiveRef.lastFileId,
+            archiveRef.fileCount,
+            archiveRef.fileIds,
+            new ByteBuffer(container.data)
+        );
     }
 
-    getFile(archiveId: number, fileId: number, key: number[] = []): File | undefined {
+    getFile(
+        archiveId: number,
+        fileId: number,
+        key: number[] = []
+    ): File | undefined {
         return this.getArchive(archiveId, key).getFile(fileId);
     }
 }
@@ -160,13 +181,18 @@ function decodeTable(data: Int8Array): ReferenceTable {
     return INVALID_TABLE;
 }
 
-export async function load<S extends StoreAsync>(id: IndexType, store: S): Promise<IndexAsync<S>> {
+export async function load<S extends StoreAsync>(
+    id: IndexType,
+    store: S
+): Promise<IndexAsync<S>> {
     const data = await store.read(255, id);
     return new IndexAsync(id, decodeTable(data), store);
 }
 
-export function loadSync<S extends StoreSync>(id: IndexType, store: S): IndexSync<S> {
+export function loadSync<S extends StoreSync>(
+    id: IndexType,
+    store: S
+): IndexSync<S> {
     const data = store.read(255, id);
     return new IndexSync(id, decodeTable(data), store);
 }
-

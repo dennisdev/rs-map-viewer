@@ -15,7 +15,11 @@ export class TextureLoader {
 
     idAlphaMap: Map<number, boolean>;
 
-    constructor(textureIndex: IndexSync<StoreSync>, spriteIndex: IndexSync<StoreSync>, definitions: Map<number, TextureDefinition>) {
+    constructor(
+        textureIndex: IndexSync<StoreSync>,
+        spriteIndex: IndexSync<StoreSync>,
+        definitions: Map<number, TextureDefinition>
+    ) {
         this.textureIndex = textureIndex;
         this.spriteIndex = spriteIndex;
         this.definitions = definitions;
@@ -26,18 +30,23 @@ export class TextureLoader {
         this.idAlphaMap = new Map();
     }
 
-    public static load(textureIndex: IndexSync<StoreSync>, spriteIndex: IndexSync<StoreSync>): TextureLoader {
+    public static load(
+        textureIndex: IndexSync<StoreSync>,
+        spriteIndex: IndexSync<StoreSync>
+    ): TextureLoader {
         const definitions: Map<number, TextureDefinition> = new Map();
 
         const texturesArchive = textureIndex.getArchive(0);
 
-        Array.from(texturesArchive.fileIds)
-            .forEach(id => {
-                const file = texturesArchive.getFile(id);
-                if (file) {
-                    definitions.set(id, TextureDefinition.decode(file.getDataAsBuffer(), id));
-                }
-            });
+        Array.from(texturesArchive.fileIds).forEach((id) => {
+            const file = texturesArchive.getFile(id);
+            if (file) {
+                definitions.set(
+                    id,
+                    TextureDefinition.decode(file.getDataAsBuffer(), id)
+                );
+            }
+        });
 
         return new TextureLoader(textureIndex, spriteIndex, definitions);
     }
@@ -74,16 +83,23 @@ export class TextureLoader {
         return hasAlpha;
     }
 
-    loadFromDef(def: TextureDefinition, brightness: number, size: number): Int32Array {
+    loadFromDef(
+        def: TextureDefinition,
+        brightness: number,
+        size: number
+    ): Int32Array {
         const pixelCount = size * size;
         const pixels = new Int32Array(pixelCount);
 
         let alphaPixelCount: number = 0;
 
         for (let i = 0; i < def.spriteIds.length; i++) {
-            const sprite = SpriteLoader.loadIntoIndexedSprite(this.spriteIndex, def.spriteIds[i]);
+            const sprite = SpriteLoader.loadIntoIndexedSprite(
+                this.spriteIndex,
+                def.spriteIds[i]
+            );
             if (!sprite) {
-                throw new Error('Texture references invalid sprite');
+                throw new Error("Texture references invalid sprite");
             }
             sprite.normalize();
 
@@ -94,31 +110,33 @@ export class TextureLoader {
             // not used by any texture but who knows
             if ((transform & -0x1000000) == 0x3000000) {
                 // red, 0, blue
-                const r_b = transform & 0xFF00FF;
+                const r_b = transform & 0xff00ff;
                 // green
-                const green = transform >> 8 & 0xFF;
+                const green = (transform >> 8) & 0xff;
 
                 for (let pi = 0; pi < palette.length; pi++) {
                     const color = palette[pi];
                     const rg = color >> 8;
-                    const gb = color & 0xFFFF;
+                    const gb = color & 0xffff;
                     if (rg == gb) {
-                        const blue = color & 0xFF;
-                        palette[pi] = r_b * blue >> 8 & 0xFF00FF | green * blue & 0xFF00;
+                        const blue = color & 0xff;
+                        palette[pi] =
+                            (((r_b * blue) >> 8) & 0xff00ff) |
+                            ((green * blue) & 0xff00);
                     }
                 }
             }
 
             const alphaPaletteIndices: Set<number> = new Set();
             for (let pi = 0; pi < palette.length; pi++) {
-                let alpha = 0xFF;
+                let alpha = 0xff;
                 if (palette[pi] === 0) {
                     alpha = 0;
                     alphaPaletteIndices.add(pi);
                 }
-                palette[pi] = alpha << 24 | brightenRgb(palette[pi], brightness);
+                palette[pi] =
+                    (alpha << 24) | brightenRgb(palette[pi], brightness);
             }
-
 
             let index = 0;
             if (i > 0 && def.spriteTypes) {
@@ -127,7 +145,11 @@ export class TextureLoader {
 
             if (index === 0) {
                 if (size == sprite.subWidth) {
-                    for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
+                    for (
+                        let pixelIndex = 0;
+                        pixelIndex < pixelCount;
+                        pixelIndex++
+                    ) {
                         const paletteIndex = palettePixels[pixelIndex];
                         if (alphaPaletteIndices.has(paletteIndex)) {
                             alphaPixelCount++;
@@ -139,7 +161,8 @@ export class TextureLoader {
 
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
-                            const paletteIndex = palettePixels[(x >> 1 << 6) + (y >> 1)];
+                            const paletteIndex =
+                                palettePixels[((x >> 1) << 6) + (y >> 1)];
                             if (alphaPaletteIndices.has(paletteIndex)) {
                                 alphaPixelCount++;
                             }
@@ -148,14 +171,15 @@ export class TextureLoader {
                     }
                 } else {
                     if (sprite.subWidth !== 128 || size !== 64) {
-                        throw new Error('Texture sprite has unexpected size');
+                        throw new Error("Texture sprite has unexpected size");
                     }
 
                     let pixelIndex = 0;
 
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
-                            const paletteIndex = palettePixels[(y << 1) + (x << 1 << 7)];
+                            const paletteIndex =
+                                palettePixels[(y << 1) + ((x << 1) << 7)];
                             if (alphaPaletteIndices.has(paletteIndex)) {
                                 alphaPixelCount++;
                             }
@@ -176,7 +200,11 @@ export class TextureLoader {
         return def && this.loadFromDef(def, brightness, size);
     }
 
-    createTextureArrayImage(brightness: number, size: number, includeWhiteTexture: boolean): Int32Array {
+    createTextureArrayImage(
+        brightness: number,
+        size: number,
+        includeWhiteTexture: boolean
+    ): Int32Array {
         const textures = this.getDefinitions();
 
         const pixelCount = size * size;
@@ -190,10 +218,13 @@ export class TextureLoader {
 
         const img = new Int32Array(pixelCount * textureCount);
 
-        img.set(new Int32Array(pixelCount).fill(0xFFFFFFFF), 0);
+        img.set(new Int32Array(pixelCount).fill(0xffffffff), 0);
 
         textures.forEach((def, index) => {
-            img.set(this.loadFromDef(def, brightness, size), pixelOffset + pixelCount * index);
+            img.set(
+                this.loadFromDef(def, brightness, size),
+                pixelOffset + pixelCount * index
+            );
         });
 
         return img;

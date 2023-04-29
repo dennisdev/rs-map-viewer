@@ -9,7 +9,10 @@ export class AnimationFrameMapLoader {
 
     skeletonLoader: SkeletonLoader;
 
-    constructor(frameMapIndex: IndexSync<StoreSync>, skeletonLoader: SkeletonLoader) {
+    constructor(
+        frameMapIndex: IndexSync<StoreSync>,
+        skeletonLoader: SkeletonLoader
+    ) {
         this.frameMapIndex = frameMapIndex;
         this.skeletonLoader = skeletonLoader;
     }
@@ -20,7 +23,10 @@ export class AnimationFrameMapLoader {
         const frames: AnimationFrame[] = new Array(archive.lastFileId);
 
         for (const file of archive.files) {
-            frames[file.id] = AnimationFrame.load(file.data, this.skeletonLoader);
+            frames[file.id] = AnimationFrame.load(
+                file.data,
+                this.skeletonLoader
+            );
         }
 
         return new AnimationFrameMap(frames);
@@ -30,7 +36,10 @@ export class AnimationFrameMapLoader {
 export class CachedAnimationFrameMapLoader extends AnimationFrameMapLoader {
     cache: Map<number, AnimationFrameMap>;
 
-    constructor(frameMapIndex: IndexSync<StoreSync>, skeletonLoader: SkeletonLoader) {
+    constructor(
+        frameMapIndex: IndexSync<StoreSync>,
+        skeletonLoader: SkeletonLoader
+    ) {
         super(frameMapIndex, skeletonLoader);
         this.cache = new Map();
     }
@@ -40,7 +49,7 @@ export class CachedAnimationFrameMapLoader extends AnimationFrameMapLoader {
         if (!frameMap) {
             frameMap = super.getFrameMap(id);
             if (frameMap) {
-                this.cache.set(id, frameMap); 
+                this.cache.set(id, frameMap);
             }
         }
         return frameMap;
