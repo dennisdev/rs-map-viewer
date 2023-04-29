@@ -1,78 +1,61 @@
-import { useState, useEffect } from "react";
-import { URLSearchParamsInit, useSearchParams } from "react-router-dom";
-import "./MapViewer.css";
-import WebGLCanvas from "../components/Canvas";
-import { mat4, vec4, vec3, vec2 } from "gl-matrix";
+import Denque from "denque";
+import { mat4, vec2, vec3 } from "gl-matrix";
+import { Leva, button, folder, useControls } from "leva";
+import { Schema } from "leva/dist/declarations/src/types";
 import {
-    PicoGL,
+    DrawCall,
+    Framebuffer,
     App as PicoApp,
-    Timer,
+    PicoGL,
     Program,
+    Texture,
+    Timer,
     UniformBuffer,
     VertexArray,
-    Texture,
-    DrawCall,
     VertexBuffer,
-    Framebuffer,
 } from "picogl";
+import { useEffect, useState } from "react";
+import { Joystick } from "react-joystick-component";
+import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
+import { URLSearchParamsInit, useSearchParams } from "react-router-dom";
+import { RegionLoader } from "../client/RegionLoader";
+import { VarpManager } from "../client/VarpManager";
+import { ConfigType } from "../client/fs/ConfigType";
 import {
+    DownloadProgress,
     MemoryFileSystem,
     fetchMemoryStore,
     loadFromStore,
-    DownloadProgress,
 } from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
-import { TextureLoader } from "../client/fs/loader/TextureLoader";
-import { RegionLoader } from "../client/RegionLoader";
-import {
-    AnimatedModelData,
-    ChunkData,
-    ChunkDataLoader,
-    NpcData,
-} from "./chunk/ChunkDataLoader";
-import { MemoryStore } from "../client/fs/MemoryStore";
-import { Skeleton } from "../client/model/animation/Skeleton";
-import { ConfigType } from "../client/fs/ConfigType";
-import { CachedUnderlayLoader } from "../client/fs/loader/UnderlayLoader";
-import { CachedOverlayLoader } from "../client/fs/loader/OverlayLoader";
-import { CachedObjectLoader } from "../client/fs/loader/ObjectLoader";
-import { IndexModelLoader } from "../client/fs/loader/ModelLoader";
-import Denque from "denque";
-import { Scene } from "../client/scene/Scene";
-import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
-import { Hasher } from "../client/util/Hasher";
+import { AnimationDefinition } from "../client/fs/definition/AnimationDefinition";
+import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
 import {
     AnimationLoader,
     CachedAnimationLoader,
 } from "../client/fs/loader/AnimationLoader";
-import { CachedSkeletonLoader } from "../client/fs/loader/SkeletonLoader";
-import {
-    AnimationFrameMapLoader,
-    CachedAnimationFrameMapLoader,
-} from "../client/fs/loader/AnimationFrameMapLoader";
-import { Leva, useControls, folder, button } from "leva";
-import { Joystick } from "react-joystick-component";
-import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
-import { FrustumIntersection } from "./FrustumIntersection";
-import mainVertShader from "./shaders/main.vert.glsl";
-import npcVertShader from "./shaders/npc.vert.glsl";
-import quadVertShader from "./shaders/quad.vert.glsl";
-import mainFragShader from "./shaders/main.frag.glsl";
-import quadFragShader from "./shaders/quad.frag.glsl";
-import { clamp, lerp } from "../client/util/MathUtil";
-import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
-import { AnimationDefinition } from "../client/fs/definition/AnimationDefinition";
 import { CachedNpcLoader, NpcLoader } from "../client/fs/loader/NpcLoader";
-import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
-import { CollisionMap } from "../client/pathfinder/collision/CollisionMap";
+import { TextureLoader } from "../client/fs/loader/TextureLoader";
+import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
 import { Pathfinder } from "../client/pathfinder/Pathfinder";
 import { ExactRouteStrategy } from "../client/pathfinder/RouteStrategy";
-import { Schema } from "leva/dist/declarations/src/types";
-import { fetchNpcSpawns } from "./NpcSpawn";
-import { readPixelsAsync } from "./AsyncReadUtil";
+import { CollisionMap } from "../client/pathfinder/collision/CollisionMap";
+import { Scene } from "../client/scene/Scene";
+import { clamp, lerp } from "../client/util/MathUtil";
+import WebGLCanvas from "../components/Canvas";
+import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
-import { VarpManager } from "../client/VarpManager";
-import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
+import { readPixelsAsync } from "./AsyncReadUtil";
+import { FrustumIntersection } from "./FrustumIntersection";
+import "./MapViewer.css";
+import { fetchNpcSpawns } from "./NpcSpawn";
+import { ChunkData, ChunkDataLoader, NpcData } from "./chunk/ChunkDataLoader";
+import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
+import mainFragShader from "./shaders/main.frag.glsl";
+import mainVertShader from "./shaders/main.vert.glsl";
+import npcVertShader from "./shaders/npc.vert.glsl";
+import quadFragShader from "./shaders/quad.frag.glsl";
+import quadVertShader from "./shaders/quad.vert.glsl";
 
 // console.log(mainVertShader);
 
@@ -90,7 +73,7 @@ function prependShader(shader: string, multiDraw: boolean): string {
     return header + shader;
 }
 
-const isHudHidden = !!window.wallpaperRegisterAudioListener;
+const isWallPaperEngine = !!window.wallpaperRegisterAudioListener;
 
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
@@ -820,7 +803,7 @@ class MapViewer {
 
     fps: number = 0;
 
-    fpsLimit: number = isHudHidden ? 60 : 0;
+    fpsLimit: number = isWallPaperEngine ? 60 : 0;
 
     lastFrameTime: number = 0;
     lastClientTick: number = 0;
@@ -1077,7 +1060,7 @@ class MapViewer {
             return;
         }
 
-        if (!isHudHidden) {
+        if (!isWallPaperEngine) {
             gl.canvas.addEventListener("keydown", this.onKeyDown);
             gl.canvas.addEventListener("keyup", this.onKeyUp);
             gl.canvas.addEventListener("mousemove", this.onMouseMove);
@@ -2596,7 +2579,7 @@ interface MapViewerContainerProps {
     mapViewer: MapViewer;
 }
 
-const DEFAULT_VIEW_DISTANCE = isHudHidden ? 5 : 2;
+const DEFAULT_VIEW_DISTANCE = isWallPaperEngine ? 5 : 2;
 
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
@@ -2604,7 +2587,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
         undefined
     );
-    const [hudHidden, setHudHidden] = useState<boolean>(isHudHidden);
+    const [hudHidden, setHudHidden] = useState<boolean>(isWallPaperEngine);
     const [searchParams, setSearchParams] = useSearchParams();
 
     const isTouchDevice = !!(
