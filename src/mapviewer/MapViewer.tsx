@@ -90,7 +90,7 @@ function prependShader(shader: string, multiDraw: boolean): string {
     return header + shader;
 }
 
-const isWallPaperEngine = !!window.wallpaperRegisterAudioListener;
+const isHudHidden = !!window.wallpaperRegisterAudioListener;
 
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
@@ -820,7 +820,7 @@ class MapViewer {
 
     fps: number = 0;
 
-    fpsLimit: number = isWallPaperEngine ? 60 : 0;
+    fpsLimit: number = isHudHidden ? 60 : 0;
 
     lastFrameTime: number = 0;
     lastClientTick: number = 0;
@@ -832,6 +832,11 @@ class MapViewer {
 
     onMenuOpened?: (x: number, y: number, options: MenuOption[]) => void;
     onMenuClosed?: () => void;
+
+    hudHidden: boolean = false;
+    lastHudHidden: number = 0;
+
+    setHudHidden?: (hidden: boolean) => void;
 
     menuOpen: boolean = false;
 
@@ -1072,7 +1077,7 @@ class MapViewer {
             return;
         }
 
-        if (!isWallPaperEngine) {
+        if (!isHudHidden) {
             gl.canvas.addEventListener("keydown", this.onKeyDown);
             gl.canvas.addEventListener("keyup", this.onKeyUp);
             gl.canvas.addEventListener("mousemove", this.onMouseMove);
@@ -1686,6 +1691,15 @@ class MapViewer {
         }
         if (this.keys.get("ArrowLeft")) {
             this.updateYaw(this.yaw, deltaYaw);
+        }
+
+        // 200ms cooldown
+        if (this.keys.get("F1") && time - this.lastHudHidden > 0.2) {
+            this.hudHidden = !this.hudHidden;
+            this.lastHudHidden = time;
+            if (this.setHudHidden) {
+                this.setHudHidden(this.hudHidden);
+            }
         }
 
         // joystick controls
@@ -2582,7 +2596,7 @@ interface MapViewerContainerProps {
     mapViewer: MapViewer;
 }
 
-const DEFAULT_VIEW_DISTANCE = isWallPaperEngine ? 5 : 2;
+const DEFAULT_VIEW_DISTANCE = isHudHidden ? 5 : 2;
 
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
@@ -2590,6 +2604,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
         undefined
     );
+    const [hudHidden, setHudHidden] = useState<boolean>(isHudHidden);
     const [searchParams, setSearchParams] = useSearchParams();
 
     const isTouchDevice = !!(
@@ -2789,6 +2804,8 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         mapViewer.onMenuClosed = () => {
             setMenuProps(undefined);
         };
+        mapViewer.hudHidden = hudHidden;
+        mapViewer.setHudHidden = setHudHidden;
     }, [mapViewer]);
 
     return (
@@ -2798,9 +2815,9 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                 titleBar={{ filter: false }}
                 collapsed={true}
                 hideCopyButton={true}
-                hidden={isWallPaperEngine}
+                hidden={hudHidden}
             />
-            {!isWallPaperEngine && (
+            {!hudHidden && (
                 <span>
                     <div className="hud left-top">
                         <img
@@ -2814,7 +2831,9 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                                 mapViewer.runCameraListeners();
                             }}
                         />
-                        <div className="fps-counter">{fps.toFixed(1)}</div>
+                        <div className="fps-counter content-text">
+                            {fps.toFixed(1)}
+                        </div>
                     </div>
                 </span>
             )}
@@ -2906,7 +2925,7 @@ function MapViewerApp() {
                     IndexType.SPRITES,
                     IndexType.TEXTURES,
                 ],
-                true,
+                !isIos,
                 setDownloadProgress
             );
             setDownloadProgress(undefined);
@@ -2974,7 +2993,13 @@ function MapViewerApp() {
     }, []);
 
     let content: JSX.Element | undefined = undefined;
-    if (mapViewer) {
+    if (isIos) {
+        content = (
+            <div className="center-content-container">
+                <div className="content-text">iOS is not supported.</div>
+            </div>
+        );
+    } else if (mapViewer) {
         content = (
             <MapViewerContainer mapViewer={mapViewer}></MapViewerContainer>
         );
@@ -2983,7 +3008,7 @@ function MapViewerApp() {
         const progress =
             ((downloadProgress.current / downloadProgress.total) * 100) | 0;
         content = (
-            <div className="loading-bar-container">
+            <div className="center-content-container">
                 <OsrsLoadingBar
                     text={`Downloading cache (${formattedCacheSize})`}
                     progress={progress}
