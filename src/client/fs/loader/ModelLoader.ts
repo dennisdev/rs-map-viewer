@@ -32,7 +32,7 @@ export class CachedModelLoader extends IndexModelLoader {
         if (!model) {
             model = super.getModel(id);
             if (model) {
-                this.cache.set(id, model); 
+                this.cache.set(id, model);
             }
         }
         return model;

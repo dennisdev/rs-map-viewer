@@ -24,7 +24,12 @@ export class CollisionMap {
     reset(): void {
         for (let x = 0; x < this.width; x++) {
             for (let y = 0; y < this.height; y++) {
-                if (x !== 0 && y !== 0 && x < this.width - 5 && y < this.height - 5) {
+                if (
+                    x !== 0 &&
+                    y !== 0 &&
+                    x < this.width - 5 &&
+                    y < this.height - 5
+                ) {
                     // this.setFlag(x, y, 0x1000000);
                 } else {
                     // this.setFlag(x, y, 0xFFFFFF);
@@ -62,7 +67,13 @@ export class CollisionMap {
         this.flag(x, y, 0x40000);
     }
 
-    addObject(x: number, y: number, sizeX: number, sizeY: number, blockProjectile: boolean) {
+    addObject(
+        x: number,
+        y: number,
+        sizeX: number,
+        sizeY: number,
+        blockProjectile: boolean
+    ) {
         let flag = 0x100;
         if (blockProjectile) {
             flag += 0x20000;
@@ -79,7 +90,13 @@ export class CollisionMap {
         }
     }
 
-    addWall(x: number, y: number, type: ObjectType, rotation: number, blockProjectile: boolean) {
+    addWall(
+        x: number,
+        y: number,
+        type: ObjectType,
+        rotation: number,
+        blockProjectile: boolean
+    ) {
         // if (1) {
         //     this.addObject(x, y, 1, 1, blockProjectile);
         //     return;
@@ -106,7 +123,10 @@ export class CollisionMap {
             }
         }
 
-        if (type === ObjectType.WALL_TRI_CORNER || type === ObjectType.WALL_RECT_CORNER) {
+        if (
+            type === ObjectType.WALL_TRI_CORNER ||
+            type === ObjectType.WALL_RECT_CORNER
+        ) {
             if (rotation === 0) {
                 this.flag(x, y, 1);
                 this.flag(x - 1, y + 1, 16);
@@ -177,7 +197,10 @@ export class CollisionMap {
                 }
             }
 
-            if (type === ObjectType.WALL_TRI_CORNER || type === ObjectType.WALL_RECT_CORNER) {
+            if (
+                type === ObjectType.WALL_TRI_CORNER ||
+                type === ObjectType.WALL_RECT_CORNER
+            ) {
                 if (rotation === 0) {
                     this.flag(x, y, 512);
                     this.flag(x - 1, y + 1, 8192);

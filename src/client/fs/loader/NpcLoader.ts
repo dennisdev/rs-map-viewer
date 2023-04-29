@@ -1,6 +1,9 @@
 import { Archive } from "../Archive";
 import { NpcDefinition } from "../definition/NpcDefinition";
-import { ArchiveDefinitionLoader, CachedArchiveDefinitionLoader } from "./DefinitionLoader";
+import {
+    ArchiveDefinitionLoader,
+    CachedArchiveDefinitionLoader,
+} from "./DefinitionLoader";
 
 export class NpcLoader extends ArchiveDefinitionLoader<NpcDefinition> {
     constructor(archive: Archive) {

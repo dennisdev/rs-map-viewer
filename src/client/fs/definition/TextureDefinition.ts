@@ -6,7 +6,7 @@ export class TextureDefinition {
         const unknown = buffer.readUnsignedByte() == 1;
         const spriteCount = buffer.readUnsignedByte();
         if (spriteCount < 1 || spriteCount > 4) {
-            throw new Error('Invalid sprite count for texture: ' + spriteCount);
+            throw new Error("Invalid sprite count for texture: " + spriteCount);
         }
 
         const spriteIds = new Array<number>(spriteCount);
@@ -33,11 +33,22 @@ export class TextureDefinition {
         for (let i = 0; i < spriteCount; i++) {
             transforms[i] = buffer.readInt();
         }
-        
+
         const animationDirection = buffer.readUnsignedByte();
         const animationSpeed = buffer.readUnsignedByte();
 
-        return new TextureDefinition(id, averageHsl, unknown, spriteCount, spriteIds, transforms, animationDirection, animationSpeed, spriteTypes, unused);
+        return new TextureDefinition(
+            id,
+            averageHsl,
+            unknown,
+            spriteCount,
+            spriteIds,
+            transforms,
+            animationDirection,
+            animationSpeed,
+            spriteTypes,
+            unused
+        );
     }
 
     constructor(
@@ -51,8 +62,7 @@ export class TextureDefinition {
         public animationSpeed: number,
         public spriteTypes?: number[],
         public unused?: number[]
-    ) {
-    }
+    ) {}
 
     /*
         not sure what this is used for

@@ -10,36 +10,36 @@ import { VertexBuffer } from "./VertexBuffer";
 export enum ContourGroundType {
     CENTER_TILE = 0,
     VERTEX = 1,
-    NONE = 2
+    NONE = 2,
 }
 
 export type DrawData = {
-    sceneX: number,
-    sceneY: number,
-    plane: number,
-    contourGround: ContourGroundType,
-    priority: number,
+    sceneX: number;
+    sceneY: number;
+    plane: number;
+    contourGround: ContourGroundType;
+    priority: number;
 };
 
 export type DrawCommand = {
-    offset: number,
-    elements: number,
-    datas: DrawData[],
+    offset: number;
+    elements: number;
+    datas: DrawData[];
 };
 
 export type NpcDrawData = {
-    sceneX: number,
-    sceneY: number,
-    plane: number,
-    size: number,
-    rotation: number,
+    sceneX: number;
+    sceneY: number;
+    plane: number;
+    size: number;
+    rotation: number;
 };
 
 export type NpcDrawCommand = {
-    offset: number,
-    elements: number,
-    spawns: NpcSpawn[],
-}
+    offset: number;
+    elements: number;
+    spawns: NpcSpawn[];
+};
 
 export class RenderBuffer {
     vertexBuf: VertexBuffer;
@@ -71,15 +71,29 @@ export function addTerrainTile(renderBuf: RenderBuffer, tile: SceneTile) {
     }
     for (const face of tileModel.faces) {
         for (const vertex of face.vertices) {
-            const index = renderBuf.vertexBuf.addVertex(vertex.x, 0, vertex.z, vertex.hsl, 0xFF, vertex.u, vertex.v, vertex.textureId, 0);
+            const index = renderBuf.vertexBuf.addVertex(
+                vertex.x,
+                0,
+                vertex.z,
+                vertex.hsl,
+                0xff,
+                vertex.u,
+                vertex.v,
+                vertex.textureId,
+                0
+            );
 
             renderBuf.indices.push(index);
         }
     }
 }
 
-export function addTerrain(renderBuf: RenderBuffer, region: Scene, maxPlane: number): number {
-    console.time('terrain');
+export function addTerrain(
+    renderBuf: RenderBuffer,
+    region: Scene,
+    maxPlane: number
+): number {
+    console.time("terrain");
 
     const terrainStartVertexCount = renderBuf.vertexCount();
 
@@ -95,30 +109,42 @@ export function addTerrain(renderBuf: RenderBuffer, region: Scene, maxPlane: num
             }
         }
 
-        const planeVertexCount = (renderBuf.indexByteOffset() - indexByteOffset) / 4;
+        const planeVertexCount =
+            (renderBuf.indexByteOffset() - indexByteOffset) / 4;
 
         if (planeVertexCount > 0) {
             renderBuf.drawCommands.push({
                 offset: indexByteOffset,
                 elements: planeVertexCount,
-                datas: [{ sceneX: 0, sceneY: 0, plane, contourGround: ContourGroundType.VERTEX, priority: 0 }],
+                datas: [
+                    {
+                        sceneX: 0,
+                        sceneY: 0,
+                        plane,
+                        contourGround: ContourGroundType.VERTEX,
+                        priority: 0,
+                    },
+                ],
             });
         }
     }
 
-    console.timeEnd('terrain');
+    console.timeEnd("terrain");
 
     return renderBuf.vertexCount() - terrainStartVertexCount;
 }
 
 export type ModelFace = {
-    index: number,
-    alpha: number,
-    priority: number,
-    textureId: number
+    index: number;
+    alpha: number;
+    priority: number;
+    textureId: number;
 };
 
-export function getModelFaces(textureProvider: TextureLoader, model: Model): ModelFace[] {
+export function getModelFaces(
+    textureProvider: TextureLoader,
+    model: Model
+): ModelFace[] {
     const faces: ModelFace[] = [];
 
     const faceAlphas = model.faceAlphas;
@@ -144,9 +170,9 @@ export function getModelFaces(textureProvider: TextureLoader, model: Model): Mod
             textureIndex = -1;
         }
 
-        let faceAlpha = 0xFF;
+        let faceAlpha = 0xff;
         if (faceAlphas && textureId === -1) {
-            faceAlpha = 0xFF - (faceAlphas[f] & 0xFF);
+            faceAlpha = 0xff - (faceAlphas[f] & 0xff);
         }
 
         if (faceAlpha === 0 || faceAlpha === 0x1) {
@@ -155,21 +181,35 @@ export function getModelFaces(textureProvider: TextureLoader, model: Model): Mod
 
         const priority = (priorities && priorities[f]) || 0;
 
-        faces.push({ index: f, alpha: faceAlpha, priority, textureId: textureIndex });
+        faces.push({
+            index: f,
+            alpha: faceAlpha,
+            priority,
+            textureId: textureIndex,
+        });
     }
 
     // console.log('faces', faces);
 
     // sort on priority, has alpha, texture id, face index
-    faces.sort((a, b) => a.priority - b.priority
-        || (a.alpha < 0xFF ? 1 : 0) - (b.alpha < 0xFF ? 1 : 0)
-        || a.textureId - b.textureId
-        || b.index - a.index);
+    faces.sort(
+        (a, b) =>
+            a.priority - b.priority ||
+            (a.alpha < 0xff ? 1 : 0) - (b.alpha < 0xff ? 1 : 0) ||
+            a.textureId - b.textureId ||
+            b.index - a.index
+    );
 
     return faces;
 }
 
-export function addModel(renderBuf: RenderBuffer, model: Model, faces: ModelFace[], offset?: vec3, reuseVertices: boolean = true) {
+export function addModel(
+    renderBuf: RenderBuffer,
+    model: Model,
+    faces: ModelFace[],
+    offset?: vec3,
+    reuseVertices: boolean = true
+) {
     const verticesX = model.verticesX;
     let verticesY = model.verticesY;
     const verticesZ = model.verticesZ;
@@ -249,14 +289,43 @@ export function addModel(renderBuf: RenderBuffer, model: Model, faces: ModelFace
         const vzb = sceneY + verticesZ[fb];
         const vzc = sceneY + verticesZ[fc];
 
-        const index0 = renderBuf.vertexBuf.addVertex(vxa, vya, vza, hslA, faceAlpha, u0, v0, textureId, priority + 1, reuseVertices);
-        const index1 = renderBuf.vertexBuf.addVertex(vxb, vyb, vzb, hslB, faceAlpha, u1, v1, textureId, priority + 1, reuseVertices);
-        const index2 = renderBuf.vertexBuf.addVertex(vxc, vyc, vzc, hslC, faceAlpha, u2, v2, textureId, priority + 1, reuseVertices);
-
-        renderBuf.indices.push(
-            index0,
-            index1,
-            index2,
+        const index0 = renderBuf.vertexBuf.addVertex(
+            vxa,
+            vya,
+            vza,
+            hslA,
+            faceAlpha,
+            u0,
+            v0,
+            textureId,
+            priority + 1,
+            reuseVertices
         );
+        const index1 = renderBuf.vertexBuf.addVertex(
+            vxb,
+            vyb,
+            vzb,
+            hslB,
+            faceAlpha,
+            u1,
+            v1,
+            textureId,
+            priority + 1,
+            reuseVertices
+        );
+        const index2 = renderBuf.vertexBuf.addVertex(
+            vxc,
+            vyc,
+            vzc,
+            hslC,
+            faceAlpha,
+            u2,
+            v2,
+            textureId,
+            priority + 1,
+            reuseVertices
+        );
+
+        renderBuf.indices.push(index0, index1, index2);
     }
 }

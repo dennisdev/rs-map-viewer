@@ -1,6 +1,9 @@
 import { Archive } from "../Archive";
 import { UnderlayDefinition } from "../definition/UnderlayDefinition";
-import { ArchiveDefinitionLoader, CachedArchiveDefinitionLoader } from "./DefinitionLoader";
+import {
+    ArchiveDefinitionLoader,
+    CachedArchiveDefinitionLoader,
+} from "./DefinitionLoader";
 
 export class UnderlayLoader extends ArchiveDefinitionLoader<UnderlayDefinition> {
     constructor(archive: Archive) {

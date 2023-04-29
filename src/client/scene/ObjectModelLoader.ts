@@ -27,7 +27,11 @@ export class ObjectModelLoader {
 
     modelCache: Map<number, Model | ModelData>;
 
-    constructor(modelLoader: ModelLoader, animationLoader: AnimationLoader, animationFrameMapLoader: AnimationFrameMapLoader) {
+    constructor(
+        modelLoader: ModelLoader,
+        animationLoader: AnimationLoader,
+        animationFrameMapLoader: AnimationFrameMapLoader
+    ) {
         this.modelLoader = modelLoader;
         this.animationLoader = animationLoader;
         this.animationFrameMapLoader = animationFrameMapLoader;
@@ -53,7 +57,11 @@ export class ObjectModelLoader {
         return model;
     }
 
-    getObjectModelData(def: ObjectDefinition, type: number, rotation: number): ModelData | undefined {
+    getObjectModelData(
+        def: ObjectDefinition,
+        type: number,
+        rotation: number
+    ): ModelData | undefined {
         let model: ModelData | undefined;
         const isDiagonalObject = type === ObjectType.OBJECT_DIAGIONAL;
         if (isDiagonalObject) {
@@ -86,7 +94,10 @@ export class ObjectModelLoader {
             }
 
             if (modelCount > 1) {
-                model = ModelData.merge(ObjectModelLoader.mergeObjectModelsCache, modelCount);
+                model = ModelData.merge(
+                    ObjectModelLoader.mergeObjectModelsCache,
+                    modelCount
+                );
             }
         } else {
             let index = -1;
@@ -112,11 +123,21 @@ export class ObjectModelLoader {
             return undefined;
         }
 
-        const hasResize = def.modelSizeX !== 128 || def.modelSizeHeight !== 128 || def.modelSizeY !== 128;
+        const hasResize =
+            def.modelSizeX !== 128 ||
+            def.modelSizeHeight !== 128 ||
+            def.modelSizeY !== 128;
 
-        const hasOffset = def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
+        const hasOffset =
+            def.offsetX !== 0 || def.offsetHeight !== 0 || def.offsetY !== 0;
 
-        const copy = ModelData.copyFrom(model, true, rotation === 0 && !hasResize && !hasOffset && !isDiagonalObject, !def.recolorFrom, !def.retextureFrom);
+        const copy = ModelData.copyFrom(
+            model,
+            true,
+            rotation === 0 && !hasResize && !hasOffset && !isDiagonalObject,
+            !def.recolorFrom,
+            !def.retextureFrom
+        );
 
         if (type === ObjectType.WALL_DECORATION_INSIDE && rotation > 3) {
             copy.rotate(256);
@@ -157,7 +178,12 @@ export class ObjectModelLoader {
         return copy;
     }
 
-    getObjectModel(def: ObjectDefinition, type: number, rotation: number, contourGroundInfo?: ContourGroundInfo): Model | ModelData | undefined {
+    getObjectModel(
+        def: ObjectDefinition,
+        type: number,
+        rotation: number,
+        contourGroundInfo?: ContourGroundInfo
+    ): Model | ModelData | undefined {
         // if (def.animationId !== -1) {
         //     return this.getObjectModelAnimated(def, type, rotation);
         //     // return undefined;
@@ -178,7 +204,13 @@ export class ObjectModelLoader {
             }
 
             if (!def.mergeNormals) {
-                model = modelData.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+                model = modelData.light(
+                    def.ambient + 64,
+                    def.contrast + 768,
+                    -50,
+                    -10,
+                    -50
+                );
             } else {
                 modelData.ambient = def.ambient + 64;
                 modelData.contrast = def.contrast + 768;
@@ -195,13 +227,26 @@ export class ObjectModelLoader {
         }
 
         if (def.contouredGround >= 0 && contourGroundInfo) {
-            model = model.contourGround(contourGroundInfo.heightMap, contourGroundInfo.sceneX, contourGroundInfo.sceneHeight, contourGroundInfo.sceneY, true, def.contouredGround);
+            model = model.contourGround(
+                contourGroundInfo.heightMap,
+                contourGroundInfo.sceneX,
+                contourGroundInfo.sceneHeight,
+                contourGroundInfo.sceneY,
+                true,
+                def.contouredGround
+            );
         }
 
         return model;
     }
 
-    getObjectModelAnimated(def: ObjectDefinition, type: number, rotation: number, animationId: number, frame: number): Model | undefined {
+    getObjectModelAnimated(
+        def: ObjectDefinition,
+        type: number,
+        rotation: number,
+        animationId: number,
+        frame: number
+    ): Model | undefined {
         let key: number;
         if (def.objectTypes) {
             key = rotation + (type << 3) + (def.id << 10);
@@ -216,13 +261,19 @@ export class ObjectModelLoader {
                 return undefined;
             }
 
-            model = modelData.light(def.ambient + 64, def.contrast + 768, -50, -10, -50);
+            model = modelData.light(
+                def.ambient + 64,
+                def.contrast + 768,
+                -50,
+                -10,
+                -50
+            );
 
             this.modelCache.set(key, model);
-        // } else if (model instanceof Model) {
-        //     return model;
+            // } else if (model instanceof Model) {
+            //     return model;
         } else if (model instanceof ModelData) {
-            throw new Error('Model is not lit');
+            throw new Error("Model is not lit");
         }
 
         if (animationId === -1 || frame === -1) {
@@ -241,7 +292,12 @@ export class ObjectModelLoader {
         return model;
     }
 
-    transformObjectModel(model: Model, anim: AnimationDefinition, frame: number, rotation: number): Model {
+    transformObjectModel(
+        model: Model,
+        anim: AnimationDefinition,
+        frame: number,
+        rotation: number
+    ): Model {
         if (anim.isAnimMaya()) {
             return model;
         }
@@ -253,11 +309,16 @@ export class ObjectModelLoader {
         //     console.log(anim);
         // }
         frame = anim.frameIds[frame];
-        const animFrameMap = this.animationFrameMapLoader.getFrameMap(frame >> 16);
-        frame &= 0xFFFF;
+        const animFrameMap = this.animationFrameMapLoader.getFrameMap(
+            frame >> 16
+        );
+        frame &= 0xffff;
 
         if (animFrameMap) {
-            model = Model.copyAnimated(model, !animFrameMap.hasAlphaTransform(frame));
+            model = Model.copyAnimated(
+                model,
+                !animFrameMap.hasAlphaTransform(frame)
+            );
 
             rotation &= 3;
             if (rotation === 1) {

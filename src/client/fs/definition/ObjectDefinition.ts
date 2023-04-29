@@ -296,14 +296,19 @@ export class ObjectDefinition extends Definition {
         } else if (opcode === 249) {
             this.params = Definition.readParamsMap(buffer, this.params);
         } else {
-            throw new Error('ObjectDefinition: Opcode ' + opcode + ' not implemented.');
+            throw new Error(
+                "ObjectDefinition: Opcode " + opcode + " not implemented."
+            );
         }
     }
 
     override post(): void {
         if (this.int1 === -1) {
             this.int1 = 0;
-            if (this.objectModels && (!this.objectTypes || this.objectTypes[0] === 10)) {
+            if (
+                this.objectModels &&
+                (!this.objectTypes || this.objectTypes[0] === 10)
+            ) {
                 this.int1 = 1;
             }
 

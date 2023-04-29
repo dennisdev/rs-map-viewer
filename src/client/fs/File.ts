@@ -5,8 +5,7 @@ export class File {
         public readonly id: number,
         public readonly archiveId: number,
         public readonly data: Int8Array
-    ) {
-    }
+    ) {}
 
     // get data(): Int8Array {
     //     return this._data;

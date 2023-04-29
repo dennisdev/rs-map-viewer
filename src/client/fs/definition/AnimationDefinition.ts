@@ -142,7 +142,9 @@ export class AnimationDefinition extends Definition {
                 this.animMayaMasks[buffer.readUnsignedByte()] = true;
             }
         } else {
-            throw new Error('AnimationDefinition: Opcode ' + opcode + ' not implemented.');
+            throw new Error(
+                "AnimationDefinition: Opcode " + opcode + " not implemented."
+            );
         }
     }
 

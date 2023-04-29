@@ -1,6 +1,9 @@
 import { Archive } from "../Archive";
 import { VarbitDefinition } from "../definition/VarbitDefinition";
-import { ArchiveDefinitionLoader, CachedArchiveDefinitionLoader } from "./DefinitionLoader";
+import {
+    ArchiveDefinitionLoader,
+    CachedArchiveDefinitionLoader,
+} from "./DefinitionLoader";
 
 export class VarbitLoader extends ArchiveDefinitionLoader<VarbitDefinition> {
     constructor(archive: Archive) {

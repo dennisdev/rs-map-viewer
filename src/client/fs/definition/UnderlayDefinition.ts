@@ -29,8 +29,8 @@ export class UnderlayDefinition extends Definition {
     }
 
     setHsl(rgb: number) {
-        const d = (rgb >> 16 & 0xff) / 256.0;
-        const d_1_ = (rgb >> 8 & 0xff) / 256.0;
+        const d = ((rgb >> 16) & 0xff) / 256.0;
+        const d_1_ = ((rgb >> 8) & 0xff) / 256.0;
         const d_2_ = (rgb & 0xff) / 256.0;
 
         let d_3_ = d;
@@ -93,5 +93,4 @@ export class UnderlayDefinition extends Definition {
         }
         this.hue = (this.hueMultiplier * d_5_) | 0;
     }
-
 }

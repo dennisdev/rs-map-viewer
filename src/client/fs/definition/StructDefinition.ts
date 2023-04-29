@@ -13,5 +13,4 @@ export class StructDefinition extends Definition {
             this.params = Definition.readParamsMap(buffer, this.params);
         }
     }
-
 }

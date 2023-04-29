@@ -1,4 +1,9 @@
-import { FloorDecoration, GameObject, WallDecoration, WallObject } from "./SceneObject";
+import {
+    FloorDecoration,
+    GameObject,
+    WallDecoration,
+    WallObject,
+} from "./SceneObject";
 import { SceneTileModel } from "./SceneTileModel";
 
 export class SceneTile {

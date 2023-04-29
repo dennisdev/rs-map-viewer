@@ -26,30 +26,30 @@ export class SpotAnimDefinition extends Definition {
 
     constructor(id: number) {
         super(id);
-		this.sequenceId = -1;
-		this.widthScale = 128;
-		this.heightScale = 128;
-		this.orientation = 0;
-		this.ambient = 0;
-		this.contrast = 0;
+        this.sequenceId = -1;
+        this.widthScale = 128;
+        this.heightScale = 128;
+        this.orientation = 0;
+        this.ambient = 0;
+        this.contrast = 0;
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
         if (opcode == 1) {
-			this.modelId = buffer.readUnsignedShort();
-		} else if (opcode == 2) {
-			this.sequenceId = buffer.readUnsignedShort();
-		} else if (opcode == 4) {
-			this.widthScale = buffer.readUnsignedShort();
-		} else if (opcode == 5) {
-			this.heightScale = buffer.readUnsignedShort();
-		} else if (opcode == 6) {
-			this.orientation = buffer.readUnsignedShort();
-		} else if (opcode == 7) {
-			this.ambient = buffer.readUnsignedByte();
-		} else if (opcode == 8) {
-			this.contrast = buffer.readUnsignedByte();
-		} else if (opcode == 40) {
+            this.modelId = buffer.readUnsignedShort();
+        } else if (opcode == 2) {
+            this.sequenceId = buffer.readUnsignedShort();
+        } else if (opcode == 4) {
+            this.widthScale = buffer.readUnsignedShort();
+        } else if (opcode == 5) {
+            this.heightScale = buffer.readUnsignedShort();
+        } else if (opcode == 6) {
+            this.orientation = buffer.readUnsignedShort();
+        } else if (opcode == 7) {
+            this.ambient = buffer.readUnsignedByte();
+        } else if (opcode == 8) {
+            this.contrast = buffer.readUnsignedByte();
+        } else if (opcode == 40) {
             const count = buffer.readUnsignedByte();
             this.recolorFrom = new Array<number>(count);
             this.recolorTo = new Array<number>(count);

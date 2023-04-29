@@ -19,7 +19,7 @@ export class ParamManager {
         }
 
         const file = this.archive.getFile(id);
-        
+
         const def = new ParamDefinition(id);
         if (file) {
             def.decode(file.getDataAsBuffer());

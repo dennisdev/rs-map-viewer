@@ -2,16 +2,16 @@ import { DataBuffer } from "./DataBuffer";
 
 type AnimInfo = {
     // 8 bits unsigned
-    frameCount: number,
+    frameCount: number;
     // 8 bits unsigned
-    frameStep: number,
+    frameStep: number;
     // 1 bit
-    repeat: boolean,
+    repeat: boolean;
     // 16 bits unsigned
-    totalLength: number,
+    totalLength: number;
     // 16 bits unsigned
-    frameLengthOffset: number
-}
+    frameLengthOffset: number;
+};
 
 export class AnimInfoBuffer extends DataBuffer {
     public static readonly STRIDE: number = 8;
@@ -31,7 +31,7 @@ export class AnimInfoBuffer extends DataBuffer {
             frameStep: frameStep,
             repeat: frameStep > 0,
             totalLength: animTotalLength,
-            frameLengthOffset: this.frameLengths.length
+            frameLengthOffset: this.frameLengths.length,
         };
 
         this.frameLengths.push(...frameLengths);

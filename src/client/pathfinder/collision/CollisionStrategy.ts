@@ -13,29 +13,33 @@ class NormalCollisionStrategy implements CollisionStrategy {
 class BlockedCollisionStrategy implements CollisionStrategy {
     canMove(tileFlag: number, blockFlag: number): boolean {
         const flag = blockFlag & ~CollisionFlag.FLOOR;
-        return (tileFlag & flag) === 0 && (tileFlag & CollisionFlag.FLOOR) !== 0;
+        return (
+            (tileFlag & flag) === 0 && (tileFlag & CollisionFlag.FLOOR) !== 0
+        );
     }
 }
 
-const BLOCK_MOVEMENT = CollisionFlag.WALL_NORTH_WEST
-    | CollisionFlag.WALL_NORTH
-    | CollisionFlag.WALL_NORTH_EAST
-    | CollisionFlag.WALL_EAST
-    | CollisionFlag.WALL_SOUTH_EAST
-    | CollisionFlag.WALL_SOUTH
-    | CollisionFlag.WALL_SOUTH_WEST
-    | CollisionFlag.WALL_WEST
-    | CollisionFlag.OBJECT
+const BLOCK_MOVEMENT =
+    CollisionFlag.WALL_NORTH_WEST |
+    CollisionFlag.WALL_NORTH |
+    CollisionFlag.WALL_NORTH_EAST |
+    CollisionFlag.WALL_EAST |
+    CollisionFlag.WALL_SOUTH_EAST |
+    CollisionFlag.WALL_SOUTH |
+    CollisionFlag.WALL_SOUTH_WEST |
+    CollisionFlag.WALL_WEST |
+    CollisionFlag.OBJECT;
 
-const BLOCK_ROUTE = CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER
-    | CollisionFlag.WALL_NORTH_ROUTE_BLOCKER
-    | CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER
-    | CollisionFlag.WALL_EAST_ROUTE_BLOCKER
-    | CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER
-    | CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER
-    | CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER
-    | CollisionFlag.WALL_WEST_ROUTE_BLOCKER
-    | CollisionFlag.OBJECT_ROUTE_BLOCKER
+const BLOCK_ROUTE =
+    CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER |
+    CollisionFlag.WALL_NORTH_ROUTE_BLOCKER |
+    CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER |
+    CollisionFlag.WALL_EAST_ROUTE_BLOCKER |
+    CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER |
+    CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER |
+    CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER |
+    CollisionFlag.WALL_WEST_ROUTE_BLOCKER |
+    CollisionFlag.OBJECT_ROUTE_BLOCKER;
 
 class LineOfSightBlockFlagCollision implements CollisionStrategy {
     canMove(tileFlag: number, blockFlag: number): boolean {

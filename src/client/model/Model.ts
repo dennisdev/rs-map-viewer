@@ -26,7 +26,9 @@ export function computeTextureCoords(model: Model): Float32Array | undefined {
     const textureCoords = model.textureCoords;
 
     const faceCount = model.faceCount;
-    const faceTextureUCoordinates: Float32Array = new Float32Array(faceCount * 6);
+    const faceTextureUCoordinates: Float32Array = new Float32Array(
+        faceCount * 6
+    );
 
     for (let i = 0; i < faceCount; i++) {
         const trianglePointX = trianglePointsX[i];
@@ -45,8 +47,7 @@ export function computeTextureCoords(model: Model): Float32Array | undefined {
                 triangleVertexIdx1 = texTriangleX[textureCoordinate];
                 triangleVertexIdx2 = texTriangleY[textureCoordinate];
                 triangleVertexIdx3 = texTriangleZ[textureCoordinate];
-            }
-            else {
+            } else {
                 triangleVertexIdx1 = trianglePointX;
                 triangleVertexIdx2 = trianglePointY;
                 triangleVertexIdx3 = trianglePointZ;
@@ -78,20 +79,28 @@ export function computeTextureCoords(model: Model): Float32Array | undefined {
             let f_900_ = f_886_ * f_899_ - f_887_ * f_898_;
             let f_901_ = f_887_ * f_897_ - f_885_ * f_899_;
             let f_902_ = f_885_ * f_898_ - f_886_ * f_897_;
-            let f_903_ = 1.0 / (f_900_ * f_882_ + f_901_ * f_883_ + f_902_ * f_884_);
+            let f_903_ =
+                1.0 / (f_900_ * f_882_ + f_901_ * f_883_ + f_902_ * f_884_);
 
-            const u0 = (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
-            const u1 = (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
-            const u2 = (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
+            const u0 =
+                (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
+            const u1 =
+                (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
+            const u2 =
+                (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
 
             f_900_ = f_883_ * f_899_ - f_884_ * f_898_;
             f_901_ = f_884_ * f_897_ - f_882_ * f_899_;
             f_902_ = f_882_ * f_898_ - f_883_ * f_897_;
-            f_903_ = 1.0 / (f_900_ * f_885_ + f_901_ * f_886_ + f_902_ * f_887_);
+            f_903_ =
+                1.0 / (f_900_ * f_885_ + f_901_ * f_886_ + f_902_ * f_887_);
 
-            const v0 = (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
-            const v1 = (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
-            const v2 = (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
+            const v0 =
+                (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
+            const v1 =
+                (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
+            const v2 =
+                (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
 
             const idx = i * 6;
             faceTextureUCoordinates[idx] = u0;
@@ -197,8 +206,14 @@ export class Model extends Renderable {
         return Model.merge([model], 1);
     }
 
-    public static copyAnimated(model: Model, shallowTransparencies: boolean): Model {
-        const copy: Model = Object.assign(Object.create(Object.getPrototypeOf(model)), model);
+    public static copyAnimated(
+        model: Model,
+        shallowTransparencies: boolean
+    ): Model {
+        const copy: Model = Object.assign(
+            Object.create(Object.getPrototypeOf(model)),
+            model
+        );
         // const copy = new Model();
 
         copy.verticesX = new Int32Array(model.verticesCount);
@@ -318,17 +333,22 @@ export class Model extends Renderable {
             const model = models[i];
             if (model) {
                 for (let f = 0; f < model.faceCount; f++) {
-                    this.indices1[this.faceCount] = this.verticesCount + model.indices1[f];
-                    this.indices2[this.faceCount] = this.verticesCount + model.indices2[f];
-                    this.indices3[this.faceCount] = this.verticesCount + model.indices3[f];
+                    this.indices1[this.faceCount] =
+                        this.verticesCount + model.indices1[f];
+                    this.indices2[this.faceCount] =
+                        this.verticesCount + model.indices2[f];
+                    this.indices3[this.faceCount] =
+                        this.verticesCount + model.indices3[f];
                     this.faceColors1[this.faceCount] = model.faceColors1[f];
                     this.faceColors2[this.faceCount] = model.faceColors2[f];
                     this.faceColors3[this.faceCount] = model.faceColors3[f];
                     if (hasRenderPriority) {
                         if (model.faceRenderPriorities) {
-                            this.faceRenderPriorities[this.faceCount] = model.faceRenderPriorities[f];
+                            this.faceRenderPriorities[this.faceCount] =
+                                model.faceRenderPriorities[f];
                         } else {
-                            this.faceRenderPriorities[this.faceCount] = model.priority;
+                            this.faceRenderPriorities[this.faceCount] =
+                                model.priority;
                         }
                     }
 
@@ -338,15 +358,20 @@ export class Model extends Renderable {
 
                     if (hasTexture && this.faceTextures) {
                         if (model.faceTextures) {
-                            this.faceTextures[this.faceCount] = model.faceTextures[f];
+                            this.faceTextures[this.faceCount] =
+                                model.faceTextures[f];
                         } else {
                             this.faceTextures[this.faceCount] = -1;
                         }
                     }
 
                     if (hasTextureCoord) {
-                        if (model.textureCoords && model.textureCoords[f] !== -1) {
-                            this.textureCoords[this.faceCount] = (this.texTriangleCount + model.textureCoords[f]);
+                        if (
+                            model.textureCoords &&
+                            model.textureCoords[f] !== -1
+                        ) {
+                            this.textureCoords[this.faceCount] =
+                                this.texTriangleCount + model.textureCoords[f];
                         } else {
                             this.textureCoords[this.faceCount] = -1;
                         }
@@ -356,9 +381,12 @@ export class Model extends Renderable {
                 }
 
                 for (let v = 0; v < model.texTriangleCount; v++) {
-                    this.texTriangleX[this.texTriangleCount] = this.verticesCount + model.texTriangleX[v];
-                    this.texTriangleY[this.texTriangleCount] = this.verticesCount + model.texTriangleY[v];
-                    this.texTriangleZ[this.texTriangleCount] = this.verticesCount + model.texTriangleZ[v];
+                    this.texTriangleX[this.texTriangleCount] =
+                        this.verticesCount + model.texTriangleX[v];
+                    this.texTriangleY[this.texTriangleCount] =
+                        this.verticesCount + model.texTriangleY[v];
+                    this.texTriangleZ[this.texTriangleCount] =
+                        this.verticesCount + model.texTriangleZ[v];
                     this.texTriangleCount++;
                 }
 
@@ -398,8 +426,20 @@ export class Model extends Renderable {
             }
 
             this.xzRadius = (Math.sqrt(this.xzRadius) + 0.99) | 0;
-            this.radius = (Math.sqrt(this.xzRadius * this.xzRadius + this.height * this.height) + 0.99) | 0;
-            this.diameter = this.radius + (Math.sqrt((this.xzRadius * this.xzRadius + this.bottomY * this.bottomY)) + 0.99) | 0;
+            this.radius =
+                (Math.sqrt(
+                    this.xzRadius * this.xzRadius + this.height * this.height
+                ) +
+                    0.99) |
+                0;
+            this.diameter =
+                (this.radius +
+                    (Math.sqrt(
+                        this.xzRadius * this.xzRadius +
+                            this.bottomY * this.bottomY
+                    ) +
+                        0.99)) |
+                0;
         }
     }
 
@@ -408,18 +448,35 @@ export class Model extends Renderable {
         this.xMidOffset = -1;
     }
 
-    contourGround(heightMap: Int32Array[], tileX: number, tileHeight: number, tileY: number, var5: boolean, clipType: number): Model {
+    contourGround(
+        heightMap: Int32Array[],
+        tileX: number,
+        tileHeight: number,
+        tileY: number,
+        var5: boolean,
+        clipType: number
+    ): Model {
         this.calculateBoundsCylinder();
         let var7 = tileX - this.xzRadius;
         let var8 = tileX + this.xzRadius;
         let var9 = tileY - this.xzRadius;
         let var10 = tileY + this.xzRadius;
-        if (var7 >= 0 && var8 + 128 >> 7 < heightMap.length && var9 >= 0 && var10 + 128 >> 7 < heightMap[0].length) {
+        if (
+            var7 >= 0 &&
+            (var8 + 128) >> 7 < heightMap.length &&
+            var9 >= 0 &&
+            (var10 + 128) >> 7 < heightMap[0].length
+        ) {
             var7 >>= 7;
-            var8 = var8 + 127 >> 7;
+            var8 = (var8 + 127) >> 7;
             var9 >>= 7;
-            var10 = var10 + 127 >> 7;
-            if (tileHeight === heightMap[var7][var9] && tileHeight === heightMap[var8][var9] && tileHeight === heightMap[var7][var10] && tileHeight === heightMap[var8][var10]) {
+            var10 = (var10 + 127) >> 7;
+            if (
+                tileHeight === heightMap[var7][var9] &&
+                tileHeight === heightMap[var8][var9] &&
+                tileHeight === heightMap[var7][var10] &&
+                tileHeight === heightMap[var8][var10]
+            ) {
                 return this;
             } else {
                 let model: Model;
@@ -461,14 +518,23 @@ export class Model extends Renderable {
                         const var16 = var14 & 127;
                         const var17 = var13 >> 7;
                         const var18 = var14 >> 7;
-                        const var19 = heightMap[var17][var18] * (128 - var15) + heightMap[var17 + 1][var18] * var15 >> 7;
-                        const var20 = heightMap[var17][var18 + 1] * (128 - var15) + var15 * heightMap[var17 + 1][var18 + 1] >> 7;
-                        const var21 = var19 * (128 - var16) + var20 * var16 >> 7;
-                        model.contourVerticesY[i] = var21 + this.verticesY[i] - tileHeight;
+                        const var19 =
+                            (heightMap[var17][var18] * (128 - var15) +
+                                heightMap[var17 + 1][var18] * var15) >>
+                            7;
+                        const var20 =
+                            (heightMap[var17][var18 + 1] * (128 - var15) +
+                                var15 * heightMap[var17 + 1][var18 + 1]) >>
+                            7;
+                        const var21 =
+                            (var19 * (128 - var16) + var20 * var16) >> 7;
+                        model.contourVerticesY[i] =
+                            var21 + this.verticesY[i] - tileHeight;
                     }
                 } else {
                     for (let i = 0; i < model.verticesCount; i++) {
-                        const var13 = ((-this.verticesY[i] << 16) / this.height) | 0;
+                        const var13 =
+                            ((-this.verticesY[i] << 16) / this.height) | 0;
                         if (var13 < clipType) {
                             const var14 = tileX + this.verticesX[i];
                             const var15 = tileY + this.verticesZ[i];
@@ -476,10 +542,21 @@ export class Model extends Renderable {
                             const var17 = var15 & 127;
                             const var18 = var14 >> 7;
                             const var19 = var15 >> 7;
-                            const var20 = heightMap[var18][var19] * (128 - var16) + heightMap[var18 + 1][var19] * var16 >> 7;
-                            const var21 = heightMap[var18][var19 + 1] * (128 - var16) + var16 * heightMap[var18 + 1][var19 + 1] >> 7;
-                            const var22 = var20 * (128 - var17) + var21 * var17 >> 7;
-                            model.contourVerticesY[i] = ((clipType - var13) * (var22 - tileHeight) / clipType + this.verticesY[i]) | 0;
+                            const var20 =
+                                (heightMap[var18][var19] * (128 - var16) +
+                                    heightMap[var18 + 1][var19] * var16) >>
+                                7;
+                            const var21 =
+                                (heightMap[var18][var19 + 1] * (128 - var16) +
+                                    var16 * heightMap[var18 + 1][var19 + 1]) >>
+                                7;
+                            const var22 =
+                                (var20 * (128 - var17) + var21 * var17) >> 7;
+                            model.contourVerticesY[i] =
+                                (((clipType - var13) * (var22 - tileHeight)) /
+                                    clipType +
+                                    this.verticesY[i]) |
+                                0;
                         }
                     }
                 }
@@ -526,8 +603,10 @@ export class Model extends Renderable {
         const cos = COSINE[angle];
 
         for (let i = 0; i < this.verticesCount; i++) {
-            const temp = sin * this.verticesZ[i] + cos * this.verticesX[i] >> 16;
-            this.verticesZ[i] = cos * this.verticesZ[i] - sin * this.verticesX[i] >> 16;
+            const temp =
+                (sin * this.verticesZ[i] + cos * this.verticesX[i]) >> 16;
+            this.verticesZ[i] =
+                (cos * this.verticesZ[i] - sin * this.verticesX[i]) >> 16;
             this.verticesX[i] = temp;
         }
 
@@ -546,9 +625,9 @@ export class Model extends Renderable {
 
     scale(x: number, y: number, z: number): void {
         for (let i = 0; i < this.verticesCount; i++) {
-            this.verticesX[i] = (this.verticesX[i] * x / 128) | 0;
-            this.verticesY[i] = (this.verticesY[i] * y / 128) | 0;
-            this.verticesZ[i] = (this.verticesZ[i] * z / 128) | 0;
+            this.verticesX[i] = ((this.verticesX[i] * x) / 128) | 0;
+            this.verticesY[i] = ((this.verticesY[i] * y) / 128) | 0;
+            this.verticesZ[i] = ((this.verticesZ[i] * z) / 128) | 0;
         }
 
         this.invalidateBounds();
@@ -583,14 +662,26 @@ export class Model extends Renderable {
             for (let i = 0; i < frame.transformCount; i++) {
                 const group = frame.transformGroups[i];
                 // console.log(group, i, skeleton.types[group]);
-                this.transform(skeleton.types[group], skeleton.labels[group], frame.transformX[i], frame.transformY[i], frame.transformZ[i]);
+                this.transform(
+                    skeleton.types[group],
+                    skeleton.labels[group],
+                    frame.transformX[i],
+                    frame.transformY[i],
+                    frame.transformZ[i]
+                );
             }
 
             this.invalidateBounds();
         }
     }
 
-    transform(type: TransformType, labels: number[], tx: number, ty: number, tz: number) {
+    transform(
+        type: TransformType,
+        labels: number[],
+        tx: number,
+        ty: number,
+        tz: number
+    ) {
         switch (type) {
             case TransformType.ORIGIN:
                 Model.resetAnimateOrigin();
@@ -609,9 +700,12 @@ export class Model extends Renderable {
                 }
 
                 if (groupVertexCount > 0) {
-                    Model.animateOriginX = tx + (Model.animateOriginX / groupVertexCount | 0);
-                    Model.animateOriginY = ty + (Model.animateOriginY / groupVertexCount | 0);
-                    Model.animateOriginZ = tz + (Model.animateOriginZ / groupVertexCount | 0);
+                    Model.animateOriginX =
+                        tx + ((Model.animateOriginX / groupVertexCount) | 0);
+                    Model.animateOriginY =
+                        ty + ((Model.animateOriginY / groupVertexCount) | 0);
+                    Model.animateOriginZ =
+                        tz + ((Model.animateOriginZ / groupVertexCount) | 0);
                 } else {
                     Model.animateOriginX = tx;
                     Model.animateOriginY = ty;
@@ -637,16 +731,22 @@ export class Model extends Renderable {
                             this.verticesY[v] -= Model.animateOriginY;
                             this.verticesZ[v] -= Model.animateOriginZ;
 
-                            const angleX = (tx & 0xFF) * 8;
-                            const angleY = (ty & 0xFF) * 8;
-                            const angleZ = (tz & 0xFF) * 8;
+                            const angleX = (tx & 0xff) * 8;
+                            const angleY = (ty & 0xff) * 8;
+                            const angleZ = (tz & 0xff) * 8;
 
                             // roll
                             if (angleZ !== 0) {
                                 const sin = SINE[angleZ];
                                 const cos = COSINE[angleZ];
-                                const temp = sin * this.verticesY[v] + cos * this.verticesX[v] >> 16;
-                                this.verticesY[v] = cos * this.verticesY[v] - sin * this.verticesX[v] >> 16;
+                                const temp =
+                                    (sin * this.verticesY[v] +
+                                        cos * this.verticesX[v]) >>
+                                    16;
+                                this.verticesY[v] =
+                                    (cos * this.verticesY[v] -
+                                        sin * this.verticesX[v]) >>
+                                    16;
                                 this.verticesX[v] = temp;
                             }
 
@@ -654,8 +754,14 @@ export class Model extends Renderable {
                             if (angleX !== 0) {
                                 const sin = SINE[angleX];
                                 const cos = COSINE[angleX];
-                                const temp = cos * this.verticesY[v] - sin * this.verticesZ[v] >> 16;
-                                this.verticesZ[v] = sin * this.verticesY[v] + cos * this.verticesZ[v] >> 16;
+                                const temp =
+                                    (cos * this.verticesY[v] -
+                                        sin * this.verticesZ[v]) >>
+                                    16;
+                                this.verticesZ[v] =
+                                    (sin * this.verticesY[v] +
+                                        cos * this.verticesZ[v]) >>
+                                    16;
                                 this.verticesY[v] = temp;
                             }
 
@@ -663,8 +769,14 @@ export class Model extends Renderable {
                             if (angleY !== 0) {
                                 const sin = SINE[angleY];
                                 const cos = COSINE[angleY];
-                                const temp = sin * this.verticesZ[v] + cos * this.verticesX[v] >> 16;
-                                this.verticesZ[v] = cos * this.verticesZ[v] - sin * this.verticesX[v] >> 16;
+                                const temp =
+                                    (sin * this.verticesZ[v] +
+                                        cos * this.verticesX[v]) >>
+                                    16;
+                                this.verticesZ[v] =
+                                    (cos * this.verticesZ[v] -
+                                        sin * this.verticesX[v]) >>
+                                    16;
                                 this.verticesX[v] = temp;
                             }
 
@@ -683,9 +795,12 @@ export class Model extends Renderable {
                             this.verticesY[v] -= Model.animateOriginY;
                             this.verticesZ[v] -= Model.animateOriginZ;
 
-                            this.verticesX[v] = (tx * this.verticesX[v] / 128) | 0;
-                            this.verticesY[v] = (ty * this.verticesY[v] / 128) | 0;
-                            this.verticesZ[v] = (tz * this.verticesZ[v] / 128) | 0;
+                            this.verticesX[v] =
+                                ((tx * this.verticesX[v]) / 128) | 0;
+                            this.verticesY[v] =
+                                ((ty * this.verticesY[v]) / 128) | 0;
+                            this.verticesZ[v] =
+                                ((tz * this.verticesZ[v]) / 128) | 0;
 
                             this.verticesX[v] += Model.animateOriginX;
                             this.verticesY[v] += Model.animateOriginY;
@@ -699,10 +814,11 @@ export class Model extends Renderable {
                     for (const label of labels) {
                         if (label < this.faceLabelsAlpha.length) {
                             // if (this.faceCount === 700) {
-                                // console.log('here', label, this.faceLabelsAlpha);
+                            // console.log('here', label, this.faceLabelsAlpha);
                             // }
                             for (const f of this.faceLabelsAlpha[label]) {
-                                let newAlpha = (this.faceAlphas[f] & 0xFF) + tx * 8
+                                let newAlpha =
+                                    (this.faceAlphas[f] & 0xff) + tx * 8;
                                 if (newAlpha < 0) {
                                     newAlpha = 0;
                                 } else if (newAlpha > 255) {
@@ -710,7 +826,7 @@ export class Model extends Renderable {
                                 }
 
                                 // if (this.faceCount === 700) {
-                                    // console.log('changing alpha', f, newAlpha, this.faceAlphas[f] & 0xFF);
+                                // console.log('changing alpha', f, newAlpha, this.faceAlphas[f] & 0xFF);
                                 // }
                                 this.faceAlphas[f] = newAlpha;
                                 // this.faceAlphas[f] = 0;

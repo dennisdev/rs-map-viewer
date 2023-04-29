@@ -1,5 +1,9 @@
-export function buildPalette(brightness: number, var2: number, var3: number): Int32Array {
-    const palette = new Int32Array(0xFFFF);
+export function buildPalette(
+    brightness: number,
+    var2: number,
+    var3: number
+): Int32Array {
+    const palette = new Int32Array(0xffff);
 
     let paletteIndex = var2 * 128;
 
@@ -36,7 +40,9 @@ export function buildPalette(brightness: number, var2: number, var3: number): In
                 } else if (2.0 * var23 < 1.0) {
                     var13 = var19;
                 } else if (3.0 * var23 < 2.0) {
-                    var13 = var21 + (var19 - var21) * (0.6666666666666666 - var23) * 6.0;
+                    var13 =
+                        var21 +
+                        (var19 - var21) * (0.6666666666666666 - var23) * 6.0;
                 } else {
                     var13 = var21;
                 }
@@ -46,7 +52,9 @@ export function buildPalette(brightness: number, var2: number, var3: number): In
                 } else if (2.0 * var6 < 1.0) {
                     var15 = var19;
                 } else if (3.0 * var6 < 2.0) {
-                    var15 = var21 + (var19 - var21) * (0.6666666666666666 - var6) * 6.0;
+                    var15 =
+                        var21 +
+                        (var19 - var21) * (0.6666666666666666 - var6) * 6.0;
                 } else {
                     var15 = var21;
                 }
@@ -56,7 +64,9 @@ export function buildPalette(brightness: number, var2: number, var3: number): In
                 } else if (2.0 * var27 < 1.0) {
                     var17 = var19;
                 } else if (3.0 * var27 < 2.0) {
-                    var17 = var21 + (var19 - var21) * (0.6666666666666666 - var27) * 6.0;
+                    var17 =
+                        var21 +
+                        (var19 - var21) * (0.6666666666666666 - var27) * 6.0;
                 } else {
                     var17 = var21;
                 }
@@ -83,7 +93,7 @@ export const HSL_RGB_MAP = buildPalette(0.9, 0, 512);
 
 export function brightenRgb(rgb: number, brightness: number) {
     let r = (rgb >> 16) / 256.0;
-    let g = (rgb >> 8 & 255) / 256.0;
+    let g = ((rgb >> 8) & 255) / 256.0;
     let b = (rgb & 255) / 256.0;
     r = Math.pow(r, brightness);
     g = Math.pow(g, brightness);
@@ -96,36 +106,36 @@ export function brightenRgb(rgb: number, brightness: number) {
 
 export function packHsl(hue: number, saturation: number, lightness: number) {
     if (lightness > 179) {
-        saturation = saturation / 2 | 0;
+        saturation = (saturation / 2) | 0;
     }
 
     if (lightness > 192) {
-        saturation = saturation / 2 | 0;
+        saturation = (saturation / 2) | 0;
     }
 
     if (lightness > 217) {
-        saturation = saturation / 2 | 0;
+        saturation = (saturation / 2) | 0;
     }
 
     if (lightness > 243) {
-        saturation = saturation / 2 | 0;
+        saturation = (saturation / 2) | 0;
     }
 
-    return (saturation / 32 << 7) + (hue / 4 << 10) + (lightness / 2 | 0);
-};
+    return ((saturation / 32) << 7) + ((hue / 4) << 10) + ((lightness / 2) | 0);
+}
 
 export function adjustUnderlayLight(hsl: number, light: number) {
     if (hsl == -1) {
         return 12345678;
     } else {
-        light = (hsl & 127) * light >> 7;
+        light = ((hsl & 127) * light) >> 7;
         if (light < 2) {
             light = 2;
         } else if (light > 126) {
             light = 126;
         }
 
-        return (hsl & 0xFF80) + light;
+        return (hsl & 0xff80) + light;
     }
 }
 
@@ -141,13 +151,13 @@ export function adjustOverlayLight(hsl: number, light: number) {
 
         return light;
     } else {
-        light = (hsl & 127) * light >> 7;
+        light = ((hsl & 127) * light) >> 7;
         if (light < 2) {
             light = 2;
         } else if (light > 126) {
             light = 126;
         }
 
-        return (hsl & 0xFF80) + light;
+        return (hsl & 0xff80) + light;
     }
 }
