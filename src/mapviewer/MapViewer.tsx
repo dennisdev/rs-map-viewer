@@ -1,6 +1,6 @@
 import Denque from "denque";
 import { mat4, vec2, vec3 } from "gl-matrix";
-import { Leva, button, folder, useControls } from "leva";
+import { Leva, button, buttonGroup, folder, useControls } from "leva";
 import { Schema } from "leva/dist/declarations/src/types";
 import {
     DrawCall,
@@ -41,7 +41,7 @@ import { Pathfinder } from "../client/pathfinder/Pathfinder";
 import { ExactRouteStrategy } from "../client/pathfinder/RouteStrategy";
 import { CollisionMap } from "../client/pathfinder/collision/CollisionMap";
 import { Scene } from "../client/scene/Scene";
-import { clamp, lerp } from "../client/util/MathUtil";
+import { clamp, lerp, slerp } from "../client/util/MathUtil";
 import WebGLCanvas from "../components/Canvas";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
@@ -58,6 +58,12 @@ import quadFragShader from "./shaders/quad.frag.glsl";
 import quadVertShader from "./shaders/quad.vert.glsl";
 
 // console.log(mainVertShader);
+
+interface CameraPosition {
+    position: vec3;
+    pitch: number;
+    yaw: number;
+}
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -1450,9 +1456,7 @@ class MapViewer {
      * Sets the camera position to a new arbitrary position
      * @param newPosition Any of the items you want to move: Position, pitch, yaw
      */
-    setCamera(
-        newPosition: Partial<{ position: vec3; pitch: number; yaw: number }>
-    ): void {
+    setCamera(newPosition: Partial<CameraPosition>): void {
         if (newPosition.position) {
             this.cameraPos = newPosition.position;
         }
@@ -2606,10 +2610,28 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         Direction: { value: directionControls, editable: false },
     };
 
-    const animationDuration = 5000;
-    const [isCameraTest, setCameraTest] = useState(false);
+    const [animationDuration, setAnimationDuration] = useState(5);
+    const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(
+        () => []
+    );
+    const [pointsControls, setPointControls] = useState(folder({}));
+    const addPoint = () => {
+        setCameraPoints((pts) => [
+            ...pts,
+            {
+                position: vec3.fromValues(
+                    mapViewer.cameraPos[0],
+                    mapViewer.cameraPos[1],
+                    mapViewer.cameraPos[2]
+                ),
+                pitch: mapViewer.pitch,
+                yaw: mapViewer.yaw,
+            },
+        ]);
+    };
+    const [isCameraRunning, setCameraRunning] = useState(false);
     useEffect(() => {
-        if (!isCameraTest) {
+        if (!isCameraRunning) {
             return;
         }
 
@@ -2621,7 +2643,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             }
 
             const elapsed = timestamp - start;
-            const progress = elapsed / animationDuration;
+            const progress = elapsed / (animationDuration * 1000);
 
             const newPosition: { position: vec3; pitch: number; yaw: number } =
                 {
@@ -2631,35 +2653,36 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                         lerp(from.position[2], to.position[2], progress)
                     ),
                     pitch: lerp(from.pitch, to.pitch, progress),
-                    yaw: lerp(from.yaw, to.yaw, progress),
+                    yaw: slerp(from.yaw, to.yaw, progress, 2048),
                 };
-            console.debug("Frame!", elapsed, progress, newPosition, from, to);
             mapViewer.setCamera(newPosition);
 
-            const isComplete = elapsed > animationDuration;
+            const isComplete = elapsed > animationDuration * 1000;
             if (isComplete) {
-                setCameraTest(false);
+                setCameraRunning(false);
             } else {
                 window.requestAnimationFrame(callback);
             }
         };
 
         window.requestAnimationFrame(callback);
-    }, [isCameraTest]);
+    }, [isCameraRunning]);
 
-    const from: { position: vec3; pitch: number; yaw: number } = {
+    const from: CameraPosition = {
         position: vec3.fromValues(-3242, 26, -3202),
         pitch: 300,
-        yaw: 500,
+        yaw: 1800,
     };
 
-    const to: { position: vec3; pitch: number; yaw: number } = {
-        position: vec3.fromValues(-3212.03, 26, -3448.37),
-        pitch: 100,
-        yaw: 0,
+    const to: CameraPosition = {
+        ...from,
+        // position: vec3.fromValues(-3212.03, 26, -3448.37),
+        // pitch: 100,
+        // yaw: 0,
+        yaw: 200,
     };
 
-    const data = useControls({
+    const generateControls = () => ({
         "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
         Camera: folder(
             {
@@ -2772,8 +2795,37 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             },
             { collapsed: true }
         ),
-        Start: button(() => setCameraTest(true)),
+        Record: folder({
+            Start: button(() => setCameraRunning(true)),
+            "Add point": button(() => addPoint()),
+            Length: {
+                value: animationDuration,
+                onChange: (v) => {
+                    setAnimationDuration(v);
+                },
+            },
+            Points: pointsControls,
+        }),
     });
+    const [, setControls] = useControls(generateControls, [pointsControls]);
+
+    useEffect(() => {
+        setPointControls(
+            folder(
+                cameraPoints.reduce((acc: Record<string, any>, v, i) => {
+                    const point = v;
+                    acc["Point " + i] = buttonGroup({
+                        Teleport: () => mapViewer.setCamera(point),
+                        Delete: () =>
+                            setCameraPoints((pts) =>
+                                pts.filter((_, j) => j !== i)
+                            ),
+                    });
+                    return acc;
+                }, {})
+            )
+        );
+    }, [cameraPoints]);
 
     useEffect(() => {
         mapViewer.fpsListener = setFps;
