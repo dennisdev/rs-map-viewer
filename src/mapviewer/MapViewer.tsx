@@ -2614,7 +2614,6 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(
         () => []
     );
-    const [pointsControls, setPointControls] = useState(folder({}));
     const addPoint = () => {
         setCameraPoints((pts) => [
             ...pts,
@@ -2629,7 +2628,28 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             },
         ]);
     };
+
+    useEffect(() => {
+        setPointControls(
+            folder(
+                cameraPoints.reduce((acc: Record<string, any>, v, i) => {
+                    const point = v;
+                    acc["Point " + i] = buttonGroup({
+                        Teleport: () => mapViewer.setCamera(point),
+                        Delete: () =>
+                            setCameraPoints((pts) =>
+                                pts.filter((_, j) => j !== i)
+                            ),
+                    });
+                    return acc;
+                }, {})
+            )
+        );
+    }, [cameraPoints]);
+
+    const [pointsControls, setPointControls] = useState(folder({}));
     const [isCameraRunning, setCameraRunning] = useState(false);
+
     useEffect(() => {
         if (!isCameraRunning) {
             return;
@@ -2806,25 +2826,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             Points: pointsControls,
         }),
     });
-    const [, setControls] = useControls(generateControls, [pointsControls]);
-
-    useEffect(() => {
-        setPointControls(
-            folder(
-                cameraPoints.reduce((acc: Record<string, any>, v, i) => {
-                    const point = v;
-                    acc["Point " + i] = buttonGroup({
-                        Teleport: () => mapViewer.setCamera(point),
-                        Delete: () =>
-                            setCameraPoints((pts) =>
-                                pts.filter((_, j) => j !== i)
-                            ),
-                    });
-                    return acc;
-                }, {})
-            )
-        );
-    }, [cameraPoints]);
+    const controls = useControls(generateControls, [pointsControls]);
 
     useEffect(() => {
         mapViewer.fpsListener = setFps;
