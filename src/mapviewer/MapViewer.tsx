@@ -2610,7 +2610,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         Direction: { value: directionControls, editable: false },
     };
 
-    const [animationDuration, setAnimationDuration] = useState(5);
+    const [animationDuration, setAnimationDuration] = useState(1);
     const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(
         () => []
     );
@@ -2636,51 +2636,45 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         }
 
         let start: number;
-        // mapViewer.setCamera(from);
+        const segmentCount = cameraPoints.length - 1;
         const callback = (timestamp: number) => {
             if (!start) {
                 start = timestamp;
             }
 
             const elapsed = timestamp - start;
-            const progress = elapsed / (animationDuration * 1000);
+            const overallProgress = elapsed / (animationDuration * 1000);
 
-            const newPosition: { position: vec3; pitch: number; yaw: number } =
-                {
-                    position: vec3.fromValues(
-                        lerp(from.position[0], to.position[0], progress),
-                        lerp(from.position[1], to.position[1], progress),
-                        lerp(from.position[2], to.position[2], progress)
-                    ),
-                    pitch: lerp(from.pitch, to.pitch, progress),
-                    yaw: slerp(from.yaw, to.yaw, progress, 2048),
-                };
-            mapViewer.setCamera(newPosition);
+            const startIndex = Math.floor(overallProgress * segmentCount);
+            const endIndex = startIndex + 1;
+            const from = cameraPoints[startIndex];
+            const to = cameraPoints[endIndex];
+            const localProgress = (overallProgress * segmentCount) % 1;
 
             const isComplete = elapsed > animationDuration * 1000;
             if (isComplete) {
                 setCameraRunning(false);
-            } else {
-                window.requestAnimationFrame(callback);
+                mapViewer.setCamera(cameraPoints[cameraPoints.length - 1]);
+                return;
             }
+            const newPosition: { position: vec3; pitch: number; yaw: number } =
+                {
+                    position: vec3.fromValues(
+                        lerp(from.position[0], to.position[0], localProgress),
+                        lerp(from.position[1], to.position[1], localProgress),
+                        lerp(from.position[2], to.position[2], localProgress)
+                    ),
+                    pitch: lerp(from.pitch, to.pitch, localProgress),
+                    yaw: slerp(from.yaw, to.yaw, localProgress, 2048),
+                };
+            console.log(newPosition);
+            mapViewer.setCamera(newPosition);
+
+            window.requestAnimationFrame(callback);
         };
 
         window.requestAnimationFrame(callback);
     }, [isCameraRunning]);
-
-    const from: CameraPosition = {
-        position: vec3.fromValues(-3242, 26, -3202),
-        pitch: 300,
-        yaw: 1800,
-    };
-
-    const to: CameraPosition = {
-        ...from,
-        // position: vec3.fromValues(-3212.03, 26, -3448.37),
-        // pitch: 100,
-        // yaw: 0,
-        yaw: 200,
-    };
 
     const generateControls = () => ({
         "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
