@@ -2673,7 +2673,6 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                     pitch: lerp(from.pitch, to.pitch, localProgress),
                     yaw: slerp(from.yaw, to.yaw, localProgress, 2048),
                 };
-            console.log(newPosition);
             mapViewer.setCamera(newPosition);
 
             window.requestAnimationFrame(callback);
