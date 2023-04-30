@@ -1533,13 +1533,17 @@ class MapViewer {
     }
 
     setLoadNpcs(load: boolean) {
+        if (this.loadNpcs !== load) {
+            this.deleteChunks();
+        }
         this.loadNpcs = load;
-        this.deleteChunks();
     }
 
     setMaxPlane(maxPlane: number) {
+        if (this.maxPlane !== maxPlane) {
+            this.deleteChunks();
+        }
         this.maxPlane = maxPlane;
-        this.deleteChunks();
     }
 
     updateCullFace() {
