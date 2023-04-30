@@ -2637,6 +2637,12 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
 
         let start: number;
         const segmentCount = cameraPoints.length - 1;
+        // Need at least 2 points to start
+        if (segmentCount <= 0) {
+            setCameraRunning(false);
+            return;
+        }
+
         const callback = (timestamp: number) => {
             if (!start) {
                 start = timestamp;
