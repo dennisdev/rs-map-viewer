@@ -2848,6 +2848,14 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         mapViewer.setHudHidden = setHudHidden;
     }, [mapViewer]);
 
+    useEffect(() => {
+        mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
+            if (!isCameraRunning) {
+                setSearchParams(mapViewer.getSearchParams(), { replace: true });
+            }
+        };
+    }, [mapViewer, isCameraRunning]);
+
     return (
         <div>
             {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
@@ -3021,10 +3029,6 @@ function MapViewerApp() {
             if (yaw) {
                 mapViewer.yaw = parseInt(yaw);
             }
-
-            mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
-                setSearchParams(mapViewer.getSearchParams(), { replace: true });
-            };
 
             setMapViewer(mapViewer);
         };
