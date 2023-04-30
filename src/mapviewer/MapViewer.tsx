@@ -2610,7 +2610,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         Direction: { value: directionControls, editable: false },
     };
 
-    const [animationDuration, setAnimationDuration] = useState(1);
+    const [animationDuration, setAnimationDuration] = useState(10);
     const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(
         () => []
     );
