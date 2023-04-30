@@ -101,35 +101,47 @@ export class ModelData extends Renderable {
         return model;
     }
 
-    public static copyFrom(model: ModelData, shallowIndices: boolean, shallowVertices: boolean, shallowColors: boolean, shallowTextures: boolean): ModelData {
+    public static copyFrom(
+        model: ModelData,
+        shallowIndices: boolean,
+        shallowVertices: boolean,
+        shallowColors: boolean,
+        shallowTextures: boolean
+    ): ModelData {
         const copy = new ModelData();
-        copy.copyFrom(model, shallowIndices, shallowVertices, shallowColors, shallowTextures);
+        copy.copyFrom(
+            model,
+            shallowIndices,
+            shallowVertices,
+            shallowColors,
+            shallowTextures
+        );
         return copy;
     }
 
     public static addLightness(hsl: number, lightness: number): number {
-        lightness = (hsl & 127) * lightness >> 7;
+        lightness = ((hsl & 127) * lightness) >> 7;
         if (lightness < 2) {
             lightness = 2;
         } else if (lightness > 126) {
             lightness = 126;
         }
 
-        return (hsl & 0xFF80) + lightness;
+        return (hsl & 0xff80) + lightness;
     }
 
     public static addLightness2(hsl: number, lightness: number): number {
-        if ((lightness / 128 | 0) != lightness >> 7) {
-            console.log((lightness / 128 | 0), lightness >> 7);
+        if (((lightness / 128) | 0) != lightness >> 7) {
+            console.log((lightness / 128) | 0, lightness >> 7);
         }
-        lightness = (hsl & 127) * (lightness / 128 | 0);
+        lightness = (hsl & 127) * ((lightness / 128) | 0);
         if (lightness < 2) {
             lightness = 2;
         } else if (lightness > 126) {
             lightness = 126;
         }
 
-        return (hsl & 0xFF80) + lightness;
+        return (hsl & 0xff80) + lightness;
     }
 
     public static clampLightness(lightness: number): number {
@@ -141,7 +153,14 @@ export class ModelData extends Renderable {
         return lightness;
     }
 
-    public static mergeNormals(model0: ModelData, model1: ModelData, offsetX: number, offsetY: number, offsetZ: number, hideOccludedFaces: boolean): void {
+    public static mergeNormals(
+        model0: ModelData,
+        model1: ModelData,
+        offsetX: number,
+        offsetY: number,
+        offsetZ: number,
+        hideOccludedFaces: boolean
+    ): void {
         model0.calculateBounds();
         model0.calculateVertexNormals();
         model1.calculateBounds();
@@ -178,7 +197,12 @@ export class ModelData extends Renderable {
 
             for (let v1 = 0; v1 < model1.verticesCount; v1++) {
                 const normal1 = model1.normals[v1];
-                if (x != model1.verticesX[v1] || z != model1.verticesZ[v1] || y != verticesY1[v1] || normal1.magnitude === 0) {
+                if (
+                    x != model1.verticesX[v1] ||
+                    z != model1.verticesZ[v1] ||
+                    y != verticesY1[v1] ||
+                    normal1.magnitude === 0
+                ) {
                     continue;
                 }
 
@@ -191,11 +215,13 @@ export class ModelData extends Renderable {
 
                 let mergedNormal0 = model0.mergedNormals[v0];
                 if (!mergedNormal0) {
-                    mergedNormal0 = model0.mergedNormals[v0] = VertexNormal.copy(normal0);
+                    mergedNormal0 = model0.mergedNormals[v0] =
+                        VertexNormal.copy(normal0);
                 }
                 let mergedNormal1 = model1.mergedNormals[v1];
                 if (!mergedNormal1) {
-                    mergedNormal1 = model1.mergedNormals[v1] = VertexNormal.copy(normal1);
+                    mergedNormal1 = model1.mergedNormals[v1] =
+                        VertexNormal.copy(normal1);
                 }
 
                 mergedNormal0.x += normal1.x;
@@ -209,31 +235,47 @@ export class ModelData extends Renderable {
 
                 mergedCount++;
 
-                ModelData.mergedNormalsModel0Cache[v0] = ModelData.mergeModelNormalsCount;
-                ModelData.mergedNormalsModel1Cache[v1] = ModelData.mergeModelNormalsCount;
+                ModelData.mergedNormalsModel0Cache[v0] =
+                    ModelData.mergeModelNormalsCount;
+                ModelData.mergedNormalsModel1Cache[v1] =
+                    ModelData.mergeModelNormalsCount;
             }
         }
 
         if (mergedCount >= 3 && hideOccludedFaces) {
             for (let i = 0; i < model0.faceCount; i++) {
-                if (ModelData.mergedNormalsModel0Cache[model0.indices1[i]] == ModelData.mergeModelNormalsCount 
-                    && ModelData.mergedNormalsModel0Cache[model0.indices2[i]] == ModelData.mergeModelNormalsCount 
-                    && ModelData.mergedNormalsModel0Cache[model0.indices3[i]] == ModelData.mergeModelNormalsCount) {
+                if (
+                    ModelData.mergedNormalsModel0Cache[model0.indices1[i]] ==
+                        ModelData.mergeModelNormalsCount &&
+                    ModelData.mergedNormalsModel0Cache[model0.indices2[i]] ==
+                        ModelData.mergeModelNormalsCount &&
+                    ModelData.mergedNormalsModel0Cache[model0.indices3[i]] ==
+                        ModelData.mergeModelNormalsCount
+                ) {
                     if (!model0.faceRenderTypes) {
-                       model0.faceRenderTypes = new Int8Array(model0.faceCount);
+                        model0.faceRenderTypes = new Int8Array(
+                            model0.faceCount
+                        );
                     }
-     
+
                     model0.faceRenderTypes[i] = 2;
                 }
             }
             for (let i = 0; i < model1.faceCount; i++) {
-                if (ModelData.mergedNormalsModel1Cache[model1.indices1[i]] == ModelData.mergeModelNormalsCount 
-                    && ModelData.mergedNormalsModel1Cache[model1.indices2[i]] == ModelData.mergeModelNormalsCount 
-                    && ModelData.mergedNormalsModel1Cache[model1.indices3[i]] == ModelData.mergeModelNormalsCount) {
+                if (
+                    ModelData.mergedNormalsModel1Cache[model1.indices1[i]] ==
+                        ModelData.mergeModelNormalsCount &&
+                    ModelData.mergedNormalsModel1Cache[model1.indices2[i]] ==
+                        ModelData.mergeModelNormalsCount &&
+                    ModelData.mergedNormalsModel1Cache[model1.indices3[i]] ==
+                        ModelData.mergeModelNormalsCount
+                ) {
                     if (!model1.faceRenderTypes) {
-                       model1.faceRenderTypes = new Int8Array(model1.faceCount);
+                        model1.faceRenderTypes = new Int8Array(
+                            model1.faceCount
+                        );
                     }
-     
+
                     model1.faceRenderTypes[i] = 2;
                 }
             }
@@ -337,20 +379,26 @@ export class ModelData extends Renderable {
         this.faceCount = 0;
         this.textureTriangleCount = 0;
 
-
         for (let i = 0; i < count; i++) {
             const model = models[i];
             if (model) {
                 for (let f = 0; f < model.faceCount; f++) {
-                    if (hasRenderTypes && model.faceRenderTypes && this.faceRenderTypes) {
-                        this.faceRenderTypes[this.faceCount] = model.faceRenderTypes[f];
+                    if (
+                        hasRenderTypes &&
+                        model.faceRenderTypes &&
+                        this.faceRenderTypes
+                    ) {
+                        this.faceRenderTypes[this.faceCount] =
+                            model.faceRenderTypes[f];
                     }
 
                     if (hasRenderPriorities) {
                         if (model.faceRenderPriorities) {
-                            this.faceRenderPriorities[this.faceCount] = model.faceRenderPriorities[f];
+                            this.faceRenderPriorities[this.faceCount] =
+                                model.faceRenderPriorities[f];
                         } else {
-                            this.faceRenderPriorities[this.faceCount] = model.priority;
+                            this.faceRenderPriorities[this.faceCount] =
+                                model.priority;
                         }
                     }
 
@@ -364,33 +412,53 @@ export class ModelData extends Renderable {
 
                     if (hasTextures && this.faceTextures) {
                         if (model.faceTextures) {
-                            this.faceTextures[this.faceCount] = model.faceTextures[f];
+                            this.faceTextures[this.faceCount] =
+                                model.faceTextures[f];
                         } else {
                             this.faceTextures[this.faceCount] = -1;
                         }
                     }
 
                     if (hasTextureCoords && this.textureCoords) {
-                        if (model.textureCoords && model.textureCoords[f] !== -1) {
-                            this.textureCoords[this.faceCount] = (this.textureTriangleCount + model.textureCoords[f]);
+                        if (
+                            model.textureCoords &&
+                            model.textureCoords[f] !== -1
+                        ) {
+                            this.textureCoords[this.faceCount] =
+                                this.textureTriangleCount +
+                                model.textureCoords[f];
                         } else {
                             this.textureCoords[this.faceCount] = -1;
                         }
                     }
 
                     this.faceColors[this.faceCount] = model.faceColors[f];
-                    this.indices1[this.faceCount] = this.copyVertex(model, model.indices1[f]);
-                    this.indices2[this.faceCount] = this.copyVertex(model, model.indices2[f]);
-                    this.indices3[this.faceCount] = this.copyVertex(model, model.indices3[f]);
+                    this.indices1[this.faceCount] = this.copyVertex(
+                        model,
+                        model.indices1[f]
+                    );
+                    this.indices2[this.faceCount] = this.copyVertex(
+                        model,
+                        model.indices2[f]
+                    );
+                    this.indices3[this.faceCount] = this.copyVertex(
+                        model,
+                        model.indices3[f]
+                    );
                     this.faceCount++;
                 }
 
                 for (let f = 0; f < model.textureTriangleCount; f++) {
-                    const type = this.textureRenderTypes[this.textureTriangleCount] = model.textureRenderTypes[f];
+                    const type = (this.textureRenderTypes[
+                        this.textureTriangleCount
+                    ] = model.textureRenderTypes[f]);
                     if (type === 0) {
-                        this.texTriangleX[this.textureTriangleCount] = this.copyVertex(model, model.texTriangleX[f]);
-                        this.texTriangleY[this.textureTriangleCount] = this.copyVertex(model, model.texTriangleY[f]);
-                        this.texTriangleZ[this.textureTriangleCount] = this.copyVertex(model, model.texTriangleZ[f]);
+                        this.texTriangleX[this.textureTriangleCount] =
+                            this.copyVertex(model, model.texTriangleX[f]);
+                        this.texTriangleY[this.textureTriangleCount] =
+                            this.copyVertex(model, model.texTriangleY[f]);
+                        this.texTriangleZ[this.textureTriangleCount] =
+                            this.copyVertex(model, model.texTriangleZ[f]);
                     }
 
                     this.textureTriangleCount++;
@@ -406,7 +474,11 @@ export class ModelData extends Renderable {
         const vertZ = model.verticesZ[index];
 
         for (let i = 0; i < this.verticesCount; i++) {
-            if (vertX === this.verticesX[i] && vertY === this.verticesY[i] && vertZ === this.verticesZ[i]) {
+            if (
+                vertX === this.verticesX[i] &&
+                vertY === this.verticesY[i] &&
+                vertZ === this.verticesZ[i]
+            ) {
                 newVertexCount = i;
                 break;
             }
@@ -421,8 +493,10 @@ export class ModelData extends Renderable {
             }
 
             if (model.animMayaGroups) {
-                this.animMayaGroups[this.verticesCount] = model.animMayaGroups[index];
-                this.animMayaScales[this.verticesCount] = model.animMayaScales[index];
+                this.animMayaGroups[this.verticesCount] =
+                    model.animMayaGroups[index];
+                this.animMayaScales[this.verticesCount] =
+                    model.animMayaScales[index];
             }
 
             newVertexCount = this.verticesCount++;
@@ -434,9 +508,15 @@ export class ModelData extends Renderable {
     decode(data: Int8Array): void {
         if (data[data.length - 1] === -3 && data[data.length - 2] === -1) {
             this.decodeV3(data);
-        } else if (data[data.length - 1] === -2 && data[data.length - 2] === -1) {
+        } else if (
+            data[data.length - 1] === -2 &&
+            data[data.length - 2] === -1
+        ) {
             this.decodeV2(data);
-        } else if (data[data.length - 1] === -1 && data[data.length - 2] === -1) {
+        } else if (
+            data[data.length - 1] === -1 &&
+            data[data.length - 2] === -1
+        ) {
             this.decodeV1(data);
         } else {
             this.decodeOld(data);
@@ -477,7 +557,7 @@ export class ModelData extends Renderable {
             buf1.offset = 0;
 
             for (let i = 0; i < texTriangleCount; i++) {
-                const type = this.textureRenderTypes[i] = buf1.readByte();
+                const type = (this.textureRenderTypes[i] = buf1.readByte());
                 if (type === 0) {
                     var25++;
                 }
@@ -674,11 +754,15 @@ export class ModelData extends Renderable {
             }
 
             if (var16 === 1 && this.faceTextures) {
-                this.faceTextures[i] = (buf6.readUnsignedShort() - 1);
+                this.faceTextures[i] = buf6.readUnsignedShort() - 1;
             }
 
-            if (this.textureCoords && this.faceTextures && this.faceTextures[i] !== -1) {
-                this.textureCoords[i] = (buf7.readUnsignedByte() - 1);
+            if (
+                this.textureCoords &&
+                this.faceTextures &&
+                this.faceTextures[i] !== -1
+            ) {
+                this.textureCoords[i] = buf7.readUnsignedByte() - 1;
             }
         }
 
@@ -923,7 +1007,12 @@ export class ModelData extends Renderable {
 
         for (let i = 0; i < faceCount; i++) {
             this.faceColors[i] = buf1.readUnsignedShort();
-            if (var12 === 1 && this.faceRenderTypes && this.textureCoords && this.faceTextures) {
+            if (
+                var12 === 1 &&
+                this.faceRenderTypes &&
+                this.textureCoords &&
+                this.faceTextures
+            ) {
                 const var41 = buf2.readUnsignedByte();
                 if ((var41 & 1) === 1) {
                     this.faceRenderTypes[i] = 1;
@@ -933,7 +1022,7 @@ export class ModelData extends Renderable {
                 }
 
                 if ((var41 & 2) === 2) {
-                    this.textureCoords[i] = (var41 >> 2);
+                    this.textureCoords[i] = var41 >> 2;
                     this.faceTextures[i] = this.faceColors[i];
                     this.faceColors[i] = 127;
                     if (this.faceTextures[i] !== -1) {
@@ -1022,9 +1111,13 @@ export class ModelData extends Renderable {
             for (let i = 0; i < faceCount; i++) {
                 const coord = this.textureCoords[i] & 255;
                 if (coord !== 255) {
-                    if (this.indices1[i] === (this.texTriangleX[coord] & 0xFFFF)
-                        && this.indices2[i] === (this.texTriangleY[coord] & 0xFFFF)
-                        && this.indices3[i] === (this.texTriangleZ[coord] & 0xFFFF)) {
+                    if (
+                        this.indices1[i] ===
+                            (this.texTriangleX[coord] & 0xffff) &&
+                        this.indices2[i] ===
+                            (this.texTriangleY[coord] & 0xffff) &&
+                        this.indices3[i] === (this.texTriangleZ[coord] & 0xffff)
+                    ) {
                         this.textureCoords[i] = -1;
                     } else {
                         var48 = true;
@@ -1078,7 +1171,7 @@ export class ModelData extends Renderable {
             buf1.offset = 0;
 
             for (let i = 0; i < texTriangleCount; i++) {
-                const type = this.textureRenderTypes[i] = buf1.readByte();
+                const type = (this.textureRenderTypes[i] = buf1.readByte());
                 if (type === 0) {
                     var23++;
                 }
@@ -1260,11 +1353,15 @@ export class ModelData extends Renderable {
             }
 
             if (var16 === 1 && this.faceTextures) {
-                this.faceTextures[i] = (buf6.readUnsignedShort() - 1);
+                this.faceTextures[i] = buf6.readUnsignedShort() - 1;
             }
 
-            if (this.textureCoords && this.faceTextures && this.faceTextures[i] !== -1) {
-                this.textureCoords[i] = (buf7.readUnsignedByte() - 1);
+            if (
+                this.textureCoords &&
+                this.faceTextures &&
+                this.faceTextures[i] !== -1
+            ) {
+                this.textureCoords[i] = buf7.readUnsignedByte() - 1;
             }
         }
 
@@ -1492,7 +1589,12 @@ export class ModelData extends Renderable {
 
         for (let i = 0; i < faceCount; i++) {
             this.faceColors[i] = buf1.readUnsignedShort();
-            if (var12 === 1 && this.faceRenderTypes && this.textureCoords && this.faceTextures) {
+            if (
+                var12 === 1 &&
+                this.faceRenderTypes &&
+                this.textureCoords &&
+                this.faceTextures
+            ) {
                 const var39 = buf2.readUnsignedByte();
                 if ((var39 & 1) === 1) {
                     this.faceRenderTypes[i] = 1;
@@ -1502,7 +1604,7 @@ export class ModelData extends Renderable {
                 }
 
                 if ((var39 & 2) === 2) {
-                    this.textureCoords[i] = (var39 >> 2);
+                    this.textureCoords[i] = var39 >> 2;
                     this.faceTextures[i] = this.faceColors[i];
                     this.faceColors[i] = 127;
                     if (this.faceTextures[i] !== -1) {
@@ -1591,9 +1693,13 @@ export class ModelData extends Renderable {
             for (let i = 0; i < faceCount; i++) {
                 const var44 = this.textureCoords[i] & 255;
                 if (var44 !== 255) {
-                    if (this.indices1[i] === (this.texTriangleX[var44] & 0xFFFF)
-                        && this.indices2[i] === (this.texTriangleY[var44] & 0xFFFF)
-                        && this.indices3[i] === (this.texTriangleZ[var44] & 0xFFFF)) {
+                    if (
+                        this.indices1[i] ===
+                            (this.texTriangleX[var44] & 0xffff) &&
+                        this.indices2[i] ===
+                            (this.texTriangleY[var44] & 0xffff) &&
+                        this.indices3[i] === (this.texTriangleZ[var44] & 0xffff)
+                    ) {
                         this.textureCoords[i] = -1;
                     } else {
                         hasValidTexFace = true;
@@ -1615,7 +1721,13 @@ export class ModelData extends Renderable {
         }
     }
 
-    copyFrom(model: ModelData, shallowIndices: boolean, shallowVertices: boolean, shallowColors: boolean, shallowTextures: boolean): void {
+    copyFrom(
+        model: ModelData,
+        shallowIndices: boolean,
+        shallowVertices: boolean,
+        shallowColors: boolean,
+        shallowTextures: boolean
+    ): void {
         this.verticesCount = model.verticesCount;
         this.faceCount = model.faceCount;
         this.textureTriangleCount = model.textureTriangleCount;
@@ -1734,18 +1846,35 @@ export class ModelData extends Renderable {
         return model;
     }
 
-    contourGround(heightMap: Int32Array[], tileX: number, tileHeight: number, tileY: number, var5: boolean, contourGround: number): ModelData {
+    contourGround(
+        heightMap: Int32Array[],
+        tileX: number,
+        tileHeight: number,
+        tileY: number,
+        var5: boolean,
+        contourGround: number
+    ): ModelData {
         this.calculateBounds();
         let var7 = tileX + this.minX;
         let var8 = tileX + this.maxX;
         let var9 = tileY + this.minZ;
         let var10 = tileY + this.maxZ;
-        if (var7 >= 0 && var8 + 128 >> 7 < heightMap.length && var9 >= 0 && var10 + 128 >> 7 < heightMap[0].length) {
+        if (
+            var7 >= 0 &&
+            (var8 + 128) >> 7 < heightMap.length &&
+            var9 >= 0 &&
+            (var10 + 128) >> 7 < heightMap[0].length
+        ) {
             var7 >>= 7;
-            var8 = var8 + 127 >> 7;
+            var8 = (var8 + 127) >> 7;
             var9 >>= 7;
-            var10 = var10 + 127 >> 7;
-            if (tileHeight === heightMap[var7][var9] && tileHeight === heightMap[var8][var9] && tileHeight === heightMap[var7][var10] && tileHeight === heightMap[var8][var10]) {
+            var10 = (var10 + 127) >> 7;
+            if (
+                tileHeight === heightMap[var7][var9] &&
+                tileHeight === heightMap[var8][var9] &&
+                tileHeight === heightMap[var7][var10] &&
+                tileHeight === heightMap[var8][var10]
+            ) {
                 return this;
             } else {
                 const model = new ModelData();
@@ -1784,14 +1913,23 @@ export class ModelData extends Renderable {
                         const var16 = var14 & 127;
                         const var17 = var13 >> 7;
                         const var18 = var14 >> 7;
-                        const var19 = heightMap[var17][var18] * (128 - var15) + heightMap[var17 + 1][var18] * var15 >> 7;
-                        const var20 = heightMap[var17][var18 + 1] * (128 - var15) + var15 * heightMap[var17 + 1][var18 + 1] >> 7;
-                        const var21 = var19 * (128 - var16) + var20 * var16 >> 7;
-                        model.contourVerticesY[i] = var21 + this.verticesY[i] - tileHeight;
+                        const var19 =
+                            (heightMap[var17][var18] * (128 - var15) +
+                                heightMap[var17 + 1][var18] * var15) >>
+                            7;
+                        const var20 =
+                            (heightMap[var17][var18 + 1] * (128 - var15) +
+                                var15 * heightMap[var17 + 1][var18 + 1]) >>
+                            7;
+                        const var21 =
+                            (var19 * (128 - var16) + var20 * var16) >> 7;
+                        model.contourVerticesY[i] =
+                            var21 + this.verticesY[i] - tileHeight;
                     }
                 } else {
                     for (let i = 0; i < model.verticesCount; i++) {
-                        const var13 = ((-this.verticesY[i] << 16) / this.height) | 0;
+                        const var13 =
+                            ((-this.verticesY[i] << 16) / this.height) | 0;
                         if (var13 < contourGround) {
                             const var14 = tileX + this.verticesX[i];
                             const var15 = tileY + this.verticesZ[i];
@@ -1799,10 +1937,22 @@ export class ModelData extends Renderable {
                             const var17 = var15 & 127;
                             const var18 = var14 >> 7;
                             const var19 = var15 >> 7;
-                            const var20 = heightMap[var18][var19] * (128 - var16) + heightMap[var18 + 1][var19] * var16 >> 7;
-                            const var21 = heightMap[var18][var19 + 1] * (128 - var16) + var16 * heightMap[var18 + 1][var19 + 1] >> 7;
-                            const var22 = var20 * (128 - var17) + var21 * var17 >> 7;
-                            model.contourVerticesY[i] = ((contourGround - var13) * (var22 - tileHeight) / contourGround + this.verticesY[i]) | 0;
+                            const var20 =
+                                (heightMap[var18][var19] * (128 - var16) +
+                                    heightMap[var18 + 1][var19] * var16) >>
+                                7;
+                            const var21 =
+                                (heightMap[var18][var19 + 1] * (128 - var16) +
+                                    var16 * heightMap[var18 + 1][var19 + 1]) >>
+                                7;
+                            const var22 =
+                                (var20 * (128 - var17) + var21 * var17) >> 7;
+                            model.contourVerticesY[i] =
+                                (((contourGround - var13) *
+                                    (var22 - tileHeight)) /
+                                    contourGround +
+                                    this.verticesY[i]) |
+                                0;
                         }
                     }
                 }
@@ -1836,7 +1986,11 @@ export class ModelData extends Renderable {
                 var1[i] = 0;
             }
 
-            for (let i = 0; i < this.verticesCount; this.vertexLabels[var4][var1[var4]++] = i++) {
+            for (
+                let i = 0;
+                i < this.verticesCount;
+                this.vertexLabels[var4][var1[var4]++] = i++
+            ) {
                 var4 = this.vertexSkins[i];
             }
 
@@ -1864,7 +2018,11 @@ export class ModelData extends Renderable {
                 var1[i] = 0;
             }
 
-            for (let i = 0; i < this.faceCount; this.faceLabelsAlpha[var4][var1[var4]++] = i++) {
+            for (
+                let i = 0;
+                i < this.faceCount;
+                this.faceLabelsAlpha[var4][var1[var4]++] = i++
+            ) {
                 var4 = this.faceSkins[i];
             }
 
@@ -1906,8 +2064,10 @@ export class ModelData extends Renderable {
         const cos = COSINE[angle];
 
         for (let i = 0; i < this.verticesCount; i++) {
-            const temp = sin * this.verticesZ[i] + cos * this.verticesX[i] >> 16;
-            this.verticesZ[i] = cos * this.verticesZ[i] - sin * this.verticesX[i] >> 16;
+            const temp =
+                (sin * this.verticesZ[i] + cos * this.verticesX[i]) >> 16;
+            this.verticesZ[i] =
+                (cos * this.verticesZ[i] - sin * this.verticesX[i]) >> 16;
             this.verticesX[i] = temp;
         }
 
@@ -1958,9 +2118,9 @@ export class ModelData extends Renderable {
 
     resize(resizeX: number, resizeY: number, resizeZ: number): void {
         for (let i = 0; i < this.verticesCount; i++) {
-            this.verticesX[i] = this.verticesX[i] * resizeX / 128 | 0;
-            this.verticesY[i] = this.verticesY[i] * resizeY / 128 | 0;
-            this.verticesZ[i] = this.verticesZ[i] * resizeZ / 128 | 0;
+            this.verticesX[i] = ((this.verticesX[i] * resizeX) / 128) | 0;
+            this.verticesY[i] = ((this.verticesY[i] * resizeY) / 128) | 0;
+            this.verticesZ[i] = ((this.verticesZ[i] * resizeZ) / 128) | 0;
         }
 
         this.invalidate();
@@ -1990,25 +2150,33 @@ export class ModelData extends Renderable {
                 let var12 = var7 * var8 - var10 * var5;
                 let var13 = var5 * var9 - var8 * var6;
 
-                while (var11 > 8192 || var12 > 8192 || var13 > 8192 || var11 < -8192 || var12 < -8192 || var13 < -8192) {
+                while (
+                    var11 > 8192 ||
+                    var12 > 8192 ||
+                    var13 > 8192 ||
+                    var11 < -8192 ||
+                    var12 < -8192 ||
+                    var13 < -8192
+                ) {
                     var11 >>= 1;
                     var12 >>= 1;
                     var13 >>= 1;
                 }
 
-                let var14 = Math.sqrt((var11 * var11 + var12 * var12 + var13 * var13)) | 0;
+                let var14 =
+                    Math.sqrt(var11 * var11 + var12 * var12 + var13 * var13) |
+                    0;
                 if (var14 <= 0) {
                     var14 = 1;
                 }
-
 
                 // if (this.faceCount === 306 && var2 ==0) {
                 //     console.log('normal', var14, var11, var12, var13, var11 * 256 / var14, var12 * 256 / var14, var13 * 256 / var14);
                 // }
 
-                var11 = (var11 * 256 / var14) | 0;
-                var12 = (var12 * 256 / var14) | 0;
-                var13 = (var13 * 256 / var14) | 0;
+                var11 = ((var11 * 256) / var14) | 0;
+                var12 = ((var12 * 256) / var14) | 0;
+                var13 = ((var13 * 256) / var14) | 0;
                 let type;
                 if (!this.faceRenderTypes) {
                     type = 0;
@@ -2097,13 +2265,22 @@ export class ModelData extends Renderable {
         }
     }
 
-    light(ambient: number, contrast: number, lightX: number, lightY: number, lightZ: number): Model {
+    light(
+        ambient: number,
+        contrast: number,
+        lightX: number,
+        lightY: number,
+        lightZ: number
+    ): Model {
         this.calculateVertexNormals();
         if (!this.normals) {
-            throw new Error('Failed to calculate normals. This should not be possible.')
+            throw new Error(
+                "Failed to calculate normals. This should not be possible."
+            );
         }
-        const var6 = Math.sqrt(lightZ * lightZ + lightX * lightX + lightY * lightY) | 0;
-        const var7 = var6 * contrast >> 8;
+        const var6 =
+            Math.sqrt(lightZ * lightZ + lightX * lightX + lightY * lightY) | 0;
+        const var7 = (var6 * contrast) >> 8;
         const model = new Model();
         model.faceColors1 = new Int32Array(this.faceCount);
         model.faceColors2 = new Int32Array(this.faceCount);
@@ -2113,7 +2290,7 @@ export class ModelData extends Renderable {
 
             for (let i = 0; i < this.faceCount; i++) {
                 if (this.textureCoords[i] !== -1) {
-                    var9[this.textureCoords[i] & 0xFF]++;
+                    var9[this.textureCoords[i] & 0xff]++;
                 }
             }
 
@@ -2132,9 +2309,9 @@ export class ModelData extends Renderable {
 
             for (let i = 0; i < this.textureTriangleCount; i++) {
                 if (var9[i] > 0 && this.textureRenderTypes[i] === 0) {
-                    model.texTriangleX[var10] = this.texTriangleX[i] & 0xFFFF;
-                    model.texTriangleY[var10] = this.texTriangleY[i] & 0xFFFF;
-                    model.texTriangleZ[var10] = this.texTriangleZ[i] & 0xFFFF;
+                    model.texTriangleX[var10] = this.texTriangleX[i] & 0xffff;
+                    model.texTriangleY[var10] = this.texTriangleY[i] & 0xffff;
+                    model.texTriangleZ[var10] = this.texTriangleZ[i] & 0xffff;
                     var9[i] = var10++;
                 } else {
                     var9[i] = -1;
@@ -2145,7 +2322,7 @@ export class ModelData extends Renderable {
 
             for (let i = 0; i < this.faceCount; i++) {
                 if (this.textureCoords[i] !== -1) {
-                    model.textureCoords[i] = var9[this.textureCoords[i] & 0xFF];
+                    model.textureCoords[i] = var9[this.textureCoords[i] & 0xff];
                 } else {
                     model.textureCoords[i] = -1;
                 }
@@ -2191,10 +2368,18 @@ export class ModelData extends Renderable {
                 if (type !== 0) {
                     if (type === 1 && this.faceNormals) {
                         const normal = this.faceNormals[i];
-                        const var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / ((var7 / 2 | 0) + var7) | 0) + ambient;
-                        model.faceColors1[i] = ModelData.addLightness(this.faceColors[i] & 0xFFFF, var14);
+                        const var14 =
+                            (((lightY * normal.y +
+                                lightZ * normal.z +
+                                lightX * normal.x) /
+                                (((var7 / 2) | 0) + var7)) |
+                                0) +
+                            ambient;
+                        model.faceColors1[i] = ModelData.addLightness(
+                            this.faceColors[i] & 0xffff,
+                            var14
+                        );
                         model.faceColors3[i] = -1;
-
 
                         // if (this.faceCount === 306 && i === 13) {
                         //     console.log(normal, var14, var7, (lightY * normal.y + lightZ * normal.z + lightX * normal.x), (var7 / 2 + var7),
@@ -2209,15 +2394,25 @@ export class ModelData extends Renderable {
                         model.faceColors3[i] = -2;
                     }
                 } else {
-                    const color = this.faceColors[i] & 0xFFFF;
+                    const color = this.faceColors[i] & 0xffff;
 
                     let normal: VertexNormal;
-                    if (this.mergedNormals && this.mergedNormals[this.indices1[i]]) {
+                    if (
+                        this.mergedNormals &&
+                        this.mergedNormals[this.indices1[i]]
+                    ) {
                         normal = this.mergedNormals[this.indices1[i]];
                     } else {
                         normal = this.normals[this.indices1[i]];
                     }
-                    let var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 * normal.magnitude) | 0) + ambient | 0;
+                    let var14 =
+                        ((((lightY * normal.y +
+                            lightZ * normal.z +
+                            lightX * normal.x) /
+                            (var7 * normal.magnitude)) |
+                            0) +
+                            ambient) |
+                        0;
                     model.faceColors1[i] = ModelData.addLightness(color, var14);
                     // if (this.faceCount === 306 && i === 13) {
                     //     console.log(normal, var14, var7, (lightY * normal.y + lightZ * normal.z + lightX * normal.x), (var7 * normal.magnitude),
@@ -2226,22 +2421,41 @@ export class ModelData extends Renderable {
                     //         this.indices1[i]);
                     // }
 
-                    if (this.mergedNormals && this.mergedNormals[this.indices2[i]]) {
+                    if (
+                        this.mergedNormals &&
+                        this.mergedNormals[this.indices2[i]]
+                    ) {
                         normal = this.mergedNormals[this.indices2[i]];
                     } else {
                         normal = this.normals[this.indices2[i]];
                     }
-                    var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 * normal.magnitude) | 0) + ambient | 0;
+                    var14 =
+                        ((((lightY * normal.y +
+                            lightZ * normal.z +
+                            lightX * normal.x) /
+                            (var7 * normal.magnitude)) |
+                            0) +
+                            ambient) |
+                        0;
                     model.faceColors2[i] = ModelData.addLightness(color, var14);
 
-                    if (this.mergedNormals && this.mergedNormals[this.indices3[i]]) {
+                    if (
+                        this.mergedNormals &&
+                        this.mergedNormals[this.indices3[i]]
+                    ) {
                         normal = this.mergedNormals[this.indices3[i]];
                     } else {
                         normal = this.normals[this.indices3[i]];
                     }
-                    var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 * normal.magnitude) | 0) + ambient | 0;
+                    var14 =
+                        ((((lightY * normal.y +
+                            lightZ * normal.z +
+                            lightX * normal.x) /
+                            (var7 * normal.magnitude)) |
+                            0) +
+                            ambient) |
+                        0;
                     model.faceColors3[i] = ModelData.addLightness(color, var14);
-
 
                     // if (this.faceCount === 306 && i === 13) {
 
@@ -2251,7 +2465,14 @@ export class ModelData extends Renderable {
             } else if (type !== 0) {
                 if (type === 1 && this.faceNormals) {
                     const var19 = this.faceNormals[i];
-                    const var14 = ((lightY * var19.y + lightZ * var19.z + lightX * var19.x) / ((var7 / 2 | 0) + var7) | 0) + ambient | 0;
+                    const var14 =
+                        ((((lightY * var19.y +
+                            lightZ * var19.z +
+                            lightX * var19.x) /
+                            (((var7 / 2) | 0) + var7)) |
+                            0) +
+                            ambient) |
+                        0;
                     model.faceColors1[i] = ModelData.clampLightness(var14);
                     model.faceColors3[i] = -1;
                 } else {
@@ -2259,29 +2480,59 @@ export class ModelData extends Renderable {
                 }
             } else {
                 let normal: VertexNormal;
-                if (this.mergedNormals && this.mergedNormals[this.indices1[i]]) {
+                if (
+                    this.mergedNormals &&
+                    this.mergedNormals[this.indices1[i]]
+                ) {
                     normal = this.mergedNormals[this.indices1[i]];
                 } else {
                     normal = this.normals[this.indices1[i]];
                 }
 
-                let var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 * normal.magnitude) | 0) + ambient | 0;
+                let var14 =
+                    ((((lightY * normal.y +
+                        lightZ * normal.z +
+                        lightX * normal.x) /
+                        (var7 * normal.magnitude)) |
+                        0) +
+                        ambient) |
+                    0;
                 model.faceColors1[i] = ModelData.clampLightness(var14);
-                if (this.mergedNormals && this.mergedNormals[this.indices2[i]]) {
+                if (
+                    this.mergedNormals &&
+                    this.mergedNormals[this.indices2[i]]
+                ) {
                     normal = this.mergedNormals[this.indices2[i]];
                 } else {
                     normal = this.normals[this.indices2[i]];
                 }
 
-                var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 * normal.magnitude) | 0) + ambient | 0;
+                var14 =
+                    ((((lightY * normal.y +
+                        lightZ * normal.z +
+                        lightX * normal.x) /
+                        (var7 * normal.magnitude)) |
+                        0) +
+                        ambient) |
+                    0;
                 model.faceColors2[i] = ModelData.clampLightness(var14);
-                if (this.mergedNormals && this.mergedNormals[this.indices3[i]]) {
+                if (
+                    this.mergedNormals &&
+                    this.mergedNormals[this.indices3[i]]
+                ) {
                     normal = this.mergedNormals[this.indices3[i]];
                 } else {
                     normal = this.normals[this.indices3[i]];
                 }
 
-                var14 = ((lightY * normal.y + lightZ * normal.z + lightX * normal.x) / (var7 * normal.magnitude) | 0) + ambient | 0;
+                var14 =
+                    ((((lightY * normal.y +
+                        lightZ * normal.z +
+                        lightX * normal.x) /
+                        (var7 * normal.magnitude)) |
+                        0) +
+                        ambient) |
+                    0;
                 model.faceColors3[i] = ModelData.clampLightness(var14);
             }
         }

@@ -5,7 +5,10 @@ export type ParamsMap = Map<number, number | string>;
 export abstract class Definition {
     public readonly id: number;
 
-    public static readParamsMap(buf: ByteBuffer, params?: ParamsMap): ParamsMap {
+    public static readParamsMap(
+        buf: ByteBuffer,
+        params?: ParamsMap
+    ): ParamsMap {
         const count = buf.readUnsignedByte();
         if (!params) {
             params = new Map<number, number | string>();
@@ -21,7 +24,7 @@ export abstract class Definition {
             }
         }
         return params;
-    } 
+    }
 
     constructor(id: number) {
         this.id = id;
@@ -39,7 +42,5 @@ export abstract class Definition {
 
     abstract decodeOpcode(opcode: number, buffer: ByteBuffer): void;
 
-    post(): void {
-
-    }
+    post(): void {}
 }

@@ -251,11 +251,16 @@ export class NpcDefinition extends Definition {
         } else if (opcode == 249) {
             this.params = Definition.readParamsMap(buffer, this.params);
         } else {
-            throw new Error('NpcDefinition: Opcode ' + opcode + ' not implemented.');
+            throw new Error(
+                "NpcDefinition: Opcode " + opcode + " not implemented."
+            );
         }
     }
 
-    transform(varpManager: VarpManager, npcLoader: NpcLoader): NpcDefinition | undefined {
+    transform(
+        varpManager: VarpManager,
+        npcLoader: NpcLoader
+    ): NpcDefinition | undefined {
         if (!this.transforms) {
             return undefined;
         }
@@ -268,7 +273,10 @@ export class NpcDefinition extends Definition {
         }
 
         let transformId = this.transforms[this.transforms.length - 1];
-        if (transformIndex >= 0 && transformIndex < this.transforms.length - 1) {
+        if (
+            transformIndex >= 0 &&
+            transformIndex < this.transforms.length - 1
+        ) {
             transformId = this.transforms[transformIndex];
         }
 

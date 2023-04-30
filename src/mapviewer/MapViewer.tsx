@@ -1,51 +1,78 @@
-import { useState, useEffect } from 'react';
-import { URLSearchParamsInit, useSearchParams } from 'react-router-dom';
-import './MapViewer.css';
-import WebGLCanvas from '../components/Canvas';
-import { mat4, vec4, vec3, vec2 } from 'gl-matrix';
-import { PicoGL, App as PicoApp, Timer, Program, UniformBuffer, VertexArray, Texture, DrawCall, VertexBuffer, Framebuffer } from 'picogl';
-import { MemoryFileSystem, fetchMemoryStore, loadFromStore, DownloadProgress } from '../client/fs/FileSystem';
-import { IndexType } from '../client/fs/IndexType';
-import { TextureLoader } from '../client/fs/loader/TextureLoader';
-import { RegionLoader } from '../client/RegionLoader';
-import { AnimatedModelData, ChunkData, ChunkDataLoader, NpcData } from './chunk/ChunkDataLoader';
-import { MemoryStore } from '../client/fs/MemoryStore';
-import { Skeleton } from '../client/model/animation/Skeleton';
-import { ConfigType } from '../client/fs/ConfigType';
-import { CachedUnderlayLoader } from '../client/fs/loader/UnderlayLoader';
-import { CachedOverlayLoader } from '../client/fs/loader/OverlayLoader';
-import { CachedObjectLoader } from '../client/fs/loader/ObjectLoader';
-import { IndexModelLoader } from '../client/fs/loader/ModelLoader';
-import Denque from 'denque';
-import { Scene } from '../client/scene/Scene';
-import { OsrsLoadingBar } from '../components/OsrsLoadingBar';
-import { Hasher } from '../client/util/Hasher';
-import { AnimationLoader, CachedAnimationLoader } from '../client/fs/loader/AnimationLoader';
-import { CachedSkeletonLoader } from '../client/fs/loader/SkeletonLoader';
-import { AnimationFrameMapLoader, CachedAnimationFrameMapLoader } from '../client/fs/loader/AnimationFrameMapLoader';
-import { Leva, useControls, folder } from 'leva';
-import { Joystick } from 'react-joystick-component';
-import { IJoystickUpdateEvent } from 'react-joystick-component/build/lib/Joystick';
-import { FrustumIntersection } from './FrustumIntersection';
-import mainVertShader from './shaders/main.vert.glsl';
-import npcVertShader from './shaders/npc.vert.glsl';
-import quadVertShader from './shaders/quad.vert.glsl';
-import mainFragShader from './shaders/main.frag.glsl';
-import quadFragShader from './shaders/quad.frag.glsl';
-import { clamp } from '../client/util/MathUtil';
-import { ChunkLoaderWorkerPool } from './chunk/ChunkLoaderWorkerPool';
-import { AnimationDefinition } from '../client/fs/definition/AnimationDefinition';
-import { CachedNpcLoader, NpcLoader } from '../client/fs/loader/NpcLoader';
-import { NpcDefinition } from '../client/fs/definition/NpcDefinition';
-import { CollisionMap } from '../client/pathfinder/collision/CollisionMap';
-import { Pathfinder } from '../client/pathfinder/Pathfinder';
-import { ExactRouteStrategy } from '../client/pathfinder/RouteStrategy';
-import { Schema } from 'leva/dist/declarations/src/types';
-import { fetchNpcSpawns } from './NpcSpawn';
-import { readPixelsAsync } from './AsyncReadUtil';
-import { MenuOption, OsrsMenu, OsrsMenuProps } from '../components/OsrsMenu';
-import { VarpManager } from '../client/VarpManager';
-import { CachedVarbitLoader } from '../client/fs/loader/VarbitLoader';
+import { useState, useEffect } from "react";
+import { URLSearchParamsInit, useSearchParams } from "react-router-dom";
+import "./MapViewer.css";
+import WebGLCanvas from "../components/Canvas";
+import { mat4, vec4, vec3, vec2 } from "gl-matrix";
+import {
+    PicoGL,
+    App as PicoApp,
+    Timer,
+    Program,
+    UniformBuffer,
+    VertexArray,
+    Texture,
+    DrawCall,
+    VertexBuffer,
+    Framebuffer,
+} from "picogl";
+import {
+    MemoryFileSystem,
+    fetchMemoryStore,
+    loadFromStore,
+    DownloadProgress,
+} from "../client/fs/FileSystem";
+import { IndexType } from "../client/fs/IndexType";
+import { TextureLoader } from "../client/fs/loader/TextureLoader";
+import { RegionLoader } from "../client/RegionLoader";
+import {
+    AnimatedModelData,
+    ChunkData,
+    ChunkDataLoader,
+    NpcData,
+} from "./chunk/ChunkDataLoader";
+import { MemoryStore } from "../client/fs/MemoryStore";
+import { Skeleton } from "../client/model/animation/Skeleton";
+import { ConfigType } from "../client/fs/ConfigType";
+import { CachedUnderlayLoader } from "../client/fs/loader/UnderlayLoader";
+import { CachedOverlayLoader } from "../client/fs/loader/OverlayLoader";
+import { CachedObjectLoader } from "../client/fs/loader/ObjectLoader";
+import { IndexModelLoader } from "../client/fs/loader/ModelLoader";
+import Denque from "denque";
+import { Scene } from "../client/scene/Scene";
+import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
+import { Hasher } from "../client/util/Hasher";
+import {
+    AnimationLoader,
+    CachedAnimationLoader,
+} from "../client/fs/loader/AnimationLoader";
+import { CachedSkeletonLoader } from "../client/fs/loader/SkeletonLoader";
+import {
+    AnimationFrameMapLoader,
+    CachedAnimationFrameMapLoader,
+} from "../client/fs/loader/AnimationFrameMapLoader";
+import { Leva, useControls, folder } from "leva";
+import { Joystick } from "react-joystick-component";
+import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
+import { FrustumIntersection } from "./FrustumIntersection";
+import mainVertShader from "./shaders/main.vert.glsl";
+import npcVertShader from "./shaders/npc.vert.glsl";
+import quadVertShader from "./shaders/quad.vert.glsl";
+import mainFragShader from "./shaders/main.frag.glsl";
+import quadFragShader from "./shaders/quad.frag.glsl";
+import { clamp } from "../client/util/MathUtil";
+import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
+import { AnimationDefinition } from "../client/fs/definition/AnimationDefinition";
+import { CachedNpcLoader, NpcLoader } from "../client/fs/loader/NpcLoader";
+import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
+import { CollisionMap } from "../client/pathfinder/collision/CollisionMap";
+import { Pathfinder } from "../client/pathfinder/Pathfinder";
+import { ExactRouteStrategy } from "../client/pathfinder/RouteStrategy";
+import { Schema } from "leva/dist/declarations/src/types";
+import { fetchNpcSpawns } from "./NpcSpawn";
+import { readPixelsAsync } from "./AsyncReadUtil";
+import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
+import { VarpManager } from "../client/VarpManager";
+import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
 
 // console.log(mainVertShader);
 
@@ -53,12 +80,12 @@ const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
-const RS_TO_DEGREES = RS_TO_RADIANS * 180 / Math.PI;
+const RS_TO_DEGREES = (RS_TO_RADIANS * 180) / Math.PI;
 
 function prependShader(shader: string, multiDraw: boolean): string {
-    let header = '#version 300 es\n';
+    let header = "#version 300 es\n";
     if (multiDraw) {
-        header += '#define MULTI_DRAW 1\n';
+        header += "#define MULTI_DRAW 1\n";
     }
     return header + shader;
 }
@@ -72,44 +99,44 @@ const NPC_DATA_TEXTURE_BUFFER_SIZE = 5;
 const CHUNK_RENDER_FRAME_DELAY = 4;
 
 type Chunk = {
-    regionX: number,
-    regionY: number,
+    regionX: number;
+    regionY: number;
 
-    tileRenderFlags: Uint8Array[][],
-    collisionMaps: CollisionMap[],
+    tileRenderFlags: Uint8Array[][];
+    collisionMaps: CollisionMap[];
 
-    modelMatrix: mat4,
+    modelMatrix: mat4;
 
-    triangleCount: number,
+    triangleCount: number;
 
-    drawRanges: number[][],
-    drawRangesLowDetail: number[][],
-    drawRangesAlpha: number[][],
+    drawRanges: number[][];
+    drawRangesLowDetail: number[][];
+    drawRangesAlpha: number[][];
 
-    drawRangesNpc: number[][],
+    drawRangesNpc: number[][];
 
-    drawCall: DrawCall,
-    drawCallLowDetail: DrawCall,
-    drawCallAlpha: DrawCall,
+    drawCall: DrawCall;
+    drawCallLowDetail: DrawCall;
+    drawCallAlpha: DrawCall;
 
-    drawCallNpc: DrawCall | undefined,
+    drawCallNpc: DrawCall | undefined;
 
-    animatedModels: AnimatedModel[],
-    npcs: Npc[],
+    animatedModels: AnimatedModel[];
+    npcs: Npc[];
 
-    interleavedBuffer: VertexBuffer,
-    indexBuffer: VertexBuffer,
-    vertexArray: VertexArray,
-    modelDataTexture: Texture,
-    modelDataTextureAlpha: Texture,
+    interleavedBuffer: VertexBuffer;
+    indexBuffer: VertexBuffer;
+    vertexArray: VertexArray;
+    modelDataTexture: Texture;
+    modelDataTextureAlpha: Texture;
 
-    npcDataTextureOffsets: number[],
+    npcDataTextureOffsets: number[];
 
-    heightMapTexture: Texture,
+    heightMapTexture: Texture;
 
-    timeLoaded: number,
-    frameLoaded: number,
-}
+    timeLoaded: number;
+    frameLoaded: number;
+};
 
 class AnimatedModel {
     drawRangeIndex: number;
@@ -124,8 +151,15 @@ class AnimatedModel {
 
     cycleStart: number = 0;
 
-    constructor(drawRangeIndex: number, drawRangeAlphaIndex: number, frames: number[][], framesAlpha: number[][] | undefined,
-        animationDef: AnimationDefinition, cycle: number, randomStart: boolean) {
+    constructor(
+        drawRangeIndex: number,
+        drawRangeAlphaIndex: number,
+        frames: number[][],
+        framesAlpha: number[][] | undefined,
+        animationDef: AnimationDefinition,
+        cycle: number,
+        randomStart: boolean
+    ) {
         this.drawRangeIndex = drawRangeIndex;
         this.drawRangeAlphaIndex = drawRangeAlphaIndex;
         this.frames = frames;
@@ -134,8 +168,12 @@ class AnimatedModel {
         this.cycleStart = cycle - 1;
 
         if (randomStart && animationDef.frameStep !== -1) {
-            this.frame = Math.floor(Math.random() * animationDef.frameIds.length);
-            this.cycleStart -= Math.floor(Math.random() * animationDef.frameLengths[this.frame]);
+            this.frame = Math.floor(
+                Math.random() * animationDef.frameIds.length
+            );
+            this.cycleStart -= Math.floor(
+                Math.random() * animationDef.frameLengths[this.frame]
+            );
         }
     }
 
@@ -154,7 +192,10 @@ class AnimatedModel {
             this.frame++;
             if (this.frame >= this.animationDef.frameLengths.length) {
                 this.frame -= this.animationDef.frameStep;
-                if (this.frame < 0 || this.frame >= this.animationDef.frameLengths.length) {
+                if (
+                    this.frame < 0 ||
+                    this.frame >= this.animationDef.frameLengths.length
+                ) {
                     this.frame = 0;
                     this.cycleStart = cycle - 1;
                     // this.animationDef = undefined;
@@ -284,8 +325,10 @@ class Npc {
         if (this.pathLength > 0) {
             const currX = this.x;
             const currY = this.y;
-            const nextX = this.pathX[this.pathLength - 1] * 128 + this.def.size * 64;
-            const nextY = this.pathY[this.pathLength - 1] * 128 + this.def.size * 64;
+            const nextX =
+                this.pathX[this.pathLength - 1] * 128 + this.def.size * 64;
+            const nextY =
+                this.pathY[this.pathLength - 1] * 128 + this.def.size * 64;
 
             if (currX < nextX) {
                 if (currY < nextY) {
@@ -312,11 +355,19 @@ class Npc {
             this.movementAnimation = this.def.walkSequence;
 
             const movementType = this.pathMovementType[this.pathLength - 1];
-            if (nextX - currX <= 256 && nextX - currX >= -256 && nextY - currY <= 256 && nextY - currY >= -256) {
+            if (
+                nextX - currX <= 256 &&
+                nextX - currX >= -256 &&
+                nextY - currY <= 256 &&
+                nextY - currY >= -256
+            ) {
                 let movementSpeed = 4;
 
                 if (this.def.isClickable) {
-                    if (this.rotation !== this.orientation && this.def.rotationSpeed !== 0) {
+                    if (
+                        this.rotation !== this.orientation &&
+                        this.def.rotationSpeed !== 0
+                    ) {
                         movementSpeed = 2;
                     }
                     if (this.pathLength > 2) {
@@ -376,11 +427,14 @@ class Npc {
             }
         }
 
-        const deltaRotation = this.orientation - this.rotation & 2047;
+        const deltaRotation = (this.orientation - this.rotation) & 2047;
         if (deltaRotation !== 0) {
             const rotateDir = deltaRotation > 1024 ? -1 : 1;
             this.rotation += rotateDir * this.def.rotationSpeed;
-            if (deltaRotation < this.def.rotationSpeed || deltaRotation > 2048 - this.def.rotationSpeed) {
+            if (
+                deltaRotation < this.def.rotationSpeed ||
+                deltaRotation > 2048 - this.def.rotationSpeed
+            ) {
                 this.rotation = this.orientation;
             }
 
@@ -395,7 +449,11 @@ class Npc {
             const anim = animationLoader.getDefinition(this.movementAnimation);
             if (!anim.isAnimMaya() && anim.frameIds) {
                 this.movementFrameTick++;
-                if (this.movementFrame < anim.frameIds.length && this.movementFrameTick > anim.frameLengths[this.movementFrame]) {
+                if (
+                    this.movementFrame < anim.frameIds.length &&
+                    this.movementFrameTick >
+                        anim.frameLengths[this.movementFrame]
+                ) {
                     this.movementFrameTick = 1;
                     this.movementFrame++;
                 }
@@ -407,7 +465,11 @@ class Npc {
                             this.movementLoop++;
                         }
 
-                        if (this.movementFrame < 0 || this.movementFrame >= anim.frameIds.length || anim.looping && this.movementLoop >= anim.maxLoops) {
+                        if (
+                            this.movementFrame < 0 ||
+                            this.movementFrame >= anim.frameIds.length ||
+                            (anim.looping && this.movementLoop >= anim.maxLoops)
+                        ) {
                             this.movementFrameTick = 0;
                             this.movementFrame = 0;
                             this.movementLoop = 0;
@@ -425,9 +487,19 @@ class Npc {
     }
 }
 
-function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoader: NpcLoader, animationLoader: AnimationLoader,
-    textureArray: Texture, textureUniformBuffer: UniformBuffer, sceneUniformBuffer: UniformBuffer, chunkData: ChunkData,
-    frame: number, cycle: number): Chunk {
+function loadChunk(
+    app: PicoApp,
+    program: Program,
+    programNpc: Program,
+    npcLoader: NpcLoader,
+    animationLoader: AnimationLoader,
+    textureArray: Texture,
+    textureUniformBuffer: UniformBuffer,
+    sceneUniformBuffer: UniformBuffer,
+    chunkData: ChunkData,
+    frame: number,
+    cycle: number
+): Chunk {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
@@ -437,17 +509,24 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
     const baseModelMatrix = mat4.create();
     mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
 
-    const interleavedBuffer = app.createInterleavedBuffer(12, chunkData.vertices);
+    const interleavedBuffer = app.createInterleavedBuffer(
+        12,
+        chunkData.vertices
+    );
 
-    const indexBuffer = app.createIndexBuffer(PicoGL.UNSIGNED_INT, chunkData.indices);
+    const indexBuffer = app.createIndexBuffer(
+        PicoGL.UNSIGNED_INT,
+        chunkData.indices
+    );
 
-    const vertexArray = app.createVertexArray()
+    const vertexArray = app
+        .createVertexArray()
         // v0
         .vertexAttributeBuffer(0, interleavedBuffer, {
             type: PicoGL.INT,
             size: 1,
             stride: 12,
-            integer: true as any
+            integer: true as any,
         })
         // v1
         .vertexAttributeBuffer(1, interleavedBuffer, {
@@ -455,7 +534,7 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
             size: 1,
             offset: 4,
             stride: 12,
-            integer: true as any
+            integer: true as any,
         })
         // v2
         .vertexAttributeBuffer(2, interleavedBuffer, {
@@ -463,63 +542,104 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
             size: 1,
             offset: 8,
             stride: 12,
-            integer: true as any
+            integer: true as any,
         })
         .indexBuffer(indexBuffer);
 
-    const modelDataTexture = app.createTexture2D(new Uint8Array(chunkData.modelTextureData.buffer), 16, Math.max(Math.ceil(chunkData.modelTextureData.length / 16), 1),
-        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
-
-    const modelDataTextureAlpha = app.createTexture2D(new Uint8Array(chunkData.modelTextureDataAlpha.buffer), 16, Math.max(Math.ceil(chunkData.modelTextureDataAlpha.length / 16), 1),
-        { internalFormat: PicoGL.RGBA8UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
-
-    const heightMapTexture = app.createTextureArray(chunkData.heightMapTextureData, 72, 72, Scene.MAX_PLANE,
+    const modelDataTexture = app.createTexture2D(
+        new Uint8Array(chunkData.modelTextureData.buffer),
+        16,
+        Math.max(Math.ceil(chunkData.modelTextureData.length / 16), 1),
         {
-            internalFormat: PicoGL.R32F, minFilter: PicoGL.LINEAR, magFilter: PicoGL.LINEAR, type: PicoGL.FLOAT,
-            wrapS: PicoGL.CLAMP_TO_EDGE, wrapT: PicoGL.CLAMP_TO_EDGE
+            internalFormat: PicoGL.RGBA8UI,
+            minFilter: PicoGL.NEAREST,
+            magFilter: PicoGL.NEAREST,
+        }
+    );
+
+    const modelDataTextureAlpha = app.createTexture2D(
+        new Uint8Array(chunkData.modelTextureDataAlpha.buffer),
+        16,
+        Math.max(Math.ceil(chunkData.modelTextureDataAlpha.length / 16), 1),
+        {
+            internalFormat: PicoGL.RGBA8UI,
+            minFilter: PicoGL.NEAREST,
+            magFilter: PicoGL.NEAREST,
+        }
+    );
+
+    const heightMapTexture = app.createTextureArray(
+        chunkData.heightMapTextureData,
+        72,
+        72,
+        Scene.MAX_PLANE,
+        {
+            internalFormat: PicoGL.R32F,
+            minFilter: PicoGL.LINEAR,
+            magFilter: PicoGL.LINEAR,
+            type: PicoGL.FLOAT,
+            wrapS: PicoGL.CLAMP_TO_EDGE,
+            wrapT: PicoGL.CLAMP_TO_EDGE,
         }
     );
 
     const time = performance.now() * 0.001;
 
-    const drawCall = app.createDrawCall(program, vertexArray)
-        .uniformBlock('TextureUniforms', textureUniformBuffer)
-        .uniformBlock('SceneUniforms', sceneUniformBuffer)
-        .uniform('u_timeLoaded', time)
-        .uniform('u_modelMatrix', baseModelMatrix)
-        .uniform('u_drawIdOffset', 0)
-        .texture('u_textures', textureArray)
-        .texture('u_modelDataTexture', modelDataTexture)
-        .texture('u_heightMap', heightMapTexture)
+    const drawCall = app
+        .createDrawCall(program, vertexArray)
+        .uniformBlock("TextureUniforms", textureUniformBuffer)
+        .uniformBlock("SceneUniforms", sceneUniformBuffer)
+        .uniform("u_timeLoaded", time)
+        .uniform("u_modelMatrix", baseModelMatrix)
+        .uniform("u_drawIdOffset", 0)
+        .texture("u_textures", textureArray)
+        .texture("u_modelDataTexture", modelDataTexture)
+        .texture("u_heightMap", heightMapTexture)
         .drawRanges(...chunkData.drawRanges);
 
-    const drawCallLowDetail = app.createDrawCall(program, vertexArray)
-        .uniformBlock('TextureUniforms', textureUniformBuffer)
-        .uniformBlock('SceneUniforms', sceneUniformBuffer)
-        .uniform('u_timeLoaded', time)
-        .uniform('u_modelMatrix', baseModelMatrix)
-        .uniform('u_drawIdOffset', chunkData.drawRanges.length - chunkData.drawRangesLowDetail.length)
-        .texture('u_textures', textureArray)
-        .texture('u_modelDataTexture', modelDataTexture)
-        .texture('u_heightMap', heightMapTexture)
+    const drawCallLowDetail = app
+        .createDrawCall(program, vertexArray)
+        .uniformBlock("TextureUniforms", textureUniformBuffer)
+        .uniformBlock("SceneUniforms", sceneUniformBuffer)
+        .uniform("u_timeLoaded", time)
+        .uniform("u_modelMatrix", baseModelMatrix)
+        .uniform(
+            "u_drawIdOffset",
+            chunkData.drawRanges.length - chunkData.drawRangesLowDetail.length
+        )
+        .texture("u_textures", textureArray)
+        .texture("u_modelDataTexture", modelDataTexture)
+        .texture("u_heightMap", heightMapTexture)
         .drawRanges(...chunkData.drawRangesLowDetail);
 
-    const drawCallAlpha = app.createDrawCall(program, vertexArray)
-        .uniformBlock('TextureUniforms', textureUniformBuffer)
-        .uniformBlock('SceneUniforms', sceneUniformBuffer)
-        .uniform('u_timeLoaded', time)
-        .uniform('u_modelMatrix', baseModelMatrix)
-        .uniform('u_drawIdOffset', 0)
-        .texture('u_textures', textureArray)
-        .texture('u_modelDataTexture', modelDataTextureAlpha)
-        .texture('u_heightMap', heightMapTexture)
+    const drawCallAlpha = app
+        .createDrawCall(program, vertexArray)
+        .uniformBlock("TextureUniforms", textureUniformBuffer)
+        .uniformBlock("SceneUniforms", sceneUniformBuffer)
+        .uniform("u_timeLoaded", time)
+        .uniform("u_modelMatrix", baseModelMatrix)
+        .uniform("u_drawIdOffset", 0)
+        .texture("u_textures", textureArray)
+        .texture("u_modelDataTexture", modelDataTextureAlpha)
+        .texture("u_heightMap", heightMapTexture)
         .drawRanges(...chunkData.drawRangesAlpha);
 
     const animatedModels: AnimatedModel[] = [];
     for (const animatedModel of chunkData.animatedModels) {
-        const animationDef = animationLoader.getDefinition(animatedModel.animationId);
-        animatedModels.push(new AnimatedModel(animatedModel.drawRangeIndex, animatedModel.drawRangeAlphaIndex, animatedModel.frames, animatedModel.framesAlpha,
-            animationDef, cycle, animatedModel.randomStart))
+        const animationDef = animationLoader.getDefinition(
+            animatedModel.animationId
+        );
+        animatedModels.push(
+            new AnimatedModel(
+                animatedModel.drawRangeIndex,
+                animatedModel.drawRangeAlphaIndex,
+                animatedModel.frames,
+                animatedModel.framesAlpha,
+                animationDef,
+                cycle,
+                animatedModel.randomStart
+            )
+        );
     }
 
     const npcs: Npc[] = [];
@@ -529,19 +649,20 @@ function loadChunk(app: PicoApp, program: Program, programNpc: Program, npcLoade
 
     let drawCallNpc: DrawCall | undefined = undefined;
     if (npcs.length > 0) {
-        drawCallNpc = app.createDrawCall(programNpc, vertexArray)
-            .uniformBlock('TextureUniforms', textureUniformBuffer)
-            .uniformBlock('SceneUniforms', sceneUniformBuffer)
-            .uniform('u_timeLoaded', time)
-            .uniform('u_modelMatrix', baseModelMatrix)
-            .uniform('u_npcDataOffset', 0)
-            .texture('u_textures', textureArray)
-            .texture('u_heightMap', heightMapTexture)
+        drawCallNpc = app
+            .createDrawCall(programNpc, vertexArray)
+            .uniformBlock("TextureUniforms", textureUniformBuffer)
+            .uniformBlock("SceneUniforms", sceneUniformBuffer)
+            .uniform("u_timeLoaded", time)
+            .uniform("u_modelMatrix", baseModelMatrix)
+            .uniform("u_npcDataOffset", 0)
+            .texture("u_textures", textureArray)
+            .texture("u_heightMap", heightMapTexture)
             .drawRanges(...chunkData.drawRangesNpc);
     }
 
     // console.log(chunkData.collisionFlags.find(flags => flags.find(x => (x & 0x1000000) !== 0)));
-    const collisionMaps = chunkData.collisionFlags.map(flags => {
+    const collisionMaps = chunkData.collisionFlags.map((flags) => {
         // TODO: create constructor with flags
         const map = new CollisionMap(Scene.MAP_SIZE, Scene.MAP_SIZE);
         map.flags = flags;
@@ -612,10 +733,7 @@ function deleteChunk(chunk: Chunk) {
 
 function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     var rect = container.getBoundingClientRect();
-    return [
-        event.clientX - rect.left,
-        event.clientY - rect.top
-    ];
+    return [event.clientX - rect.left, event.clientY - rect.top];
 }
 
 function getRegionDistance(x: number, y: number, region: vec2): number {
@@ -626,7 +744,7 @@ function getRegionDistance(x: number, y: number, region: vec2): number {
 
 enum ProjectionType {
     PERSPECTIVE,
-    ORTHO
+    ORTHO,
 }
 
 const INTERACTION_RADIUS = 5;
@@ -760,7 +878,9 @@ class MapViewer {
     menuX: number = -1;
     menuY: number = -1;
 
-    interactBuffer: Uint8Array = new Uint8Array(INTERACTION_SIZE * INTERACTION_SIZE * 4);
+    interactBuffer: Uint8Array = new Uint8Array(
+        INTERACTION_SIZE * INTERACTION_SIZE * 4
+    );
 
     chunkDataLoader?: ChunkDataLoader;
 
@@ -773,7 +893,10 @@ class MapViewer {
     regionPositions: vec2[] = [];
 
     frustumIntersection: FrustumIntersection = new FrustumIntersection();
-    chunkIntersectBox: number[][] = [[0, -240 * 10 / 128, 0], [0, 240 * 3 / 128, 0]];
+    chunkIntersectBox: number[][] = [
+        [0, (-240 * 10) / 128, 0],
+        [0, (240 * 3) / 128, 0],
+    ];
 
     isVisiblePos: vec3 = [0, 0, 0];
     moveCameraRotOrigin: vec3 = [0, 0, 0];
@@ -784,11 +907,18 @@ class MapViewer {
     npcRenderDataTexture: Texture | undefined;
     npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
-    constructor(fileSystem: MemoryFileSystem, xteasMap: Map<number, number[]>, chunkLoaderWorker: ChunkLoaderWorkerPool) {
+    constructor(
+        fileSystem: MemoryFileSystem,
+        xteasMap: Map<number, number[]>,
+        chunkLoaderWorker: ChunkLoaderWorkerPool
+    ) {
         this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
 
-        this.isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
+        this.isTouchDevice = !!(
+            navigator.maxTouchPoints ||
+            "ontouchstart" in document.documentElement
+        );
 
         const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
         const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
@@ -816,7 +946,6 @@ class MapViewer {
         this.varpManager = new VarpManager(varbitLoader);
 
         // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
-
 
         // const animIds = new Set<number>();
         // let count = 0;
@@ -903,7 +1032,7 @@ class MapViewer {
 
         // console.log(regionLoader.getTerrainArchiveId(50, 50));
 
-        console.time('check invalid regions');
+        console.time("check invalid regions");
         for (let x = 0; x < 100; x++) {
             for (let y = 0; y < 200; y++) {
                 if (RegionLoader.getTerrainArchiveId(mapIndex, x, y) === -1) {
@@ -911,7 +1040,7 @@ class MapViewer {
                 }
             }
         }
-        console.timeEnd('check invalid regions');
+        console.timeEnd("check invalid regions");
 
         // console.time('load textures');
         this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
@@ -949,38 +1078,37 @@ class MapViewer {
         }
 
         if (!isWallPaperEngine) {
-            gl.canvas.addEventListener('keydown', this.onKeyDown);
-            gl.canvas.addEventListener('keyup', this.onKeyUp);
-            gl.canvas.addEventListener('mousemove', this.onMouseMove);
-            gl.canvas.addEventListener('mousedown', this.onMouseDown);
-            gl.canvas.addEventListener('mouseup', this.onMouseUp);
-            gl.canvas.addEventListener('mouseleave', this.onMouseLeave);
-            gl.canvas.addEventListener('touchstart', this.onTouchStart);
-            gl.canvas.addEventListener('touchmove', this.onTouchMove);
-            gl.canvas.addEventListener('touchend', this.onTouchEnd);
-            gl.canvas.addEventListener('focusout', this.onFocusOut);
-            gl.canvas.addEventListener('contextmenu', this.onContextMenu);
+            gl.canvas.addEventListener("keydown", this.onKeyDown);
+            gl.canvas.addEventListener("keyup", this.onKeyUp);
+            gl.canvas.addEventListener("mousemove", this.onMouseMove);
+            gl.canvas.addEventListener("mousedown", this.onMouseDown);
+            gl.canvas.addEventListener("mouseup", this.onMouseUp);
+            gl.canvas.addEventListener("mouseleave", this.onMouseLeave);
+            gl.canvas.addEventListener("touchstart", this.onTouchStart);
+            gl.canvas.addEventListener("touchmove", this.onTouchMove);
+            gl.canvas.addEventListener("touchend", this.onTouchEnd);
+            gl.canvas.addEventListener("focusout", this.onFocusOut);
+            gl.canvas.addEventListener("contextmenu", this.onContextMenu);
             gl.canvas.focus();
         }
 
         const cameraX = -this.cameraPos[0];
         const cameraY = -this.cameraPos[2];
 
-        const cameraRegionX = cameraX / 64 | 0;
-        const cameraRegionY = cameraY / 64 | 0;
+        const cameraRegionX = (cameraX / 64) | 0;
+        const cameraRegionY = (cameraY / 64) | 0;
 
         // queue a chunk as soon as possible so we don't have idling workers
         this.queueChunkLoad(cameraRegionX, cameraRegionY, true);
 
-
         // console.log(this.cameraPos);
 
-        const app = this.app = PicoGL.createApp(gl as any);
+        const app = (this.app = PicoGL.createApp(gl as any));
 
         // hack to get the right multi draw extension for picogl
         if (!PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED) {
             const state: any = app.state;
-            const ext = gl.getExtension('WEBGL_multi_draw');
+            const ext = gl.getExtension("WEBGL_multi_draw");
             PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED = ext;
             state.extensions.multiDrawInstanced = ext;
         }
@@ -1003,88 +1131,115 @@ class MapViewer {
         this.timer = app.createTimer();
 
         const colorTarget = app.createTexture2D(app.width, app.height, {
-            internalFormat: PicoGL.RGBA8
+            internalFormat: PicoGL.RGBA8,
         });
         const interactTarget = app.createTexture2D(app.width, app.height, {
-            internalFormat: PicoGL.RGBA8
+            internalFormat: PicoGL.RGBA8,
         });
-        const depthTarget = app.createRenderbuffer(app.width, app.height, PicoGL.DEPTH_COMPONENT24);
-        this.frameBuffer = app.createFramebuffer()
+        const depthTarget = app.createRenderbuffer(
+            app.width,
+            app.height,
+            PicoGL.DEPTH_COMPONENT24
+        );
+        this.frameBuffer = app
+            .createFramebuffer()
             .colorTarget(0, colorTarget)
             .colorTarget(1, interactTarget)
             .depthTarget(depthTarget);
 
-        this.quadPositions = app.createVertexBuffer(PicoGL.FLOAT, 2, new Float32Array([
-            -1, 1,
-            -1, -1,
-            1, -1,
-            -1, 1,
-            1, -1,
-            1, 1,
-        ]));
+        this.quadPositions = app.createVertexBuffer(
+            PicoGL.FLOAT,
+            2,
+            new Float32Array([-1, 1, -1, -1, 1, -1, -1, 1, 1, -1, 1, 1])
+        );
 
-        this.quadArray = app.createVertexArray()
+        this.quadArray = app
+            .createVertexArray()
             .vertexAttributeBuffer(0, this.quadPositions);
 
-        app.createPrograms([
-            prependShader(mainVertShader, this.hasMultiDraw),
-            prependShader(mainFragShader, this.hasMultiDraw)
-        ], [
-            prependShader(npcVertShader, this.hasMultiDraw),
-            prependShader(mainFragShader, this.hasMultiDraw)
-        ], [
-            prependShader(quadVertShader, this.hasMultiDraw),
-            prependShader(quadFragShader, this.hasMultiDraw)
-        ]).then(([program, programNpc, programQuad]) => {
+        app.createPrograms(
+            [
+                prependShader(mainVertShader, this.hasMultiDraw),
+                prependShader(mainFragShader, this.hasMultiDraw),
+            ],
+            [
+                prependShader(npcVertShader, this.hasMultiDraw),
+                prependShader(mainFragShader, this.hasMultiDraw),
+            ],
+            [
+                prependShader(quadVertShader, this.hasMultiDraw),
+                prependShader(quadFragShader, this.hasMultiDraw),
+            ]
+        ).then(([program, programNpc, programQuad]) => {
             this.program = program;
             this.programNpc = programNpc;
             this.programQuad = programQuad;
 
-            this.frameDrawCall = app.createDrawCall(this.programQuad, this.quadArray)
-                .texture('u_frame', this.frameBuffer.colorAttachments[0]);
+            this.frameDrawCall = app
+                .createDrawCall(this.programQuad, this.quadArray)
+                .texture("u_frame", this.frameBuffer.colorAttachments[0]);
         });
 
-        this.textureUniformBuffer = app.createUniformBuffer(new Array(128 * 2).fill(PicoGL.FLOAT_VEC2));
-        this.sceneUniformBuffer = app.createUniformBuffer([PicoGL.FLOAT_MAT4, PicoGL.FLOAT_MAT4, PicoGL.FLOAT_MAT4]);
+        this.textureUniformBuffer = app.createUniformBuffer(
+            new Array(128 * 2).fill(PicoGL.FLOAT_VEC2)
+        );
+        this.sceneUniformBuffer = app.createUniformBuffer([
+            PicoGL.FLOAT_MAT4,
+            PicoGL.FLOAT_MAT4,
+            PicoGL.FLOAT_MAT4,
+        ]);
 
-        console.time('load texture array');
-        const textureArrayImage = this.textureProvider.createTextureArrayImage(1.0, TEXTURE_SIZE, true);
-        console.timeEnd('load texture array');
+        console.time("load texture array");
+        const textureArrayImage = this.textureProvider.createTextureArrayImage(
+            1.0,
+            TEXTURE_SIZE,
+            true
+        );
+        console.timeEnd("load texture array");
 
-        this.textureArray = app.createTextureArray(new Uint8Array(textureArrayImage.buffer), TEXTURE_SIZE, TEXTURE_SIZE, this.textureProvider.getTextureCount(),
+        this.textureArray = app.createTextureArray(
+            new Uint8Array(textureArrayImage.buffer),
+            TEXTURE_SIZE,
+            TEXTURE_SIZE,
+            this.textureProvider.getTextureCount(),
             {
                 // wrapS: PicoGL.CLAMP_TO_EDGE,
                 maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,
-            });
+            }
+        );
 
         const textureAnimDirectionUvs = [
             vec2.fromValues(0.0, 0.0),
             vec2.fromValues(0.0, -1.0),
             vec2.fromValues(-1.0, 0.0),
             vec2.fromValues(0.0, 1.0),
-            vec2.fromValues(1.0, 0.0)
+            vec2.fromValues(1.0, 0.0),
         ];
         const textures = this.textureProvider.getDefinitions();
         for (let i = 0; i < textures.length; i++) {
             const texture = textures[i];
 
-            const uv = vec2.mul(vec2.create(), textureAnimDirectionUvs[texture.animationDirection], [texture.animationSpeed, texture.animationSpeed]);
+            const uv = vec2.mul(
+                vec2.create(),
+                textureAnimDirectionUvs[texture.animationDirection],
+                [texture.animationSpeed, texture.animationSpeed]
+            );
 
             this.textureUniformBuffer.set((i + 1) * 2, uv as Float32Array);
         }
 
         this.textureUniformBuffer.update();
 
-        console.timeEnd('first load');
+        console.timeEnd("first load");
 
-        console.log('textures: ', textures.length);
+        console.log("textures: ", textures.length);
 
         console.log(gl.getSupportedExtensions());
     }
 
     getSearchParams(): URLSearchParamsInit {
         const cx = (-this.cameraPos[0].toFixed(2)).toString();
-        const cy = (this.cameraPos[1].toFixed(2)).toString();
+        const cy = this.cameraPos[1].toFixed(2).toString();
         const cz = (-this.cameraPos[2].toFixed(2)).toString();
 
         const yaw = (this.yaw | 0) & 2047;
@@ -1093,12 +1248,16 @@ class MapViewer {
         const y = yaw.toString();
 
         const params: any = {
-            cx, cy, cz, p, y
+            cx,
+            cy,
+            cz,
+            p,
+            y,
         };
 
         if (this.projectionType === ProjectionType.ORTHO) {
-            params['pt'] = 'o';
-            params['z'] = this.orthoZoom.toString();
+            params["pt"] = "o";
+            params["z"] = this.orthoZoom.toString();
         }
 
         return params;
@@ -1108,13 +1267,13 @@ class MapViewer {
         // console.log('down', event.key, event.shiftKey);
         this.keys.set(event.key, true);
         if (event.shiftKey) {
-            this.keys.set('Shift', true);
+            this.keys.set("Shift", true);
         }
         event.preventDefault();
     }
 
     onKeyUp(event: KeyboardEvent) {
-        console.log('up', event.key, event.shiftKey);
+        console.log("up", event.key, event.shiftKey);
         this.keys.set(event.key, false);
         this.keys.set(event.key.toUpperCase(), false);
         this.keys.set(event.key.toLowerCase(), false);
@@ -1128,7 +1287,11 @@ class MapViewer {
         const [x, y] = getMousePos(this.app.canvas, event);
         this.currentMouseX = x;
         this.currentMouseY = y;
-        if (this.onMenuClosed && this.menuOpen && Math.max(Math.abs(this.menuX - x), Math.abs(this.menuY - y)) > 30) {
+        if (
+            this.onMenuClosed &&
+            this.menuOpen &&
+            Math.max(Math.abs(this.menuX - x), Math.abs(this.menuY - y)) > 30
+        ) {
             this.onMenuClosed();
             this.menuOpen = false;
         }
@@ -1217,24 +1380,44 @@ class MapViewer {
         this.cameraJoystickEvent = undefined;
     }
 
-    private setProjection(offsetX: number, offsetY: number, width: number, height: number, centerX: number, centerY: number, zoom: number): mat4 {
-        const left = (offsetX - centerX << 9) / zoom;
-        const right = (offsetX + width - centerX << 9) / zoom;
-        const top = (offsetY - centerY << 9) / zoom;
-        const bottom = (offsetY + height - centerY << 9) / zoom;
+    private setProjection(
+        offsetX: number,
+        offsetY: number,
+        width: number,
+        height: number,
+        centerX: number,
+        centerY: number,
+        zoom: number
+    ): mat4 {
+        const left = ((offsetX - centerX) << 9) / zoom;
+        const right = ((offsetX + width - centerX) << 9) / zoom;
+        const top = ((offsetY - centerY) << 9) / zoom;
+        const bottom = ((offsetY + height - centerY) << 9) / zoom;
 
         mat4.identity(this.projectionMatrix);
-        mat4.frustum(this.projectionMatrix, left * DEFAULT_ZOOM, right * DEFAULT_ZOOM,
-            -bottom * DEFAULT_ZOOM, -top * DEFAULT_ZOOM, 0, 500);
+        mat4.frustum(
+            this.projectionMatrix,
+            left * DEFAULT_ZOOM,
+            right * DEFAULT_ZOOM,
+            -bottom * DEFAULT_ZOOM,
+            -top * DEFAULT_ZOOM,
+            0,
+            500
+        );
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
         return this.projectionMatrix;
     }
 
     isPositionVisible(pos: vec3): boolean {
         vec3.transformMat4(pos, pos, this.viewProjMatrix);
-        return pos[0] >= -1.0 && pos[0] <= 1.0
-            && pos[1] >= -1.0 && pos[1] <= 1.0
-            && pos[2] >= -1.0 && pos[2] <= 1.0;
+        return (
+            pos[0] >= -1.0 &&
+            pos[0] <= 1.0 &&
+            pos[1] >= -1.0 &&
+            pos[1] <= 1.0 &&
+            pos[2] >= -1.0 &&
+            pos[2] <= 1.0
+        );
     }
 
     isChunkVisible(regionX: number, regionY: number): boolean {
@@ -1269,7 +1452,12 @@ class MapViewer {
     moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
         const delta = vec3.fromValues(deltaX, deltaY, deltaZ);
 
-        vec3.rotateY(delta, delta, this.moveCameraRotOrigin, (2047 - this.yaw) * RS_TO_RADIANS);
+        vec3.rotateY(
+            delta,
+            delta,
+            this.moveCameraRotOrigin,
+            (2047 - this.yaw) * RS_TO_RADIANS
+        );
 
         vec3.add(this.cameraPos, this.cameraPos, delta);
         this.cameraUpdated = true;
@@ -1302,18 +1490,32 @@ class MapViewer {
 
     queueChunkLoad(regionX: number, regionY: number, force: boolean = false) {
         const regionId = RegionLoader.getRegionId(regionX, regionY);
-        if (this.loadingRegionIds.size < this.chunkLoaderWorker.size * 2 && !this.loadingRegionIds.has(regionId)
-            && !this.chunks.has(regionId) && (force || this.isChunkVisible(regionX, regionY))) {
+        if (
+            this.loadingRegionIds.size < this.chunkLoaderWorker.size * 2 &&
+            !this.loadingRegionIds.has(regionId) &&
+            !this.chunks.has(regionId) &&
+            (force || this.isChunkVisible(regionX, regionY))
+        ) {
             // console.log('queue load', regionX, regionY, performance.now());
             this.loadingRegionIds.add(regionId);
 
-            this.chunkLoaderWorker.pool.queue(worker => worker.load(regionX, regionY, !this.hasMultiDraw, this.loadNpcs, this.maxPlane)).then(chunkData => {
-                if (chunkData) {
-                    this.chunksToLoad.push(chunkData);
-                } else {
-                    this.invalidRegionIds.add(regionId);
-                }
-            });
+            this.chunkLoaderWorker.pool
+                .queue((worker) =>
+                    worker.load(
+                        regionX,
+                        regionY,
+                        !this.hasMultiDraw,
+                        this.loadNpcs,
+                        this.maxPlane
+                    )
+                )
+                .then((chunkData) => {
+                    if (chunkData) {
+                        this.chunksToLoad.push(chunkData);
+                    } else {
+                        this.invalidRegionIds.add(regionId);
+                    }
+                });
         }
     }
 
@@ -1354,12 +1556,16 @@ class MapViewer {
             return;
         }
 
-        chunk.npcDataTextureOffsets[this.frameCount % chunk.npcDataTextureOffsets.length] = this.npcRenderCount;
+        chunk.npcDataTextureOffsets[
+            this.frameCount % chunk.npcDataTextureOffsets.length
+        ] = this.npcRenderCount;
 
         const newCount = this.npcRenderCount + npcs.length;
 
         if (this.npcRenderData.length / 4 < newCount) {
-            const newData = new Uint16Array(Math.ceil(newCount * 2 / 16) * 16 * 4);
+            const newData = new Uint16Array(
+                Math.ceil((newCount * 2) / 16) * 16 * 4
+            );
             newData.set(this.npcRenderData);
             this.npcRenderData = newData;
         }
@@ -1371,7 +1577,10 @@ class MapViewer {
             const tileY = npc.y >> 7;
 
             let renderPlane = npc.data.plane;
-            if (renderPlane < 3 && (chunk.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
+            if (
+                renderPlane < 3 &&
+                (chunk.tileRenderFlags[1][tileX][tileY] & 0x2) === 2
+            ) {
                 renderPlane = npc.data.plane + 1;
             }
 
@@ -1384,13 +1593,17 @@ class MapViewer {
         });
     }
 
-    render(gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) {
+    render(
+        gl: WebGL2RenderingContext,
+        time: DOMHighResTimeStamp,
+        resized: boolean
+    ) {
         time *= 0.001;
         const deltaTime = time - this.lastFrameTime;
 
         if (this.fpsLimit) {
-            const tolerance = 0.001
-            if (deltaTime < (1 / this.fpsLimit) - tolerance) {
+            const tolerance = 0.001;
+            if (deltaTime < 1 / this.fpsLimit - tolerance) {
                 return;
             }
         }
@@ -1402,7 +1615,10 @@ class MapViewer {
         const cycle = time / 0.02;
 
         const clientTick = Math.floor(time / 0.02);
-        const clientTicksElapsed = Math.min(clientTick - this.lastClientTick, 50);
+        const clientTicksElapsed = Math.min(
+            clientTick - this.lastClientTick,
+            50
+        );
         if (clientTicksElapsed > 0) {
             this.lastClientTick = clientTick;
         }
@@ -1424,7 +1640,7 @@ class MapViewer {
         // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         if (!this.program || !this.programNpc) {
-            console.warn('program not compiled yet');
+            console.warn("program not compiled yet");
             return;
         }
 
@@ -1437,7 +1653,7 @@ class MapViewer {
         this.cameraUpdated = false;
 
         let cameraSpeedMult = 1.0;
-        if (this.keys.get('Shift')) {
+        if (this.keys.get("Shift")) {
             cameraSpeedMult = 10.0;
         }
 
@@ -1445,21 +1661,21 @@ class MapViewer {
         const deltaYaw = 64 * 5 * deltaTime;
 
         // camera direction controls
-        if (this.keys.get('ArrowUp')) {
+        if (this.keys.get("ArrowUp")) {
             this.updatePitch(this.pitch, -deltaPitch);
         }
-        if (this.keys.get('ArrowDown')) {
+        if (this.keys.get("ArrowDown")) {
             this.updatePitch(this.pitch, deltaPitch);
         }
-        if (this.keys.get('ArrowRight')) {
+        if (this.keys.get("ArrowRight")) {
             this.updateYaw(this.yaw, -deltaYaw);
         }
-        if (this.keys.get('ArrowLeft')) {
+        if (this.keys.get("ArrowLeft")) {
             this.updateYaw(this.yaw, deltaYaw);
         }
 
         // 200ms cooldown
-        if (this.keys.get('F1') && time - this.lastHudHidden > 0.2) {
+        if (this.keys.get("F1") && time - this.lastHudHidden > 0.2) {
             this.hudHidden = !this.hudHidden;
             this.lastHudHidden = time;
             if (this.setHudHidden) {
@@ -1472,7 +1688,11 @@ class MapViewer {
             const moveX = this.positionJoystickEvent.x || 0;
             const moveY = this.positionJoystickEvent.y || 0;
 
-            this.moveCamera(moveX * 32 * -deltaTime, 0, moveY * 32 * -deltaTime);
+            this.moveCamera(
+                moveX * 32 * -deltaTime,
+                0,
+                moveY * 32 * -deltaTime
+            );
         }
 
         if (this.cameraJoystickEvent) {
@@ -1496,22 +1716,27 @@ class MapViewer {
         }
 
         // camera position controls
-        if (this.keys.get('w') || this.keys.get('W')) {
+        if (this.keys.get("w") || this.keys.get("W")) {
             this.moveCamera(0, 0, -16 * cameraSpeedMult * deltaTime);
         }
-        if (this.keys.get('a') || this.keys.get('A')) {
+        if (this.keys.get("a") || this.keys.get("A")) {
             this.moveCamera(16 * cameraSpeedMult * deltaTime, 0, 0);
         }
-        if (this.keys.get('s') || this.keys.get('S')) {
+        if (this.keys.get("s") || this.keys.get("S")) {
             this.moveCamera(0, 0, 16 * cameraSpeedMult * deltaTime);
         }
-        if (this.keys.get('d') || this.keys.get('D')) {
+        if (this.keys.get("d") || this.keys.get("D")) {
             this.moveCamera(-16 * cameraSpeedMult * deltaTime, 0, 0);
         }
-        if (this.keys.get('e') || this.keys.get('E')) {
+        if (this.keys.get("e") || this.keys.get("E")) {
             this.moveCamera(0, 8 * cameraSpeedMult * deltaTime, 0);
         }
-        if (this.keys.get('q') || this.keys.get('Q') || this.keys.get('c') || this.keys.get('C')) {
+        if (
+            this.keys.get("q") ||
+            this.keys.get("Q") ||
+            this.keys.get("c") ||
+            this.keys.get("C")
+        ) {
             this.moveCamera(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
 
@@ -1523,24 +1748,37 @@ class MapViewer {
             this.runCameraMoveEndListener();
         }
 
-        if (this.keys.get('t') && this.timer.ready()) {
-            const totalTriangles = Array.from(this.chunks.values()).map(t => t.triangleCount).reduce((a, b) => a + b, 0);
+        if (this.keys.get("t") && this.timer.ready()) {
+            const totalTriangles = Array.from(this.chunks.values())
+                .map((t) => t.triangleCount)
+                .reduce((a, b) => a + b, 0);
 
-            console.log(this.timer.cpuTime, this.timer.gpuTime, this.chunks.size, 'triangles', totalTriangles);
+            console.log(
+                this.timer.cpuTime,
+                this.timer.gpuTime,
+                this.chunks.size,
+                "triangles",
+                totalTriangles
+            );
             console.log(time);
         }
 
-
-        if (this.keys.get('r') && this.timer.ready()) {
+        if (this.keys.get("r") && this.timer.ready()) {
             this.app.enable(PicoGL.RASTERIZER_DISCARD);
         }
-        if (this.keys.get('f') && this.timer.ready()) {
+        if (this.keys.get("f") && this.timer.ready()) {
             this.app.disable(PicoGL.RASTERIZER_DISCARD);
         }
 
-        if (this.keys.get('p') && this.chunkDataLoader) {
+        if (this.keys.get("p") && this.chunkDataLoader) {
             for (let i = 0; i < 20; i++) {
-                this.chunkDataLoader.load(50, 50, false, false, Scene.MAX_PLANE - 1);
+                this.chunkDataLoader.load(
+                    50,
+                    50,
+                    false,
+                    false,
+                    Scene.MAX_PLANE - 1
+                );
 
                 this.chunkDataLoader.regionLoader.regions.clear();
                 this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
@@ -1554,14 +1792,23 @@ class MapViewer {
         // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
         mat4.identity(this.projectionMatrix);
         if (this.projectionType === ProjectionType.PERSPECTIVE) {
-            mat4.perspective(this.projectionMatrix, Math.PI / 2, canvasWidth / canvasHeight, 0.1, 1024.0 * 4);
+            mat4.perspective(
+                this.projectionMatrix,
+                Math.PI / 2,
+                canvasWidth / canvasHeight,
+                0.1,
+                1024.0 * 4
+            );
         } else {
-            mat4.ortho(this.projectionMatrix,
+            mat4.ortho(
+                this.projectionMatrix,
                 -canvasWidth / this.orthoZoom,
                 canvasWidth / this.orthoZoom,
                 -canvasHeight / this.orthoZoom,
                 canvasHeight / this.orthoZoom,
-                -1024.0 * 8, 1024.0 * 8);
+                -1024.0 * 8,
+                1024.0 * 8
+            );
         }
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
@@ -1570,17 +1817,28 @@ class MapViewer {
         // mat4.scale(this.viewMatrix, this.viewMatrix, [scale, scale, 1]);
         // mat4.lookAt(this.viewMatrix, vec3.fromValues(1, 1, 0), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
         if (this.pitch !== 0) {
-            mat4.rotateX(this.viewMatrix, this.viewMatrix, this.pitch * RS_TO_RADIANS);
+            mat4.rotateX(
+                this.viewMatrix,
+                this.viewMatrix,
+                this.pitch * RS_TO_RADIANS
+            );
         }
         if (this.yaw !== 0) {
-            mat4.rotateY(this.viewMatrix, this.viewMatrix, this.yaw * RS_TO_RADIANS);
+            mat4.rotateY(
+                this.viewMatrix,
+                this.viewMatrix,
+                this.yaw * RS_TO_RADIANS
+            );
         }
         mat4.translate(this.viewMatrix, this.viewMatrix, this.cameraPos);
         // mat4.translate(this.viewMatrix, this.viewMatrix, vec3.fromValues(-50.5, 10, -20.5));
         // mat4.translate(this.viewMatrix, this.viewMatrix, vec3.fromValues(Math.random() * 256 - 128, Math.random() * 256 - 128, Math.random() * 256 - 128));
 
-        mat4.multiply(this.viewProjMatrix, this.projectionMatrix, this.viewMatrix);
-
+        mat4.multiply(
+            this.viewProjMatrix,
+            this.projectionMatrix,
+            this.viewMatrix
+        );
 
         this.frustumIntersection.setPlanes(this.viewProjMatrix);
 
@@ -1593,27 +1851,46 @@ class MapViewer {
         const cameraX = -this.cameraPos[0];
         const cameraY = -this.cameraPos[2];
 
-        const cameraRegionX = cameraX / 64 | 0;
-        const cameraRegionY = cameraY / 64 | 0;
+        const cameraRegionX = (cameraX / 64) | 0;
+        const cameraRegionY = (cameraY / 64) | 0;
 
-        if (this.keys.get('c')) {
+        if (this.keys.get("c")) {
             // this.isVisible(this.terrains[0]);
         }
 
-        const viewDistanceRegionIds = this.viewDistanceRegionIds[this.frameCount % 2];
-        const lastViewDistanceRegionIds = this.viewDistanceRegionIds[(this.frameCount + 1) % 2];
+        const viewDistanceRegionIds =
+            this.viewDistanceRegionIds[this.frameCount % 2];
+        const lastViewDistanceRegionIds =
+            this.viewDistanceRegionIds[(this.frameCount + 1) % 2];
 
         viewDistanceRegionIds.clear();
 
-        if (this.lastCameraRegionX != cameraRegionX || this.lastCameraRegionY != cameraRegionY || this.lastRegionViewDistance != this.regionViewDistance) {
+        if (
+            this.lastCameraRegionX != cameraRegionX ||
+            this.lastCameraRegionY != cameraRegionY ||
+            this.lastRegionViewDistance != this.regionViewDistance
+        ) {
             const regionViewDistance = this.regionViewDistance;
 
             this.regionPositions.length = 0;
-            for (let x = -(regionViewDistance - 1); x < regionViewDistance; x++) {
-                for (let y = -(regionViewDistance - 1); y < regionViewDistance; y++) {
+            for (
+                let x = -(regionViewDistance - 1);
+                x < regionViewDistance;
+                x++
+            ) {
+                for (
+                    let y = -(regionViewDistance - 1);
+                    y < regionViewDistance;
+                    y++
+                ) {
                     const regionX = cameraRegionX + x;
                     const regionY = cameraRegionY + y;
-                    if (regionX < 0 || regionX >= 100 || regionY < 0 || regionY >= 200) {
+                    if (
+                        regionX < 0 ||
+                        regionX >= 100 ||
+                        regionY < 0 ||
+                        regionY >= 200
+                    ) {
                         continue;
                     }
                     const regionId = RegionLoader.getRegionId(regionX, regionY);
@@ -1630,22 +1907,34 @@ class MapViewer {
                     continue;
                 }
                 const regionX = regionId >> 8;
-                const regionY = regionId & 0xFF;
+                const regionY = regionId & 0xff;
                 const xDist = Math.abs(regionX - cameraRegionX);
                 const yDist = Math.abs(regionY - cameraRegionY);
                 const dist = Math.max(xDist, yDist);
-                if (dist >= this.regionViewDistance + this.regionUnloadDistance - 1) {
+                if (
+                    dist >=
+                    this.regionViewDistance + this.regionUnloadDistance - 1
+                ) {
                     deleteChunk(chunk);
                     this.chunks.delete(regionId);
-                    console.log('deleting chunk ', dist, this.regionViewDistance, this.regionUnloadDistance, chunk);
+                    console.log(
+                        "deleting chunk ",
+                        dist,
+                        this.regionViewDistance,
+                        this.regionUnloadDistance,
+                        chunk
+                    );
                 }
             }
         }
 
-
         this.timer.start();
 
-        if (this.lastCameraX != cameraX || this.lastCameraY != cameraY || this.lastRegionViewDistance != this.regionViewDistance) {
+        if (
+            this.lastCameraX != cameraX ||
+            this.lastCameraY != cameraY ||
+            this.lastRegionViewDistance != this.regionViewDistance
+        ) {
             // sort front to back
             this.regionPositions.sort((a, b) => {
                 const regionDistA = getRegionDistance(cameraX, cameraY, a);
@@ -1662,75 +1951,109 @@ class MapViewer {
             const pickedX = this.pickX;
             const pickedY = this.pickY;
 
-            readPixelsAsync(gl, this.pickX - INTERACTION_RADIUS, gl.canvas.height - this.pickY - INTERACTION_RADIUS,
-                INTERACTION_SIZE, INTERACTION_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, this.interactBuffer).then(buf => {
-
-                    const closestInteractions: number[] = new Array(INTERACTION_SIZE).fill(-1);
-                    for (let x = 0; x < INTERACTION_SIZE; x++) {
-                        for (let y = 0; y < INTERACTION_SIZE; y++) {
-                            const index = (x + y * INTERACTION_SIZE) * 4;
-                            if (this.interactBuffer[index + 2] === 0xFF) {
-                                const dist = Math.max(Math.abs(x - INTERACTION_RADIUS), Math.abs(y - INTERACTION_RADIUS));
-                                closestInteractions[dist] = index;
-                            }
+            readPixelsAsync(
+                gl,
+                this.pickX - INTERACTION_RADIUS,
+                gl.canvas.height - this.pickY - INTERACTION_RADIUS,
+                INTERACTION_SIZE,
+                INTERACTION_SIZE,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                this.interactBuffer
+            ).then((buf) => {
+                const closestInteractions: number[] = new Array(
+                    INTERACTION_SIZE
+                ).fill(-1);
+                for (let x = 0; x < INTERACTION_SIZE; x++) {
+                    for (let y = 0; y < INTERACTION_SIZE; y++) {
+                        const index = (x + y * INTERACTION_SIZE) * 4;
+                        if (this.interactBuffer[index + 2] === 0xff) {
+                            const dist = Math.max(
+                                Math.abs(x - INTERACTION_RADIUS),
+                                Math.abs(y - INTERACTION_RADIUS)
+                            );
+                            closestInteractions[dist] = index;
                         }
                     }
+                }
 
-                    let closestInteraction = -1;
-                    for (let i = 0; i < closestInteractions.length; i++) {
-                        if (closestInteractions[i] !== -1) {
-                            closestInteraction = closestInteractions[i];
-                            break;
-                        }
+                let closestInteraction = -1;
+                for (let i = 0; i < closestInteractions.length; i++) {
+                    if (closestInteractions[i] !== -1) {
+                        closestInteraction = closestInteractions[i];
+                        break;
                     }
+                }
 
-                    const closeOnClick = () => {
-                        if (this.onMenuClosed) {
-                            this.onMenuClosed();
-                            this.menuOpen = false;
-                        }
-                    };
-
-                    const cancelOption: MenuOption = { name: 'Cancel', onClick: closeOnClick };
-
-                    if (closestInteraction === -1) {
-                        if (this.onMenuOpened) {
-                            this.onMenuOpened(pickedX, pickedY, [cancelOption]);
-                            this.menuOpen = true;
-                            this.menuX = pickedX;
-                            this.menuY = pickedY;
-                        }
-                        return;
+                const closeOnClick = () => {
+                    if (this.onMenuClosed) {
+                        this.onMenuClosed();
+                        this.menuOpen = false;
                     }
-                    const interactId = this.interactBuffer[closestInteraction] << 8 | this.interactBuffer[closestInteraction + 1];
-                    let def: NpcDefinition | undefined = this.npcLoader.getDefinition(interactId);
-                    if (def.transforms) {
-                        def = def.transform(this.varpManager, this.npcLoader);
-                    }
-                    if (!def) {
-                        return;
-                    }
+                };
 
-                    const npcId = def.id;
-                    const npcName = def.name;
-                    const npcLevel = def.combatLevel;
+                const cancelOption: MenuOption = {
+                    name: "Cancel",
+                    onClick: closeOnClick,
+                };
 
-                    const menuOptions: MenuOption[] = def.actions.filter(action => !!action).map(action => ({ name: action, npcName, level: npcLevel, onClick: closeOnClick }));
-
-                    const openWikiOnClick = () => {
-                        window.open('https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=' + npcId, '_blank');
-                    };
-
-                    menuOptions.push({ name: 'Examine', npcName, level: npcLevel, onClick: openWikiOnClick });
-                    menuOptions.push(cancelOption);
-
+                if (closestInteraction === -1) {
                     if (this.onMenuOpened) {
-                        this.onMenuOpened(pickedX, pickedY, menuOptions);
+                        this.onMenuOpened(pickedX, pickedY, [cancelOption]);
                         this.menuOpen = true;
                         this.menuX = pickedX;
                         this.menuY = pickedY;
                     }
+                    return;
+                }
+                const interactId =
+                    (this.interactBuffer[closestInteraction] << 8) |
+                    this.interactBuffer[closestInteraction + 1];
+                let def: NpcDefinition | undefined =
+                    this.npcLoader.getDefinition(interactId);
+                if (def.transforms) {
+                    def = def.transform(this.varpManager, this.npcLoader);
+                }
+                if (!def) {
+                    return;
+                }
+
+                const npcId = def.id;
+                const npcName = def.name;
+                const npcLevel = def.combatLevel;
+
+                const menuOptions: MenuOption[] = def.actions
+                    .filter((action) => !!action)
+                    .map((action) => ({
+                        name: action,
+                        npcName,
+                        level: npcLevel,
+                        onClick: closeOnClick,
+                    }));
+
+                const openWikiOnClick = () => {
+                    window.open(
+                        "https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=" +
+                            npcId,
+                        "_blank"
+                    );
+                };
+
+                menuOptions.push({
+                    name: "Examine",
+                    npcName,
+                    level: npcLevel,
+                    onClick: openWikiOnClick,
                 });
+                menuOptions.push(cancelOption);
+
+                if (this.onMenuOpened) {
+                    this.onMenuOpened(pickedX, pickedY, menuOptions);
+                    this.menuOpen = true;
+                    this.menuX = pickedX;
+                    this.menuY = pickedY;
+                }
+            });
 
             this.pickX = -1;
             this.pickY = -1;
@@ -1747,7 +2070,11 @@ class MapViewer {
             const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
             const chunk = this.chunks.get(regionId);
             viewDistanceRegionIds.add(regionId);
-            if (!chunk || !this.isChunkVisible(pos[0], pos[1]) || this.frameCount - chunk.frameLoaded < CHUNK_RENDER_FRAME_DELAY) {
+            if (
+                !chunk ||
+                !this.isChunkVisible(pos[0], pos[1]) ||
+                this.frameCount - chunk.frameLoaded < CHUNK_RENDER_FRAME_DELAY
+            ) {
                 continue;
             }
 
@@ -1763,7 +2090,9 @@ class MapViewer {
 
             for (let t = 0; t < ticksElapsed; t++) {
                 for (const npc of chunk.npcs) {
-                    const canWalk = npc.def.walkSequence !== -1 && npc.def.walkSequence !== npc.def.idleSequence;
+                    const canWalk =
+                        npc.def.walkSequence !== -1 &&
+                        npc.def.walkSequence !== npc.def.idleSequence;
                     const collisionMap = chunk.collisionMaps[npc.data.plane];
                     const size = npc.def.size;
 
@@ -1782,8 +2111,16 @@ class MapViewer {
                         // deltaX = clamp(deltaX, -1, 1);
                         // deltaY = clamp(deltaY, -1, 1);
 
-                        const targetX = clamp(spawnX + deltaX, 0, 64 - size - 1);
-                        const targetY = clamp(spawnY + deltaY, 0, 64 - size - 1);
+                        const targetX = clamp(
+                            spawnX + deltaX,
+                            0,
+                            64 - size - 1
+                        );
+                        const targetY = clamp(
+                            spawnY + deltaY,
+                            0,
+                            64 - size - 1
+                        );
 
                         // srcX += baseX;
                         // srcY += baseY;
@@ -1795,13 +2132,27 @@ class MapViewer {
                         strategy.destSizeX = 1;
                         strategy.destSizeY = 1;
 
-                        this.pathfinder.setCollisionFlags(srcX, srcY, npc.data.tileX, npc.data.tileY, 5, collisionMap);
+                        this.pathfinder.setCollisionFlags(
+                            srcX,
+                            srcY,
+                            npc.data.tileX,
+                            npc.data.tileY,
+                            5,
+                            collisionMap
+                        );
 
                         // console.log(this.pathfinder.flags);
 
                         // console.log(this.pathfinder.flags);
 
-                        let steps = this.pathfinder.findPath(srcX, srcY, size, npc.data.plane, strategy, true);
+                        let steps = this.pathfinder.findPath(
+                            srcX,
+                            srcY,
+                            size,
+                            npc.data.plane,
+                            strategy,
+                            true
+                        );
                         if (steps > 0) {
                             if (steps > 24) {
                                 steps = 24;
@@ -1809,22 +2160,23 @@ class MapViewer {
                             for (let s = 0; s < steps; s++) {
                                 npc.serverPathX[s] = this.pathfinder.bufferX[s];
                                 npc.serverPathY[s] = this.pathfinder.bufferY[s];
-                                npc.serverPathMovementType[s] = MovementType.WALK;
+                                npc.serverPathMovementType[s] =
+                                    MovementType.WALK;
                             }
                             npc.serverPathLength = steps;
                             // console.log(steps, targetX, targetY, chunk.collisionMaps[npc.data.plane].getFlag(targetX, targetY), npc);
                         } else {
-
                             // console.log('failed', steps, targetX, targetY, chunk.collisionMaps[npc.data.plane].getFlag(targetX, targetY), npc);
                         }
                     }
 
-
                     if (npc.serverPathLength > 0) {
                         const currentX = npc.pathX[0];
                         const currentY = npc.pathY[0];
-                        const targetX = npc.serverPathX[npc.serverPathLength - 1];
-                        const targetY = npc.serverPathY[npc.serverPathLength - 1];
+                        const targetX =
+                            npc.serverPathX[npc.serverPathLength - 1];
+                        const targetY =
+                            npc.serverPathY[npc.serverPathLength - 1];
                         const deltaX = clamp(targetX - currentX, -1, 1);
                         const deltaY = clamp(targetY - currentY, -1, 1);
                         // const deltaX = 0;
@@ -1832,16 +2184,38 @@ class MapViewer {
                         const nextX = currentX + deltaX;
                         const nextY = currentY + deltaY;
 
-                        for (let flagX = currentX; flagX < currentX + size; flagX++) {
-                            for (let flagY = currentY; flagY < currentY + size; flagY++) {
+                        for (
+                            let flagX = currentX;
+                            flagX < currentX + size;
+                            flagX++
+                        ) {
+                            for (
+                                let flagY = currentY;
+                                flagY < currentY + size;
+                                flagY++
+                            ) {
                                 collisionMap.unflag(flagX, flagY, 0x1000000);
                             }
                         }
 
                         let canMove = true;
-                        exit: for (let flagX = nextX; flagX < nextX + size; flagX++) {
-                            for (let flagY = nextY; flagY < nextY + size; flagY++) {
-                                if (collisionMap.hasFlag(flagX, flagY, 0x1000000)) {
+                        exit: for (
+                            let flagX = nextX;
+                            flagX < nextX + size;
+                            flagX++
+                        ) {
+                            for (
+                                let flagY = nextY;
+                                flagY < nextY + size;
+                                flagY++
+                            ) {
+                                if (
+                                    collisionMap.hasFlag(
+                                        flagX,
+                                        flagY,
+                                        0x1000000
+                                    )
+                                ) {
                                     canMove = false;
                                     break exit;
                                 }
@@ -1849,16 +2223,32 @@ class MapViewer {
                         }
 
                         if (canMove) {
-                            for (let flagX = nextX; flagX < nextX + size; flagX++) {
-                                for (let flagY = nextY; flagY < nextY + size; flagY++) {
+                            for (
+                                let flagX = nextX;
+                                flagX < nextX + size;
+                                flagX++
+                            ) {
+                                for (
+                                    let flagY = nextY;
+                                    flagY < nextY + size;
+                                    flagY++
+                                ) {
                                     collisionMap.flag(flagX, flagY, 0x1000000);
                                 }
                             }
 
                             npc.queuePath(nextX, nextY, MovementType.WALK);
                         } else {
-                            for (let flagX = currentX; flagX < currentX + size; flagX++) {
-                                for (let flagY = currentY; flagY < currentY + size; flagY++) {
+                            for (
+                                let flagX = currentX;
+                                flagX < currentX + size;
+                                flagX++
+                            ) {
+                                for (
+                                    let flagY = currentY;
+                                    flagY < currentY + size;
+                                    flagY++
+                                ) {
                                     collisionMap.flag(flagX, flagY, 0x1000000);
                                 }
                             }
@@ -1868,7 +2258,6 @@ class MapViewer {
                             npc.serverPathLength--;
                         }
                     }
-
                 }
             }
 
@@ -1883,54 +2272,78 @@ class MapViewer {
             this.visibleChunks[this.visibleChunkCount++] = chunk;
         }
 
-        this.app.drawFramebuffer(this.frameBuffer)
-            .clear();
+        this.app.drawFramebuffer(this.frameBuffer).clear();
 
-        const newNpcDataTextureIndex = this.frameCount % this.npcDataTextureBuffer.length;
-        const npcDataTextureIndex = (this.frameCount + 1) % this.npcDataTextureBuffer.length;
+        const newNpcDataTextureIndex =
+            this.frameCount % this.npcDataTextureBuffer.length;
+        const npcDataTextureIndex =
+            (this.frameCount + 1) % this.npcDataTextureBuffer.length;
         this.npcDataTextureBuffer[newNpcDataTextureIndex]?.delete();
-        this.npcDataTextureBuffer[newNpcDataTextureIndex] = this.app.createTexture2D(this.npcRenderData, 16, Math.max(Math.ceil(this.npcRenderCount / 16), 1),
-            { internalFormat: PicoGL.RGBA16UI, minFilter: PicoGL.NEAREST, magFilter: PicoGL.NEAREST });
+        this.npcDataTextureBuffer[newNpcDataTextureIndex] =
+            this.app.createTexture2D(
+                this.npcRenderData,
+                16,
+                Math.max(Math.ceil(this.npcRenderCount / 16), 1),
+                {
+                    internalFormat: PicoGL.RGBA16UI,
+                    minFilter: PicoGL.NEAREST,
+                    magFilter: PicoGL.NEAREST,
+                }
+            );
 
-        const npcRenderDataTexture = this.npcDataTextureBuffer[npcDataTextureIndex];
+        const npcRenderDataTexture =
+            this.npcDataTextureBuffer[npcDataTextureIndex];
 
         // opaque pass
         for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
             const chunk = this.visibleChunks[i];
-            const regionDist = Math.max(Math.abs(cameraRegionX - chunk.regionX), Math.abs(cameraRegionY - chunk.regionY));
+            const regionDist = Math.max(
+                Math.abs(cameraRegionX - chunk.regionX),
+                Math.abs(cameraRegionY - chunk.regionY)
+            );
 
             const isLowDetail = regionDist >= this.regionLodDistance;
             let drawRangeOffset = 0;
             if (isLowDetail) {
-                drawRangeOffset = chunk.drawRangesLowDetail.length - chunk.drawRanges.length;
+                drawRangeOffset =
+                    chunk.drawRangesLowDetail.length - chunk.drawRanges.length;
             }
 
-            const drawCall = isLowDetail ? chunk.drawCallLowDetail : chunk.drawCall;
+            const drawCall = isLowDetail
+                ? chunk.drawCallLowDetail
+                : chunk.drawCall;
 
-            drawCall.uniform('u_currentTime', time);
-            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
-            drawCall.uniform('u_deltaTime', deltaTime);
-            drawCall.uniform('u_brightness', this.brightness);
-            drawCall.uniform('u_colorBanding', this.colorBanding);
+            drawCall.uniform("u_currentTime", time);
+            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
+            drawCall.uniform("u_deltaTime", deltaTime);
+            drawCall.uniform("u_brightness", this.brightness);
+            drawCall.uniform("u_colorBanding", this.colorBanding);
 
-            const drawRanges = isLowDetail ? chunk.drawRangesLowDetail : chunk.drawRanges;
+            const drawRanges = isLowDetail
+                ? chunk.drawRangesLowDetail
+                : chunk.drawRanges;
 
             for (const animatedModel of chunk.animatedModels) {
                 const frameId = animatedModel.frame;
 
                 const frame = animatedModel.frames[frameId];
 
-                (drawCall as any).offsets[animatedModel.drawRangeIndex + drawRangeOffset] = frame[0];
-                (drawCall as any).numElements[animatedModel.drawRangeIndex + drawRangeOffset] = frame[1];
+                (drawCall as any).offsets[
+                    animatedModel.drawRangeIndex + drawRangeOffset
+                ] = frame[0];
+                (drawCall as any).numElements[
+                    animatedModel.drawRangeIndex + drawRangeOffset
+                ] = frame[1];
 
-                drawRanges[animatedModel.drawRangeIndex + drawRangeOffset] = frame;
+                drawRanges[animatedModel.drawRangeIndex + drawRangeOffset] =
+                    frame;
             }
 
             if (this.hasMultiDraw) {
                 drawCall.draw();
             } else {
                 for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform('u_drawId', i);
+                    drawCall.uniform("u_drawId", i);
                     drawCall.drawRanges(drawRanges[i]);
                     drawCall.draw();
                 }
@@ -1945,20 +2358,27 @@ class MapViewer {
                 continue;
             }
 
-            drawCall.uniform('u_currentTime', time);
-            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
-            drawCall.uniform('u_deltaTime', deltaTime);
-            drawCall.uniform('u_brightness', this.brightness);
-            drawCall.uniform('u_colorBanding', this.colorBanding);
-            drawCall.uniform('u_npcDataOffset', chunk.npcDataTextureOffsets[npcDataTextureIndex]);
-            drawCall.texture('u_modelDataTexture', npcRenderDataTexture)
+            drawCall.uniform("u_currentTime", time);
+            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
+            drawCall.uniform("u_deltaTime", deltaTime);
+            drawCall.uniform("u_brightness", this.brightness);
+            drawCall.uniform("u_colorBanding", this.colorBanding);
+            drawCall.uniform(
+                "u_npcDataOffset",
+                chunk.npcDataTextureOffsets[npcDataTextureIndex]
+            );
+            drawCall.texture("u_modelDataTexture", npcRenderDataTexture);
 
             const drawRanges = chunk.drawRangesNpc;
 
             chunk.npcs.forEach((npc, i) => {
                 const frameId = npc.movementFrame;
 
-                const anim = (npc.data.walkAnim && npc.movementAnimation === npc.def.walkSequence) ? npc.data.walkAnim : npc.data.idleAnim;
+                const anim =
+                    npc.data.walkAnim &&
+                    npc.movementAnimation === npc.def.walkSequence
+                        ? npc.data.walkAnim
+                        : npc.data.idleAnim;
 
                 const frame = anim.frames[frameId];
 
@@ -1972,7 +2392,7 @@ class MapViewer {
                 drawCall.draw();
             } else {
                 for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform('u_drawId', i);
+                    drawCall.uniform("u_drawId", i);
                     drawCall.drawRanges(drawRanges[i]);
                     drawCall.draw();
                 }
@@ -1985,11 +2405,11 @@ class MapViewer {
 
             const drawCall = chunk.drawCallAlpha;
 
-            drawCall.uniform('u_currentTime', time);
-            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
-            drawCall.uniform('u_deltaTime', deltaTime);
-            drawCall.uniform('u_brightness', this.brightness);
-            drawCall.uniform('u_colorBanding', this.colorBanding);
+            drawCall.uniform("u_currentTime", time);
+            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
+            drawCall.uniform("u_deltaTime", deltaTime);
+            drawCall.uniform("u_brightness", this.brightness);
+            drawCall.uniform("u_colorBanding", this.colorBanding);
 
             const drawRanges = chunk.drawRangesAlpha;
 
@@ -1999,8 +2419,12 @@ class MapViewer {
 
                     const frame = animatedModel.framesAlpha[frameId];
 
-                    (drawCall as any).offsets[animatedModel.drawRangeAlphaIndex] = frame[0];
-                    (drawCall as any).numElements[animatedModel.drawRangeAlphaIndex] = frame[1];
+                    (drawCall as any).offsets[
+                        animatedModel.drawRangeAlphaIndex
+                    ] = frame[0];
+                    (drawCall as any).numElements[
+                        animatedModel.drawRangeAlphaIndex
+                    ] = frame[1];
 
                     drawRanges[animatedModel.drawRangeAlphaIndex] = frame;
                 }
@@ -2010,7 +2434,7 @@ class MapViewer {
                 drawCall.draw();
             } else {
                 for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform('u_drawId', i);
+                    drawCall.uniform("u_drawId", i);
                     drawCall.drawRanges(drawRanges[i]);
                     drawCall.draw();
                 }
@@ -2026,20 +2450,27 @@ class MapViewer {
                 continue;
             }
 
-            drawCall.uniform('u_currentTime', time);
-            drawCall.uniform('u_timeLoaded', chunk.timeLoaded);
-            drawCall.uniform('u_deltaTime', deltaTime);
-            drawCall.uniform('u_brightness', this.brightness);
-            drawCall.uniform('u_colorBanding', this.colorBanding);
-            drawCall.uniform('u_npcDataOffset', chunk.npcDataTextureOffsets[npcDataTextureIndex]);
-            drawCall.texture('u_modelDataTexture', npcRenderDataTexture)
+            drawCall.uniform("u_currentTime", time);
+            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
+            drawCall.uniform("u_deltaTime", deltaTime);
+            drawCall.uniform("u_brightness", this.brightness);
+            drawCall.uniform("u_colorBanding", this.colorBanding);
+            drawCall.uniform(
+                "u_npcDataOffset",
+                chunk.npcDataTextureOffsets[npcDataTextureIndex]
+            );
+            drawCall.texture("u_modelDataTexture", npcRenderDataTexture);
 
             const drawRanges = chunk.drawRangesNpc;
 
             chunk.npcs.forEach((npc, i) => {
                 const frameId = npc.movementFrame;
 
-                const anim = (npc.data.walkAnim && npc.movementAnimation === npc.def.walkSequence) ? npc.data.walkAnim : npc.data.idleAnim;
+                const anim =
+                    npc.data.walkAnim &&
+                    npc.movementAnimation === npc.def.walkSequence
+                        ? npc.data.walkAnim
+                        : npc.data.idleAnim;
 
                 let frame: number[] = nullFrame;
                 if (anim.framesAlpha) {
@@ -2056,20 +2487,23 @@ class MapViewer {
                 drawCall.draw();
             } else {
                 for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform('u_drawId', i);
+                    drawCall.uniform("u_drawId", i);
                     drawCall.drawRanges(drawRanges[i]);
                     drawCall.draw();
                 }
             }
         }
 
-        this.app.defaultDrawFramebuffer()
-            .clear();
+        this.app.defaultDrawFramebuffer().clear();
 
         this.frameDrawCall.draw();
 
-        if (this.keys.get('h')) {
-            console.log('rendered chunks', this.visibleChunkCount, this.frustumIntersection.planes);
+        if (this.keys.get("h")) {
+            console.log(
+                "rendered chunks",
+                this.visibleChunkCount,
+                this.frustumIntersection.planes
+            );
         }
 
         for (const regionPos of this.regionPositions) {
@@ -2081,12 +2515,30 @@ class MapViewer {
             const chunkData = this.chunksToLoad.shift();
             if (chunkData) {
                 // console.log('loaded', chunkData.regionX, chunkData.regionY, performance.now())
-                const regionId = RegionLoader.getRegionId(chunkData.regionX, chunkData.regionY);
-                if (chunkData.loadNpcs === this.loadNpcs && chunkData.maxPlane === this.maxPlane) {
-                    this.chunks.set(regionId,
-                        loadChunk(this.app, this.program, this.programNpc, this.npcLoader, this.animationLoader,
-                            this.textureArray, this.textureUniformBuffer, this.sceneUniformBuffer, chunkData,
-                            this.frameCount, cycle));
+                const regionId = RegionLoader.getRegionId(
+                    chunkData.regionX,
+                    chunkData.regionY
+                );
+                if (
+                    chunkData.loadNpcs === this.loadNpcs &&
+                    chunkData.maxPlane === this.maxPlane
+                ) {
+                    this.chunks.set(
+                        regionId,
+                        loadChunk(
+                            this.app,
+                            this.program,
+                            this.programNpc,
+                            this.npcLoader,
+                            this.animationLoader,
+                            this.textureArray,
+                            this.textureUniformBuffer,
+                            this.sceneUniformBuffer,
+                            chunkData,
+                            this.frameCount,
+                            cycle
+                        )
+                    );
                 }
                 this.loadingRegionIds.delete(regionId);
             }
@@ -2109,12 +2561,12 @@ class MapViewer {
 
 function formatBytes(bytes: number, decimals: number = 2): string {
     if (!+bytes) {
-        return '0 Bytes';
+        return "0 Bytes";
     }
 
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
@@ -2130,54 +2582,140 @@ const DEFAULT_VIEW_DISTANCE = isWallPaperEngine ? 5 : 2;
 function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
-    const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(undefined);
+    const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
+        undefined
+    );
     const [hudHidden, setHudHidden] = useState<boolean>(isWallPaperEngine);
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const isTouchDevice = !!(navigator.maxTouchPoints || 'ontouchstart' in document.documentElement);
+    const isTouchDevice = !!(
+        navigator.maxTouchPoints || "ontouchstart" in document.documentElement
+    );
 
-    const positionControls = isTouchDevice ? 'Left joystick, Drag up and down.' : 'WASD, E (up), C (down)\nUse SHIFT to go faster.';
-    const directionControls = isTouchDevice ? 'Right joystick.' : 'Arrow Keys or Click and Drag.';
+    const positionControls = isTouchDevice
+        ? "Left joystick, Drag up and down."
+        : "WASD, E (up), C (down)\nUse SHIFT to go faster.";
+    const directionControls = isTouchDevice
+        ? "Right joystick."
+        : "Arrow Keys or Click and Drag.";
 
     const cameraControlsSchema: Schema = {
-        'Position': { value: positionControls, editable: false },
-        'Direction': { value: directionControls, editable: false },
+        Position: { value: positionControls, editable: false },
+        Direction: { value: directionControls, editable: false },
     };
     const data = useControls({
-        'Camera Controls': folder(cameraControlsSchema, { collapsed: true }),
-        'Camera': folder({
-            'Projection': {
-                value: mapViewer.projectionType,
-                options: {
-                    'Perspective': ProjectionType.PERSPECTIVE,
-                    'Ortho': ProjectionType.ORTHO,
+        "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
+        Camera: folder(
+            {
+                Projection: {
+                    value: mapViewer.projectionType,
+                    options: {
+                        Perspective: ProjectionType.PERSPECTIVE,
+                        Ortho: ProjectionType.ORTHO,
+                    },
+                    onChange: (v) => {
+                        mapViewer.projectionType = v;
+                        setSearchParams(mapViewer.getSearchParams(), {
+                            replace: true,
+                        });
+                    },
                 },
-                onChange: (v) => {
-                    mapViewer.projectionType = v;
-                    setSearchParams(mapViewer.getSearchParams(), { replace: true });
-                }
+                "Ortho Zoom": {
+                    value: mapViewer.orthoZoom,
+                    min: 1,
+                    max: 60,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.orthoZoom = v;
+                        setSearchParams(mapViewer.getSearchParams(), {
+                            replace: true,
+                        });
+                    },
+                },
             },
-            'Ortho Zoom': {
-                value: mapViewer.orthoZoom, min: 1, max: 60, step: 1, onChange: (v) => {
-                    mapViewer.orthoZoom = v;
-                    setSearchParams(mapViewer.getSearchParams(), { replace: true });
-                }
+            { collapsed: true }
+        ),
+        Distance: folder(
+            {
+                View: {
+                    value: DEFAULT_VIEW_DISTANCE,
+                    min: 1,
+                    max: 30,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.regionViewDistance = v;
+                    },
+                },
+                Unload: {
+                    value: 2,
+                    min: 1,
+                    max: 30,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.regionUnloadDistance = v;
+                    },
+                },
+                Lod: {
+                    value: 3,
+                    min: 1,
+                    max: 30,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.regionLodDistance = v;
+                    },
+                },
             },
-        }, { collapsed: true }),
-        'Distance': folder({
-            'View': { value: DEFAULT_VIEW_DISTANCE, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionViewDistance = v; } },
-            'Unload': { value: 2, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionUnloadDistance = v; } },
-            'Lod': { value: 3, min: 1, max: 30, step: 1, onChange: (v) => { mapViewer.regionLodDistance = v; } },
-        }, { collapsed: false }),
-        'Npc': folder({
-            'Load': { value: true, onChange: (v) => { mapViewer.setLoadNpcs(v); } },
-        }, { collapsed: true }),
-        'Render': folder({
-            'Max Plane': { value: Scene.MAX_PLANE - 1, min: 0, max: 3, step: 1, onChange: (v) => { mapViewer.setMaxPlane(v); } },
-            'Brightness': { value: 1, min: 0, max: 4, step: 1, onChange: (v) => { mapViewer.brightness = 1.0 - v * 0.1; } },
-            'Color Banding': { value: 50, min: 0, max: 100, step: 1, onChange: (v) => { mapViewer.colorBanding = 255 - v * 2; } },
-            'Cull Back-faces': { value: true, onChange: (v) => { mapViewer.cullBackFace = v; } },
-        }, { collapsed: true }),
+            { collapsed: false }
+        ),
+        Npc: folder(
+            {
+                Load: {
+                    value: true,
+                    onChange: (v) => {
+                        mapViewer.setLoadNpcs(v);
+                    },
+                },
+            },
+            { collapsed: true }
+        ),
+        Render: folder(
+            {
+                "Max Plane": {
+                    value: Scene.MAX_PLANE - 1,
+                    min: 0,
+                    max: 3,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.setMaxPlane(v);
+                    },
+                },
+                Brightness: {
+                    value: 1,
+                    min: 0,
+                    max: 4,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.brightness = 1.0 - v * 0.1;
+                    },
+                },
+                "Color Banding": {
+                    value: 50,
+                    min: 0,
+                    max: 100,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.colorBanding = 255 - v * 2;
+                    },
+                },
+                "Cull Back-faces": {
+                    value: true,
+                    onChange: (v) => {
+                        mapViewer.cullBackFace = v;
+                    },
+                },
+            },
+            { collapsed: true }
+        ),
     });
 
     useEffect(() => {
@@ -2199,43 +2737,80 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     return (
         <div>
             {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
-            <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} hidden={hudHidden} />
-            {!hudHidden && <span>
-                <div className='hud left-top'>
-                    <img className='compass' style={{ transform: `rotate(${compassDegrees}deg)` }} src='/compass.png' onClick={() => {
-                        mapViewer.yaw = 0;
-                        mapViewer.runCameraListeners();
-                    }} />
-                    <div className='fps-counter content-text'>{fps.toFixed(1)}</div>
+            <Leva
+                titleBar={{ filter: false }}
+                collapsed={true}
+                hideCopyButton={true}
+                hidden={hudHidden}
+            />
+            {!hudHidden && (
+                <span>
+                    <div className="hud left-top">
+                        <img
+                            className="compass"
+                            style={{
+                                transform: `rotate(${compassDegrees}deg)`,
+                            }}
+                            src="/compass.png"
+                            onClick={() => {
+                                mapViewer.yaw = 0;
+                                mapViewer.runCameraListeners();
+                            }}
+                        />
+                        <div className="fps-counter content-text">
+                            {fps.toFixed(1)}
+                        </div>
+                    </div>
+                </span>
+            )}
+            {isTouchDevice && (
+                <div className="joystick-container left">
+                    <Joystick
+                        size={75}
+                        baseColor="#181C20"
+                        stickColor="#007BFF"
+                        stickSize={40}
+                        move={mapViewer.onPositionJoystickMove}
+                        stop={mapViewer.onPositionJoystickStop}
+                    ></Joystick>
                 </div>
-            </span>}
-            {isTouchDevice && <div className='joystick-container left'>
-                <Joystick size={75} baseColor='#181C20' stickColor='#007BFF' stickSize={40} move={mapViewer.onPositionJoystickMove} stop={mapViewer.onPositionJoystickStop}></Joystick>
-            </div>}
-            {isTouchDevice && <div className='joystick-container right'>
-                <Joystick size={75} baseColor='#181C20' stickColor='#007BFF' stickSize={40} move={mapViewer.onCameraJoystickMove} stop={mapViewer.onCameraJoystickStop}></Joystick>
-            </div>}
-            <WebGLCanvas init={mapViewer.init} draw={mapViewer.render}></WebGLCanvas>
+            )}
+            {isTouchDevice && (
+                <div className="joystick-container right">
+                    <Joystick
+                        size={75}
+                        baseColor="#181C20"
+                        stickColor="#007BFF"
+                        stickSize={40}
+                        move={mapViewer.onCameraJoystickMove}
+                        stop={mapViewer.onCameraJoystickStop}
+                    ></Joystick>
+                </div>
+            )}
+            <WebGLCanvas
+                init={mapViewer.init}
+                draw={mapViewer.render}
+            ></WebGLCanvas>
         </div>
     );
 }
 
 export const checkIphone = () => {
-    const u = navigator.userAgent
-    return !!u.match(/iPhone/i)
-}
+    const u = navigator.userAgent;
+    return !!u.match(/iPhone/i);
+};
 export const checkAndroid = () => {
-    const u = navigator.userAgent
-    return !!u.match(/Android/i)
-}
+    const u = navigator.userAgent;
+    return !!u.match(/Android/i);
+};
 export const checkIpad = () => {
-    const u = navigator.userAgent
-    return !!u.match(/iPad/i)
-}
+    const u = navigator.userAgent;
+    return !!u.match(/iPad/i);
+};
 export const checkMobile = () => {
-    const u = navigator.userAgent
-    return !!u.match(/Android/i) || !!u.match(/iPhone/i)
-}
+    const u = navigator.userAgent;
+    return !!u.match(/Android/i) || !!u.match(/iPhone/i);
+};
 
 const isIos = checkIphone() || checkIpad();
 
@@ -2246,40 +2821,52 @@ const pool = ChunkLoaderWorkerPool.init(poolSize);
 // console.log('start App', performance.now());
 
 function MapViewerApp() {
-    const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | undefined>(undefined);
-    const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(undefined);
+    const [downloadProgress, setDownloadProgress] = useState<
+        DownloadProgress | undefined
+    >(undefined);
+    const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(
+        undefined
+    );
     const [searchParams, setSearchParams] = useSearchParams();
-
 
     // const test = new Test();
 
     useEffect(() => {
         // console.log('start fetch', performance.now());
-        console.time('first load');
+        console.time("first load");
         const load = async () => {
             const npcSpawnsPromise = fetchNpcSpawns();
-            const cachePath = '/cache212/';
-            const xteaPromise = fetch(cachePath + 'keys.json').then(resp => resp.json());
-            const store = await fetchMemoryStore(cachePath, [
-                IndexType.ANIMATIONS,
-                IndexType.SKELETONS,
-                IndexType.CONFIGS,
-                IndexType.MAPS,
-                IndexType.MODELS,
-                IndexType.SPRITES,
-                IndexType.TEXTURES
-            ], !isIos, setDownloadProgress);
+            const cachePath = "/cache212/";
+            const xteaPromise = fetch(cachePath + "keys.json").then((resp) =>
+                resp.json()
+            );
+            const store = await fetchMemoryStore(
+                cachePath,
+                [
+                    IndexType.ANIMATIONS,
+                    IndexType.SKELETONS,
+                    IndexType.CONFIGS,
+                    IndexType.MAPS,
+                    IndexType.MODELS,
+                    IndexType.SPRITES,
+                    IndexType.TEXTURES,
+                ],
+                !isIos,
+                setDownloadProgress
+            );
             setDownloadProgress(undefined);
 
-            console.time('load xteas');
+            console.time("load xteas");
             const xteas: { [group: string]: number[] } = await xteaPromise;
-            const xteasMap: Map<number, number[]> = new Map(Object.keys(xteas).map(key => [parseInt(key), xteas[key]]));
-            console.timeEnd('load xteas');
-            console.log('xtea count: ', xteasMap.size);
+            const xteasMap: Map<number, number[]> = new Map(
+                Object.keys(xteas).map((key) => [parseInt(key), xteas[key]])
+            );
+            console.timeEnd("load xteas");
+            console.log("xtea count: ", xteasMap.size);
 
-            console.time('load npc spawns');
+            console.time("load npc spawns");
             const npcSpawns = await npcSpawnsPromise;
-            console.timeEnd('load npc spawns');
+            console.timeEnd("load npc spawns");
 
             // const poolSize = 1;
             // const poolSize = navigator.hardwareConcurrency;
@@ -2290,18 +2877,18 @@ function MapViewerApp() {
             const fileSystem = loadFromStore(store);
 
             const mapViewer = new MapViewer(fileSystem, xteasMap, pool);
-            const cx = searchParams.get('cx');
-            const cy = searchParams.get('cy');
-            const cz = searchParams.get('cz');
+            const cx = searchParams.get("cx");
+            const cy = searchParams.get("cy");
+            const cz = searchParams.get("cz");
 
-            const pitch = searchParams.get('p');
-            const yaw = searchParams.get('y');
+            const pitch = searchParams.get("p");
+            const yaw = searchParams.get("y");
 
-            if (searchParams.get('pt') === 'o') {
+            if (searchParams.get("pt") === "o") {
                 mapViewer.projectionType = ProjectionType.ORTHO;
             }
 
-            const zoom = searchParams.get('z');
+            const zoom = searchParams.get("z");
             if (zoom) {
                 mapViewer.orthoZoom = parseInt(zoom);
             }
@@ -2310,7 +2897,7 @@ function MapViewerApp() {
                 const pos: vec3 = [
                     -parseFloat(cx),
                     parseFloat(cy),
-                    -parseFloat(cz)
+                    -parseFloat(cz),
                 ];
                 mapViewer.cameraPos = pos;
             }
@@ -2334,26 +2921,28 @@ function MapViewerApp() {
     let content: JSX.Element | undefined = undefined;
     if (isIos) {
         content = (
-            <div className='center-content-container'>
-                <div className='content-text'>iOS is not supported.</div>
+            <div className="center-content-container">
+                <div className="content-text">iOS is not supported.</div>
             </div>
         );
     } else if (mapViewer) {
-        content = <MapViewerContainer mapViewer={mapViewer}></MapViewerContainer>
+        content = (
+            <MapViewerContainer mapViewer={mapViewer}></MapViewerContainer>
+        );
     } else if (downloadProgress) {
         const formattedCacheSize = formatBytes(downloadProgress.total);
-        const progress = downloadProgress.current / downloadProgress.total * 100 | 0;
+        const progress =
+            ((downloadProgress.current / downloadProgress.total) * 100) | 0;
         content = (
-            <div className='center-content-container'>
-                <OsrsLoadingBar text={`Downloading cache (${formattedCacheSize})`} progress={progress} />
+            <div className="center-content-container">
+                <OsrsLoadingBar
+                    text={`Downloading cache (${formattedCacheSize})`}
+                    progress={progress}
+                />
             </div>
         );
     }
-    return (
-        <div className="App">
-            {content}
-        </div>
-    );
+    return <div className="App">{content}</div>;
 }
 
 export default MapViewerApp;

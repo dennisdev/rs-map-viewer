@@ -21,7 +21,13 @@ export class NpcModelLoader {
 
     modelCache: Map<number, Model>;
 
-    constructor(varpManager: VarpManager, modelLoader: ModelLoader, animationLoader: AnimationLoader, animationFrameMapLoader: AnimationFrameMapLoader, npcLoader: NpcLoader) {
+    constructor(
+        varpManager: VarpManager,
+        modelLoader: ModelLoader,
+        animationLoader: AnimationLoader,
+        animationFrameMapLoader: AnimationFrameMapLoader,
+        npcLoader: NpcLoader
+    ) {
         this.varpManager = varpManager;
         this.modelLoader = modelLoader;
         this.animationLoader = animationLoader;
@@ -30,7 +36,11 @@ export class NpcModelLoader {
         this.modelCache = new Map();
     }
 
-    getModel(def: NpcDefinition, animationId: number, frame: number): Model | undefined {
+    getModel(
+        def: NpcDefinition,
+        animationId: number,
+        frame: number
+    ): Model | undefined {
         if (def.transforms) {
             const transformed = def.transform(this.varpManager, this.npcLoader);
             if (!transformed) {
@@ -63,15 +73,20 @@ export class NpcModelLoader {
                 }
             }
 
-            model = merged.light(def.ambient + 64, def.contrast * 5 + 850, -30, -50, -30);
-
+            model = merged.light(
+                def.ambient + 64,
+                def.contrast * 5 + 850,
+                -30,
+                -50,
+                -30
+            );
 
             this.modelCache.set(def.id, model);
         }
 
         const anim = this.animationLoader.getDefinition(animationId);
         if (anim && animationId !== -1 && frame !== -1) {
-            model = this.transformNpcModel(model, anim, frame)
+            model = this.transformNpcModel(model, anim, frame);
         }
 
         if (def.widthScale !== 128 || def.heightScale !== 128) {
@@ -81,20 +96,29 @@ export class NpcModelLoader {
         return model;
     }
 
-    transformNpcModel(model: Model, anim: AnimationDefinition, frame: number): Model {
+    transformNpcModel(
+        model: Model,
+        anim: AnimationDefinition,
+        frame: number
+    ): Model {
         if (anim.isAnimMaya()) {
             return model;
         }
         if (!anim.frameIds || anim.frameIds.length === 0) {
             return model;
         }
-        
+
         frame = anim.frameIds[frame];
-        const animFrameMap = this.animationFrameMapLoader.getFrameMap(frame >> 16);
-        frame &= 0xFFFF;
+        const animFrameMap = this.animationFrameMapLoader.getFrameMap(
+            frame >> 16
+        );
+        frame &= 0xffff;
 
         if (animFrameMap) {
-            model = Model.copyAnimated(model, !animFrameMap.hasAlphaTransform(frame));
+            model = Model.copyAnimated(
+                model,
+                !animFrameMap.hasAlphaTransform(frame)
+            );
 
             model.animate(animFrameMap.frames[frame]);
         }

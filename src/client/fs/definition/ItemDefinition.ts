@@ -278,7 +278,9 @@ export class ItemDefinition extends Definition {
         } else if (opcode === 249) {
             this.params = Definition.readParamsMap(buffer, this.params);
         } else {
-            throw new Error('ItemDefinition: Opcode ' + opcode + ' not implemented.');
+            throw new Error(
+                "ItemDefinition: Opcode " + opcode + " not implemented."
+            );
         }
     }
 
@@ -359,33 +361,38 @@ export class ItemDefinition extends Definition {
     }
 
     getCountObj(itemManager: ItemManager, count: number): ItemDefinition {
-		if (this.countObj && count > 1) {
-			let newId = -1;
+        if (this.countObj && count > 1) {
+            let newId = -1;
 
-			for (let i = 0; i < 10; i++) {
-				if (count >= this.countCo[i] && this.countCo[i] !== 0) {
-					newId = this.countObj[i];
-				}
-			}
+            for (let i = 0; i < 10; i++) {
+                if (count >= this.countCo[i] && this.countCo[i] !== 0) {
+                    newId = this.countObj[i];
+                }
+            }
 
-			if (newId !== -1) { 
-				return itemManager.getDefinition(newId);
-			}
-		}
+            if (newId !== -1) {
+                return itemManager.getDefinition(newId);
+            }
+        }
 
-		return this;
+        return this;
     }
 
     getShiftClickIndex(): number {
         if (this.shiftClickIndex !== -1 && this.inventoryActions) {
-			if (this.shiftClickIndex >= 0) {
-				return this.inventoryActions[this.shiftClickIndex] ? this.shiftClickIndex : -1;
-			} else {
-                return this.inventoryActions[4] && this.inventoryActions[4].toLowerCase() === 'drop' ? 4 : -1;
-			}
-		} else {
-			return -1;
-		}
+            if (this.shiftClickIndex >= 0) {
+                return this.inventoryActions[this.shiftClickIndex]
+                    ? this.shiftClickIndex
+                    : -1;
+            } else {
+                return this.inventoryActions[4] &&
+                    this.inventoryActions[4].toLowerCase() === "drop"
+                    ? 4
+                    : -1;
+            }
+        } else {
+            return -1;
+        }
     }
 
     hasRecolor(): boolean {

@@ -12,8 +12,7 @@ export class ArchiveReference {
         private readonly _fileIdIndexMap: Map<number, number>,
         private readonly _fileIds: Int32Array,
         private readonly _fileNameHashes: Int32Array
-    ) {
-    }
+    ) {}
 
     getFileReference(id: number): FileReference | undefined {
         const i = this._fileIdIndexMap.get(id);

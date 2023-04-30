@@ -30,7 +30,7 @@ export class SpriteLoader {
 
         SpriteLoader.width = buffer.readUnsignedShort();
         SpriteLoader.height = buffer.readUnsignedShort();
-        const paletteSize = (buffer.readUnsignedByte() & 0xFF) + 1;
+        const paletteSize = (buffer.readUnsignedByte() & 0xff) + 1;
 
         for (let i = 0; i < SpriteLoader.spriteCount; i++) {
             SpriteLoader.xOffsets[i] = buffer.readUnsignedShort();
@@ -48,7 +48,11 @@ export class SpriteLoader {
             SpriteLoader.heights[i] = buffer.readUnsignedShort();
         }
 
-        buffer.offset = data.length - 7 - SpriteLoader.spriteCount * 8 - (paletteSize - 1) * 3;
+        buffer.offset =
+            data.length -
+            7 -
+            SpriteLoader.spriteCount * 8 -
+            (paletteSize - 1) * 3;
 
         SpriteLoader.palette = new Int32Array(paletteSize);
 
@@ -65,7 +69,9 @@ export class SpriteLoader {
             const width = SpriteLoader.widths[i];
             const height = SpriteLoader.heights[i];
             const pixelCount = width * height;
-            const pixels = SpriteLoader.pixels[i] = new Uint8Array(pixelCount);
+            const pixels = (SpriteLoader.pixels[i] = new Uint8Array(
+                pixelCount
+            ));
             const readPixelsDimension = buffer.readUnsignedByte();
             if (readPixelsDimension == 0) {
                 for (let pi = 0; pi < pixelCount; pi++) {
@@ -81,7 +87,10 @@ export class SpriteLoader {
         }
     }
 
-    static loadFromIndex(spriteIndex: IndexSync<StoreSync>, id: number): boolean {
+    static loadFromIndex(
+        spriteIndex: IndexSync<StoreSync>,
+        id: number
+    ): boolean {
         const file = spriteIndex.getFile(id, 0);
         if (file) {
             SpriteLoader.load(file.data);
@@ -90,9 +99,19 @@ export class SpriteLoader {
         return false;
     }
 
-    static loadIntoIndexedSprite(spriteIndex: IndexSync<StoreSync>, id: number): IndexedSprite | undefined {
-        if (SpriteLoader.loadFromIndex(spriteIndex, id) && SpriteLoader.xOffsets && SpriteLoader.yOffsets
-            && SpriteLoader.widths && SpriteLoader.heights && SpriteLoader.palette && SpriteLoader.pixels) {
+    static loadIntoIndexedSprite(
+        spriteIndex: IndexSync<StoreSync>,
+        id: number
+    ): IndexedSprite | undefined {
+        if (
+            SpriteLoader.loadFromIndex(spriteIndex, id) &&
+            SpriteLoader.xOffsets &&
+            SpriteLoader.yOffsets &&
+            SpriteLoader.widths &&
+            SpriteLoader.heights &&
+            SpriteLoader.palette &&
+            SpriteLoader.pixels
+        ) {
             const sprite = new IndexedSprite();
 
             sprite.width = SpriteLoader.width;

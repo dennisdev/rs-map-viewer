@@ -3,6 +3,5 @@ export class FileReference {
         public readonly id: number,
         public readonly archiveId: number,
         public readonly nameHash: number
-    ) {
-    }
+    ) {}
 }

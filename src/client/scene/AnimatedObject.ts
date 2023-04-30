@@ -12,7 +12,7 @@ export class AnimatedObject extends Renderable {
         public tileX: number,
         public tileY: number,
         public animationId: number,
-        public randomStartFrame: boolean,
+        public randomStartFrame: boolean
     ) {
         super();
     }

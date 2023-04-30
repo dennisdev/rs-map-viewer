@@ -52,6 +52,5 @@ export class EnumDefinition extends Definition {
                 this.intValues[i] = buffer.readInt();
             }
         }
-
     }
 }

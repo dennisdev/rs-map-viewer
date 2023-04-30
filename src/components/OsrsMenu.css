@@ -2,7 +2,8 @@
     position: absolute;
     top: 100px;
     left: 100px;
-    font-family: 'OSRS', ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
+    font-family: "OSRS", ui-monospace, SFMono-Regular, Menlo, "Roboto Mono",
+        monospace;
     display: flex;
     white-space: nowrap;
 }
@@ -15,25 +16,25 @@
     /* filter: opacity(100%); */
     text-shadow: 1px 1px 0 black;
     /* display: flex; */
-    border: solid #5D5447 1px;
+    border: solid #5d5447 1px;
 }
 
 .title {
     padding-left: 2px;
     padding-right: 6px;
-    color: #5D5447;
+    color: #5d5447;
     background-color: black;
     border: solid black 1px;
 }
 
 .line {
     width: 100%;
-    border-top: solid #5D5447 1px;
+    border-top: solid #5d5447 1px;
 }
 
 .options {
     color: white;
-    background-color: #5D5447;
+    background-color: #5d5447;
     border: solid black 1px;
 }
 
@@ -44,13 +45,13 @@
 }
 
 .option:hover .option-name {
-    color: #FFFF00;
+    color: #ffff00;
 }
 
 .npc-name {
-    color: #FFFF00;
+    color: #ffff00;
 }
 
 .npc-level {
-    color: #C0FF00;
+    color: #c0ff00;
 }

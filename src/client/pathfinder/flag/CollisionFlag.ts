@@ -46,140 +46,165 @@ export class CollisionFlag {
     public static readonly WALL_WEST_ROUTE_BLOCKER: number = 0x20000000;
     public static readonly OBJECT_ROUTE_BLOCKER: number = 0x40000000;
 
-    public static readonly FLOOR_BLOCKED: number = CollisionFlag.FLOOR | CollisionFlag.FLOOR_DECORATION;
+    public static readonly FLOOR_BLOCKED: number =
+        CollisionFlag.FLOOR | CollisionFlag.FLOOR_DECORATION;
 
     /* Mixed masks of the above flags */
-    public static readonly BLOCK_WEST: number = CollisionFlag.WALL_EAST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_WEST: number =
+        CollisionFlag.WALL_EAST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_EAST: number = CollisionFlag.WALL_WEST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_EAST: number =
+        CollisionFlag.WALL_WEST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_SOUTH: number = CollisionFlag.WALL_NORTH
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_SOUTH: number =
+        CollisionFlag.WALL_NORTH |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_NORTH: number = CollisionFlag.WALL_SOUTH
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_NORTH: number =
+        CollisionFlag.WALL_SOUTH |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_SOUTH_WEST: number = CollisionFlag.WALL_NORTH
-        | CollisionFlag.WALL_NORTH_EAST
-        | CollisionFlag.WALL_EAST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_SOUTH_WEST: number =
+        CollisionFlag.WALL_NORTH |
+        CollisionFlag.WALL_NORTH_EAST |
+        CollisionFlag.WALL_EAST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_SOUTH_EAST: number = CollisionFlag.WALL_NORTH_WEST
-        | CollisionFlag.WALL_NORTH
-        | CollisionFlag.WALL_WEST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_SOUTH_EAST: number =
+        CollisionFlag.WALL_NORTH_WEST |
+        CollisionFlag.WALL_NORTH |
+        CollisionFlag.WALL_WEST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_NORTH_WEST: number = CollisionFlag.WALL_EAST
-        | CollisionFlag.WALL_SOUTH_EAST
-        | CollisionFlag.WALL_SOUTH
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_NORTH_WEST: number =
+        CollisionFlag.WALL_EAST |
+        CollisionFlag.WALL_SOUTH_EAST |
+        CollisionFlag.WALL_SOUTH |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_NORTH_EAST: number = CollisionFlag.WALL_SOUTH
-        | CollisionFlag.WALL_SOUTH_WEST
-        | CollisionFlag.WALL_WEST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_NORTH_EAST: number =
+        CollisionFlag.WALL_SOUTH |
+        CollisionFlag.WALL_SOUTH_WEST |
+        CollisionFlag.WALL_WEST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_NORTH_AND_SOUTH_EAST: number = CollisionFlag.WALL_NORTH
-        | CollisionFlag.WALL_NORTH_EAST
-        | CollisionFlag.WALL_EAST
-        | CollisionFlag.WALL_SOUTH_EAST
-        | CollisionFlag.WALL_SOUTH
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_NORTH_AND_SOUTH_EAST: number =
+        CollisionFlag.WALL_NORTH |
+        CollisionFlag.WALL_NORTH_EAST |
+        CollisionFlag.WALL_EAST |
+        CollisionFlag.WALL_SOUTH_EAST |
+        CollisionFlag.WALL_SOUTH |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_NORTH_AND_SOUTH_WEST: number = CollisionFlag.WALL_NORTH_WEST
-        | CollisionFlag.WALL_NORTH
-        | CollisionFlag.WALL_SOUTH
-        | CollisionFlag.WALL_SOUTH_WEST
-        | CollisionFlag.WALL_WEST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_NORTH_AND_SOUTH_WEST: number =
+        CollisionFlag.WALL_NORTH_WEST |
+        CollisionFlag.WALL_NORTH |
+        CollisionFlag.WALL_SOUTH |
+        CollisionFlag.WALL_SOUTH_WEST |
+        CollisionFlag.WALL_WEST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_NORTH_EAST_AND_WEST: number = CollisionFlag.WALL_NORTH_WEST
-        | CollisionFlag.WALL_NORTH
-        | CollisionFlag.WALL_NORTH_EAST
-        | CollisionFlag.WALL_EAST
-        | CollisionFlag.WALL_WEST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_NORTH_EAST_AND_WEST: number =
+        CollisionFlag.WALL_NORTH_WEST |
+        CollisionFlag.WALL_NORTH |
+        CollisionFlag.WALL_NORTH_EAST |
+        CollisionFlag.WALL_EAST |
+        CollisionFlag.WALL_WEST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
-    public static readonly BLOCK_SOUTH_EAST_AND_WEST: number = CollisionFlag.WALL_EAST
-        | CollisionFlag.WALL_SOUTH_EAST
-        | CollisionFlag.WALL_SOUTH
-        | CollisionFlag.WALL_SOUTH_WEST
-        | CollisionFlag.WALL_WEST
-        | CollisionFlag.OBJECT
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_SOUTH_EAST_AND_WEST: number =
+        CollisionFlag.WALL_EAST |
+        CollisionFlag.WALL_SOUTH_EAST |
+        CollisionFlag.WALL_SOUTH |
+        CollisionFlag.WALL_SOUTH_WEST |
+        CollisionFlag.WALL_WEST |
+        CollisionFlag.OBJECT |
+        CollisionFlag.FLOOR_BLOCKED;
 
     /* Route blocker flags. These are used in ~550+ clients to generate paths through bankers and such. */
-    public static readonly BLOCK_WEST_ROUTE_BLOCKER: number = CollisionFlag.WALL_EAST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_EAST_ROUTE_BLOCKER: number = CollisionFlag.WALL_WEST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_SOUTH_ROUTE_BLOCKER: number = CollisionFlag.WALL_NORTH_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_NORTH_ROUTE_BLOCKER: number = CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_SOUTH_WEST_ROUTE_BLOCKER: number = CollisionFlag.WALL_NORTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_EAST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_SOUTH_EAST_ROUTE_BLOCKER: number = CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_NORTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_WEST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_NORTH_WEST_ROUTE_BLOCKER: number = CollisionFlag.WALL_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_NORTH_EAST_ROUTE_BLOCKER: number = CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_WEST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_NORTH_AND_SOUTH_EAST_ROUTE_BLOCKER: number = CollisionFlag.WALL_NORTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_NORTH_AND_SOUTH_WEST_ROUTE_BLOCKER: number = CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_NORTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_WEST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_NORTH_EAST_AND_WEST_ROUTE_BLOCKER: number = CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_NORTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_WEST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
-    public static readonly BLOCK_SOUTH_EAST_AND_WEST_ROUTE_BLOCKER: number = CollisionFlag.WALL_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER
-        | CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER
-        | CollisionFlag.WALL_WEST_ROUTE_BLOCKER
-        | CollisionFlag.OBJECT_ROUTE_BLOCKER
-        | CollisionFlag.FLOOR_BLOCKED
+    public static readonly BLOCK_WEST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_EAST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_EAST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_WEST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_SOUTH_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_NORTH_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_NORTH_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_SOUTH_WEST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_NORTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_EAST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_SOUTH_EAST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_NORTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_WEST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_NORTH_WEST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_NORTH_EAST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_WEST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_NORTH_AND_SOUTH_EAST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_NORTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_NORTH_AND_SOUTH_WEST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_NORTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_WEST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_NORTH_EAST_AND_WEST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_NORTH_WEST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_NORTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_NORTH_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_WEST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
+    public static readonly BLOCK_SOUTH_EAST_AND_WEST_ROUTE_BLOCKER: number =
+        CollisionFlag.WALL_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_EAST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_ROUTE_BLOCKER |
+        CollisionFlag.WALL_SOUTH_WEST_ROUTE_BLOCKER |
+        CollisionFlag.WALL_WEST_ROUTE_BLOCKER |
+        CollisionFlag.OBJECT_ROUTE_BLOCKER |
+        CollisionFlag.FLOOR_BLOCKED;
 }

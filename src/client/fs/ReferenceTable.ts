@@ -12,7 +12,8 @@ export class ReferenceTable {
         const flag = buffer.readUnsignedByte();
         const named = (flag & 0x1) !== 0;
         const usesWhirlpool = (flag & 0x2) !== 0;
-        const archiveCount = protocol === 7 ? buffer.readBigSmart() : buffer.readUnsignedShort();
+        const archiveCount =
+            protocol === 7 ? buffer.readBigSmart() : buffer.readUnsignedShort();
 
         let lastArchiveId = 0;
         const archiveIds = new Int32Array(archiveCount);
@@ -45,15 +46,26 @@ export class ReferenceTable {
             }
         }
 
-        const archiveCrcs = new DataView(buffer.data.buffer, buffer.offset, archiveCount * 4);
+        const archiveCrcs = new DataView(
+            buffer.data.buffer,
+            buffer.offset,
+            archiveCount * 4
+        );
         buffer.offset += archiveCrcs.byteLength;
 
-        const archiveRevisions = new DataView(buffer.data.buffer, buffer.offset, archiveCount * 4);
+        const archiveRevisions = new DataView(
+            buffer.data.buffer,
+            buffer.offset,
+            archiveCount * 4
+        );
         buffer.offset += archiveRevisions.byteLength;
 
         const archiveFileCounts = new Int32Array(archiveCount);
         for (let i = 0; i < archiveCount; i++) {
-            archiveFileCounts[i] = protocol === 7 ? buffer.readBigSmart() : buffer.readUnsignedShort();
+            archiveFileCounts[i] =
+                protocol === 7
+                    ? buffer.readBigSmart()
+                    : buffer.readUnsignedShort();
         }
 
         const archiveFileIds = new Array<Int32Array>(archiveCount);
@@ -63,8 +75,15 @@ export class ReferenceTable {
         }
         for (let archiveIdx = 0; archiveIdx < archiveCount; archiveIdx++) {
             let lastFileId = 0;
-            for (let fileIdx = 0; fileIdx < archiveFileCounts[archiveIdx]; fileIdx++) {
-                lastFileId += protocol === 7 ? buffer.readBigSmart() : buffer.readUnsignedShort();
+            for (
+                let fileIdx = 0;
+                fileIdx < archiveFileCounts[archiveIdx];
+                fileIdx++
+            ) {
+                lastFileId +=
+                    protocol === 7
+                        ? buffer.readBigSmart()
+                        : buffer.readUnsignedShort();
                 archiveFileIds[archiveIdx][fileIdx] = lastFileId;
             }
             archiveLastFileIds[archiveIdx] = lastFileId;
@@ -76,14 +95,35 @@ export class ReferenceTable {
                 archiveFileNameHashes[i] = new Int32Array(archiveFileCounts[i]);
             }
             for (let archiveIdx = 0; archiveIdx < archiveCount; archiveIdx++) {
-                for (let fileIdx = 0; fileIdx < archiveFileCounts[archiveIdx]; fileIdx++) {
-                    archiveFileNameHashes[archiveIdx][fileIdx] = buffer.readInt();
+                for (
+                    let fileIdx = 0;
+                    fileIdx < archiveFileCounts[archiveIdx];
+                    fileIdx++
+                ) {
+                    archiveFileNameHashes[archiveIdx][fileIdx] =
+                        buffer.readInt();
                 }
             }
         }
 
-        return new ReferenceTable(protocol, revision, named, usesWhirlpool, archiveCount, lastArchiveId, archiveIdIndexMap, archiveIds, archiveNameHashes, 
-            archiveWhirlpools, archiveCrcs, archiveRevisions, archiveFileCounts, archiveLastFileIds, archiveFileIds, archiveFileNameHashes);
+        return new ReferenceTable(
+            protocol,
+            revision,
+            named,
+            usesWhirlpool,
+            archiveCount,
+            lastArchiveId,
+            archiveIdIndexMap,
+            archiveIds,
+            archiveNameHashes,
+            archiveWhirlpools,
+            archiveCrcs,
+            archiveRevisions,
+            archiveFileCounts,
+            archiveLastFileIds,
+            archiveFileIds,
+            archiveFileNameHashes
+        );
     }
 
     constructor(
@@ -107,7 +147,10 @@ export class ReferenceTable {
     ) {
         if (named) {
             for (let i = 0; i < this._archiveIds.length; i++) {
-                this._archiveNameHashIdMap.set(this._archiveNameHashes[i], this._archiveIds[i]);
+                this._archiveNameHashIdMap.set(
+                    this._archiveNameHashes[i],
+                    this._archiveIds[i]
+                );
             }
         }
     }
@@ -130,7 +173,7 @@ export class ReferenceTable {
         const lastFileId = this._archiveLastFileIds[i];
         const fileIds = this._archiveFileIds[i];
         const fileNameHashes = this._archiveFileNameHashes[i];
-        
+
         const fileIdIndexMap: Map<number, number> = new Map();
         for (let fileIdx = 0; fileIdx < fileCount; fileIdx++) {
             fileIdIndexMap.set(fileIds[fileIdx], fileIdx);
@@ -165,5 +208,21 @@ export class ReferenceTable {
     }
 }
 
-export const INVALID_TABLE = new ReferenceTable(-1, -1, false, false, 0, -1, new Map(), new Int32Array(), new Int32Array(), [], 
-    new DataView(new ArrayBuffer(0)), new DataView(new ArrayBuffer(0)), new Int32Array(), new Int32Array(), [], []);
+export const INVALID_TABLE = new ReferenceTable(
+    -1,
+    -1,
+    false,
+    false,
+    0,
+    -1,
+    new Map(),
+    new Int32Array(),
+    new Int32Array(),
+    [],
+    new DataView(new ArrayBuffer(0)),
+    new DataView(new ArrayBuffer(0)),
+    new Int32Array(),
+    new Int32Array(),
+    [],
+    []
+);

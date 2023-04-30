@@ -9,9 +9,5 @@ export class SectorCluster {
         return new SectorCluster(size, sector);
     }
 
-    constructor(
-        public readonly size: number,
-        public readonly sector: number
-    ) {
-    }
+    constructor(public readonly size: number, public readonly sector: number) {}
 }

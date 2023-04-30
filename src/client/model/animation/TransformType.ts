@@ -3,5 +3,5 @@ export enum TransformType {
     TRANSLATE = 1,
     ROTATE = 2,
     SCALE = 3,
-    ALPHA = 5
+    ALPHA = 5,
 }

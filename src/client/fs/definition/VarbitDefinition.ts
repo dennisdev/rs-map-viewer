@@ -14,9 +14,9 @@ export class VarbitDefinition extends Definition {
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
         if (opcode == 1) {
-			this.baseVar = buffer.readUnsignedShort();
-			this.startBit = buffer.readUnsignedByte();
-			this.endBit = buffer.readUnsignedByte();
+            this.baseVar = buffer.readUnsignedShort();
+            this.startBit = buffer.readUnsignedByte();
+            this.endBit = buffer.readUnsignedByte();
         }
     }
 }

@@ -36,16 +36,25 @@ export class RegionLoader {
     lightLevels: Map<number, Int32Array[][]> = new Map();
 
     static getRegionId(regionX: number, regionY: number): number {
-        return regionX << 8 | regionY;
+        return (regionX << 8) | regionY;
     }
 
-    static getTerrainArchiveId(mapIndex: IndexSync<StoreSync>, regionX: number, regionY: number): number {
+    static getTerrainArchiveId(
+        mapIndex: IndexSync<StoreSync>,
+        regionX: number,
+        regionY: number
+    ): number {
         return mapIndex.getArchiveId(`m${regionX}_${regionY}`);
     }
 
-    constructor(mapIndex: IndexSync<StoreSync>, underlayLoader: UnderlayLoader, overlayLoader: OverlayLoader, objectLoader: ObjectLoader,
-        objectModelLoader: ObjectModelLoader, xteasMap: Map<number, number[]>) {
-
+    constructor(
+        mapIndex: IndexSync<StoreSync>,
+        underlayLoader: UnderlayLoader,
+        overlayLoader: OverlayLoader,
+        objectLoader: ObjectLoader,
+        objectModelLoader: ObjectModelLoader,
+        xteasMap: Map<number, number[]>
+    ) {
         this.mapIndex = mapIndex;
         this.underlayLoader = underlayLoader;
         this.overlayLoader = overlayLoader;
@@ -55,7 +64,11 @@ export class RegionLoader {
     }
 
     getTerrainArchiveId(regionX: number, regionY: number): number {
-        return RegionLoader.getTerrainArchiveId(this.mapIndex, regionX, regionY);
+        return RegionLoader.getTerrainArchiveId(
+            this.mapIndex,
+            regionX,
+            regionY
+        );
     }
 
     getLandscapeArchiveId(regionX: number, regionY: number): number {
@@ -98,8 +111,20 @@ export class RegionLoader {
             // console.log('load region', regionX, regionY);
             const terrainData = this.getTerrainData(regionX, regionY);
             if (terrainData) {
-                region = new Scene(regionX, regionY, Scene.MAX_PLANE, Scene.MAP_SIZE, Scene.MAP_SIZE);
-                region.decodeTerrain(terrainData, 0, 0, regionX * 64, regionY * 64);
+                region = new Scene(
+                    regionX,
+                    regionY,
+                    Scene.MAX_PLANE,
+                    Scene.MAP_SIZE,
+                    Scene.MAP_SIZE
+                );
+                region.decodeTerrain(
+                    terrainData,
+                    0,
+                    0,
+                    regionX * 64,
+                    regionY * 64
+                );
 
                 this.regions.set(id, region);
             } else {
@@ -126,12 +151,12 @@ export class RegionLoader {
     getHeight(x: number, y: number, plane: number): number {
         x |= 0;
         y |= 0;
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
+        const region = this.getRegion((x / 64) | 0, (y / 64) | 0);
         if (!region) {
             return 0;
         }
         // added height based on plane to fix zfighting on bridges
-        return region.tileHeights[plane][x % 64][y % 64];// - plane * 0.5;
+        return region.tileHeights[plane][x % 64][y % 64]; // - plane * 0.5;
     }
 
     getHeightInterp(x: number, y: number, plane: number): number {
@@ -141,13 +166,19 @@ export class RegionLoader {
         const h11 = this.getHeight(x + 1, y + 1, plane);
 
         // bilinear interpolation
-        return h00 * (1 - x % 1) * (1 - y % 1) +
-            h10 * (x % 1) * (1 - y % 1) +
-            h01 * (1 - x % 1) * (y % 1) +
-            h11 * (x % 1) * (y % 1);
+        return (
+            h00 * (1 - (x % 1)) * (1 - (y % 1)) +
+            h10 * (x % 1) * (1 - (y % 1)) +
+            h01 * (1 - (x % 1)) * (y % 1) +
+            h11 * (x % 1) * (y % 1)
+        );
     }
 
-    loadHeightMap(regionX: number, regionY: number, size: number): Int32Array[][] {
+    loadHeightMap(
+        regionX: number,
+        regionY: number,
+        size: number
+    ): Int32Array[][] {
         const heightMap: Int32Array[][] = new Array(Scene.MAX_PLANE);
 
         const baseX = regionX * 64;
@@ -158,7 +189,11 @@ export class RegionLoader {
             for (let x = 0; x < size; x++) {
                 heightMap[plane][x] = new Int32Array(size);
                 for (let y = 0; y < size; y++) {
-                    heightMap[plane][x][y] = this.getHeight(baseX + x, baseY + y, plane);
+                    heightMap[plane][x][y] = this.getHeight(
+                        baseX + x,
+                        baseY + y,
+                        plane
+                    );
                 }
             }
         }
@@ -167,7 +202,7 @@ export class RegionLoader {
     }
 
     getUnderlayId(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
+        const region = this.getRegion((x / 64) | 0, (y / 64) | 0);
         if (!region) {
             return -1;
         }
@@ -179,7 +214,7 @@ export class RegionLoader {
     }
 
     getOverlayId(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
+        const region = this.getRegion((x / 64) | 0, (y / 64) | 0);
         if (!region) {
             return -1;
         }
@@ -187,7 +222,7 @@ export class RegionLoader {
     }
 
     getTileShape(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
+        const region = this.getRegion((x / 64) | 0, (y / 64) | 0);
         if (!region) {
             return -1;
         }
@@ -195,14 +230,18 @@ export class RegionLoader {
     }
 
     getTileRotation(x: number, y: number, plane: number): number {
-        const region = this.getRegion(x / 64 | 0, y / 64 | 0);
+        const region = this.getRegion((x / 64) | 0, (y / 64) | 0);
         if (!region) {
             return -1;
         }
         return region.tileRotations[plane][x % 64][y % 64];
     }
 
-    blendUnderlays(regionX: number, regionY: number, plane: number): Int32Array[] {
+    blendUnderlays(
+        regionX: number,
+        regionY: number,
+        plane: number
+    ): Int32Array[] {
         const BLEND = 5;
 
         const baseX = regionX * Scene.MAP_SIZE;
@@ -226,11 +265,26 @@ export class RegionLoader {
         const hasDownRegion = !!this.getRegion(regionX, regionY - 1);
         // console.timeEnd(`load regions ${regionX}_${regionY}`);
 
-        for (let xi = (hasLeftRegion ? -BLEND * 2 : -BLEND); xi < Scene.MAP_SIZE + (hasRightRegion ? BLEND * 2 : BLEND); xi++) {
-            for (let yi = (hasDownRegion ? -BLEND : 0); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0); yi++) {
+        for (
+            let xi = hasLeftRegion ? -BLEND * 2 : -BLEND;
+            xi < Scene.MAP_SIZE + (hasRightRegion ? BLEND * 2 : BLEND);
+            xi++
+        ) {
+            for (
+                let yi = hasDownRegion ? -BLEND : 0;
+                yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0);
+                yi++
+            ) {
                 const xr = xi + BLEND;
-                if (xr >= (hasLeftRegion ? -BLEND : 0) && xr < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)) {
-                    const underlayId = this.getUnderlayId(baseX + xr, baseY + yi, plane);
+                if (
+                    xr >= (hasLeftRegion ? -BLEND : 0) &&
+                    xr < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)
+                ) {
+                    const underlayId = this.getUnderlayId(
+                        baseX + xr,
+                        baseY + yi,
+                        plane
+                    );
                     if (underlayId != -1) {
                         const underlay = this.getUnderlayDef(underlayId);
                         hues[yi + BLEND] += underlay.hue;
@@ -239,12 +293,18 @@ export class RegionLoader {
                         mul[yi + BLEND] += underlay.hueMultiplier;
                         num[yi + BLEND]++;
                     }
-
                 }
 
                 const xl = xi - BLEND;
-                if (xl >= (hasLeftRegion ? -BLEND : 0) && xl < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)) {
-                    const underlayId = this.getUnderlayId(baseX + xl, baseY + yi, plane);
+                if (
+                    xl >= (hasLeftRegion ? -BLEND : 0) &&
+                    xl < Scene.MAP_SIZE + (hasRightRegion ? BLEND : 0)
+                ) {
+                    const underlayId = this.getUnderlayId(
+                        baseX + xl,
+                        baseY + yi,
+                        plane
+                    );
                     if (underlayId != -1) {
                         const underlay = this.getUnderlayDef(underlayId);
                         hues[yi + BLEND] -= underlay.hue;
@@ -253,10 +313,8 @@ export class RegionLoader {
                         mul[yi + BLEND] -= underlay.hueMultiplier;
                         num[yi + BLEND]--;
                     }
-
                 }
             }
-
 
             if (xi >= 0 && xi < Scene.MAP_SIZE) {
                 let runningHues = 0;
@@ -265,9 +323,16 @@ export class RegionLoader {
                 let runningMultiplier = 0;
                 let runningNumber = 0;
 
-                for (let yi = (hasDownRegion ? -BLEND * 2 : -BLEND); yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND * 2 : BLEND); yi++) {
+                for (
+                    let yi = hasDownRegion ? -BLEND * 2 : -BLEND;
+                    yi < Scene.MAP_SIZE + (hasUpRegion ? BLEND * 2 : BLEND);
+                    yi++
+                ) {
                     const yu = yi + BLEND;
-                    if (yu >= (hasDownRegion ? -BLEND : 0) && yu < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)) {
+                    if (
+                        yu >= (hasDownRegion ? -BLEND : 0) &&
+                        yu < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)
+                    ) {
                         runningHues += hues[yu + BLEND];
                         runningSat += sats[yu + BLEND];
                         runningLight += light[yu + BLEND];
@@ -276,7 +341,10 @@ export class RegionLoader {
                     }
 
                     const yd = yi - BLEND;
-                    if (yd >= (hasDownRegion ? -BLEND : 0) && yd < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)) {
+                    if (
+                        yd >= (hasDownRegion ? -BLEND : 0) &&
+                        yd < Scene.MAP_SIZE + (hasUpRegion ? BLEND : 0)
+                    ) {
                         runningHues -= hues[yd + BLEND];
                         runningSat -= sats[yd + BLEND];
                         runningLight -= light[yd + BLEND];
@@ -285,9 +353,14 @@ export class RegionLoader {
                     }
 
                     if (yi >= 0 && yi < Scene.MAP_SIZE) {
-                        const underlayId = this.getUnderlayId(baseX + xi, baseY + yi, plane);
+                        const underlayId = this.getUnderlayId(
+                            baseX + xi,
+                            baseY + yi,
+                            plane
+                        );
                         if (underlayId != -1) {
-                            const avgHue = (runningHues * 256 / runningMultiplier) | 0;
+                            const avgHue =
+                                ((runningHues * 256) / runningMultiplier) | 0;
                             const avgSat = (runningSat / runningNumber) | 0;
                             const avgLight = (runningLight / runningNumber) | 0;
 
@@ -316,14 +389,18 @@ export class RegionLoader {
     }
 
     getBlendedUnderlayColor(x: number, y: number, plane: number): number {
-        const regionX = x / 64 | 0;
-        const regionY = y / 64 | 0;
+        const regionX = (x / 64) | 0;
+        const regionY = (y / 64) | 0;
 
         let colors = this.getBlendedUnderlayColors(regionX, regionY);
         return colors[plane][x % 64][y % 64];
     }
 
-    getObjectLightOcclusionMap(regionX: number, regionY: number, load: boolean): Uint8Array[][] {
+    getObjectLightOcclusionMap(
+        regionX: number,
+        regionY: number,
+        load: boolean
+    ): Uint8Array[][] {
         const regionId = RegionLoader.getRegionId(regionX, regionY);
 
         let objectLightOccl = this.objectLightOcclusionMap.get(regionId);
@@ -343,7 +420,12 @@ export class RegionLoader {
             const region = this.getRegion(regionX, regionY);
             const landscapeData = this.getLandscapeData(regionX, regionY);
             if (region && landscapeData) {
-                region.decodeLandscape(this, this.objectModelLoader, landscapeData, true);
+                region.decodeLandscape(
+                    this,
+                    this.objectModelLoader,
+                    landscapeData,
+                    true
+                );
                 // console.log('decode land: ', regionX, regionY);
                 this.objectLightOcclusionMapLoaded.set(regionId, true);
             }
@@ -353,25 +435,40 @@ export class RegionLoader {
     }
 
     getObjectLightOcclusion(x: number, y: number, plane: number): number {
-        const regionX = x / 64 | 0;
-        const regionY = y / 64 | 0;
+        const regionX = (x / 64) | 0;
+        const regionY = (y / 64) | 0;
 
         const region = this.getRegion(regionX, regionY);
         if (!region) {
             return 0;
         }
-        return this.getObjectLightOcclusionMap(regionX, regionY, true)[plane][x % 64][y % 64];
+        return this.getObjectLightOcclusionMap(regionX, regionY, true)[plane][
+            x % 64
+        ][y % 64];
     }
 
-    setObjectLightOcclusion(x: number, y: number, plane: number, light: number) {
-        const regionX = x / 64 | 0;
-        const regionY = y / 64 | 0;
+    setObjectLightOcclusion(
+        x: number,
+        y: number,
+        plane: number,
+        light: number
+    ) {
+        const regionX = (x / 64) | 0;
+        const regionY = (y / 64) | 0;
 
-        const objectLightOccl = this.getObjectLightOcclusionMap(regionX, regionY, false);
+        const objectLightOccl = this.getObjectLightOcclusionMap(
+            regionX,
+            regionY,
+            false
+        );
         objectLightOccl[plane][x % 64][y % 64] = light;
     }
 
-    calculateLightLevels(regionX: number, regionY: number, plane: number): Int32Array[] {
+    calculateLightLevels(
+        regionX: number,
+        regionY: number,
+        plane: number
+    ): Int32Array[] {
         const baseX = regionX * Scene.MAP_SIZE;
         const baseY = regionY * Scene.MAP_SIZE;
 
@@ -387,22 +484,35 @@ export class RegionLoader {
 
         // LIGHT_X * LIGHT_X + LIGHT_Y * LIGHT_Y + LIGHT_Z * LIGHT_Z
         const var9 = Math.sqrt(5100.0) | 0;
-        const var10 = var9 * 768 >> 8;
+        const var10 = (var9 * 768) >> 8;
 
         for (let x = baseX; x < baseX + Scene.MAP_SIZE; x++) {
             for (let y = baseY; y < baseY + Scene.MAP_SIZE; y++) {
-                const heightDeltaX = this.getHeight(x + 1, y, plane) - this.getHeight(x - 1, y, plane);
-                const heightDeltaY = this.getHeight(x, y + 1, plane) - this.getHeight(x, y - 1, plane);
-                const sqrtHeightDelta = Math.sqrt(heightDeltaY * heightDeltaY + heightDeltaX * heightDeltaX + 65536) | 0;
-                const lightX = (heightDeltaX << 8) / sqrtHeightDelta | 0;
-                const lightY = 65536 / sqrtHeightDelta | 0;
-                const lightZ = (heightDeltaY << 8) / sqrtHeightDelta | 0;
-                const ambient = ((lightZ * -50 + lightX * -50 + lightY * -10) / var10 | 0) + 96;
-                const contrast = (this.getObjectLightOcclusion(x - 1, y, plane) >> 2)
-                    + (this.getObjectLightOcclusion(x, y - 1, plane) >> 2)
-                    + (this.getObjectLightOcclusion(x + 1, y, plane) >> 3)
-                    + (this.getObjectLightOcclusion(x, y + 1, plane) >> 3)
-                    + (this.getObjectLightOcclusion(x, y, plane) >> 1);
+                const heightDeltaX =
+                    this.getHeight(x + 1, y, plane) -
+                    this.getHeight(x - 1, y, plane);
+                const heightDeltaY =
+                    this.getHeight(x, y + 1, plane) -
+                    this.getHeight(x, y - 1, plane);
+                const sqrtHeightDelta =
+                    Math.sqrt(
+                        heightDeltaY * heightDeltaY +
+                            heightDeltaX * heightDeltaX +
+                            65536
+                    ) | 0;
+                const lightX = ((heightDeltaX << 8) / sqrtHeightDelta) | 0;
+                const lightY = (65536 / sqrtHeightDelta) | 0;
+                const lightZ = ((heightDeltaY << 8) / sqrtHeightDelta) | 0;
+                const ambient =
+                    (((lightZ * -50 + lightX * -50 + lightY * -10) / var10) |
+                        0) +
+                    96;
+                const contrast =
+                    (this.getObjectLightOcclusion(x - 1, y, plane) >> 2) +
+                    (this.getObjectLightOcclusion(x, y - 1, plane) >> 2) +
+                    (this.getObjectLightOcclusion(x + 1, y, plane) >> 3) +
+                    (this.getObjectLightOcclusion(x, y + 1, plane) >> 3) +
+                    (this.getObjectLightOcclusion(x, y, plane) >> 1);
                 levels[x - baseX][y - baseY] = ambient - contrast;
             }
         }
@@ -417,7 +527,11 @@ export class RegionLoader {
         if (!levels) {
             for (let x = 0; x < 3; x++) {
                 for (let y = 0; y < 3; y++) {
-                    this.getObjectLightOcclusionMap(regionX - 1 + x, regionY - 1 + y, true);
+                    this.getObjectLightOcclusionMap(
+                        regionX - 1 + x,
+                        regionY - 1 + y,
+                        true
+                    );
                 }
             }
 
@@ -432,8 +546,8 @@ export class RegionLoader {
     }
 
     getLightLevel(x: number, y: number, plane: number): number {
-        const regionX = x / 64 | 0;
-        const regionY = y / 64 | 0;
+        const regionX = (x / 64) | 0;
+        const regionY = (y / 64) | 0;
 
         const levels = this.getLightLevels(regionX, regionY);
         return levels[plane][x % 64][y % 64];

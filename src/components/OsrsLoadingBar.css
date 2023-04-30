@@ -12,7 +12,7 @@
     color: white;
     background-color: black;
     box-sizing: border-box;
-    border: solid #8C1111 1px;
+    border: solid #8c1111 1px;
 }
 
 .loading-bar-text {
@@ -29,7 +29,7 @@
 .loading-bar-progress {
     border: solid black 1px;
     box-sizing: border-box;
-    background-color: #8C1111;
+    background-color: #8c1111;
     /* width: 75%; */
     height: 100%;
 }

@@ -15,16 +15,16 @@ export class FloatUtil {
     static packFloat11(v: number): number {
         return 1024 - Math.round(v / (1 / 64));
     }
-    
+
     static unpackFloat11(v: number): number {
         return 16 - v / 64;
     }
-    
+
     // 0-1, 1/63 decimal precision
     static packFloat6(v: number): number {
         return Math.round(v / (1 / 63));
     }
-    
+
     static unpackFloat6(v: number): number {
         return v / 63;
     }

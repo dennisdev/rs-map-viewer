@@ -23,9 +23,9 @@ import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
 import { NpcSpawn } from "../NpcSpawn";
 
 type MemoryStoreProperties = {
-    dataFile: ArrayBuffer,
-    indexFiles: (ArrayBuffer | undefined)[],
-    metaFile: ArrayBuffer
+    dataFile: ArrayBuffer;
+    indexFiles: (ArrayBuffer | undefined)[];
+    metaFile: ArrayBuffer;
 };
 
 let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
@@ -33,10 +33,18 @@ let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
-async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]) {
+async function init0(
+    memoryStoreProperties: MemoryStoreProperties,
+    xteasMap: Map<number, number[]>,
+    npcSpawns: NpcSpawn[]
+) {
     // console.log('start init worker');
     await wasmCompressionPromise;
-    const store = new MemoryStore(memoryStoreProperties.dataFile, memoryStoreProperties.indexFiles, memoryStoreProperties.metaFile);
+    const store = new MemoryStore(
+        memoryStoreProperties.dataFile,
+        memoryStoreProperties.indexFiles,
+        memoryStoreProperties.metaFile
+    );
 
     const fileSystem = loadFromStore(store);
 
@@ -47,7 +55,6 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     const spriteIndex = fileSystem.getIndex(IndexType.SPRITES);
     const textureIndex = fileSystem.getIndex(IndexType.TEXTURES);
     const modelIndex = fileSystem.getIndex(IndexType.MODELS);
-
 
     // console.time('load config archives');
     const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
@@ -70,17 +77,36 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     const varbitLoader = new CachedVarbitLoader(varbitArchive);
 
     const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
-    const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
+    const frameMapLoader = new CachedAnimationFrameMapLoader(
+        frameMapIndex,
+        skeletonLoader
+    );
 
     const varpManager = new VarpManager(varbitLoader);
 
     const modelLoader = new IndexModelLoader(modelIndex);
 
-    const objectModelLoader = new ObjectModelLoader(modelLoader, animationLoader, frameMapLoader);
-    const npcModelLoader = new NpcModelLoader(varpManager, modelLoader, animationLoader, frameMapLoader, npcLoader);
+    const objectModelLoader = new ObjectModelLoader(
+        modelLoader,
+        animationLoader,
+        frameMapLoader
+    );
+    const npcModelLoader = new NpcModelLoader(
+        varpManager,
+        modelLoader,
+        animationLoader,
+        frameMapLoader,
+        npcLoader
+    );
 
-    const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, objectModelLoader, xteasMap);
-
+    const regionLoader = new RegionLoader(
+        mapIndex,
+        underlayLoader,
+        overlayLoader,
+        objectLoader,
+        objectModelLoader,
+        xteasMap
+    );
 
     // console.time('load textures');
     const textureProvider = TextureLoader.load(textureIndex, spriteIndex);
@@ -91,8 +117,14 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
     // }
     // console.timeEnd('load textures sprites');
 
-    console.log('init worker', fileSystem, performance.now());
-    return new ChunkDataLoader(regionLoader, objectModelLoader, npcModelLoader, textureProvider, npcSpawns);
+    console.log("init worker", fileSystem, performance.now());
+    return new ChunkDataLoader(
+        regionLoader,
+        objectModelLoader,
+        npcModelLoader,
+        textureProvider,
+        npcSpawns
+    );
 }
 
 // console.log('start worker', performance.now());
@@ -102,21 +134,47 @@ async function init0(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map
 // }
 
 expose({
-    init(memoryStoreProperties: MemoryStoreProperties, xteasMap: Map<number, number[]>, npcSpawns: NpcSpawn[]) {
-        chunkDataLoaderPromise = init0(memoryStoreProperties, xteasMap, npcSpawns);
+    init(
+        memoryStoreProperties: MemoryStoreProperties,
+        xteasMap: Map<number, number[]>,
+        npcSpawns: NpcSpawn[]
+    ) {
+        chunkDataLoaderPromise = init0(
+            memoryStoreProperties,
+            xteasMap,
+            npcSpawns
+        );
     },
-    async load(regionX: number, regionY: number, minimizeDrawCalls: boolean, loadNpcs: boolean, maxPlane: number) {
+    async load(
+        regionX: number,
+        regionY: number,
+        minimizeDrawCalls: boolean,
+        loadNpcs: boolean,
+        maxPlane: number
+    ) {
         // console.log('request', regionX, regionY);
         if (!chunkDataLoaderPromise) {
-            throw new Error('ChunkDataLoaderWorker has not been initialized yet');
+            throw new Error(
+                "ChunkDataLoaderWorker has not been initialized yet"
+            );
         }
         const chunkDataLoader = await chunkDataLoaderPromise;
         await hasherPromise;
 
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = chunkDataLoader.load(regionX, regionY, minimizeDrawCalls, loadNpcs, maxPlane);
+        const chunkData = chunkDataLoader.load(
+            regionX,
+            regionY,
+            minimizeDrawCalls,
+            loadNpcs,
+            maxPlane
+        );
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
-        console.log('model caches: ', chunkDataLoader.objectModelLoader.modelDataCache.size, chunkDataLoader.objectModelLoader.modelCache.size)
+        console.log(
+            "model caches: ",
+            chunkDataLoader.objectModelLoader.modelDataCache.size,
+            chunkDataLoader.objectModelLoader.modelCache.size
+        );
 
         chunkDataLoader.regionLoader.regions.clear();
         chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
@@ -133,11 +191,11 @@ expose({
                 chunkData.indices.buffer,
                 chunkData.modelTextureData.buffer,
                 chunkData.modelTextureDataAlpha.buffer,
-                chunkData.heightMapTextureData.buffer
+                chunkData.heightMapTextureData.buffer,
             ];
             return Transfer(chunkData, transferables);
         }
 
         return undefined;
-    }
+    },
 });
