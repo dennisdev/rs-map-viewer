@@ -1458,7 +1458,7 @@ class MapViewer {
      */
     setCamera(newPosition: Partial<CameraPosition>): void {
         if (newPosition.position) {
-            this.cameraPos = newPosition.position;
+            vec3.copy(this.cameraPos, newPosition.position);
         }
         if (newPosition.pitch) {
             this.pitch = newPosition.pitch;
