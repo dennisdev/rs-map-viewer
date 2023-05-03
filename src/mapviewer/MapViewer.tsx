@@ -1,80 +1,69 @@
-import { useState, useEffect } from "react";
-import { URLSearchParamsInit, useSearchParams } from "react-router-dom";
-import "./MapViewer.css";
-import WebGLCanvas from "../components/Canvas";
-import { mat4, vec4, vec3, vec2 } from "gl-matrix";
+import Denque from "denque";
+import { mat4, vec2, vec3 } from "gl-matrix";
+import { Leva, button, buttonGroup, folder, useControls } from "leva";
+import { Schema } from "leva/dist/declarations/src/types";
 import {
-    PicoGL,
+    DrawCall,
+    Framebuffer,
     App as PicoApp,
-    Timer,
+    PicoGL,
     Program,
+    Texture,
+    Timer,
     UniformBuffer,
     VertexArray,
-    Texture,
-    DrawCall,
     VertexBuffer,
-    Framebuffer,
 } from "picogl";
+import { useEffect, useState } from "react";
+import { Joystick } from "react-joystick-component";
+import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
+import { URLSearchParamsInit, useSearchParams } from "react-router-dom";
+import { RegionLoader } from "../client/RegionLoader";
+import { VarpManager } from "../client/VarpManager";
+import { ConfigType } from "../client/fs/ConfigType";
 import {
+    DownloadProgress,
     MemoryFileSystem,
     fetchMemoryStore,
     loadFromStore,
-    DownloadProgress,
 } from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
-import { TextureLoader } from "../client/fs/loader/TextureLoader";
-import { RegionLoader } from "../client/RegionLoader";
-import {
-    AnimatedModelData,
-    ChunkData,
-    ChunkDataLoader,
-    NpcData,
-} from "./chunk/ChunkDataLoader";
-import { MemoryStore } from "../client/fs/MemoryStore";
-import { Skeleton } from "../client/model/animation/Skeleton";
-import { ConfigType } from "../client/fs/ConfigType";
-import { CachedUnderlayLoader } from "../client/fs/loader/UnderlayLoader";
-import { CachedOverlayLoader } from "../client/fs/loader/OverlayLoader";
-import { CachedObjectLoader } from "../client/fs/loader/ObjectLoader";
-import { IndexModelLoader } from "../client/fs/loader/ModelLoader";
-import Denque from "denque";
-import { Scene } from "../client/scene/Scene";
-import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
-import { Hasher } from "../client/util/Hasher";
+import { AnimationDefinition } from "../client/fs/definition/AnimationDefinition";
+import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
 import {
     AnimationLoader,
     CachedAnimationLoader,
 } from "../client/fs/loader/AnimationLoader";
-import { CachedSkeletonLoader } from "../client/fs/loader/SkeletonLoader";
-import {
-    AnimationFrameMapLoader,
-    CachedAnimationFrameMapLoader,
-} from "../client/fs/loader/AnimationFrameMapLoader";
-import { Leva, useControls, folder } from "leva";
-import { Joystick } from "react-joystick-component";
-import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
-import { FrustumIntersection } from "./FrustumIntersection";
-import mainVertShader from "./shaders/main.vert.glsl";
-import npcVertShader from "./shaders/npc.vert.glsl";
-import quadVertShader from "./shaders/quad.vert.glsl";
-import mainFragShader from "./shaders/main.frag.glsl";
-import quadFragShader from "./shaders/quad.frag.glsl";
-import { clamp } from "../client/util/MathUtil";
-import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
-import { AnimationDefinition } from "../client/fs/definition/AnimationDefinition";
 import { CachedNpcLoader, NpcLoader } from "../client/fs/loader/NpcLoader";
-import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
-import { CollisionMap } from "../client/pathfinder/collision/CollisionMap";
+import { TextureLoader } from "../client/fs/loader/TextureLoader";
+import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
 import { Pathfinder } from "../client/pathfinder/Pathfinder";
 import { ExactRouteStrategy } from "../client/pathfinder/RouteStrategy";
-import { Schema } from "leva/dist/declarations/src/types";
-import { fetchNpcSpawns } from "./NpcSpawn";
-import { readPixelsAsync } from "./AsyncReadUtil";
+import { CollisionMap } from "../client/pathfinder/collision/CollisionMap";
+import { Scene } from "../client/scene/Scene";
+import { clamp, lerp, slerp } from "../client/util/MathUtil";
+import WebGLCanvas from "../components/Canvas";
+import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
-import { VarpManager } from "../client/VarpManager";
-import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
+import { readPixelsAsync } from "./AsyncReadUtil";
+import { FrustumIntersection } from "./FrustumIntersection";
+import "./MapViewer.css";
+import { fetchNpcSpawns } from "./NpcSpawn";
+import { ChunkData, ChunkDataLoader, NpcData } from "./chunk/ChunkDataLoader";
+import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
+import mainFragShader from "./shaders/main.frag.glsl";
+import mainVertShader from "./shaders/main.vert.glsl";
+import npcVertShader from "./shaders/npc.vert.glsl";
+import quadFragShader from "./shaders/quad.frag.glsl";
+import quadVertShader from "./shaders/quad.vert.glsl";
 
 // console.log(mainVertShader);
+
+interface CameraPosition {
+    position: vec3;
+    pitch: number;
+    yaw: number;
+}
 
 const DEFAULT_ZOOM: number = 25.0 / 256.0;
 
@@ -1463,6 +1452,23 @@ class MapViewer {
         this.cameraUpdated = true;
     }
 
+    /**
+     * Sets the camera position to a new arbitrary position
+     * @param newPosition Any of the items you want to move: Position, pitch, yaw
+     */
+    setCamera(newPosition: Partial<CameraPosition>): void {
+        if (newPosition.position) {
+            vec3.copy(this.cameraPos, newPosition.position);
+        }
+        if (newPosition.pitch) {
+            this.pitch = newPosition.pitch;
+        }
+        if (newPosition.yaw) {
+            this.yaw = newPosition.yaw;
+        }
+        this.cameraUpdated = true;
+    }
+
     runCameraListeners() {
         this.runCameraMoveListener();
         this.runCameraMoveEndListener();
@@ -1527,13 +1533,17 @@ class MapViewer {
     }
 
     setLoadNpcs(load: boolean) {
+        if (this.loadNpcs !== load) {
+            this.deleteChunks();
+        }
         this.loadNpcs = load;
-        this.deleteChunks();
     }
 
     setMaxPlane(maxPlane: number) {
+        if (this.maxPlane !== maxPlane) {
+            this.deleteChunks();
+        }
         this.maxPlane = maxPlane;
-        this.deleteChunks();
     }
 
     updateCullFace() {
@@ -2603,7 +2613,99 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         Position: { value: positionControls, editable: false },
         Direction: { value: directionControls, editable: false },
     };
-    const data = useControls({
+
+    const [animationDuration, setAnimationDuration] = useState(10);
+    const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(
+        () => []
+    );
+    const addPoint = () => {
+        setCameraPoints((pts) => [
+            ...pts,
+            {
+                position: vec3.fromValues(
+                    mapViewer.cameraPos[0],
+                    mapViewer.cameraPos[1],
+                    mapViewer.cameraPos[2]
+                ),
+                pitch: mapViewer.pitch,
+                yaw: mapViewer.yaw,
+            },
+        ]);
+    };
+
+    useEffect(() => {
+        setPointControls(
+            folder(
+                cameraPoints.reduce((acc: Record<string, any>, v, i) => {
+                    const point = v;
+                    acc["Point " + i] = buttonGroup({
+                        Teleport: () => mapViewer.setCamera(point),
+                        Delete: () =>
+                            setCameraPoints((pts) =>
+                                pts.filter((_, j) => j !== i)
+                            ),
+                    });
+                    return acc;
+                }, {})
+            )
+        );
+    }, [cameraPoints]);
+
+    const [pointsControls, setPointControls] = useState(folder({}));
+    const [isCameraRunning, setCameraRunning] = useState(false);
+
+    useEffect(() => {
+        if (!isCameraRunning) {
+            return;
+        }
+
+        let start: number;
+        const segmentCount = cameraPoints.length - 1;
+        // Need at least 2 points to start
+        if (segmentCount <= 0) {
+            setCameraRunning(false);
+            return;
+        }
+
+        const callback = (timestamp: number) => {
+            if (!start) {
+                start = timestamp;
+            }
+
+            const elapsed = timestamp - start;
+            const overallProgress = elapsed / (animationDuration * 1000);
+
+            const startIndex = Math.floor(overallProgress * segmentCount);
+            const endIndex = startIndex + 1;
+            const from = cameraPoints[startIndex];
+            const to = cameraPoints[endIndex];
+            const localProgress = (overallProgress * segmentCount) % 1;
+
+            const isComplete = elapsed > animationDuration * 1000;
+            if (isComplete) {
+                setCameraRunning(false);
+                mapViewer.setCamera(cameraPoints[cameraPoints.length - 1]);
+                return;
+            }
+            const newPosition: { position: vec3; pitch: number; yaw: number } =
+                {
+                    position: vec3.fromValues(
+                        lerp(from.position[0], to.position[0], localProgress),
+                        lerp(from.position[1], to.position[1], localProgress),
+                        lerp(from.position[2], to.position[2], localProgress)
+                    ),
+                    pitch: lerp(from.pitch, to.pitch, localProgress),
+                    yaw: slerp(from.yaw, to.yaw, localProgress, 2048),
+                };
+            mapViewer.setCamera(newPosition);
+
+            window.requestAnimationFrame(callback);
+        };
+
+        window.requestAnimationFrame(callback);
+    }, [isCameraRunning]);
+
+    const generateControls = () => ({
         "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
         Camera: folder(
             {
@@ -2716,7 +2818,19 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             },
             { collapsed: true }
         ),
+        Record: folder({
+            Start: button(() => setCameraRunning(true)),
+            "Add point": button(() => addPoint()),
+            Length: {
+                value: animationDuration,
+                onChange: (v) => {
+                    setAnimationDuration(v);
+                },
+            },
+            Points: pointsControls,
+        }),
     });
+    const controls = useControls(generateControls, [pointsControls]);
 
     useEffect(() => {
         mapViewer.fpsListener = setFps;
@@ -2733,6 +2847,14 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         mapViewer.hudHidden = hudHidden;
         mapViewer.setHudHidden = setHudHidden;
     }, [mapViewer]);
+
+    useEffect(() => {
+        mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
+            if (!isCameraRunning) {
+                setSearchParams(mapViewer.getSearchParams(), { replace: true });
+            }
+        };
+    }, [mapViewer, isCameraRunning]);
 
     return (
         <div>
@@ -2907,10 +3029,6 @@ function MapViewerApp() {
             if (yaw) {
                 mapViewer.yaw = parseInt(yaw);
             }
-
-            mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
-                setSearchParams(mapViewer.getSearchParams(), { replace: true });
-            };
 
             setMapViewer(mapViewer);
         };
