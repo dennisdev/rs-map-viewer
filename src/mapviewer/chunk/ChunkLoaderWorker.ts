@@ -11,7 +11,7 @@ import { TextureLoader } from "../../client/fs/loader/TextureLoader";
 import { Compression } from "../../client/util/Compression";
 import { ChunkDataLoader } from "./ChunkDataLoader";
 import { IndexModelLoader } from "../../client/fs/loader/ModelLoader";
-import { Hasher } from "../../client/util/Hasher";
+import { Hasher } from "../util/Hasher";
 import { CachedAnimationLoader } from "../../client/fs/loader/AnimationLoader";
 import { CachedSkeletonLoader } from "../../client/fs/loader/SkeletonLoader";
 import { CachedAnimationFrameMapLoader } from "../../client/fs/loader/AnimationFrameMapLoader";

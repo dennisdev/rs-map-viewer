@@ -3,7 +3,7 @@ import { TextureLoader } from "../../client/fs/loader/TextureLoader";
 import { Model } from "../../client/model/Model";
 import { RegionLoader } from "../../client/RegionLoader";
 import { Scene } from "../../client/scene/Scene";
-import { AnimatedObject } from "../../client/scene/AnimatedObject";
+import { DynamicObject } from "../../client/scene/DynamicObject";
 import { vec3 } from "gl-matrix";
 import { ObjectModelLoader } from "../../client/scene/ObjectModelLoader";
 import { getModelHash, ModelHashBuffer } from "../buffer/ModelHashBuffer";
@@ -36,7 +36,7 @@ export type ChunkData = {
     drawRangesLowDetail: MultiDrawCommand[];
     drawRangesAlpha: MultiDrawCommand[];
     drawRangesNpc: MultiDrawCommand[];
-    animatedModels: AnimatedModelData[];
+    animatedObjects: AnimatedModelData[];
     npcs: NpcData[];
     tileRenderFlags: Uint8Array[][];
     collisionFlags: Int32Array[];
@@ -78,7 +78,7 @@ type ObjectModel = {
 } & DrawData;
 
 type AnimatedSceneObject = {
-    animatedObject: AnimatedObject;
+    animatedObject: DynamicObject;
     sceneObject: SceneObject;
 } & DrawData;
 
@@ -212,7 +212,7 @@ function createObjectModel(
 }
 
 function createAnimatedSceneObject(
-    animatedObject: AnimatedObject,
+    animatedObject: DynamicObject,
     sceneObject: SceneObject,
     offsetX: number,
     offsetY: number,
@@ -275,8 +275,7 @@ function getSceneObjects(
                             )
                         );
                     } else if (
-                        tile.floorDecoration.renderable instanceof
-                        AnimatedObject
+                        tile.floorDecoration.renderable instanceof DynamicObject
                     ) {
                         animatedObjects.push(
                             createAnimatedSceneObject(
@@ -307,7 +306,7 @@ function getSceneObjects(
                             )
                         );
                     } else if (
-                        tile.wallObject.renderable0 instanceof AnimatedObject
+                        tile.wallObject.renderable0 instanceof DynamicObject
                     ) {
                         animatedObjects.push(
                             createAnimatedSceneObject(
@@ -335,7 +334,7 @@ function getSceneObjects(
                             )
                         );
                     } else if (
-                        tile.wallObject.renderable1 instanceof AnimatedObject
+                        tile.wallObject.renderable1 instanceof DynamicObject
                     ) {
                         animatedObjects.push(
                             createAnimatedSceneObject(
@@ -368,8 +367,7 @@ function getSceneObjects(
                             )
                         );
                     } else if (
-                        tile.wallDecoration.renderable0 instanceof
-                        AnimatedObject
+                        tile.wallDecoration.renderable0 instanceof DynamicObject
                     ) {
                         animatedObjects.push(
                             createAnimatedSceneObject(
@@ -397,8 +395,7 @@ function getSceneObjects(
                             )
                         );
                     } else if (
-                        tile.wallDecoration.renderable1 instanceof
-                        AnimatedObject
+                        tile.wallDecoration.renderable1 instanceof DynamicObject
                     ) {
                         animatedObjects.push(
                             createAnimatedSceneObject(
@@ -434,7 +431,7 @@ function getSceneObjects(
                                 occlusionMap
                             )
                         );
-                    } else if (renderable instanceof AnimatedObject) {
+                    } else if (renderable instanceof DynamicObject) {
                         animatedObjects.push(
                             createAnimatedSceneObject(
                                 renderable,
@@ -1264,7 +1261,7 @@ export class ChunkDataLoader {
 
             drawRangesNpc,
 
-            animatedModels,
+            animatedObjects: animatedModels,
 
             npcs,
 

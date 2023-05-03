@@ -28,7 +28,6 @@ import {
     loadFromStore,
 } from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
-import { AnimationDefinition } from "../client/fs/definition/AnimationDefinition";
 import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
 import {
     AnimationLoader,
@@ -38,15 +37,13 @@ import { CachedNpcLoader, NpcLoader } from "../client/fs/loader/NpcLoader";
 import { TextureLoader } from "../client/fs/loader/TextureLoader";
 import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
 import { Pathfinder } from "../client/pathfinder/Pathfinder";
-import { ExactRouteStrategy } from "../client/pathfinder/RouteStrategy";
-import { CollisionMap } from "../client/pathfinder/collision/CollisionMap";
 import { Scene } from "../client/scene/Scene";
 import { clamp, lerp, slerp } from "../client/util/MathUtil";
 import WebGLCanvas from "../components/Canvas";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
-import { readPixelsAsync } from "./AsyncReadUtil";
-import { FrustumIntersection } from "./FrustumIntersection";
+import { readPixelsAsync } from "./util/AsyncReadUtil";
+import { FrustumIntersection } from "./util/FrustumIntersection";
 import "./MapViewer.css";
 import { fetchNpcSpawns } from "./npc/NpcSpawn";
 import { ChunkData, ChunkDataLoader, NpcData } from "./chunk/ChunkDataLoader";
@@ -56,9 +53,11 @@ import mainVertShader from "./shaders/main.vert.glsl";
 import npcVertShader from "./shaders/npc.vert.glsl";
 import quadFragShader from "./shaders/quad.frag.glsl";
 import quadVertShader from "./shaders/quad.vert.glsl";
-import { MovementType, Npc } from "./npc/Npc";
-
-// console.log(mainVertShader);
+import { Npc } from "./npc/Npc";
+import { AnimatedObject } from "./object/AnimatedObject";
+import { Chunk, deleteChunk, loadChunk } from "./chunk/Chunk";
+import { checkIpad, checkIphone } from "./util/DeviceUtil";
+import { fetchXteas } from "./util/Xteas";
 
 interface CameraPosition {
     position: vec3;
@@ -85,364 +84,7 @@ const isWallPaperEngine = !!window.wallpaperRegisterAudioListener;
 const TEXTURE_SIZE = 128;
 const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
 
-const NPC_DATA_TEXTURE_BUFFER_SIZE = 5;
 const CHUNK_RENDER_FRAME_DELAY = 4;
-
-type Chunk = {
-    regionX: number;
-    regionY: number;
-
-    tileRenderFlags: Uint8Array[][];
-    collisionMaps: CollisionMap[];
-
-    modelMatrix: mat4;
-
-    triangleCount: number;
-
-    drawRanges: number[][];
-    drawRangesLowDetail: number[][];
-    drawRangesAlpha: number[][];
-
-    drawRangesNpc: number[][];
-
-    drawCall: DrawCall;
-    drawCallLowDetail: DrawCall;
-    drawCallAlpha: DrawCall;
-
-    drawCallNpc: DrawCall | undefined;
-
-    animatedModels: AnimatedModel[];
-    npcs: Npc[];
-
-    interleavedBuffer: VertexBuffer;
-    indexBuffer: VertexBuffer;
-    vertexArray: VertexArray;
-    modelDataTexture: Texture;
-    modelDataTextureAlpha: Texture;
-
-    npcDataTextureOffsets: number[];
-
-    heightMapTexture: Texture;
-
-    timeLoaded: number;
-    frameLoaded: number;
-};
-
-class AnimatedModel {
-    drawRangeIndex: number;
-    drawRangeAlphaIndex: number;
-
-    frames: number[][];
-    framesAlpha: number[][] | undefined;
-
-    animationDef?: AnimationDefinition;
-
-    frame: number = 0;
-
-    cycleStart: number = 0;
-
-    constructor(
-        drawRangeIndex: number,
-        drawRangeAlphaIndex: number,
-        frames: number[][],
-        framesAlpha: number[][] | undefined,
-        animationDef: AnimationDefinition,
-        cycle: number,
-        randomStart: boolean
-    ) {
-        this.drawRangeIndex = drawRangeIndex;
-        this.drawRangeAlphaIndex = drawRangeAlphaIndex;
-        this.frames = frames;
-        this.framesAlpha = framesAlpha;
-        this.animationDef = animationDef;
-        this.cycleStart = cycle - 1;
-
-        if (randomStart && animationDef.frameStep !== -1) {
-            this.frame = Math.floor(
-                Math.random() * animationDef.frameIds.length
-            );
-            this.cycleStart -= Math.floor(
-                Math.random() * animationDef.frameLengths[this.frame]
-            );
-        }
-    }
-
-    getFrame(cycle: number): number {
-        if (!this.animationDef) {
-            return 0;
-        }
-
-        let elapsed = cycle - this.cycleStart;
-        if (elapsed > 100 && this.animationDef.frameStep > 0) {
-            elapsed = 100;
-        }
-
-        while (elapsed > this.animationDef.frameLengths[this.frame]) {
-            elapsed -= this.animationDef.frameLengths[this.frame];
-            this.frame++;
-            if (this.frame >= this.animationDef.frameLengths.length) {
-                this.frame -= this.animationDef.frameStep;
-                if (
-                    this.frame < 0 ||
-                    this.frame >= this.animationDef.frameLengths.length
-                ) {
-                    this.frame = 0;
-                    this.cycleStart = cycle - 1;
-                    // this.animationDef = undefined;
-                    // return 0;
-                }
-                continue;
-            }
-        }
-
-        this.cycleStart = cycle - elapsed;
-        return this.frame;
-    }
-}
-
-function loadChunk(
-    app: PicoApp,
-    program: Program,
-    programNpc: Program,
-    npcLoader: NpcLoader,
-    animationLoader: AnimationLoader,
-    textureArray: Texture,
-    textureUniformBuffer: UniformBuffer,
-    sceneUniformBuffer: UniformBuffer,
-    chunkData: ChunkData,
-    frame: number,
-    cycle: number
-): Chunk {
-    const regionX = chunkData.regionX;
-    const regionY = chunkData.regionY;
-
-    const baseX = regionX * 64;
-    const baseY = regionY * 64;
-
-    const baseModelMatrix = mat4.create();
-    mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
-
-    const interleavedBuffer = app.createInterleavedBuffer(
-        12,
-        chunkData.vertices
-    );
-
-    const indexBuffer = app.createIndexBuffer(
-        PicoGL.UNSIGNED_INT,
-        chunkData.indices
-    );
-
-    const vertexArray = app
-        .createVertexArray()
-        // v0
-        .vertexAttributeBuffer(0, interleavedBuffer, {
-            type: PicoGL.INT,
-            size: 1,
-            stride: 12,
-            integer: true as any,
-        })
-        // v1
-        .vertexAttributeBuffer(1, interleavedBuffer, {
-            type: PicoGL.INT,
-            size: 1,
-            offset: 4,
-            stride: 12,
-            integer: true as any,
-        })
-        // v2
-        .vertexAttributeBuffer(2, interleavedBuffer, {
-            type: PicoGL.INT,
-            size: 1,
-            offset: 8,
-            stride: 12,
-            integer: true as any,
-        })
-        .indexBuffer(indexBuffer);
-
-    const modelDataTexture = app.createTexture2D(
-        new Uint8Array(chunkData.modelTextureData.buffer),
-        16,
-        Math.max(Math.ceil(chunkData.modelTextureData.length / 16), 1),
-        {
-            internalFormat: PicoGL.RGBA8UI,
-            minFilter: PicoGL.NEAREST,
-            magFilter: PicoGL.NEAREST,
-        }
-    );
-
-    const modelDataTextureAlpha = app.createTexture2D(
-        new Uint8Array(chunkData.modelTextureDataAlpha.buffer),
-        16,
-        Math.max(Math.ceil(chunkData.modelTextureDataAlpha.length / 16), 1),
-        {
-            internalFormat: PicoGL.RGBA8UI,
-            minFilter: PicoGL.NEAREST,
-            magFilter: PicoGL.NEAREST,
-        }
-    );
-
-    const heightMapTexture = app.createTextureArray(
-        chunkData.heightMapTextureData,
-        72,
-        72,
-        Scene.MAX_PLANE,
-        {
-            internalFormat: PicoGL.R32F,
-            minFilter: PicoGL.LINEAR,
-            magFilter: PicoGL.LINEAR,
-            type: PicoGL.FLOAT,
-            wrapS: PicoGL.CLAMP_TO_EDGE,
-            wrapT: PicoGL.CLAMP_TO_EDGE,
-        }
-    );
-
-    const time = performance.now() * 0.001;
-
-    const drawCall = app
-        .createDrawCall(program, vertexArray)
-        .uniformBlock("TextureUniforms", textureUniformBuffer)
-        .uniformBlock("SceneUniforms", sceneUniformBuffer)
-        .uniform("u_timeLoaded", time)
-        .uniform("u_modelMatrix", baseModelMatrix)
-        .uniform("u_drawIdOffset", 0)
-        .texture("u_textures", textureArray)
-        .texture("u_modelDataTexture", modelDataTexture)
-        .texture("u_heightMap", heightMapTexture)
-        .drawRanges(...chunkData.drawRanges);
-
-    const drawCallLowDetail = app
-        .createDrawCall(program, vertexArray)
-        .uniformBlock("TextureUniforms", textureUniformBuffer)
-        .uniformBlock("SceneUniforms", sceneUniformBuffer)
-        .uniform("u_timeLoaded", time)
-        .uniform("u_modelMatrix", baseModelMatrix)
-        .uniform(
-            "u_drawIdOffset",
-            chunkData.drawRanges.length - chunkData.drawRangesLowDetail.length
-        )
-        .texture("u_textures", textureArray)
-        .texture("u_modelDataTexture", modelDataTexture)
-        .texture("u_heightMap", heightMapTexture)
-        .drawRanges(...chunkData.drawRangesLowDetail);
-
-    const drawCallAlpha = app
-        .createDrawCall(program, vertexArray)
-        .uniformBlock("TextureUniforms", textureUniformBuffer)
-        .uniformBlock("SceneUniforms", sceneUniformBuffer)
-        .uniform("u_timeLoaded", time)
-        .uniform("u_modelMatrix", baseModelMatrix)
-        .uniform("u_drawIdOffset", 0)
-        .texture("u_textures", textureArray)
-        .texture("u_modelDataTexture", modelDataTextureAlpha)
-        .texture("u_heightMap", heightMapTexture)
-        .drawRanges(...chunkData.drawRangesAlpha);
-
-    const animatedModels: AnimatedModel[] = [];
-    for (const animatedModel of chunkData.animatedModels) {
-        const animationDef = animationLoader.getDefinition(
-            animatedModel.animationId
-        );
-        animatedModels.push(
-            new AnimatedModel(
-                animatedModel.drawRangeIndex,
-                animatedModel.drawRangeAlphaIndex,
-                animatedModel.frames,
-                animatedModel.framesAlpha,
-                animationDef,
-                cycle,
-                animatedModel.randomStart
-            )
-        );
-    }
-
-    const npcs: Npc[] = [];
-    for (const npcData of chunkData.npcs) {
-        npcs.push(new Npc(npcData, npcLoader.getDefinition(npcData.id)));
-    }
-
-    let drawCallNpc: DrawCall | undefined = undefined;
-    if (npcs.length > 0) {
-        drawCallNpc = app
-            .createDrawCall(programNpc, vertexArray)
-            .uniformBlock("TextureUniforms", textureUniformBuffer)
-            .uniformBlock("SceneUniforms", sceneUniformBuffer)
-            .uniform("u_timeLoaded", time)
-            .uniform("u_modelMatrix", baseModelMatrix)
-            .uniform("u_npcDataOffset", 0)
-            .texture("u_textures", textureArray)
-            .texture("u_heightMap", heightMapTexture)
-            .drawRanges(...chunkData.drawRangesNpc);
-    }
-
-    // console.log(chunkData.collisionFlags.find(flags => flags.find(x => (x & 0x1000000) !== 0)));
-    const collisionMaps = chunkData.collisionFlags.map((flags) => {
-        // TODO: create constructor with flags
-        const map = new CollisionMap(Scene.MAP_SIZE, Scene.MAP_SIZE);
-        map.flags = flags;
-        return map;
-    });
-
-    for (const npc of npcs) {
-        const collisionMap = collisionMaps[npc.data.plane];
-
-        const currentX = npc.pathX[0];
-        const currentY = npc.pathY[0];
-
-        const size = npc.def.size;
-
-        for (let flagX = currentX; flagX < currentX + size; flagX++) {
-            for (let flagY = currentY; flagY < currentY + size; flagY++) {
-                collisionMap.flag(flagX, flagY, 0x1000000);
-            }
-        }
-    }
-
-    return {
-        regionX,
-        regionY,
-
-        tileRenderFlags: chunkData.tileRenderFlags,
-        collisionMaps,
-
-        modelMatrix: baseModelMatrix,
-
-        triangleCount: chunkData.indices.length / 3,
-        drawRanges: chunkData.drawRanges,
-        drawRangesLowDetail: chunkData.drawRangesLowDetail,
-        drawRangesAlpha: chunkData.drawRangesAlpha,
-
-        drawRangesNpc: chunkData.drawRangesNpc,
-
-        drawCall,
-        drawCallLowDetail,
-        drawCallAlpha,
-
-        drawCallNpc,
-
-        animatedModels,
-        npcs,
-
-        interleavedBuffer,
-        indexBuffer,
-        vertexArray,
-        modelDataTexture,
-        modelDataTextureAlpha,
-        npcDataTextureOffsets: new Array(NPC_DATA_TEXTURE_BUFFER_SIZE),
-        heightMapTexture,
-
-        timeLoaded: time,
-        frameLoaded: frame,
-    };
-}
-
-function deleteChunk(chunk: Chunk) {
-    chunk.interleavedBuffer.delete();
-    chunk.indexBuffer.delete();
-    chunk.vertexArray.delete();
-    chunk.modelDataTexture.delete();
-    chunk.modelDataTextureAlpha.delete();
-    chunk.heightMapTexture.delete();
-}
 
 function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     var rect = container.getBoundingClientRect();
@@ -462,6 +104,8 @@ enum ProjectionType {
 
 const INTERACTION_RADIUS = 5;
 const INTERACTION_SIZE = INTERACTION_RADIUS * 2 + 1;
+
+const NULL_DRAW_RANGE = [0, 0, 0];
 
 class MapViewer {
     fileSystem: MemoryFileSystem;
@@ -539,9 +183,9 @@ class MapViewer {
     lastClientTick: number = 0;
     lastTick: number = 0;
 
-    fpsListener?: (fps: number) => void;
-    cameraMoveListener?: (pos: vec3, pitch: number, yaw: number) => void;
-    cameraMoveEndListener?: (pos: vec3, pitch: number, yaw: number) => void;
+    onFps?: (fps: number) => void;
+    onCameraMove?: (pos: vec3, pitch: number, yaw: number) => void;
+    onCameraMoveEnd?: (pos: vec3, pitch: number, yaw: number) => void;
 
     onMenuOpened?: (x: number, y: number, options: MenuOption[]) => void;
     onMenuClosed?: () => void;
@@ -658,93 +302,6 @@ class MapViewer {
 
         this.varpManager = new VarpManager(varbitLoader);
 
-        // const objectModelLoader = new ObjectModelLoader(new IndexModelLoader(modelIndex));
-
-        // const animIds = new Set<number>();
-        // let count = 0;
-        // for (const id of objectArchive.fileIds) {
-        //     const objectDef = objectLoader.getDefinition(id);
-        //     if (objectDef.animationId !== -1 && !animIds.has(objectDef.animationId)) {
-        //         animIds.add(objectDef.animationId);
-
-        //         const def = animationLoader.getDefinition(objectDef.animationId);
-        //         // if (def.frameIds && def.frameStep !== def.frameIds.length) {
-        //         //     console.log('wtf', id, objectDef.name, def);
-        //         //     count++;
-        //         // }
-        //         // if (def.frameLengths && def.frameStep > 0) {
-        //         //     const index = def.frameLengths.findIndex(length => length > 100);
-        //         //     if (index !== -1 && index !== def.frameLengths.length - 1) {
-        //         //         console.log('wtf', id, objectDef.name, def);
-        //         //         count++;
-        //         //     }
-        //         // }
-        //         // if (def.frameLengths && def.frameLengths.find(length => length > 1000)) {
-        //         //     console.log('wtf', id, objectDef.name, def);
-        //         //     count++;
-        //         // }
-        //         // if (def.frameLengths && def.frameLengths.reduce((a, b) => a + b, 0) > 0x7FFF) {
-        //         //     console.log('wtf', id, objectDef.name, def);
-        //         //     count++;
-        //         // }
-
-        //         // if (def.frameLengths && def.frameLengths.length > 50) {
-        //         //     console.log('wtf', id, objectDef.name, def);
-        //         //     count++;
-        //         // }
-        //         if (!objectDef.randomAnimStartFrame) {
-        //             console.log('wtf', id, objectDef.name, def);
-        //             count++;
-        //         }
-        //     }
-        // }
-        // console.log(count);
-
-        // for (const id of animationArchive.fileIds) {
-        //     const def = animationLoader.getDefinition(id);
-        //     if (def.frameIds && def.frameStep !== def.frameIds.length && def.frameStep !== -1) {
-        //         console.log('wtf', def);
-        //     }
-        // }
-
-        // const regionLoader = new RegionLoader(mapIndex, underlayLoader, overlayLoader, objectLoader, xteasMap);
-
-        // const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
-        // const frameMapLoader = new CachedAnimationFrameMapLoader(frameMapIndex, skeletonLoader);
-
-        // const fireplaceId = 24969;
-        // const fireplaceDef = objectLoader.getDefinition(fireplaceId);
-        // const fireplaceAnim = animationLoader.getDefinition(fireplaceDef.animationId);
-        // if (fireplaceAnim.frameIds) {
-        //     for (const frame of fireplaceAnim.frameIds) {
-        //         const frameMapId = frame >> 16;
-        //         const frameId = frame & 0xFFFF;
-        //         console.log(frameMapId, frameId);
-        //     }
-        // }
-        // console.log('fireplace', fireplaceDef, fireplaceAnim);
-
-        // console.time('load anim frames');
-        // for (const animId of animationArchive.fileIds) {
-        //     const anim = animationLoader.getDefinition(animId);
-        //     if (anim.frameIds) {
-        //         const mapIds: Set<number> = new Set();
-        //         for (const frame of anim.frameIds) {
-        //             const frameMapId = frame >> 16;
-        //             const frameId = frame & 0xFFFF;
-        //             const frameMap = frameMapLoader.getFrameMap(frameMapId);
-        //             mapIds.add(frameMapId);
-        //         }
-        //         if (mapIds.size > 1) {
-        //             console.log(anim.id, mapIds, anim);
-        //         }
-        //     }
-        // }
-        // console.timeEnd('load anim frames');
-        // console.timeEnd('region loader');
-
-        // console.log(regionLoader.getTerrainArchiveId(50, 50));
-
         console.time("check invalid regions");
         for (let x = 0; x < 100; x++) {
             for (let y = 0; y < 200; y++) {
@@ -781,6 +338,7 @@ class MapViewer {
         this.onPositionJoystickStop = this.onPositionJoystickStop.bind(this);
         this.onCameraJoystickMove = this.onCameraJoystickMove.bind(this);
         this.onCameraJoystickStop = this.onCameraJoystickStop.bind(this);
+        this.checkInteractions = this.checkInteractions.bind(this);
         this.render = this.render.bind(this);
     }
 
@@ -893,14 +451,23 @@ class MapViewer {
                 .texture("u_frame", this.frameBuffer.colorAttachments[0]);
         });
 
-        this.textureUniformBuffer = app.createUniformBuffer(
-            new Array(128 * 2).fill(PicoGL.FLOAT_VEC2)
-        );
         this.sceneUniformBuffer = app.createUniformBuffer([
             PicoGL.FLOAT_MAT4,
             PicoGL.FLOAT_MAT4,
             PicoGL.FLOAT_MAT4,
         ]);
+
+        this.initTextures();
+
+        console.timeEnd("first load");
+
+        console.log(gl.getSupportedExtensions());
+    }
+
+    initTextures() {
+        this.textureUniformBuffer = this.app.createUniformBuffer(
+            new Array(128 * 2).fill(PicoGL.FLOAT_VEC2)
+        );
 
         console.time("load texture array");
         const textureArrayImage = this.textureProvider.createTextureArrayImage(
@@ -910,7 +477,7 @@ class MapViewer {
         );
         console.timeEnd("load texture array");
 
-        this.textureArray = app.createTextureArray(
+        this.textureArray = this.app.createTextureArray(
             new Uint8Array(textureArrayImage.buffer),
             TEXTURE_SIZE,
             TEXTURE_SIZE,
@@ -943,11 +510,7 @@ class MapViewer {
 
         this.textureUniformBuffer.update();
 
-        console.timeEnd("first load");
-
         console.log("textures: ", textures.length);
-
-        console.log(gl.getSupportedExtensions());
     }
 
     getSearchParams(): URLSearchParamsInit {
@@ -1093,34 +656,6 @@ class MapViewer {
         this.cameraJoystickEvent = undefined;
     }
 
-    private setProjection(
-        offsetX: number,
-        offsetY: number,
-        width: number,
-        height: number,
-        centerX: number,
-        centerY: number,
-        zoom: number
-    ): mat4 {
-        const left = ((offsetX - centerX) << 9) / zoom;
-        const right = ((offsetX + width - centerX) << 9) / zoom;
-        const top = ((offsetY - centerY) << 9) / zoom;
-        const bottom = ((offsetY + height - centerY) << 9) / zoom;
-
-        mat4.identity(this.projectionMatrix);
-        mat4.frustum(
-            this.projectionMatrix,
-            left * DEFAULT_ZOOM,
-            right * DEFAULT_ZOOM,
-            -bottom * DEFAULT_ZOOM,
-            -top * DEFAULT_ZOOM,
-            0,
-            500
-        );
-        mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
-        return this.projectionMatrix;
-    }
-
     isPositionVisible(pos: vec3): boolean {
         vec3.transformMat4(pos, pos, this.viewProjMatrix);
         return (
@@ -1193,28 +728,22 @@ class MapViewer {
         this.cameraUpdated = true;
     }
 
-    runCameraListeners() {
-        this.runCameraMoveListener();
-        this.runCameraMoveEndListener();
+    runCameraCallbacks() {
+        this.runCameraMoveCallback();
+        this.runCameraMoveEndCallback();
     }
 
-    runCameraMoveListener() {
-        if (this.cameraMoveListener) {
-            let yaw = this.yaw % 2048;
-            if (yaw < 0) {
-                yaw += 2048;
-            }
-            this.cameraMoveListener(this.cameraPos, this.pitch, yaw);
+    runCameraMoveCallback() {
+        if (this.onCameraMove) {
+            const yaw = this.yaw & 2047;
+            this.onCameraMove(this.cameraPos, this.pitch, yaw);
         }
     }
 
-    runCameraMoveEndListener() {
-        if (this.cameraMoveEndListener) {
-            let yaw = this.yaw % 2048;
-            if (yaw < 0) {
-                yaw += 2048;
-            }
-            this.cameraMoveEndListener(this.cameraPos, this.pitch, yaw);
+    runCameraMoveEndCallback() {
+        if (this.onCameraMoveEnd) {
+            const yaw = this.yaw & 2047;
+            this.onCameraMoveEnd(this.cameraPos, this.pitch, yaw);
         }
     }
 
@@ -1280,8 +809,8 @@ class MapViewer {
 
     setFps(fps: number) {
         this.fps = fps;
-        if (this.fpsListener) {
-            this.fpsListener(this.fps);
+        if (this.onFps) {
+            this.onFps(this.fps);
         }
     }
 
@@ -1327,65 +856,7 @@ class MapViewer {
         });
     }
 
-    render(
-        gl: WebGL2RenderingContext,
-        time: DOMHighResTimeStamp,
-        resized: boolean
-    ) {
-        time *= 0.001;
-        const deltaTime = time - this.lastFrameTime;
-
-        if (this.fpsLimit) {
-            const tolerance = 0.001;
-            if (deltaTime < 1 / this.fpsLimit - tolerance) {
-                return;
-            }
-        }
-
-        this.lastFrameTime = time;
-
-        this.setFps(1.0 / deltaTime);
-
-        const cycle = time / 0.02;
-
-        const clientTick = Math.floor(time / 0.02);
-        const clientTicksElapsed = Math.min(
-            clientTick - this.lastClientTick,
-            50
-        );
-        if (clientTicksElapsed > 0) {
-            this.lastClientTick = clientTick;
-        }
-
-        const tick = Math.floor(time / 0.6);
-        const ticksElapsed = Math.min(tick - this.lastTick, 1);
-        if (ticksElapsed > 0) {
-            this.lastTick = tick;
-        }
-
-        const canvasWidth = gl.canvas.width;
-        const canvasHeight = gl.canvas.height;
-
-        if (resized) {
-            this.app.resize(canvasWidth, canvasHeight);
-            this.frameBuffer.resize();
-        }
-
-        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        if (!this.program || !this.programNpc) {
-            console.warn("program not compiled yet");
-            return;
-        }
-
-        if (this.lastCullBackFace != this.cullBackFace) {
-            this.updateCullFace();
-        }
-
-        const movedCameraLastFrame = this.cameraUpdated;
-
-        this.cameraUpdated = false;
-
+    handleInput(time: number, deltaTime: number) {
         let cameraSpeedMult = 1.0;
         if (this.keys.get("Shift")) {
             cameraSpeedMult = 10.0;
@@ -1474,14 +945,6 @@ class MapViewer {
             this.moveCamera(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
 
-        if (this.cameraUpdated) {
-            this.runCameraMoveListener();
-        }
-
-        if (movedCameraLastFrame && !this.cameraUpdated) {
-            this.runCameraMoveEndListener();
-        }
-
         if (this.keys.get("t") && this.timer.ready()) {
             const totalTriangles = Array.from(this.chunks.values())
                 .map((t) => t.triangleCount)
@@ -1522,8 +985,133 @@ class MapViewer {
                 this.chunkDataLoader.objectModelLoader.modelCache.clear();
             }
         }
+    }
 
-        // this.setProjection(0, 0, canvasWidth, canvasHeight, canvasWidth / 2, canvasHeight / 2, 1);
+    readPicked() {
+        const gl = this.app.gl as WebGL2RenderingContext;
+
+        if (this.pickX !== -1 && this.pickY !== -1) {
+            this.app.readFramebuffer(this.frameBuffer);
+
+            gl.readBuffer(gl.COLOR_ATTACHMENT0 + 1);
+
+            readPixelsAsync(
+                gl,
+                this.pickX - INTERACTION_RADIUS,
+                gl.canvas.height - this.pickY - INTERACTION_RADIUS,
+                INTERACTION_SIZE,
+                INTERACTION_SIZE,
+                gl.RGBA,
+                gl.UNSIGNED_BYTE,
+                this.interactBuffer
+            ).then(this.checkInteractions(this.pickX, this.pickY));
+
+            this.pickX = -1;
+            this.pickY = -1;
+        }
+    }
+
+    checkInteractions(pickedX: number, pickedY: number) {
+        return (buf: ArrayBufferView) => {
+            const closestInteractions: number[] = new Array(
+                INTERACTION_SIZE
+            ).fill(-1);
+            for (let x = 0; x < INTERACTION_SIZE; x++) {
+                for (let y = 0; y < INTERACTION_SIZE; y++) {
+                    const index = (x + y * INTERACTION_SIZE) * 4;
+                    if (this.interactBuffer[index + 2] === 0xff) {
+                        const dist = Math.max(
+                            Math.abs(x - INTERACTION_RADIUS),
+                            Math.abs(y - INTERACTION_RADIUS)
+                        );
+                        closestInteractions[dist] = index;
+                    }
+                }
+            }
+
+            let closestInteraction = -1;
+            for (let i = 0; i < closestInteractions.length; i++) {
+                if (closestInteractions[i] !== -1) {
+                    closestInteraction = closestInteractions[i];
+                    break;
+                }
+            }
+
+            const closeOnClick = () => {
+                if (this.onMenuClosed) {
+                    this.onMenuClosed();
+                    this.menuOpen = false;
+                }
+            };
+
+            const cancelOption: MenuOption = {
+                name: "Cancel",
+                onClick: closeOnClick,
+            };
+
+            if (closestInteraction === -1) {
+                if (this.onMenuOpened) {
+                    this.onMenuOpened(pickedX, pickedY, [cancelOption]);
+                    this.menuOpen = true;
+                    this.menuX = pickedX;
+                    this.menuY = pickedY;
+                }
+                return;
+            }
+            const interactId =
+                (this.interactBuffer[closestInteraction] << 8) |
+                this.interactBuffer[closestInteraction + 1];
+            let def: NpcDefinition | undefined =
+                this.npcLoader.getDefinition(interactId);
+            if (def.transforms) {
+                def = def.transform(this.varpManager, this.npcLoader);
+            }
+            if (!def) {
+                return;
+            }
+
+            const npcId = def.id;
+            const npcName = def.name;
+            const npcLevel = def.combatLevel;
+
+            const menuOptions: MenuOption[] = def.actions
+                .filter((action) => !!action)
+                .map((action) => ({
+                    name: action,
+                    npcName,
+                    level: npcLevel,
+                    onClick: closeOnClick,
+                }));
+
+            const openWikiOnClick = () => {
+                window.open(
+                    "https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=" +
+                        npcId,
+                    "_blank"
+                );
+            };
+
+            menuOptions.push({
+                name: "Examine",
+                npcName,
+                level: npcLevel,
+                onClick: openWikiOnClick,
+            });
+            menuOptions.push(cancelOption);
+
+            if (this.onMenuOpened) {
+                this.onMenuOpened(pickedX, pickedY, menuOptions);
+                this.menuOpen = true;
+                this.menuX = pickedX;
+                this.menuY = pickedY;
+            }
+        };
+    }
+
+    updateProjection() {
+        const canvasWidth = this.app.width;
+        const canvasHeight = this.app.height;
+
         mat4.identity(this.projectionMatrix);
         if (this.projectionType === ProjectionType.PERSPECTIVE) {
             mat4.perspective(
@@ -1546,10 +1134,8 @@ class MapViewer {
         }
         mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
 
+        // TODO: properly invert this
         mat4.identity(this.viewMatrix);
-        // const scale = 2;
-        // mat4.scale(this.viewMatrix, this.viewMatrix, [scale, scale, 1]);
-        // mat4.lookAt(this.viewMatrix, vec3.fromValues(1, 1, 0), vec3.fromValues(0, 0, 0), vec3.fromValues(0, 1, 0));
         if (this.pitch !== 0) {
             mat4.rotateX(
                 this.viewMatrix,
@@ -1565,8 +1151,6 @@ class MapViewer {
             );
         }
         mat4.translate(this.viewMatrix, this.viewMatrix, this.cameraPos);
-        // mat4.translate(this.viewMatrix, this.viewMatrix, vec3.fromValues(-50.5, 10, -20.5));
-        // mat4.translate(this.viewMatrix, this.viewMatrix, vec3.fromValues(Math.random() * 256 - 128, Math.random() * 256 - 128, Math.random() * 256 - 128));
 
         mat4.multiply(
             this.viewProjMatrix,
@@ -1575,6 +1159,117 @@ class MapViewer {
         );
 
         this.frustumIntersection.setPlanes(this.viewProjMatrix);
+    }
+
+    updateNpcDataTexture() {
+        const newNpcDataTextureIndex =
+            this.frameCount % this.npcDataTextureBuffer.length;
+        const npcDataTextureIndex =
+            (this.frameCount + 1) % this.npcDataTextureBuffer.length;
+        this.npcDataTextureBuffer[newNpcDataTextureIndex]?.delete();
+        this.npcDataTextureBuffer[newNpcDataTextureIndex] =
+            this.app.createTexture2D(
+                this.npcRenderData,
+                16,
+                Math.max(Math.ceil(this.npcRenderCount / 16), 1),
+                {
+                    internalFormat: PicoGL.RGBA16UI,
+                    minFilter: PicoGL.NEAREST,
+                    magFilter: PicoGL.NEAREST,
+                }
+            );
+
+        return npcDataTextureIndex;
+    }
+
+    setMainUniforms(drawCall: DrawCall, time: number, deltaTime: number) {
+        drawCall.uniform("u_currentTime", time);
+        drawCall.uniform("u_deltaTime", deltaTime);
+        drawCall.uniform("u_brightness", this.brightness);
+        drawCall.uniform("u_colorBanding", this.colorBanding);
+    }
+
+    draw(drawCall: DrawCall, drawRanges: number[][]) {
+        if (this.hasMultiDraw) {
+            drawCall.draw();
+        } else {
+            for (let i = 0; i < drawRanges.length; i++) {
+                drawCall.uniform("u_drawId", i);
+                drawCall.drawRanges(drawRanges[i]);
+                drawCall.draw();
+            }
+        }
+    }
+
+    render(
+        gl: WebGL2RenderingContext,
+        time: DOMHighResTimeStamp,
+        resized: boolean
+    ) {
+        time *= 0.001;
+        const deltaTime = time - this.lastFrameTime;
+
+        if (this.fpsLimit) {
+            const tolerance = 0.001;
+            if (deltaTime < 1 / this.fpsLimit - tolerance) {
+                return;
+            }
+        }
+
+        this.lastFrameTime = time;
+
+        this.setFps(1.0 / deltaTime);
+
+        const cycle = time / 0.02;
+
+        const clientTick = Math.floor(time / 0.02);
+        const clientTicksElapsed = Math.min(
+            clientTick - this.lastClientTick,
+            50
+        );
+        if (clientTicksElapsed > 0) {
+            this.lastClientTick = clientTick;
+        }
+
+        const tick = Math.floor(time / 0.6);
+        const ticksElapsed = Math.min(tick - this.lastTick, 1);
+        if (ticksElapsed > 0) {
+            this.lastTick = tick;
+        }
+
+        const canvasWidth = gl.canvas.width;
+        const canvasHeight = gl.canvas.height;
+
+        if (resized) {
+            this.app.resize(canvasWidth, canvasHeight);
+            this.frameBuffer.resize();
+        }
+
+        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        if (!this.program || !this.programNpc) {
+            console.warn("program not compiled yet");
+            return;
+        }
+
+        if (this.lastCullBackFace != this.cullBackFace) {
+            this.updateCullFace();
+        }
+
+        const movedCameraLastFrame = this.cameraUpdated;
+        this.cameraUpdated = false;
+
+        this.handleInput(time, deltaTime);
+        this.readPicked();
+
+        if (this.cameraUpdated) {
+            this.runCameraMoveCallback();
+        }
+        if (movedCameraLastFrame && !this.cameraUpdated) {
+            this.runCameraMoveEndCallback();
+        }
+
+        this.updateProjection();
 
         this.sceneUniformBuffer
             .set(0, this.viewProjMatrix as Float32Array)
@@ -1588,10 +1283,6 @@ class MapViewer {
         const cameraRegionX = (cameraX / 64) | 0;
         const cameraRegionY = (cameraY / 64) | 0;
 
-        if (this.keys.get("c")) {
-            // this.isVisible(this.terrains[0]);
-        }
-
         const viewDistanceRegionIds =
             this.viewDistanceRegionIds[this.frameCount % 2];
         const lastViewDistanceRegionIds =
@@ -1604,19 +1295,11 @@ class MapViewer {
             this.lastCameraRegionY != cameraRegionY ||
             this.lastRegionViewDistance != this.regionViewDistance
         ) {
-            const regionViewDistance = this.regionViewDistance;
+            const viewDistance = this.regionViewDistance;
 
             this.regionPositions.length = 0;
-            for (
-                let x = -(regionViewDistance - 1);
-                x < regionViewDistance;
-                x++
-            ) {
-                for (
-                    let y = -(regionViewDistance - 1);
-                    y < regionViewDistance;
-                    y++
-                ) {
+            for (let x = -(viewDistance - 1); x < viewDistance; x++) {
+                for (let y = -(viewDistance - 1); y < viewDistance; y++) {
                     const regionX = cameraRegionX + x;
                     const regionY = cameraRegionY + y;
                     if (
@@ -1677,126 +1360,8 @@ class MapViewer {
             });
         }
 
-        if (this.pickX !== -1 && this.pickY !== -1) {
-            this.app.readFramebuffer(this.frameBuffer);
-
-            gl.readBuffer(gl.COLOR_ATTACHMENT0 + 1);
-
-            const pickedX = this.pickX;
-            const pickedY = this.pickY;
-
-            readPixelsAsync(
-                gl,
-                this.pickX - INTERACTION_RADIUS,
-                gl.canvas.height - this.pickY - INTERACTION_RADIUS,
-                INTERACTION_SIZE,
-                INTERACTION_SIZE,
-                gl.RGBA,
-                gl.UNSIGNED_BYTE,
-                this.interactBuffer
-            ).then((buf) => {
-                const closestInteractions: number[] = new Array(
-                    INTERACTION_SIZE
-                ).fill(-1);
-                for (let x = 0; x < INTERACTION_SIZE; x++) {
-                    for (let y = 0; y < INTERACTION_SIZE; y++) {
-                        const index = (x + y * INTERACTION_SIZE) * 4;
-                        if (this.interactBuffer[index + 2] === 0xff) {
-                            const dist = Math.max(
-                                Math.abs(x - INTERACTION_RADIUS),
-                                Math.abs(y - INTERACTION_RADIUS)
-                            );
-                            closestInteractions[dist] = index;
-                        }
-                    }
-                }
-
-                let closestInteraction = -1;
-                for (let i = 0; i < closestInteractions.length; i++) {
-                    if (closestInteractions[i] !== -1) {
-                        closestInteraction = closestInteractions[i];
-                        break;
-                    }
-                }
-
-                const closeOnClick = () => {
-                    if (this.onMenuClosed) {
-                        this.onMenuClosed();
-                        this.menuOpen = false;
-                    }
-                };
-
-                const cancelOption: MenuOption = {
-                    name: "Cancel",
-                    onClick: closeOnClick,
-                };
-
-                if (closestInteraction === -1) {
-                    if (this.onMenuOpened) {
-                        this.onMenuOpened(pickedX, pickedY, [cancelOption]);
-                        this.menuOpen = true;
-                        this.menuX = pickedX;
-                        this.menuY = pickedY;
-                    }
-                    return;
-                }
-                const interactId =
-                    (this.interactBuffer[closestInteraction] << 8) |
-                    this.interactBuffer[closestInteraction + 1];
-                let def: NpcDefinition | undefined =
-                    this.npcLoader.getDefinition(interactId);
-                if (def.transforms) {
-                    def = def.transform(this.varpManager, this.npcLoader);
-                }
-                if (!def) {
-                    return;
-                }
-
-                const npcId = def.id;
-                const npcName = def.name;
-                const npcLevel = def.combatLevel;
-
-                const menuOptions: MenuOption[] = def.actions
-                    .filter((action) => !!action)
-                    .map((action) => ({
-                        name: action,
-                        npcName,
-                        level: npcLevel,
-                        onClick: closeOnClick,
-                    }));
-
-                const openWikiOnClick = () => {
-                    window.open(
-                        "https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=" +
-                            npcId,
-                        "_blank"
-                    );
-                };
-
-                menuOptions.push({
-                    name: "Examine",
-                    npcName,
-                    level: npcLevel,
-                    onClick: openWikiOnClick,
-                });
-                menuOptions.push(cancelOption);
-
-                if (this.onMenuOpened) {
-                    this.onMenuOpened(pickedX, pickedY, menuOptions);
-                    this.menuOpen = true;
-                    this.menuX = pickedX;
-                    this.menuY = pickedY;
-                }
-            });
-
-            this.pickX = -1;
-            this.pickY = -1;
-        }
-
         this.visibleChunkCount = 0;
-
         this.npcRenderCount = 0;
-        const strategy = new ExactRouteStrategy();
 
         // draw back to front
         for (let i = this.regionPositions.length - 1; i >= 0; i--) {
@@ -1815,11 +1380,19 @@ class MapViewer {
             // fade in chunks even if it loaded a while ago
             if (!lastViewDistanceRegionIds.has(regionId)) {
                 chunk.timeLoaded = time;
+
+                chunk.drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
+                chunk.drawCallAlpha.uniform("u_timeLoaded", chunk.timeLoaded);
+                chunk.drawCallLowDetail.uniform(
+                    "u_timeLoaded",
+                    chunk.timeLoaded
+                );
+                chunk.drawCallNpc?.uniform("u_timeLoaded", chunk.timeLoaded);
             }
 
-            for (const animatedModel of chunk.animatedModels) {
+            for (const object of chunk.animatedObjects) {
                 // advance frame
-                animatedModel.getFrame(cycle);
+                object.update(cycle);
             }
 
             for (let t = 0; t < ticksElapsed; t++) {
@@ -1842,27 +1415,11 @@ class MapViewer {
             this.visibleChunks[this.visibleChunkCount++] = chunk;
         }
 
-        this.app.drawFramebuffer(this.frameBuffer).clear();
-
-        const newNpcDataTextureIndex =
-            this.frameCount % this.npcDataTextureBuffer.length;
-        const npcDataTextureIndex =
-            (this.frameCount + 1) % this.npcDataTextureBuffer.length;
-        this.npcDataTextureBuffer[newNpcDataTextureIndex]?.delete();
-        this.npcDataTextureBuffer[newNpcDataTextureIndex] =
-            this.app.createTexture2D(
-                this.npcRenderData,
-                16,
-                Math.max(Math.ceil(this.npcRenderCount / 16), 1),
-                {
-                    internalFormat: PicoGL.RGBA16UI,
-                    minFilter: PicoGL.NEAREST,
-                    magFilter: PicoGL.NEAREST,
-                }
-            );
-
+        const npcDataTextureIndex = this.updateNpcDataTexture();
         const npcRenderDataTexture =
             this.npcDataTextureBuffer[npcDataTextureIndex];
+
+        this.app.drawFramebuffer(this.frameBuffer).clear();
 
         // opaque pass
         for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
@@ -1883,41 +1440,27 @@ class MapViewer {
                 ? chunk.drawCallLowDetail
                 : chunk.drawCall;
 
-            drawCall.uniform("u_currentTime", time);
-            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
-            drawCall.uniform("u_deltaTime", deltaTime);
-            drawCall.uniform("u_brightness", this.brightness);
-            drawCall.uniform("u_colorBanding", this.colorBanding);
+            this.setMainUniforms(drawCall, time, deltaTime);
 
             const drawRanges = isLowDetail
                 ? chunk.drawRangesLowDetail
                 : chunk.drawRanges;
 
-            for (const animatedModel of chunk.animatedModels) {
-                const frameId = animatedModel.frame;
-
-                const frame = animatedModel.frames[frameId];
+            for (const object of chunk.animatedObjects) {
+                const frameId = object.frame;
+                const frame = object.frames[frameId];
 
                 (drawCall as any).offsets[
-                    animatedModel.drawRangeIndex + drawRangeOffset
+                    object.drawRangeIndex + drawRangeOffset
                 ] = frame[0];
                 (drawCall as any).numElements[
-                    animatedModel.drawRangeIndex + drawRangeOffset
+                    object.drawRangeIndex + drawRangeOffset
                 ] = frame[1];
 
-                drawRanges[animatedModel.drawRangeIndex + drawRangeOffset] =
-                    frame;
+                drawRanges[object.drawRangeIndex + drawRangeOffset] = frame;
             }
 
-            if (this.hasMultiDraw) {
-                drawCall.draw();
-            } else {
-                for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform("u_drawId", i);
-                    drawCall.drawRanges(drawRanges[i]);
-                    drawCall.draw();
-                }
-            }
+            this.draw(drawCall, drawRanges);
         }
         // opaque npc pass
         for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
@@ -1928,11 +1471,7 @@ class MapViewer {
                 continue;
             }
 
-            drawCall.uniform("u_currentTime", time);
-            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
-            drawCall.uniform("u_deltaTime", deltaTime);
-            drawCall.uniform("u_brightness", this.brightness);
-            drawCall.uniform("u_colorBanding", this.colorBanding);
+            this.setMainUniforms(drawCall, time, deltaTime);
             drawCall.uniform(
                 "u_npcDataOffset",
                 chunk.npcDataTextureOffsets[npcDataTextureIndex]
@@ -1942,14 +1481,9 @@ class MapViewer {
             const drawRanges = chunk.drawRangesNpc;
 
             chunk.npcs.forEach((npc, i) => {
+                const anim = npc.getAnimationFrames();
+
                 const frameId = npc.movementFrame;
-
-                const anim =
-                    npc.data.walkAnim &&
-                    npc.movementAnimation === npc.def.walkSequence
-                        ? npc.data.walkAnim
-                        : npc.data.idleAnim;
-
                 const frame = anim.frames[frameId];
 
                 (drawCall as any).offsets[i] = frame[0];
@@ -1958,15 +1492,7 @@ class MapViewer {
                 drawRanges[i] = frame;
             });
 
-            if (this.hasMultiDraw) {
-                drawCall.draw();
-            } else {
-                for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform("u_drawId", i);
-                    drawCall.drawRanges(drawRanges[i]);
-                    drawCall.draw();
-                }
-            }
+            this.draw(drawCall, drawRanges);
         }
 
         // alpha pass
@@ -1975,43 +1501,27 @@ class MapViewer {
 
             const drawCall = chunk.drawCallAlpha;
 
-            drawCall.uniform("u_currentTime", time);
-            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
-            drawCall.uniform("u_deltaTime", deltaTime);
-            drawCall.uniform("u_brightness", this.brightness);
-            drawCall.uniform("u_colorBanding", this.colorBanding);
+            this.setMainUniforms(drawCall, time, deltaTime);
 
             const drawRanges = chunk.drawRangesAlpha;
 
-            for (const animatedModel of chunk.animatedModels) {
-                if (animatedModel.framesAlpha) {
-                    const frameId = animatedModel.frame;
+            for (const object of chunk.animatedObjects) {
+                if (object.framesAlpha) {
+                    const frameId = object.frame;
+                    const frame = object.framesAlpha[frameId];
 
-                    const frame = animatedModel.framesAlpha[frameId];
+                    (drawCall as any).offsets[object.drawRangeAlphaIndex] =
+                        frame[0];
+                    (drawCall as any).numElements[object.drawRangeAlphaIndex] =
+                        frame[1];
 
-                    (drawCall as any).offsets[
-                        animatedModel.drawRangeAlphaIndex
-                    ] = frame[0];
-                    (drawCall as any).numElements[
-                        animatedModel.drawRangeAlphaIndex
-                    ] = frame[1];
-
-                    drawRanges[animatedModel.drawRangeAlphaIndex] = frame;
+                    drawRanges[object.drawRangeAlphaIndex] = frame;
                 }
             }
 
-            if (this.hasMultiDraw) {
-                drawCall.draw();
-            } else {
-                for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform("u_drawId", i);
-                    drawCall.drawRanges(drawRanges[i]);
-                    drawCall.draw();
-                }
-            }
+            this.draw(drawCall, drawRanges);
         }
         // alpha npc pass
-        const nullFrame = [0, 0, 0];
         for (let i = 0; i < this.visibleChunkCount; i++) {
             const chunk = this.visibleChunks[i];
 
@@ -2020,11 +1530,7 @@ class MapViewer {
                 continue;
             }
 
-            drawCall.uniform("u_currentTime", time);
-            drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
-            drawCall.uniform("u_deltaTime", deltaTime);
-            drawCall.uniform("u_brightness", this.brightness);
-            drawCall.uniform("u_colorBanding", this.colorBanding);
+            this.setMainUniforms(drawCall, time, deltaTime);
             drawCall.uniform(
                 "u_npcDataOffset",
                 chunk.npcDataTextureOffsets[npcDataTextureIndex]
@@ -2034,15 +1540,10 @@ class MapViewer {
             const drawRanges = chunk.drawRangesNpc;
 
             chunk.npcs.forEach((npc, i) => {
+                const anim = npc.getAnimationFrames();
+
                 const frameId = npc.movementFrame;
-
-                const anim =
-                    npc.data.walkAnim &&
-                    npc.movementAnimation === npc.def.walkSequence
-                        ? npc.data.walkAnim
-                        : npc.data.idleAnim;
-
-                let frame: number[] = nullFrame;
+                let frame: number[] = NULL_DRAW_RANGE;
                 if (anim.framesAlpha) {
                     frame = anim.framesAlpha[frameId];
                 }
@@ -2053,15 +1554,7 @@ class MapViewer {
                 drawRanges[i] = frame;
             });
 
-            if (this.hasMultiDraw) {
-                drawCall.draw();
-            } else {
-                for (let i = 0; i < drawRanges.length; i++) {
-                    drawCall.uniform("u_drawId", i);
-                    drawCall.drawRanges(drawRanges[i]);
-                    drawCall.draw();
-                }
-            }
+            this.draw(drawCall, drawRanges);
         }
 
         this.app.defaultDrawFramebuffer().clear();
@@ -2396,11 +1889,11 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const controls = useControls(generateControls, [pointsControls]);
 
     useEffect(() => {
-        mapViewer.fpsListener = setFps;
-        mapViewer.cameraMoveListener = (pos, pitch, yaw) => {
+        mapViewer.onFps = setFps;
+        mapViewer.onCameraMove = (pos, pitch, yaw) => {
             setCompassDegrees((2047 - yaw) * RS_TO_DEGREES);
         };
-        mapViewer.runCameraMoveListener();
+        mapViewer.runCameraMoveCallback();
         mapViewer.onMenuOpened = (x, y, options) => {
             setMenuProps({ x, y, options });
         };
@@ -2412,7 +1905,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     }, [mapViewer]);
 
     useEffect(() => {
-        mapViewer.cameraMoveEndListener = (pos, pitch, yaw) => {
+        mapViewer.onCameraMoveEnd = (pos, pitch, yaw) => {
             if (!isCameraRunning) {
                 setSearchParams(mapViewer.getSearchParams(), { replace: true });
             }
@@ -2439,7 +1932,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                             src="/compass.png"
                             onClick={() => {
                                 mapViewer.yaw = 0;
-                                mapViewer.runCameraListeners();
+                                mapViewer.runCameraCallbacks();
                             }}
                         />
                         <div className="fps-counter content-text">
@@ -2480,23 +1973,6 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     );
 }
 
-export const checkIphone = () => {
-    const u = navigator.userAgent;
-    return !!u.match(/iPhone/i);
-};
-export const checkAndroid = () => {
-    const u = navigator.userAgent;
-    return !!u.match(/Android/i);
-};
-export const checkIpad = () => {
-    const u = navigator.userAgent;
-    return !!u.match(/iPad/i);
-};
-export const checkMobile = () => {
-    const u = navigator.userAgent;
-    return !!u.match(/Android/i) || !!u.match(/iPhone/i);
-};
-
 const isIos = checkIphone() || checkIpad();
 
 const MAX_POOL_SIZE = isIos ? 1 : 4;
@@ -2522,9 +1998,7 @@ function MapViewerApp() {
         const load = async () => {
             const npcSpawnsPromise = fetchNpcSpawns();
             const cachePath = "/cache212/";
-            const xteaPromise = fetch(cachePath + "keys.json").then((resp) =>
-                resp.json()
-            );
+            const xteasPromise = fetchXteas(cachePath + "keys.json");
             const store = await fetchMemoryStore(
                 cachePath,
                 [
@@ -2542,12 +2016,9 @@ function MapViewerApp() {
             setDownloadProgress(undefined);
 
             console.time("load xteas");
-            const xteas: { [group: string]: number[] } = await xteaPromise;
-            const xteasMap: Map<number, number[]> = new Map(
-                Object.keys(xteas).map((key) => [parseInt(key), xteas[key]])
-            );
+            const xteas = await xteasPromise;
             console.timeEnd("load xteas");
-            console.log("xtea count: ", xteasMap.size);
+            console.log("xtea count: ", xteas.size);
 
             console.time("load npc spawns");
             const npcSpawns = await npcSpawnsPromise;
@@ -2557,11 +2028,11 @@ function MapViewerApp() {
             // const poolSize = navigator.hardwareConcurrency;
 
             // const pool = ChunkLoaderWorkerPool.init(store, xteasMap, poolSize);
-            pool.init(store, xteasMap, npcSpawns);
+            pool.init(store, xteas, npcSpawns);
 
             const fileSystem = loadFromStore(store);
 
-            const mapViewer = new MapViewer(fileSystem, xteasMap, pool);
+            const mapViewer = new MapViewer(fileSystem, xteas, pool);
             const cx = searchParams.get("cx");
             const cy = searchParams.get("cy");
             const cz = searchParams.get("cz");

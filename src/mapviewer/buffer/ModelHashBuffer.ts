@@ -1,5 +1,5 @@
 import { Model } from "../../client/model/Model";
-import { Hasher } from "../../client/util/Hasher";
+import { Hasher } from "../util/Hasher";
 import { DataBuffer } from "./DataBuffer";
 
 export function getModelHash(

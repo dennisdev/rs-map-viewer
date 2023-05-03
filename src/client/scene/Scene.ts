@@ -6,7 +6,7 @@ import { ModelData } from "../model/ModelData";
 import { RegionLoader } from "../RegionLoader";
 import { ByteBuffer } from "../util/ByteBuffer";
 import { Renderable } from "./Renderable";
-import { AnimatedObject } from "./AnimatedObject";
+import { DynamicObject } from "./DynamicObject";
 import { SceneTileModel } from "./SceneTileModel";
 import {
     adjustOverlayLight,
@@ -436,7 +436,7 @@ export class Scene {
                         contourGroundInfo
                     );
                 } else {
-                    renderable = new AnimatedObject(
+                    renderable = new DynamicObject(
                         def.id,
                         type,
                         rotation,
@@ -478,7 +478,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             type,
                             rotation,
@@ -524,7 +524,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             type,
                             rotation,
@@ -643,7 +643,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             type,
                             rotation,
@@ -727,7 +727,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable0 = new AnimatedObject(
+                        renderable0 = new DynamicObject(
                             def.id,
                             type,
                             rotation + 4,
@@ -737,7 +737,7 @@ export class Scene {
                             def.animationId,
                             def.randomAnimStartFrame
                         );
-                        renderable1 = new AnimatedObject(
+                        renderable1 = new DynamicObject(
                             def.id,
                             type,
                             (rotation + 1) & 3,
@@ -794,7 +794,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             type,
                             rotation,
@@ -871,7 +871,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             type,
                             rotation,
@@ -928,7 +928,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             ObjectType.WALL_DECORATION_INSIDE,
                             rotation,
@@ -986,7 +986,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             ObjectType.WALL_DECORATION_INSIDE,
                             rotation,
@@ -1038,7 +1038,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             ObjectType.WALL_DECORATION_INSIDE,
                             rotation + 4,
@@ -1082,7 +1082,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable = new AnimatedObject(
+                        renderable = new DynamicObject(
                             def.id,
                             ObjectType.WALL_DECORATION_INSIDE,
                             insideRotation + 4,
@@ -1138,7 +1138,7 @@ export class Scene {
                             contourGroundInfo
                         );
                     } else {
-                        renderable0 = new AnimatedObject(
+                        renderable0 = new DynamicObject(
                             def.id,
                             ObjectType.WALL_DECORATION_INSIDE,
                             rotation + 4,
@@ -1148,7 +1148,7 @@ export class Scene {
                             def.animationId,
                             def.randomAnimStartFrame
                         );
-                        renderable1 = new AnimatedObject(
+                        renderable1 = new DynamicObject(
                             def.id,
                             ObjectType.WALL_DECORATION_INSIDE,
                             insideRotation + 4,
@@ -1226,7 +1226,7 @@ export class Scene {
                     contourGroundInfo
                 );
             } else {
-                renderable = new AnimatedObject(
+                renderable = new DynamicObject(
                     def.id,
                     type,
                     rotation,

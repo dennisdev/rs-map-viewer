@@ -396,4 +396,11 @@ export class Npc {
             }
         }
     }
+
+    getAnimationFrames() {
+        return this.data.walkAnim &&
+            this.movementAnimation === this.def.walkSequence
+            ? this.data.walkAnim
+            : this.data.idleAnim;
+    }
 }

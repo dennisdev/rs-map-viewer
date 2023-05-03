@@ -1,4 +1,4 @@
-import { FloatUtil } from "../../client/util/FloatUtil";
+import { FloatUtil } from "../util/FloatUtil";
 import { DataBuffer } from "./DataBuffer";
 
 export class VertexBuffer extends DataBuffer {

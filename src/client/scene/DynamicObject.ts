@@ -1,6 +1,6 @@
 import { Renderable } from "./Renderable";
 
-export class AnimatedObject extends Renderable {
+export class DynamicObject extends Renderable {
     offsetX: number = 0;
     offsetY: number = 0;
 
