@@ -2818,17 +2818,20 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             },
             { collapsed: true }
         ),
-        Record: folder({
-            Start: button(() => setCameraRunning(true)),
-            "Add point": button(() => addPoint()),
-            Length: {
-                value: animationDuration,
-                onChange: (v) => {
-                    setAnimationDuration(v);
+        Record: folder(
+            {
+                Start: button(() => setCameraRunning(true)),
+                "Add point": button(() => addPoint()),
+                Length: {
+                    value: animationDuration,
+                    onChange: (v) => {
+                        setAnimationDuration(v);
+                    },
                 },
+                Points: pointsControls,
             },
-            Points: pointsControls,
-        }),
+            { collapsed: true }
+        ),
     });
     const controls = useControls(generateControls, [pointsControls]);
 
