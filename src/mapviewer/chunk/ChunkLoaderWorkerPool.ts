@@ -7,7 +7,7 @@ import {
     ModuleThread,
 } from "threads";
 import { MemoryStore } from "../../client/fs/MemoryStore";
-import { NpcSpawn } from "../NpcSpawn";
+import { NpcSpawn } from "../npc/NpcSpawn";
 import { ChunkData } from "./ChunkDataLoader";
 
 export type ChunkLoaderWorker = {

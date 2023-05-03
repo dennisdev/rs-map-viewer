@@ -4,7 +4,7 @@ import { computeTextureCoords, Model } from "../../client/model/Model";
 import { Scene } from "../../client/scene/Scene";
 import { SceneTile } from "../../client/scene/SceneTile";
 import { clamp } from "../../client/util/MathUtil";
-import { NpcSpawn } from "../NpcSpawn";
+import { NpcSpawn } from "../npc/NpcSpawn";
 import { VertexBuffer } from "./VertexBuffer";
 
 export enum ContourGroundType {

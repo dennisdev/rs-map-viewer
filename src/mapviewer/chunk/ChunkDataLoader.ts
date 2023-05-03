@@ -21,7 +21,7 @@ import {
 import { createOcclusionMap, OcclusionMap } from "./LodOcclusionMap";
 import { GameObject, SceneObject } from "../../client/scene/SceneObject";
 import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
-import { NpcSpawn } from "../NpcSpawn";
+import { NpcSpawn } from "../npc/NpcSpawn";
 import { NpcDefinition } from "../../client/fs/definition/NpcDefinition";
 
 export type ChunkData = {

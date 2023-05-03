@@ -20,7 +20,7 @@ import { CachedVarbitLoader } from "../../client/fs/loader/VarbitLoader";
 import { VarpManager } from "../../client/VarpManager";
 import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
 import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
-import { NpcSpawn } from "../NpcSpawn";
+import { NpcSpawn } from "../npc/NpcSpawn";
 
 type MemoryStoreProperties = {
     dataFile: ArrayBuffer;
