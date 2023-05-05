@@ -18,8 +18,8 @@ export class OverlayDefinition extends Definition {
     secondarySaturation: number;
     secondaryLightness: number;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.primaryRgb = 0;
         this.textureId = -1;
         this.hideUnderlay = true;
@@ -33,20 +33,20 @@ export class OverlayDefinition extends Definition {
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
-        if (1 == opcode) {
+        if (opcode === 1) {
             this.primaryRgb = buffer.readMedium();
-        } else if (2 == opcode) {
+        } else if (opcode === 2) {
             this.textureId = buffer.readUnsignedByte();
-        } else if (opcode == 5) {
+        } else if (opcode === 5) {
             this.hideUnderlay = false;
-        } else if (7 == opcode) {
+        } else if (opcode === 7) {
             this.secondaryRgb = buffer.readMedium();
-        } else if (8 == opcode) {
+        } else if (opcode === 8) {
         }
     }
 
     override post(): void {
-        if (this.secondaryRgb != -1) {
+        if (this.secondaryRgb !== -1) {
             this.setHsl(this.secondaryRgb);
             this.secondaryHue = this.hue;
             this.secondarySaturation = this.saturation;
@@ -81,7 +81,7 @@ export class OverlayDefinition extends Definition {
         let var12 = 0.0;
         let var14 = 0.0;
         let var16 = (var8 + var10) / 2.0;
-        if (var8 != var10) {
+        if (var8 !== var10) {
             if (var16 < 0.5) {
                 var14 = (var10 - var8) / (var8 + var10);
             }
@@ -90,11 +90,11 @@ export class OverlayDefinition extends Definition {
                 var14 = (var10 - var8) / (2.0 - var10 - var8);
             }
 
-            if (var10 == var2) {
+            if (var10 === var2) {
                 var12 = (var4 - var6) / (var10 - var8);
-            } else if (var10 == var4) {
+            } else if (var10 === var4) {
                 var12 = 2.0 + (var6 - var2) / (var10 - var8);
-            } else if (var10 == var6) {
+            } else if (var10 === var6) {
                 var12 = 4.0 + (var2 - var4) / (var10 - var8);
             }
         }

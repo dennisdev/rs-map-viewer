@@ -18,7 +18,7 @@ import {
     NpcDrawData,
     RenderBuffer,
 } from "../buffer/RenderBuffer";
-import { createOcclusionMap, OcclusionMap } from "./LodOcclusionMap";
+import { createOcclusionMap, OcclusionMap } from "./OcclusionMap";
 import { GameObject, SceneObject } from "../../client/scene/SceneObject";
 import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
 import { NpcSpawn } from "../npc/NpcSpawn";

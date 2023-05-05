@@ -4,8 +4,8 @@ import { Definition, ParamsMap } from "./Definition";
 export class StructDefinition extends Definition {
     params!: ParamsMap;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {

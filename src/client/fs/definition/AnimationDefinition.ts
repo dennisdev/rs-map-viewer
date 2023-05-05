@@ -42,8 +42,8 @@ export class AnimationDefinition extends Definition {
 
     animMayaMasks?: boolean[];
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.frameStep = -1;
         this.stretches = false;
         this.forcedPriority = 5;

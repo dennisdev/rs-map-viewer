@@ -12,6 +12,7 @@ import { ChunkData } from "./ChunkDataLoader";
 
 export type ChunkLoaderWorker = {
     init(
+        revision: number,
         memoryStore: TransferDescriptor<MemoryStore>,
         xteasMap: Map<number, number[]>,
         npcSpawns: NpcSpawn[]
@@ -58,6 +59,7 @@ export class ChunkLoaderWorkerPool {
     }
 
     init(
+        revision: number,
         store: MemoryStore,
         xteasMap: Map<number, number[]>,
         npcSpawns: NpcSpawn[]
@@ -65,7 +67,7 @@ export class ChunkLoaderWorkerPool {
         for (const promise of this.workerPromises) {
             promise.then((worker) => {
                 // console.log('send init worker', performance.now());
-                worker.init(Transfer(store, []), xteasMap, npcSpawns);
+                worker.init(revision, Transfer(store, []), xteasMap, npcSpawns);
                 return worker;
             });
         }

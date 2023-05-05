@@ -3,7 +3,7 @@ import { ByteBuffer } from "../../util/ByteBuffer";
 export class TextureDefinition {
     public static decode(buffer: ByteBuffer, id: number): TextureDefinition {
         const averageHsl = buffer.readUnsignedShort();
-        const unknown = buffer.readUnsignedByte() == 1;
+        const unknown = buffer.readUnsignedByte() === 1;
         const spriteCount = buffer.readUnsignedByte();
         if (spriteCount < 1 || spriteCount > 4) {
             throw new Error("Invalid sprite count for texture: " + spriteCount);

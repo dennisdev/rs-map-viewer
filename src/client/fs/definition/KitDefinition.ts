@@ -18,8 +18,8 @@ export class KitDefinition extends Definition {
 
     nonSelectable: boolean;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.bodyPartyId = -1;
         this.ifModelIds = [-1, -1, -1, -1, -1];
         this.nonSelectable = false;

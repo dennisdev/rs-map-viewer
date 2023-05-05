@@ -63,8 +63,8 @@ export class ParamDefinition extends Definition {
         }
     }
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.autoDisable = true;
     }
 

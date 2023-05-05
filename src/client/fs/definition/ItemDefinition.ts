@@ -1,4 +1,3 @@
-import { ItemManager } from "../../ItemManager";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition, ParamsMap } from "./Definition";
 
@@ -105,8 +104,8 @@ export class ItemDefinition extends Definition {
 
     params?: ParamsMap;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.name = "null";
         this.zoom2d = 2000;
         this.xan2d = 0;
@@ -360,23 +359,23 @@ export class ItemDefinition extends Definition {
         this.isTradable = false;
     }
 
-    getCountObj(itemManager: ItemManager, count: number): ItemDefinition {
-        if (this.countObj && count > 1) {
-            let newId = -1;
+    // getCountObj(itemManager: ItemManager, count: number): ItemDefinition {
+    //     if (this.countObj && count > 1) {
+    //         let newId = -1;
 
-            for (let i = 0; i < 10; i++) {
-                if (count >= this.countCo[i] && this.countCo[i] !== 0) {
-                    newId = this.countObj[i];
-                }
-            }
+    //         for (let i = 0; i < 10; i++) {
+    //             if (count >= this.countCo[i] && this.countCo[i] !== 0) {
+    //                 newId = this.countObj[i];
+    //             }
+    //         }
 
-            if (newId !== -1) {
-                return itemManager.getDefinition(newId);
-            }
-        }
+    //         if (newId !== -1) {
+    //             return itemManager.getDefinition(newId);
+    //         }
+    //     }
 
-        return this;
-    }
+    //     return this;
+    // }
 
     getShiftClickIndex(): number {
         if (this.shiftClickIndex !== -1 && this.inventoryActions) {

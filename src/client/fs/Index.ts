@@ -111,10 +111,6 @@ export class IndexAsync<S extends StoreAsync> extends Index<
     Promise<Int8Array>,
     S
 > {
-    constructor(id: IndexType, table: ReferenceTable, store: S) {
-        super(id, table, store);
-    }
-
     async getArchive(id: number, key: number[] = []): Promise<Archive> {
         const archiveRef = this.getArchiveReference(id);
         if (!archiveRef) {
@@ -144,10 +140,6 @@ export class IndexAsync<S extends StoreAsync> extends Index<
 }
 
 export class IndexSync<S extends StoreSync> extends Index<Int8Array, S> {
-    constructor(id: IndexType, table: ReferenceTable, store: S) {
-        super(id, table, store);
-    }
-
     getArchive(id: number, key: number[] = []): Archive {
         const archiveRef = this.getArchiveReference(id);
         if (!archiveRef) {

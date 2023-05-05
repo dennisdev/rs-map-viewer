@@ -6,13 +6,13 @@ import {
 } from "./DefinitionLoader";
 
 export class UnderlayLoader extends ArchiveDefinitionLoader<UnderlayDefinition> {
-    constructor(archive: Archive) {
-        super(archive, UnderlayDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, UnderlayDefinition, revision);
     }
 }
 
 export class CachedUnderlayLoader extends CachedArchiveDefinitionLoader<UnderlayDefinition> {
-    constructor(archive: Archive) {
-        super(archive, UnderlayDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, UnderlayDefinition, revision);
     }
 }

@@ -1659,7 +1659,8 @@ export class Scene {
         offsetX: number,
         offsetY: number,
         baseX: number,
-        baseY: number
+        baseY: number,
+        newFormat: boolean = true
     ): void {
         const buffer = new ByteBuffer(data);
 
@@ -1673,7 +1674,8 @@ export class Scene {
                         y + offsetY,
                         baseX,
                         baseY,
-                        0
+                        0,
+                        newFormat
                     );
                 }
             }

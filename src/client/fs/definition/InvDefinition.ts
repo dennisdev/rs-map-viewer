@@ -4,8 +4,8 @@ import { Definition } from "./Definition";
 export class InvDefinition extends Definition {
     itemCount: number;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.itemCount = 0;
     }
 

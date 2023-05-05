@@ -58,6 +58,7 @@ import { AnimatedObject } from "./object/AnimatedObject";
 import { Chunk, deleteChunk, loadChunk } from "./chunk/Chunk";
 import { checkIpad, checkIphone } from "./util/DeviceUtil";
 import { fetchXteas } from "./util/Xteas";
+import { getCacheList, getLatestCache } from "./CacheInfo";
 
 interface CameraPosition {
     position: vec3;
@@ -70,6 +71,7 @@ const DEFAULT_ZOOM: number = 25.0 / 256.0;
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
 const RS_TO_DEGREES = (RS_TO_RADIANS * 180) / Math.PI;
+const DEGREES_TO_RADIANS = Math.PI / 180;
 
 function prependShader(shader: string, multiDraw: boolean): string {
     let header = "#version 300 es\n";
@@ -265,6 +267,7 @@ class MapViewer {
     npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
     constructor(
+        revision: number,
         fileSystem: MemoryFileSystem,
         xteasMap: Map<number, number[]>,
         chunkLoaderWorker: ChunkLoaderWorkerPool
@@ -277,8 +280,8 @@ class MapViewer {
             "ontouchstart" in document.documentElement
         );
 
-        const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
-        const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
+        // const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
+        // const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
         const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
         const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
         const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
@@ -296,9 +299,12 @@ class MapViewer {
         // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
         // const overlayLoader = new CachedOverlayLoader(overlayArchive);
         // const objectLoader = new CachedObjectLoader(objectArchive);
-        this.npcLoader = new CachedNpcLoader(npcArchive);
-        this.animationLoader = new CachedAnimationLoader(animationArchive);
-        const varbitLoader = new CachedVarbitLoader(varbitArchive);
+        this.npcLoader = new CachedNpcLoader(npcArchive, revision);
+        this.animationLoader = new CachedAnimationLoader(
+            animationArchive,
+            revision
+        );
+        const varbitLoader = new CachedVarbitLoader(varbitArchive, revision);
 
         this.varpManager = new VarpManager(varbitLoader);
 
@@ -1116,7 +1122,7 @@ class MapViewer {
         if (this.projectionType === ProjectionType.PERSPECTIVE) {
             mat4.perspective(
                 this.projectionMatrix,
-                Math.PI / 2,
+                90 * DEGREES_TO_RADIANS,
                 canvasWidth / canvasHeight,
                 0.1,
                 1024.0 * 4
@@ -1981,6 +1987,8 @@ const poolSize = Math.min(navigator.hardwareConcurrency, MAX_POOL_SIZE);
 const pool = ChunkLoaderWorkerPool.init(poolSize);
 // console.log('start App', performance.now());
 
+const cachesPromise = getCacheList();
+
 function MapViewerApp() {
     const [downloadProgress, setDownloadProgress] = useState<
         DownloadProgress | undefined
@@ -1997,10 +2005,17 @@ function MapViewerApp() {
         console.time("first load");
         const load = async () => {
             const npcSpawnsPromise = fetchNpcSpawns();
-            const cachePath = "/cache212/";
+            const caches = await cachesPromise;
+            const latestCacheInfo = getLatestCache(caches);
+            if (!latestCacheInfo) {
+                console.error("Could not load the latest cache info");
+                return;
+            }
+            const cachePath = "/caches/" + latestCacheInfo.name + "/";
             const xteasPromise = fetchXteas(cachePath + "keys.json");
             const store = await fetchMemoryStore(
                 cachePath,
+                latestCacheInfo.name,
                 [
                     IndexType.ANIMATIONS,
                     IndexType.SKELETONS,
@@ -2028,11 +2043,16 @@ function MapViewerApp() {
             // const poolSize = navigator.hardwareConcurrency;
 
             // const pool = ChunkLoaderWorkerPool.init(store, xteasMap, poolSize);
-            pool.init(store, xteas, npcSpawns);
+            pool.init(latestCacheInfo.revision, store, xteas, npcSpawns);
 
             const fileSystem = loadFromStore(store);
 
-            const mapViewer = new MapViewer(fileSystem, xteas, pool);
+            const mapViewer = new MapViewer(
+                latestCacheInfo.revision,
+                fileSystem,
+                xteas,
+                pool
+            );
             const cx = searchParams.get("cx");
             const cy = searchParams.get("cy");
             const cz = searchParams.get("cz");

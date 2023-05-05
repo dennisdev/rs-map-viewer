@@ -9,8 +9,8 @@ export class UnderlayDefinition extends Definition {
     public lightness: number;
     public hueMultiplier: number;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.rgbColor = 0;
         this.hue = 0;
         this.saturation = 0;
@@ -53,7 +53,7 @@ export class UnderlayDefinition extends Definition {
         let d_6_ = 0.0;
         const d_7_ = (d_4_ + d_3_) / 2.0;
 
-        if (d_4_ != d_3_) {
+        if (d_4_ !== d_3_) {
             if (d_7_ < 0.5) {
                 d_6_ = (d_4_ - d_3_) / (d_4_ + d_3_);
             }

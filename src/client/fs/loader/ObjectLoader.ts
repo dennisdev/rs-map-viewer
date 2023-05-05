@@ -6,13 +6,13 @@ import {
 } from "./DefinitionLoader";
 
 export class ObjectLoader extends ArchiveDefinitionLoader<ObjectDefinition> {
-    constructor(archive: Archive) {
-        super(archive, ObjectDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, ObjectDefinition, revision);
     }
 }
 
 export class CachedObjectLoader extends CachedArchiveDefinitionLoader<ObjectDefinition> {
-    constructor(archive: Archive) {
-        super(archive, ObjectDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, ObjectDefinition, revision);
     }
 }

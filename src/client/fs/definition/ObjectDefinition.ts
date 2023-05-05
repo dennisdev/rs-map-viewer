@@ -92,8 +92,8 @@ export class ObjectDefinition extends Definition {
 
     params!: ParamsMap;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.lowDetail = false;
         this.name = "null";
         this.sizeX = 1;
@@ -216,6 +216,8 @@ export class ObjectDefinition extends Definition {
                 this.retextureFrom[i] = buffer.readUnsignedShort();
                 this.retextureTo[i] = buffer.readUnsignedShort();
             }
+        } else if (opcode === 60) {
+            // old
         } else if (opcode === 61) {
             buffer.readUnsignedShort();
         } else if (opcode === 62) {
@@ -246,7 +248,7 @@ export class ObjectDefinition extends Definition {
             this.supportItems = buffer.readUnsignedByte();
         } else if (opcode === 77 || opcode === 92) {
             this.transformVarbit = buffer.readUnsignedShort();
-            if (this.transformVarbit == 65535) {
+            if (this.transformVarbit === 65535) {
                 this.transformVarbit = -1;
             }
 

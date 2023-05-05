@@ -11,6 +11,8 @@ import { Scene } from "./scene/Scene";
 import { packHsl } from "./util/ColorUtil";
 
 export class RegionLoader {
+    revision: number;
+
     mapIndex: IndexSync<StoreSync>;
 
     underlayLoader: UnderlayLoader;
@@ -48,6 +50,7 @@ export class RegionLoader {
     }
 
     constructor(
+        revision: number,
         mapIndex: IndexSync<StoreSync>,
         underlayLoader: UnderlayLoader,
         overlayLoader: OverlayLoader,
@@ -55,6 +58,7 @@ export class RegionLoader {
         objectModelLoader: ObjectModelLoader,
         xteasMap: Map<number, number[]>
     ) {
+        this.revision = revision;
         this.mapIndex = mapIndex;
         this.underlayLoader = underlayLoader;
         this.overlayLoader = overlayLoader;
@@ -123,7 +127,8 @@ export class RegionLoader {
                     0,
                     0,
                     regionX * 64,
-                    regionY * 64
+                    regionY * 64,
+                    this.revision >= 209
                 );
 
                 this.regions.set(id, region);
@@ -285,7 +290,7 @@ export class RegionLoader {
                         baseY + yi,
                         plane
                     );
-                    if (underlayId != -1) {
+                    if (underlayId !== -1) {
                         const underlay = this.getUnderlayDef(underlayId);
                         hues[yi + BLEND] += underlay.hue;
                         sats[yi + BLEND] += underlay.saturation;
@@ -305,7 +310,7 @@ export class RegionLoader {
                         baseY + yi,
                         plane
                     );
-                    if (underlayId != -1) {
+                    if (underlayId !== -1) {
                         const underlay = this.getUnderlayDef(underlayId);
                         hues[yi + BLEND] -= underlay.hue;
                         sats[yi + BLEND] -= underlay.saturation;
@@ -358,7 +363,7 @@ export class RegionLoader {
                             baseY + yi,
                             plane
                         );
-                        if (underlayId != -1) {
+                        if (underlayId !== -1) {
                             const avgHue =
                                 ((runningHues * 256) / runningMultiplier) | 0;
                             const avgSat = (runningSat / runningNumber) | 0;

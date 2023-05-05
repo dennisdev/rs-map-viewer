@@ -4,15 +4,22 @@ import { Definition } from "../definition/Definition";
 export class ArchiveDefinitionLoader<T extends Definition> {
     archive: Archive;
 
-    defType: { new (id: number): T };
+    defType: { new (id: number, revision: number): T };
 
-    constructor(archive: Archive, defType: { new (id: number): T }) {
+    revision: number;
+
+    constructor(
+        archive: Archive,
+        defType: { new (id: number, revision: number): T },
+        revision: number
+    ) {
         this.archive = archive;
         this.defType = defType;
+        this.revision = revision;
     }
 
     getDefinition(id: number): T {
-        const def = new this.defType(id);
+        const def = new this.defType(id, this.revision);
         const file = this.archive.getFile(id);
         if (file) {
             def.decode(file.getDataAsBuffer());
@@ -27,8 +34,12 @@ export class CachedArchiveDefinitionLoader<
 > extends ArchiveDefinitionLoader<T> {
     cache: Map<number, T>;
 
-    constructor(archive: Archive, defType: { new (id: number): T }) {
-        super(archive, defType);
+    constructor(
+        archive: Archive,
+        defType: { new (id: number, revision: number): T },
+        revision: number
+    ) {
+        super(archive, defType, revision);
         this.cache = new Map();
     }
 

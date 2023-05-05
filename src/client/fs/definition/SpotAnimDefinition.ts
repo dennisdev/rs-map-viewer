@@ -24,8 +24,8 @@ export class SpotAnimDefinition extends Definition {
 
     contrast: number;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.sequenceId = -1;
         this.widthScale = 128;
         this.heightScale = 128;

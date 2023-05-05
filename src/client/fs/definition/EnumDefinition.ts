@@ -18,8 +18,8 @@ export class EnumDefinition extends Definition {
 
     stringValues!: string[];
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.defaultString = "null";
         this.outputCount = 0;
     }

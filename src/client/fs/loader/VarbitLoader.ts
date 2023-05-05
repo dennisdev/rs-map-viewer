@@ -6,13 +6,13 @@ import {
 } from "./DefinitionLoader";
 
 export class VarbitLoader extends ArchiveDefinitionLoader<VarbitDefinition> {
-    constructor(archive: Archive) {
-        super(archive, VarbitDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, VarbitDefinition, revision);
     }
 }
 
 export class CachedVarbitLoader extends CachedArchiveDefinitionLoader<VarbitDefinition> {
-    constructor(archive: Archive) {
-        super(archive, VarbitDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, VarbitDefinition, revision);
     }
 }

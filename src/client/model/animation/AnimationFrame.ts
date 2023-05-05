@@ -64,21 +64,21 @@ export class AnimationFrame {
                 defaultValue = 128;
             }
 
-            if ((flag & 0x1) != 0) {
+            if ((flag & 0x1) !== 0) {
                 AnimationFrame.transformXCache[transformCount] =
                     dataBuf.readSmart2();
             } else {
                 AnimationFrame.transformXCache[transformCount] = defaultValue;
             }
 
-            if ((flag & 0x2) != 0) {
+            if ((flag & 0x2) !== 0) {
                 AnimationFrame.transformYCache[transformCount] =
                     dataBuf.readSmart2();
             } else {
                 AnimationFrame.transformYCache[transformCount] = defaultValue;
             }
 
-            if ((flag & 0x4) != 0) {
+            if ((flag & 0x4) !== 0) {
                 AnimationFrame.transformZCache[transformCount] =
                     dataBuf.readSmart2();
             } else {

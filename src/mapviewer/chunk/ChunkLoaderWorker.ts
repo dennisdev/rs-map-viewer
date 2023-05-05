@@ -34,6 +34,7 @@ const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
 async function init0(
+    revision: number,
     memoryStoreProperties: MemoryStoreProperties,
     xteasMap: Map<number, number[]>,
     npcSpawns: NpcSpawn[]
@@ -67,14 +68,17 @@ async function init0(
 
     const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
-    const underlayLoader = new CachedUnderlayLoader(underlayArchive);
-    const overlayLoader = new CachedOverlayLoader(overlayArchive);
-    const objectLoader = new CachedObjectLoader(objectArchive);
-    const npcLoader = new CachedNpcLoader(npcArchive);
+    const underlayLoader = new CachedUnderlayLoader(underlayArchive, revision);
+    const overlayLoader = new CachedOverlayLoader(overlayArchive, revision);
+    const objectLoader = new CachedObjectLoader(objectArchive, revision);
+    const npcLoader = new CachedNpcLoader(npcArchive, revision);
 
-    const animationLoader = new CachedAnimationLoader(animationArchive);
+    const animationLoader = new CachedAnimationLoader(
+        animationArchive,
+        revision
+    );
 
-    const varbitLoader = new CachedVarbitLoader(varbitArchive);
+    const varbitLoader = new CachedVarbitLoader(varbitArchive, revision);
 
     const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
     const frameMapLoader = new CachedAnimationFrameMapLoader(
@@ -100,6 +104,7 @@ async function init0(
     );
 
     const regionLoader = new RegionLoader(
+        revision,
         mapIndex,
         underlayLoader,
         overlayLoader,
@@ -135,11 +140,13 @@ async function init0(
 
 expose({
     init(
+        revision: number,
         memoryStoreProperties: MemoryStoreProperties,
         xteasMap: Map<number, number[]>,
         npcSpawns: NpcSpawn[]
     ) {
         chunkDataLoaderPromise = init0(
+            revision,
             memoryStoreProperties,
             xteasMap,
             npcSpawns

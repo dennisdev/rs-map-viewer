@@ -4,8 +4,8 @@ import { Definition } from "./Definition";
 export class VarcIntDefinition extends Definition {
     persist: boolean;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.persist = false;
     }
 

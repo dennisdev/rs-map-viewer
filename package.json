@@ -39,8 +39,9 @@
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject",
-    "lint": "prettier --write src",
-    "prepare": "husky install"
+    "lint": "prettier --write \"{src,scripts}/**/*.{js,ts,jsx,tsx,css,md}\"",
+    "prepare": "husky install",
+    "download-caches": "node scripts/download-caches.js"
   },
   "eslintConfig": {
     "extends": [
@@ -64,6 +65,7 @@
   },
   "devDependencies": {
     "@types/gzip-js": "^0.3.3",
+    "adm-zip": "^0.5.10",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "path": "^0.12.7",

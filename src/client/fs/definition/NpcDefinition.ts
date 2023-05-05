@@ -52,6 +52,9 @@ export class NpcDefinition extends Definition {
 
     headIconPrayer: number;
 
+    headIconSpriteIds?: number[];
+    headIconSpriteIndices?: number[];
+
     rotationSpeed: number;
 
     transforms!: number[];
@@ -86,8 +89,8 @@ export class NpcDefinition extends Definition {
 
     params!: ParamsMap;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.name = "null";
         this.size = 1;
         this.idleSequence = -1;
@@ -124,38 +127,38 @@ export class NpcDefinition extends Definition {
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
-        if (opcode == 1) {
+        if (opcode === 1) {
             const count = buffer.readUnsignedByte();
             this.modelIds = new Array<number>(count);
 
             for (let i = 0; i < count; i++) {
                 this.modelIds[i] = buffer.readUnsignedShort();
             }
-        } else if (opcode == 2) {
+        } else if (opcode === 2) {
             this.name = buffer.readString();
-        } else if (opcode == 12) {
+        } else if (opcode === 12) {
             this.size = buffer.readUnsignedByte();
-        } else if (opcode == 13) {
+        } else if (opcode === 13) {
             this.idleSequence = buffer.readUnsignedShort();
-        } else if (opcode == 14) {
+        } else if (opcode === 14) {
             this.walkSequence = buffer.readUnsignedShort();
-        } else if (opcode == 15) {
+        } else if (opcode === 15) {
             this.turnLeftSequence = buffer.readUnsignedShort();
-        } else if (opcode == 16) {
+        } else if (opcode === 16) {
             this.turnRightSequence = buffer.readUnsignedShort();
-        } else if (opcode == 17) {
+        } else if (opcode === 17) {
             this.walkSequence = buffer.readUnsignedShort();
             this.walkBackSequence = buffer.readUnsignedShort();
             this.walkLeftSequence = buffer.readUnsignedShort();
             this.walkRightSequence = buffer.readUnsignedShort();
-        } else if (opcode == 18) {
+        } else if (opcode === 18) {
             this.category = buffer.readUnsignedShort();
         } else if (opcode >= 30 && opcode < 35) {
             this.actions[opcode - 30] = buffer.readString();
             if (this.actions[opcode - 30].toLowerCase() === "hidden") {
                 delete this.actions[opcode - 30];
             }
-        } else if (opcode == 40) {
+        } else if (opcode === 40) {
             const count = buffer.readUnsignedByte();
             this.recolorFrom = new Array<number>(count);
             this.recolorTo = new Array<number>(count);
@@ -164,7 +167,7 @@ export class NpcDefinition extends Definition {
                 this.recolorFrom[i] = buffer.readUnsignedShort();
                 this.recolorTo[i] = buffer.readUnsignedShort();
             }
-        } else if (opcode == 41) {
+        } else if (opcode === 41) {
             const count = buffer.readUnsignedByte();
             this.retextureFrom = new Array<number>(count);
             this.retextureTo = new Array<number>(count);
@@ -173,46 +176,68 @@ export class NpcDefinition extends Definition {
                 this.retextureFrom[i] = buffer.readUnsignedShort();
                 this.retextureTo[i] = buffer.readUnsignedShort();
             }
-        } else if (opcode == 60) {
+        } else if (opcode === 60) {
             const count = buffer.readUnsignedByte();
             this.chatheadModelIds = new Array<number>(count);
 
             for (let i = 0; i < count; i++) {
                 this.chatheadModelIds[i] = buffer.readUnsignedShort();
             }
-        } else if (opcode == 93) {
+        } else if (opcode === 93) {
             this.drawMapDot = false;
-        } else if (opcode == 95) {
+        } else if (opcode === 95) {
             this.combatLevel = buffer.readUnsignedShort();
-        } else if (opcode == 97) {
+        } else if (opcode === 97) {
             this.widthScale = buffer.readUnsignedShort();
-        } else if (opcode == 98) {
+        } else if (opcode === 98) {
             this.heightScale = buffer.readUnsignedShort();
-        } else if (opcode == 99) {
+        } else if (opcode === 99) {
             this.isVisible = true;
-        } else if (opcode == 100) {
+        } else if (opcode === 100) {
             this.ambient = buffer.readByte();
-        } else if (opcode == 101) {
+        } else if (opcode === 101) {
             this.contrast = buffer.readByte() * 5;
-        } else if (opcode == 102) {
-            this.headIconPrayer = buffer.readUnsignedShort();
-        } else if (opcode == 103) {
+        } else if (opcode === 102) {
+            if (this.revision < 210) {
+                this.headIconPrayer = buffer.readUnsignedShort();
+            } else {
+                const flag = buffer.readUnsignedByte();
+                let count = 0;
+                for (let n = flag; n !== 0; n >>= 1) {
+                    count++;
+                }
+
+                this.headIconSpriteIds = new Array(count);
+                this.headIconSpriteIndices = new Array(count);
+
+                for (let i = 0; i < count; i++) {
+                    if ((flag & 1) << i === 0) {
+                        this.headIconSpriteIds[i] = -1;
+                        this.headIconSpriteIndices[i] = -1;
+                    } else {
+                        this.headIconSpriteIds[i] = buffer.readBigSmart();
+                        this.headIconSpriteIndices[i] =
+                            buffer.readUnsignedSmartMin1();
+                    }
+                }
+            }
+        } else if (opcode === 103) {
             this.rotationSpeed = buffer.readUnsignedShort();
-        } else if (opcode == 106 || opcode == 118) {
+        } else if (opcode === 106 || opcode === 118) {
             this.transformVarbit = buffer.readUnsignedShort();
-            if (this.transformVarbit == 65535) {
+            if (this.transformVarbit === 65535) {
                 this.transformVarbit = -1;
             }
 
             this.transformVarp = buffer.readUnsignedShort();
-            if (this.transformVarp == 65535) {
+            if (this.transformVarp === 65535) {
                 this.transformVarp = -1;
             }
 
             let var3 = -1;
-            if (opcode == 118) {
+            if (opcode === 118) {
                 var3 = buffer.readUnsignedShort();
-                if (var3 == 65535) {
+                if (var3 === 65535) {
                     var3 = -1;
                 }
             }
@@ -222,37 +247,42 @@ export class NpcDefinition extends Definition {
 
             for (let i = 0; i <= count; i++) {
                 this.transforms[i] = buffer.readUnsignedShort();
-                if (this.transforms[i] == 65535) {
+                if (this.transforms[i] === 65535) {
                     this.transforms[i] = -1;
                 }
             }
 
             this.transforms[count + 1] = var3;
-        } else if (opcode == 107) {
+        } else if (opcode === 107) {
             this.isInteractable = false;
-        } else if (opcode == 109) {
+        } else if (opcode === 109) {
             this.isClickable = false;
-        } else if (opcode == 111) {
+        } else if (opcode === 111) {
             this.isFollower = true;
-        } else if (opcode == 114) {
+        } else if (opcode === 112) {
+            // old
+        } else if (opcode === 114) {
             this.runAnimation = buffer.readUnsignedShort();
-        } else if (opcode == 115) {
+        } else if (opcode === 115) {
             this.runAnimation = buffer.readUnsignedShort();
             this.runRotate180Animation = buffer.readUnsignedShort();
             this.runRotateLeftAnimation = buffer.readUnsignedShort();
             this.runRotateRightAnimation = buffer.readUnsignedShort();
-        } else if (opcode == 116) {
+        } else if (opcode === 116) {
             this.crawlAnimation = buffer.readUnsignedShort();
-        } else if (opcode == 117) {
+        } else if (opcode === 117) {
             this.crawlAnimation = buffer.readUnsignedShort();
             this.crawlRotate180Animation = buffer.readUnsignedShort();
             this.crawlRotateLeftAnimation = buffer.readUnsignedShort();
             this.crawlRotateRightAnimation = buffer.readUnsignedShort();
-        } else if (opcode == 249) {
+        } else if (opcode === 249) {
             this.params = Definition.readParamsMap(buffer, this.params);
         } else {
             throw new Error(
-                "NpcDefinition: Opcode " + opcode + " not implemented."
+                "NpcDefinition: Opcode " +
+                    opcode +
+                    " not implemented. ID: " +
+                    this.id
             );
         }
     }

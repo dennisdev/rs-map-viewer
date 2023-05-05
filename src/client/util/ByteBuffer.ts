@@ -53,11 +53,12 @@ export class ByteBuffer {
     readBigSmart(): number {
         if (this.getByte(this.offset) < 0) {
             return this.readInt() & 0x7fffffff;
-        } else if (this.getUnsignedShort(this.offset) === 32767) {
-            this.readShort();
-            return -1;
         } else {
-            return this.readUnsignedShort();
+            const v = this.readUnsignedShort();
+            if (v === 32767) {
+                return -1;
+            }
+            return v;
         }
     }
 
@@ -65,7 +66,15 @@ export class ByteBuffer {
         if (this.getUnsignedByte(this.offset) < 128) {
             return this.readUnsignedByte();
         } else {
-            return this.readUnsignedShort() - 32768;
+            return this.readUnsignedShort() - 0x8000;
+        }
+    }
+
+    readUnsignedSmartMin1(): number {
+        if (this.getUnsignedByte(this.offset) < 128) {
+            return this.readUnsignedByte() - 1;
+        } else {
+            return this.readUnsignedShort() - 0x8001;
         }
     }
 

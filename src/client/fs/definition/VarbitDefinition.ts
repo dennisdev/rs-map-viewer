@@ -8,12 +8,8 @@ export class VarbitDefinition extends Definition {
 
     endBit!: number;
 
-    constructor(id: number) {
-        super(id);
-    }
-
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
-        if (opcode == 1) {
+        if (opcode === 1) {
             this.baseVar = buffer.readUnsignedShort();
             this.startBit = buffer.readUnsignedByte();
             this.endBit = buffer.readUnsignedByte();

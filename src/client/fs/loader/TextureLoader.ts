@@ -108,7 +108,7 @@ export class TextureLoader {
             const transform = def.transforms[i];
 
             // not used by any texture but who knows
-            if ((transform & -0x1000000) == 0x3000000) {
+            if ((transform & -0x1000000) === 0x3000000) {
                 // red, 0, blue
                 const r_b = transform & 0xff00ff;
                 // green

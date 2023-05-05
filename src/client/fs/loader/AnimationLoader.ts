@@ -6,13 +6,13 @@ import {
 } from "./DefinitionLoader";
 
 export class AnimationLoader extends ArchiveDefinitionLoader<AnimationDefinition> {
-    constructor(archive: Archive) {
-        super(archive, AnimationDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, AnimationDefinition, revision);
     }
 }
 
 export class CachedAnimationLoader extends CachedArchiveDefinitionLoader<AnimationDefinition> {
-    constructor(archive: Archive) {
-        super(archive, AnimationDefinition);
+    constructor(archive: Archive, revision: number) {
+        super(archive, AnimationDefinition, revision);
     }
 }

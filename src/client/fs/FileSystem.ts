@@ -330,12 +330,13 @@ async function fetchCacheIndex(
 
 export async function fetchMemoryStore(
     baseUrl: string,
+    cacheName: string,
     indicesToLoad: IndexType[] = [],
     shared: boolean = false,
     progressListener?: ProgressListener
 ): Promise<MemoryStore> {
     console.time("fetch");
-    const cache = await caches.open("cache-files-212");
+    const cache = await caches.open(cacheName);
     const [dataFile, metaFile] = await Promise.all([
         fetchCacheFile(
             cache,
@@ -373,10 +374,16 @@ export async function fetchMemoryStore(
 
 export async function openFromUrl(
     baseUrl: string,
+    cacheName: string,
     indicesToLoad: IndexType[] = [],
     shared: boolean = false
 ): Promise<MemoryFileSystem> {
-    const store = await fetchMemoryStore(baseUrl, indicesToLoad, shared);
+    const store = await fetchMemoryStore(
+        baseUrl,
+        cacheName,
+        indicesToLoad,
+        shared
+    );
     return loadFromStore(store);
 }
 

@@ -4,8 +4,8 @@ import { Definition } from "./Definition";
 export class VarpDefinition extends Definition {
     type: number;
 
-    constructor(id: number) {
-        super(id);
+    constructor(id: number, revision: number) {
+        super(id, revision);
         this.type = 0;
     }
 

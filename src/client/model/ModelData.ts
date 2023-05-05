@@ -131,7 +131,7 @@ export class ModelData extends Renderable {
     }
 
     public static addLightness2(hsl: number, lightness: number): number {
-        if (((lightness / 128) | 0) != lightness >> 7) {
+        if (((lightness / 128) | 0) !== lightness >> 7) {
             console.log((lightness / 128) | 0, lightness >> 7);
         }
         lightness = (hsl & 127) * ((lightness / 128) | 0);
@@ -198,9 +198,9 @@ export class ModelData extends Renderable {
             for (let v1 = 0; v1 < model1.verticesCount; v1++) {
                 const normal1 = model1.normals[v1];
                 if (
-                    x != model1.verticesX[v1] ||
-                    z != model1.verticesZ[v1] ||
-                    y != verticesY1[v1] ||
+                    x !== model1.verticesX[v1] ||
+                    z !== model1.verticesZ[v1] ||
+                    y !== verticesY1[v1] ||
                     normal1.magnitude === 0
                 ) {
                     continue;
@@ -245,11 +245,11 @@ export class ModelData extends Renderable {
         if (mergedCount >= 3 && hideOccludedFaces) {
             for (let i = 0; i < model0.faceCount; i++) {
                 if (
-                    ModelData.mergedNormalsModel0Cache[model0.indices1[i]] ==
+                    ModelData.mergedNormalsModel0Cache[model0.indices1[i]] ===
                         ModelData.mergeModelNormalsCount &&
-                    ModelData.mergedNormalsModel0Cache[model0.indices2[i]] ==
+                    ModelData.mergedNormalsModel0Cache[model0.indices2[i]] ===
                         ModelData.mergeModelNormalsCount &&
-                    ModelData.mergedNormalsModel0Cache[model0.indices3[i]] ==
+                    ModelData.mergedNormalsModel0Cache[model0.indices3[i]] ===
                         ModelData.mergeModelNormalsCount
                 ) {
                     if (!model0.faceRenderTypes) {
@@ -263,11 +263,11 @@ export class ModelData extends Renderable {
             }
             for (let i = 0; i < model1.faceCount; i++) {
                 if (
-                    ModelData.mergedNormalsModel1Cache[model1.indices1[i]] ==
+                    ModelData.mergedNormalsModel1Cache[model1.indices1[i]] ===
                         ModelData.mergeModelNormalsCount &&
-                    ModelData.mergedNormalsModel1Cache[model1.indices2[i]] ==
+                    ModelData.mergedNormalsModel1Cache[model1.indices2[i]] ===
                         ModelData.mergeModelNormalsCount &&
-                    ModelData.mergedNormalsModel1Cache[model1.indices3[i]] ==
+                    ModelData.mergedNormalsModel1Cache[model1.indices3[i]] ===
                         ModelData.mergeModelNormalsCount
                 ) {
                     if (!model1.faceRenderTypes) {
@@ -902,7 +902,7 @@ export class ModelData extends Renderable {
         var47 += var18;
         const var35 = var47;
         var47 += var19;
-        const var10000 = var47 + var20;
+        // const var10000 = var47 + var20;
         this.verticesCount = vertexCount;
         this.faceCount = faceCount;
         this.textureTriangleCount = texTriangleCount;
@@ -1502,7 +1502,7 @@ export class ModelData extends Renderable {
         var45 += var17;
         const var33 = var45;
         var45 += var18;
-        const var10000 = var45 + var19;
+        // const var10000 = var45 + var19;
         this.verticesCount = vertexCount;
         this.faceCount = faceCount;
         this.textureTriangleCount = texTriangleCount;
@@ -1905,7 +1905,7 @@ export class ModelData extends Renderable {
                 model.contrast = this.contrast;
                 model.verticesY = this.verticesY;
                 model.contourVerticesY = new Int32Array(model.verticesCount);
-                if (contourGround == 0) {
+                if (contourGround === 0) {
                     for (let i = 0; i < model.verticesCount; i++) {
                         const var13 = tileX + this.verticesX[i];
                         const var14 = tileY + this.verticesZ[i];

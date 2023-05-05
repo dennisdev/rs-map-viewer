@@ -37,12 +37,12 @@ export function computeTextureCoords(model: Model): Float32Array | undefined {
 
         const textureIdx = faceTextures[i];
 
-        if (textureIdx != -1) {
+        if (textureIdx !== -1) {
             let triangleVertexIdx1: number;
             let triangleVertexIdx2: number;
             let triangleVertexIdx3: number;
 
-            if (textureCoords && textureCoords[i] != -1) {
+            if (textureCoords && textureCoords[i] !== -1) {
                 const textureCoordinate = textureCoords[i] & 255;
                 triangleVertexIdx1 = texTriangleX[textureCoordinate];
                 triangleVertexIdx2 = texTriangleY[textureCoordinate];
@@ -510,7 +510,7 @@ export class Model extends Renderable {
                 }
                 model.contourVerticesY = new Int32Array(model.verticesCount);
 
-                if (clipType == 0) {
+                if (clipType === 0) {
                     for (let i = 0; i < model.verticesCount; i++) {
                         const var13 = tileX + this.verticesX[i];
                         const var14 = tileY + this.verticesZ[i];

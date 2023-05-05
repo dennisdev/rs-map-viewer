@@ -5,6 +5,8 @@ export type ParamsMap = Map<number, number | string>;
 export abstract class Definition {
     public readonly id: number;
 
+    public readonly revision: number;
+
     public static readParamsMap(
         buf: ByteBuffer,
         params?: ParamsMap
@@ -15,7 +17,7 @@ export abstract class Definition {
         }
 
         for (let i = 0; i < count; i++) {
-            const isStringValue = buf.readUnsignedByte() == 1;
+            const isStringValue = buf.readUnsignedByte() === 1;
             const key = buf.readMedium();
             if (isStringValue) {
                 params.set(key, buf.readString());
@@ -26,8 +28,9 @@ export abstract class Definition {
         return params;
     }
 
-    constructor(id: number) {
+    constructor(id: number, revision: number) {
         this.id = id;
+        this.revision = revision;
     }
 
     decode(buffer: ByteBuffer): void {
