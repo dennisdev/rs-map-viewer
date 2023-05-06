@@ -14,3 +14,11 @@ export const checkMobile = () => {
     const u = navigator.userAgent;
     return !!u.match(/Android/i) || !!u.match(/iPhone/i);
 };
+
+export const isIos = checkIphone() || checkIpad();
+
+export const isWallpaperEngine = !!window.wallpaperRegisterAudioListener;
+
+export const isTouchDevice = !!(
+    navigator.maxTouchPoints || "ontouchstart" in document.documentElement
+);

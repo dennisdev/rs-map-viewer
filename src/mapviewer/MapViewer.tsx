@@ -1,7 +1,5 @@
 import Denque from "denque";
 import { mat4, vec2, vec3 } from "gl-matrix";
-import { Leva, button, buttonGroup, folder, useControls } from "leva";
-import { Schema } from "leva/dist/declarations/src/types";
 import {
     DrawCall,
     Framebuffer,
@@ -54,7 +52,7 @@ import quadFragShader from "./shaders/quad.frag.glsl";
 import quadVertShader from "./shaders/quad.vert.glsl";
 import { Npc } from "./npc/Npc";
 import { Chunk, deleteChunk, loadChunk } from "./chunk/Chunk";
-import { checkIpad, checkIphone } from "./util/DeviceUtil";
+import { isIos, isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
 import {
     CacheInfo,
     fetchCacheList,
@@ -62,14 +60,7 @@ import {
     loadCache,
     LoadedCache,
 } from "./CacheInfo";
-
-interface CameraPosition {
-    position: vec3;
-    pitch: number;
-    yaw: number;
-}
-
-const DEFAULT_ZOOM: number = 25.0 / 256.0;
+import { MapViewerControls } from "./MapViewerControls";
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
@@ -84,13 +75,6 @@ function prependShader(shader: string, multiDraw: boolean): string {
     return header + shader;
 }
 
-const isWallPaperEngine = !!window.wallpaperRegisterAudioListener;
-
-const TEXTURE_SIZE = 128;
-const TEXTURE_PIXEL_COUNT = TEXTURE_SIZE * TEXTURE_SIZE;
-
-const CHUNK_RENDER_FRAME_DELAY = 4;
-
 function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     var rect = container.getBoundingClientRect();
     return [event.clientX - rect.left, event.clientY - rect.top];
@@ -102,17 +86,27 @@ function getRegionDistance(x: number, y: number, region: vec2): number {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-enum ProjectionType {
+export enum ProjectionType {
     PERSPECTIVE,
     ORTHO,
 }
+
+export interface CameraPosition {
+    position: vec3;
+    pitch: number;
+    yaw: number;
+}
+
+const TEXTURE_SIZE = 128;
+
+const CHUNK_RENDER_FRAME_DELAY = 4;
 
 const INTERACTION_RADIUS = 5;
 const INTERACTION_SIZE = INTERACTION_RADIUS * 2 + 1;
 
 const NULL_DRAW_RANGE = [0, 0, 0];
 
-class MapViewer {
+export class MapViewer {
     chunkLoaderWorker: ChunkLoaderWorkerPool;
     loadedCache!: LoadedCache;
     latestCacheInfo: CacheInfo;
@@ -131,8 +125,6 @@ class MapViewer {
     hasMultiDraw: boolean = false;
 
     keys: Map<string, boolean> = new Map();
-
-    isTouchDevice: boolean = false;
 
     timer!: Timer;
 
@@ -176,7 +168,7 @@ class MapViewer {
 
     fps: number = 0;
 
-    fpsLimit: number = isWallPaperEngine ? 60 : 0;
+    fpsLimit: number = isWallpaperEngine ? 60 : 0;
 
     lastFrameTime: number = 0;
     lastClientTick: number = 0;
@@ -276,16 +268,7 @@ class MapViewer {
 
         this.initCache(loadedCache);
 
-        this.isTouchDevice = !!(
-            navigator.maxTouchPoints ||
-            "ontouchstart" in document.documentElement
-        );
-
         // console.log('create map viewer', performance.now());
-
-        // console.log('texture count: ', this.textureProvider.definitions.size);
-
-        // this.chunkDataLoader = new ChunkDataLoader(regionLoader, objectModelLoader, this.textureProvider);
 
         this.init = this.init.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
@@ -314,25 +297,15 @@ class MapViewer {
 
         this.fileSystem = loadFromStore(cache.store);
 
-        // const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
-        // const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
         const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
         const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
         const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
         const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
-        // const modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
 
-        // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
-        // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
-        // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
         const npcArchive = configIndex.getArchive(ConfigType.NPC);
         const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
         const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
-        // console.time('region loader');
-        // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
-        // const overlayLoader = new CachedOverlayLoader(overlayArchive);
-        // const objectLoader = new CachedObjectLoader(objectArchive);
         this.npcLoader = new CachedNpcLoader(npcArchive, cache.info.revision);
         this.animationLoader = new CachedAnimationLoader(
             animationArchive,
@@ -358,7 +331,6 @@ class MapViewer {
 
         this.regionPositions = undefined;
 
-        // console.time('load textures');
         this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
 
         if (this.app) {
@@ -381,7 +353,7 @@ class MapViewer {
             return;
         }
 
-        if (!isWallPaperEngine) {
+        if (!isWallpaperEngine) {
             gl.canvas.addEventListener("keydown", this.onKeyDown);
             gl.canvas.addEventListener("keyup", this.onKeyUp);
             gl.canvas.addEventListener("mousemove", this.onMouseMove);
@@ -951,7 +923,7 @@ class MapViewer {
             const deltaMouseX = this.startMouseX - this.currentMouseX;
             const deltaMouseY = this.startMouseY - this.currentMouseY;
 
-            if (this.isTouchDevice) {
+            if (isTouchDevice) {
                 this.moveCamera(0, clamp(deltaMouseY, -100, 100) * 0.004, 0);
             } else {
                 this.updatePitch(this.startPitch, deltaMouseY * 0.6);
@@ -1703,312 +1675,16 @@ interface MapViewerContainerProps {
     caches: CacheInfo[];
 }
 
-const DEFAULT_VIEW_DISTANCE = isWallPaperEngine ? 5 : 2;
-
 function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
         undefined
     );
-    const [projectionType, setProjectionType] = useState<ProjectionType>(
-        mapViewer.projectionType
-    );
-    const [hudHidden, setHudHidden] = useState<boolean>(isWallPaperEngine);
+    const [hudHidden, setHudHidden] = useState<boolean>(isWallpaperEngine);
     const [downloadProgress, setDownloadProgress] = useState<
         DownloadProgress | undefined
     >(undefined);
-
-    const [searchParams, setSearchParams] = useSearchParams();
-
-    const isTouchDevice = !!(
-        navigator.maxTouchPoints || "ontouchstart" in document.documentElement
-    );
-
-    const positionControls = isTouchDevice
-        ? "Left joystick, Drag up and down."
-        : "WASD, E (up), C (down)\nUse SHIFT to go faster.";
-    const directionControls = isTouchDevice
-        ? "Right joystick."
-        : "Arrow Keys or Click and Drag.";
-
-    const cameraControlsSchema: Schema = {
-        Position: { value: positionControls, editable: false },
-        Direction: { value: directionControls, editable: false },
-    };
-
-    const [animationDuration, setAnimationDuration] = useState(10);
-    const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(
-        () => []
-    );
-    const addPoint = () => {
-        setCameraPoints((pts) => [
-            ...pts,
-            {
-                position: vec3.fromValues(
-                    mapViewer.cameraPos[0],
-                    mapViewer.cameraPos[1],
-                    mapViewer.cameraPos[2]
-                ),
-                pitch: mapViewer.pitch,
-                yaw: mapViewer.yaw,
-            },
-        ]);
-    };
-
-    useEffect(() => {
-        setPointControls(
-            folder(
-                cameraPoints.reduce((acc: Record<string, any>, v, i) => {
-                    const point = v;
-                    acc["Point " + i] = buttonGroup({
-                        Teleport: () => mapViewer.setCamera(point),
-                        Delete: () =>
-                            setCameraPoints((pts) =>
-                                pts.filter((_, j) => j !== i)
-                            ),
-                    });
-                    return acc;
-                }, {})
-            )
-        );
-    }, [cameraPoints]);
-
-    const [pointsControls, setPointControls] = useState(folder({}));
-    const [isCameraRunning, setCameraRunning] = useState(false);
-
-    useEffect(() => {
-        if (!isCameraRunning) {
-            return;
-        }
-
-        let start: number;
-        const segmentCount = cameraPoints.length - 1;
-        // Need at least 2 points to start
-        if (segmentCount <= 0) {
-            setCameraRunning(false);
-            return;
-        }
-
-        const callback = (timestamp: number) => {
-            if (!start) {
-                start = timestamp;
-            }
-
-            const elapsed = timestamp - start;
-            const overallProgress = elapsed / (animationDuration * 1000);
-
-            const startIndex = Math.floor(overallProgress * segmentCount);
-            const endIndex = startIndex + 1;
-            const from = cameraPoints[startIndex];
-            const to = cameraPoints[endIndex];
-            const localProgress = (overallProgress * segmentCount) % 1;
-
-            const isComplete = elapsed > animationDuration * 1000;
-            if (isComplete) {
-                setCameraRunning(false);
-                mapViewer.setCamera(cameraPoints[cameraPoints.length - 1]);
-                return;
-            }
-            const newPosition: { position: vec3; pitch: number; yaw: number } =
-                {
-                    position: vec3.fromValues(
-                        lerp(from.position[0], to.position[0], localProgress),
-                        lerp(from.position[1], to.position[1], localProgress),
-                        lerp(from.position[2], to.position[2], localProgress)
-                    ),
-                    pitch: lerp(from.pitch, to.pitch, localProgress),
-                    yaw: slerp(from.yaw, to.yaw, localProgress, 2048),
-                };
-            mapViewer.setCamera(newPosition);
-
-            window.requestAnimationFrame(callback);
-        };
-
-        window.requestAnimationFrame(callback);
-    }, [isCameraRunning]);
-
-    const createCameraControls = (projectionType: ProjectionType): Schema => {
-        if (projectionType === ProjectionType.PERSPECTIVE) {
-            return {
-                FOV: {
-                    value: mapViewer.fov,
-                    min: 30,
-                    max: 140,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.fov = v;
-                    },
-                },
-            };
-        } else {
-            return {
-                "Ortho Zoom": {
-                    value: mapViewer.orthoZoom,
-                    min: 1,
-                    max: 60,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.orthoZoom = v;
-                        setSearchParams(mapViewer.getSearchParams(), {
-                            replace: true,
-                        });
-                    },
-                },
-            };
-        }
-    };
-
-    const generateControls = () => ({
-        "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
-        Camera: folder(
-            {
-                Projection: {
-                    value: projectionType,
-                    options: {
-                        Perspective: ProjectionType.PERSPECTIVE,
-                        Ortho: ProjectionType.ORTHO,
-                    },
-                    onChange: (v) => {
-                        setProjectionType(v);
-                        mapViewer.projectionType = v;
-                        setSearchParams(mapViewer.getSearchParams(), {
-                            replace: true,
-                        });
-                    },
-                },
-                ...createCameraControls(projectionType),
-            },
-            { collapsed: true }
-        ),
-        Distance: folder(
-            {
-                View: {
-                    value: DEFAULT_VIEW_DISTANCE,
-                    min: 1,
-                    max: 30,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.regionViewDistance = v;
-                    },
-                },
-                Unload: {
-                    value: 2,
-                    min: 1,
-                    max: 30,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.regionUnloadDistance = v;
-                    },
-                },
-                Lod: {
-                    value: 3,
-                    min: 1,
-                    max: 30,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.regionLodDistance = v;
-                    },
-                },
-            },
-            { collapsed: false }
-        ),
-        Npc: folder(
-            {
-                Load: {
-                    value: true,
-                    onChange: (v) => {
-                        mapViewer.setLoadNpcs(v);
-                    },
-                },
-            },
-            { collapsed: true }
-        ),
-        Cache: folder(
-            {
-                Version: {
-                    value: mapViewer.loadedCache.info.name,
-                    options: caches.map((cache) => cache.name),
-                    onChange: async (v) => {
-                        const cacheInfo = caches.find(
-                            (cache) => cache.name === v
-                        );
-                        if (
-                            v !== mapViewer.loadedCache.info.name &&
-                            cacheInfo
-                        ) {
-                            const loadedCache = await loadCache(
-                                cacheInfo,
-                                setDownloadProgress
-                            );
-                            mapViewer.initCache(loadedCache);
-                            setDownloadProgress(undefined);
-                            setSearchParams(mapViewer.getSearchParams(), {
-                                replace: true,
-                            });
-                        }
-                    },
-                },
-            },
-            { collapsed: true }
-        ),
-        Render: folder(
-            {
-                "Max Plane": {
-                    value: Scene.MAX_PLANE - 1,
-                    min: 0,
-                    max: 3,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.setMaxPlane(v);
-                    },
-                },
-                Brightness: {
-                    value: 1,
-                    min: 0,
-                    max: 4,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.brightness = 1.0 - v * 0.1;
-                    },
-                },
-                "Color Banding": {
-                    value: 50,
-                    min: 0,
-                    max: 100,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.colorBanding = 255 - v * 2;
-                    },
-                },
-                "Cull Back-faces": {
-                    value: true,
-                    onChange: (v) => {
-                        mapViewer.cullBackFace = v;
-                    },
-                },
-            },
-            { collapsed: true }
-        ),
-        Record: folder(
-            {
-                Start: button(() => setCameraRunning(true)),
-                "Add point": button(() => addPoint()),
-                Length: {
-                    value: animationDuration,
-                    onChange: (v) => {
-                        setAnimationDuration(v);
-                    },
-                },
-                Points: pointsControls,
-            },
-            { collapsed: true }
-        ),
-    });
-    const controls = useControls(generateControls, [
-        projectionType,
-        pointsControls,
-    ]);
 
     useEffect(() => {
         mapViewer.onFps = setFps;
@@ -2025,14 +1701,6 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         mapViewer.hudHidden = hudHidden;
         mapViewer.setHudHidden = setHudHidden;
     }, [mapViewer]);
-
-    useEffect(() => {
-        mapViewer.onCameraMoveEnd = (pos, pitch, yaw) => {
-            if (!isCameraRunning) {
-                setSearchParams(mapViewer.getSearchParams(), { replace: true });
-            }
-        };
-    }, [mapViewer, isCameraRunning]);
 
     let loadingBarOverlay: JSX.Element | undefined = undefined;
     if (downloadProgress) {
@@ -2053,10 +1721,10 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         <div>
             {loadingBarOverlay}
             {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
-            <Leva
-                titleBar={{ filter: false }}
-                collapsed={true}
-                hideCopyButton={true}
+            <MapViewerControls
+                mapViewer={mapViewer}
+                caches={caches}
+                setDownloadProgress={setDownloadProgress}
                 hidden={hudHidden}
             />
             {!hudHidden && (
@@ -2111,8 +1779,6 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         </div>
     );
 }
-
-const isIos = checkIphone() || checkIpad();
 
 const MAX_POOL_SIZE = isIos ? 1 : 4;
 
