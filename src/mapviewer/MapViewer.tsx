@@ -514,7 +514,7 @@ class MapViewer {
             new Uint8Array(textureArrayImage.buffer),
             TEXTURE_SIZE,
             TEXTURE_SIZE,
-            this.textureProvider.getTextureCount(),
+            this.textureProvider.getTextureCount() + 1,
             {
                 // wrapS: PicoGL.CLAMP_TO_EDGE,
                 maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,

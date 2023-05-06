@@ -151,8 +151,6 @@ export function getModelFaces(
 
     const priorities = model.faceRenderPriorities;
 
-    // console.log('alphas', faceAlphas);
-
     for (let f = 0; f < model.faceCount; f++) {
         let hslC = model.faceColors3[f];
 
