@@ -5,6 +5,16 @@
     height: 100vh;
 }
 
+.overlay-container {
+    display: flex;
+    position: absolute;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+}
+
 .hud.left-top {
     position: absolute;
     padding: 10px;

@@ -23,6 +23,7 @@ import { GameObject, SceneObject } from "../../client/scene/SceneObject";
 import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
 import { NpcSpawn } from "../npc/NpcSpawn";
 import { NpcDefinition } from "../../client/fs/definition/NpcDefinition";
+import { CacheInfo } from "../CacheInfo";
 
 export type ChunkData = {
     regionX: number;
@@ -42,6 +43,7 @@ export type ChunkData = {
     collisionFlags: Int32Array[];
     loadNpcs: boolean;
     maxPlane: number;
+    cacheInfo: CacheInfo;
 };
 
 type MultiDrawCommand = [number, number, number];
@@ -928,6 +930,8 @@ function addModelGroup(
 }
 
 export class ChunkDataLoader {
+    cacheInfo: CacheInfo;
+
     regionLoader: RegionLoader;
 
     objectModelLoader: ObjectModelLoader;
@@ -941,12 +945,14 @@ export class ChunkDataLoader {
     npcSpawns: NpcSpawn[];
 
     constructor(
+        cacheInfo: CacheInfo,
         regionLoader: RegionLoader,
         objectModelLoader: ObjectModelLoader,
         npcModelLoader: NpcModelLoader,
         textureProvider: TextureLoader,
         npcList: NpcSpawn[]
     ) {
+        this.cacheInfo = cacheInfo;
         this.regionLoader = regionLoader;
         this.objectModelLoader = objectModelLoader;
         this.npcModelLoader = npcModelLoader;
@@ -1270,6 +1276,7 @@ export class ChunkDataLoader {
 
             loadNpcs,
             maxPlane,
+            cacheInfo: this.cacheInfo,
         };
     }
 }

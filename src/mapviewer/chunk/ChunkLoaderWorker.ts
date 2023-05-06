@@ -21,30 +21,23 @@ import { VarpManager } from "../../client/VarpManager";
 import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
 import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
 import { NpcSpawn } from "../npc/NpcSpawn";
-
-type MemoryStoreProperties = {
-    dataFile: ArrayBuffer;
-    indexFiles: (ArrayBuffer | undefined)[];
-    metaFile: ArrayBuffer;
-};
+import { LoadedCache } from "../CacheInfo";
 
 let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
-async function init0(
-    revision: number,
-    memoryStoreProperties: MemoryStoreProperties,
-    xteasMap: Map<number, number[]>,
-    npcSpawns: NpcSpawn[]
-) {
-    // console.log('start init worker');
+async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
     await wasmCompressionPromise;
+
+    const revision = cache.info.revision;
+
+    // Create new store because it is a structured clone
     const store = new MemoryStore(
-        memoryStoreProperties.dataFile,
-        memoryStoreProperties.indexFiles,
-        memoryStoreProperties.metaFile
+        cache.store.dataFile,
+        cache.store.indexFiles,
+        cache.store.metaFile
     );
 
     const fileSystem = loadFromStore(store);
@@ -110,7 +103,7 @@ async function init0(
         overlayLoader,
         objectLoader,
         objectModelLoader,
-        xteasMap
+        cache.xteas
     );
 
     // console.time('load textures');
@@ -122,8 +115,9 @@ async function init0(
     // }
     // console.timeEnd('load textures sprites');
 
-    console.log("init worker", fileSystem, performance.now());
+    console.log("init worker", performance.now());
     return new ChunkDataLoader(
+        cache.info,
         regionLoader,
         objectModelLoader,
         npcModelLoader,
@@ -139,18 +133,8 @@ async function init0(
 // }
 
 expose({
-    init(
-        revision: number,
-        memoryStoreProperties: MemoryStoreProperties,
-        xteasMap: Map<number, number[]>,
-        npcSpawns: NpcSpawn[]
-    ) {
-        chunkDataLoaderPromise = init0(
-            revision,
-            memoryStoreProperties,
-            xteasMap,
-            npcSpawns
-        );
+    init(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
+        chunkDataLoaderPromise = init0(cache, npcSpawns);
     },
     async load(
         regionX: number,

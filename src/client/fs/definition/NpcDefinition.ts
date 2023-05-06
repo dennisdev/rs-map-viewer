@@ -282,7 +282,9 @@ export class NpcDefinition extends Definition {
                 "NpcDefinition: Opcode " +
                     opcode +
                     " not implemented. ID: " +
-                    this.id
+                    this.id +
+                    ". rev: " +
+                    this.revision
             );
         }
     }

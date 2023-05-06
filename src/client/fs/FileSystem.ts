@@ -123,7 +123,7 @@ export type DownloadProgress = {
     part: Uint8Array;
 };
 
-type ProgressListener = (progress: DownloadProgress) => void;
+export type ProgressListener = (progress: DownloadProgress) => void;
 
 function ReadableBufferStream(ab: ArrayBuffer): ReadableStream<Uint8Array> {
     return new ReadableStream({

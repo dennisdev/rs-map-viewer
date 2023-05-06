@@ -7,16 +7,12 @@ import {
     ModuleThread,
 } from "threads";
 import { MemoryStore } from "../../client/fs/MemoryStore";
+import { LoadedCache } from "../CacheInfo";
 import { NpcSpawn } from "../npc/NpcSpawn";
 import { ChunkData } from "./ChunkDataLoader";
 
 export type ChunkLoaderWorker = {
-    init(
-        revision: number,
-        memoryStore: TransferDescriptor<MemoryStore>,
-        xteasMap: Map<number, number[]>,
-        npcSpawns: NpcSpawn[]
-    ): void;
+    init(cache: LoadedCache, npcSpawns: NpcSpawn[]): void;
 
     load(
         regionX: number,
@@ -58,16 +54,11 @@ export class ChunkLoaderWorkerPool {
         this.size = size;
     }
 
-    init(
-        revision: number,
-        store: MemoryStore,
-        xteasMap: Map<number, number[]>,
-        npcSpawns: NpcSpawn[]
-    ) {
+    init(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
         for (const promise of this.workerPromises) {
             promise.then((worker) => {
                 // console.log('send init worker', performance.now());
-                worker.init(revision, Transfer(store, []), xteasMap, npcSpawns);
+                worker.init(cache, npcSpawns);
                 return worker;
             });
         }

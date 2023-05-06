@@ -24,7 +24,6 @@ import { ConfigType } from "../client/fs/ConfigType";
 import {
     DownloadProgress,
     MemoryFileSystem,
-    fetchMemoryStore,
     loadFromStore,
 } from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
@@ -45,8 +44,8 @@ import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
 import { readPixelsAsync } from "./util/AsyncReadUtil";
 import { FrustumIntersection } from "./util/FrustumIntersection";
 import "./MapViewer.css";
-import { fetchNpcSpawns } from "./npc/NpcSpawn";
-import { ChunkData, ChunkDataLoader, NpcData } from "./chunk/ChunkDataLoader";
+import { fetchNpcSpawns, NpcSpawn } from "./npc/NpcSpawn";
+import { ChunkData, ChunkDataLoader } from "./chunk/ChunkDataLoader";
 import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
 import mainFragShader from "./shaders/main.frag.glsl";
 import mainVertShader from "./shaders/main.vert.glsl";
@@ -54,11 +53,15 @@ import npcVertShader from "./shaders/npc.vert.glsl";
 import quadFragShader from "./shaders/quad.frag.glsl";
 import quadVertShader from "./shaders/quad.vert.glsl";
 import { Npc } from "./npc/Npc";
-import { AnimatedObject } from "./object/AnimatedObject";
 import { Chunk, deleteChunk, loadChunk } from "./chunk/Chunk";
 import { checkIpad, checkIphone } from "./util/DeviceUtil";
-import { fetchXteas } from "./util/Xteas";
-import { getCacheList, getLatestCache } from "./CacheInfo";
+import {
+    CacheInfo,
+    fetchCacheList,
+    getLatestCache,
+    loadCache,
+    LoadedCache,
+} from "./CacheInfo";
 
 interface CameraPosition {
     position: vec3;
@@ -110,24 +113,18 @@ const INTERACTION_SIZE = INTERACTION_RADIUS * 2 + 1;
 const NULL_DRAW_RANGE = [0, 0, 0];
 
 class MapViewer {
-    fileSystem: MemoryFileSystem;
-
     chunkLoaderWorker: ChunkLoaderWorkerPool;
+    loadedCache!: LoadedCache;
+    latestCacheInfo: CacheInfo;
+    npcSpawns: NpcSpawn[];
 
-    // modelIndex: IndexSync<StoreSync>;
-
-    // regionLoader: RegionLoader;
-
-    textureProvider: TextureLoader;
-
-    npcLoader: NpcLoader;
-    animationLoader: AnimationLoader;
+    fileSystem!: MemoryFileSystem;
+    textureProvider!: TextureLoader;
+    npcLoader!: NpcLoader;
+    animationLoader!: AnimationLoader;
+    varpManager!: VarpManager;
 
     pathfinder: Pathfinder = new Pathfinder();
-
-    varpManager: VarpManager;
-
-    // chunkDataLoader: ChunkDataLoader;
 
     app!: PicoApp;
 
@@ -150,10 +147,10 @@ class MapViewer {
     quadPositions!: VertexBuffer;
     quadArray!: VertexArray;
 
-    textureUniformBuffer!: UniformBuffer;
+    textureUniformBuffer?: UniformBuffer;
     sceneUniformBuffer!: UniformBuffer;
 
-    textureArray!: Texture;
+    textureArray?: Texture;
 
     chunks: Map<number, Chunk> = new Map();
 
@@ -250,7 +247,7 @@ class MapViewer {
     lastCameraRegionX: number = -1;
     lastCameraRegionY: number = -1;
 
-    regionPositions: vec2[] = [];
+    regionPositions?: vec2[];
 
     frustumIntersection: FrustumIntersection = new FrustumIntersection();
     chunkIntersectBox: number[][] = [
@@ -268,60 +265,21 @@ class MapViewer {
     npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
     constructor(
-        revision: number,
-        fileSystem: MemoryFileSystem,
-        xteasMap: Map<number, number[]>,
-        chunkLoaderWorker: ChunkLoaderWorkerPool
+        chunkLoaderWorker: ChunkLoaderWorkerPool,
+        loadedCache: LoadedCache,
+        latestCacheInfo: CacheInfo,
+        npcSpawns: NpcSpawn[]
     ) {
-        this.fileSystem = fileSystem;
         this.chunkLoaderWorker = chunkLoaderWorker;
+        this.latestCacheInfo = latestCacheInfo;
+        this.npcSpawns = npcSpawns;
+
+        this.initCache(loadedCache);
 
         this.isTouchDevice = !!(
             navigator.maxTouchPoints ||
             "ontouchstart" in document.documentElement
         );
-
-        // const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
-        // const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
-        const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
-        const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
-        const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
-        const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
-        // const modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
-
-        // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
-        // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
-        // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
-        const npcArchive = configIndex.getArchive(ConfigType.NPC);
-        const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
-        const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
-
-        // console.time('region loader');
-        // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
-        // const overlayLoader = new CachedOverlayLoader(overlayArchive);
-        // const objectLoader = new CachedObjectLoader(objectArchive);
-        this.npcLoader = new CachedNpcLoader(npcArchive, revision);
-        this.animationLoader = new CachedAnimationLoader(
-            animationArchive,
-            revision
-        );
-        const varbitLoader = new CachedVarbitLoader(varbitArchive, revision);
-
-        this.varpManager = new VarpManager(varbitLoader);
-
-        console.time("check invalid regions");
-        for (let x = 0; x < 100; x++) {
-            for (let y = 0; y < 200; y++) {
-                if (RegionLoader.getTerrainArchiveId(mapIndex, x, y) === -1) {
-                    this.invalidRegionIds.add(RegionLoader.getRegionId(x, y));
-                }
-            }
-        }
-        console.timeEnd("check invalid regions");
-
-        // console.time('load textures');
-        this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
-        // console.timeEnd('load textures');
 
         // console.log('create map viewer', performance.now());
 
@@ -347,6 +305,74 @@ class MapViewer {
         this.onCameraJoystickStop = this.onCameraJoystickStop.bind(this);
         this.checkInteractions = this.checkInteractions.bind(this);
         this.render = this.render.bind(this);
+    }
+
+    initCache(cache: LoadedCache) {
+        this.loadedCache = cache;
+
+        this.chunkLoaderWorker.init(cache, this.npcSpawns);
+
+        this.fileSystem = loadFromStore(cache.store);
+
+        // const frameMapIndex = this.fileSystem.getIndex(IndexType.ANIMATIONS);
+        // const skeletonIndex = this.fileSystem.getIndex(IndexType.SKELETONS);
+        const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
+        const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
+        const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
+        const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
+        // const modelIndex = this.fileSystem.getIndex(IndexType.MODELS);
+
+        // const underlayArchive = configIndex.getArchive(ConfigType.UNDERLAY);
+        // const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
+        // const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+        const npcArchive = configIndex.getArchive(ConfigType.NPC);
+        const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
+        const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
+
+        // console.time('region loader');
+        // const underlayLoader = new CachedUnderlayLoader(underlayArchive);
+        // const overlayLoader = new CachedOverlayLoader(overlayArchive);
+        // const objectLoader = new CachedObjectLoader(objectArchive);
+        this.npcLoader = new CachedNpcLoader(npcArchive, cache.info.revision);
+        this.animationLoader = new CachedAnimationLoader(
+            animationArchive,
+            cache.info.revision
+        );
+        const varbitLoader = new CachedVarbitLoader(
+            varbitArchive,
+            cache.info.revision
+        );
+
+        this.varpManager = new VarpManager(varbitLoader);
+
+        this.invalidRegionIds.clear();
+        console.time("check invalid regions");
+        for (let x = 0; x < 100; x++) {
+            for (let y = 0; y < 200; y++) {
+                if (RegionLoader.getTerrainArchiveId(mapIndex, x, y) === -1) {
+                    this.invalidRegionIds.add(RegionLoader.getRegionId(x, y));
+                }
+            }
+        }
+        console.timeEnd("check invalid regions");
+
+        this.regionPositions = undefined;
+
+        // console.time('load textures');
+        this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
+
+        if (this.app) {
+            this.deleteChunks();
+            if (this.textureUniformBuffer) {
+                this.textureUniformBuffer.delete();
+                this.textureUniformBuffer = undefined;
+            }
+            if (this.textureArray) {
+                this.textureArray.delete();
+                this.textureArray = undefined;
+            }
+            this.initTextures();
+        }
     }
 
     init(gl: WebGL2RenderingContext) {
@@ -541,6 +567,10 @@ class MapViewer {
         if (this.projectionType === ProjectionType.ORTHO) {
             params["pt"] = "o";
             params["z"] = this.orthoZoom.toString();
+        }
+
+        if (this.loadedCache.info.name !== this.latestCacheInfo.name) {
+            params["cache"] = this.loadedCache.info.name;
         }
 
         return params;
@@ -790,6 +820,8 @@ class MapViewer {
             deleteChunk(chunk);
         }
         this.chunks.clear();
+        this.loadingRegionIds.clear();
+        this.chunksToLoad.clear();
     }
 
     setLoadNpcs(load: boolean) {
@@ -1208,6 +1240,22 @@ class MapViewer {
         }
     }
 
+    sortRegionPositions() {
+        if (!this.regionPositions) {
+            return;
+        }
+
+        const cameraX = -this.cameraPos[0];
+        const cameraY = -this.cameraPos[2];
+
+        // sort front to back
+        this.regionPositions.sort((a, b) => {
+            const regionDistA = getRegionDistance(cameraX, cameraY, a);
+            const regionDistB = getRegionDistance(cameraX, cameraY, b);
+            return regionDistA - regionDistB;
+        });
+    }
+
     render(
         gl: WebGL2RenderingContext,
         time: DOMHighResTimeStamp,
@@ -1254,8 +1302,13 @@ class MapViewer {
 
         // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        if (!this.program || !this.programNpc) {
-            console.warn("program not compiled yet");
+        if (
+            !this.program ||
+            !this.programNpc ||
+            !this.textureUniformBuffer ||
+            !this.textureArray
+        ) {
+            console.warn("MapViewer not ready");
             return;
         }
 
@@ -1297,12 +1350,22 @@ class MapViewer {
 
         viewDistanceRegionIds.clear();
 
+        let sortRegionPositions =
+            this.lastCameraX != cameraX ||
+            this.lastCameraY != cameraY ||
+            this.lastRegionViewDistance != this.regionViewDistance;
         if (
             this.lastCameraRegionX != cameraRegionX ||
             this.lastCameraRegionY != cameraRegionY ||
-            this.lastRegionViewDistance != this.regionViewDistance
+            this.lastRegionViewDistance != this.regionViewDistance ||
+            this.regionPositions === undefined
         ) {
             const viewDistance = this.regionViewDistance;
+
+            if (!this.regionPositions) {
+                this.regionPositions = [];
+                sortRegionPositions = true;
+            }
 
             this.regionPositions.length = 0;
             for (let x = -(viewDistance - 1); x < viewDistance; x++) {
@@ -1354,17 +1417,8 @@ class MapViewer {
 
         this.timer.start();
 
-        if (
-            this.lastCameraX != cameraX ||
-            this.lastCameraY != cameraY ||
-            this.lastRegionViewDistance != this.regionViewDistance
-        ) {
-            // sort front to back
-            this.regionPositions.sort((a, b) => {
-                const regionDistA = getRegionDistance(cameraX, cameraY, a);
-                const regionDistB = getRegionDistance(cameraX, cameraY, b);
-                return regionDistA - regionDistB;
-            });
+        if (sortRegionPositions) {
+            this.sortRegionPositions();
         }
 
         this.visibleChunkCount = 0;
@@ -1591,7 +1645,8 @@ class MapViewer {
                 );
                 if (
                     chunkData.loadNpcs === this.loadNpcs &&
-                    chunkData.maxPlane === this.maxPlane
+                    chunkData.maxPlane === this.maxPlane &&
+                    chunkData.cacheInfo.name === this.loadedCache.info.name
                 ) {
                     this.chunks.set(
                         regionId,
@@ -1645,11 +1700,12 @@ function formatBytes(bytes: number, decimals: number = 2): string {
 
 interface MapViewerContainerProps {
     mapViewer: MapViewer;
+    caches: CacheInfo[];
 }
 
 const DEFAULT_VIEW_DISTANCE = isWallPaperEngine ? 5 : 2;
 
-function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
+function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
@@ -1659,6 +1715,10 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         mapViewer.projectionType
     );
     const [hudHidden, setHudHidden] = useState<boolean>(isWallPaperEngine);
+    const [downloadProgress, setDownloadProgress] = useState<
+        DownloadProgress | undefined
+    >(undefined);
+
     const [searchParams, setSearchParams] = useSearchParams();
 
     const isTouchDevice = !!(
@@ -1864,6 +1924,34 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             },
             { collapsed: true }
         ),
+        Cache: folder(
+            {
+                Version: {
+                    value: mapViewer.loadedCache.info.name,
+                    options: caches.map((cache) => cache.name),
+                    onChange: async (v) => {
+                        const cacheInfo = caches.find(
+                            (cache) => cache.name === v
+                        );
+                        if (
+                            v !== mapViewer.loadedCache.info.name &&
+                            cacheInfo
+                        ) {
+                            const loadedCache = await loadCache(
+                                cacheInfo,
+                                setDownloadProgress
+                            );
+                            mapViewer.initCache(loadedCache);
+                            setDownloadProgress(undefined);
+                            setSearchParams(mapViewer.getSearchParams(), {
+                                replace: true,
+                            });
+                        }
+                    },
+                },
+            },
+            { collapsed: true }
+        ),
         Render: folder(
             {
                 "Max Plane": {
@@ -1946,8 +2034,24 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         };
     }, [mapViewer, isCameraRunning]);
 
+    let loadingBarOverlay: JSX.Element | undefined = undefined;
+    if (downloadProgress) {
+        const formattedCacheSize = formatBytes(downloadProgress.total);
+        const progress =
+            ((downloadProgress.current / downloadProgress.total) * 100) | 0;
+        loadingBarOverlay = (
+            <div className="overlay-container">
+                <OsrsLoadingBar
+                    text={`Downloading cache (${formattedCacheSize})`}
+                    progress={progress}
+                />
+            </div>
+        );
+    }
+
     return (
         <div>
+            {loadingBarOverlay}
             {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
             <Leva
                 titleBar={{ filter: false }}
@@ -1999,6 +2103,7 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                     ></Joystick>
                 </div>
             )}
+
             <WebGLCanvas
                 init={mapViewer.init}
                 draw={mapViewer.render}
@@ -2015,7 +2120,7 @@ const poolSize = Math.min(navigator.hardwareConcurrency, MAX_POOL_SIZE);
 const pool = ChunkLoaderWorkerPool.init(poolSize);
 // console.log('start App', performance.now());
 
-const cachesPromise = getCacheList();
+const cachesPromise = fetchCacheList();
 
 function MapViewerApp() {
     const [downloadProgress, setDownloadProgress] = useState<
@@ -2024,6 +2129,7 @@ function MapViewerApp() {
     const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(
         undefined
     );
+    const [caches, setCaches] = useState<CacheInfo[]>([]);
     const [searchParams, setSearchParams] = useSearchParams();
 
     // const test = new Test();
@@ -2032,6 +2138,7 @@ function MapViewerApp() {
         // console.log('start fetch', performance.now());
         console.time("first load");
         const load = async () => {
+            const cacheNameParam = searchParams.get("cache");
             const npcSpawnsPromise = fetchNpcSpawns();
             const caches = await cachesPromise;
             const latestCacheInfo = getLatestCache(caches);
@@ -2039,48 +2146,31 @@ function MapViewerApp() {
                 console.error("Could not load the latest cache info");
                 return;
             }
-            const cachePath = "/caches/" + latestCacheInfo.name + "/";
-            const xteasPromise = fetchXteas(cachePath + "keys.json");
-            const store = await fetchMemoryStore(
-                cachePath,
-                latestCacheInfo.name,
-                [
-                    IndexType.ANIMATIONS,
-                    IndexType.SKELETONS,
-                    IndexType.CONFIGS,
-                    IndexType.MAPS,
-                    IndexType.MODELS,
-                    IndexType.SPRITES,
-                    IndexType.TEXTURES,
-                ],
-                !isIos,
-                setDownloadProgress
-            );
-            setDownloadProgress(undefined);
 
-            console.time("load xteas");
-            const xteas = await xteasPromise;
-            console.timeEnd("load xteas");
-            console.log("xtea count: ", xteas.size);
+            let cacheInfo: CacheInfo | undefined = undefined;
+            if (cacheNameParam) {
+                cacheInfo = caches.find(
+                    (cache) => cache.name === cacheNameParam
+                );
+            }
+            if (!cacheInfo) {
+                cacheInfo = latestCacheInfo;
+            }
+
+            const loadedCache = await loadCache(cacheInfo, setDownloadProgress);
+            setDownloadProgress(undefined);
 
             console.time("load npc spawns");
             const npcSpawns = await npcSpawnsPromise;
             console.timeEnd("load npc spawns");
 
-            // const poolSize = 1;
-            // const poolSize = navigator.hardwareConcurrency;
-
-            // const pool = ChunkLoaderWorkerPool.init(store, xteasMap, poolSize);
-            pool.init(latestCacheInfo.revision, store, xteas, npcSpawns);
-
-            const fileSystem = loadFromStore(store);
-
             const mapViewer = new MapViewer(
-                latestCacheInfo.revision,
-                fileSystem,
-                xteas,
-                pool
+                pool,
+                loadedCache,
+                latestCacheInfo,
+                npcSpawns
             );
+
             const cx = searchParams.get("cx");
             const cy = searchParams.get("cy");
             const cz = searchParams.get("cz");
@@ -2112,10 +2202,13 @@ function MapViewerApp() {
                 mapViewer.yaw = parseInt(yaw);
             }
 
+            setCaches(caches);
             setMapViewer(mapViewer);
         };
 
-        load().catch(console.error);
+        if (!isIos) {
+            load().catch(console.error);
+        }
     }, []);
 
     let content: JSX.Element | undefined = undefined;
@@ -2124,10 +2217,6 @@ function MapViewerApp() {
             <div className="center-content-container">
                 <div className="content-text">iOS is not supported.</div>
             </div>
-        );
-    } else if (mapViewer) {
-        content = (
-            <MapViewerContainer mapViewer={mapViewer}></MapViewerContainer>
         );
     } else if (downloadProgress) {
         const formattedCacheSize = formatBytes(downloadProgress.total);
@@ -2140,6 +2229,13 @@ function MapViewerApp() {
                     progress={progress}
                 />
             </div>
+        );
+    } else if (mapViewer) {
+        content = (
+            <MapViewerContainer
+                mapViewer={mapViewer}
+                caches={caches}
+            ></MapViewerContainer>
         );
     }
     return <div className="App">{content}</div>;
