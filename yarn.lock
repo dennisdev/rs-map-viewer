@@ -2,11 +2,6 @@
 # yarn lockfile v1
 
 
-"@aaronjewell/webgl2-utils@^1.0.1":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@aaronjewell/webgl2-utils/-/webgl2-utils-1.0.1.tgz#90c202cd430f3984c8bc4681cb47a02f08e0d41f"
-  integrity sha512-J5oGQxycRQBZJnMTYZfwtCN/d/Nfb0drpxxS3tw+s7p633UI1fcsaG204QWGp9aRPedcuuQ8D6fOuRpYaBncCQ==
-
 "@apideck/better-ajv-errors@^0.3.1":
   version "0.3.2"
   resolved "https://registry.npmjs.org/@apideck/better-ajv-errors/-/better-ajv-errors-0.3.2.tgz"
@@ -2999,11 +2994,6 @@ bytes@3.1.1:
   resolved "https://registry.npmjs.org/bytes/-/bytes-3.1.1.tgz"
   integrity sha512-dWe4nWO/ruEOY7HkUJ5gFt1DCFV9zPRoJr8pV0/ASQermOZjtq8jMjOprC0Kd10GLN+l7xaUPvxzJFWtxGu8Fg==
 
-bz2@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.npmjs.org/bz2/-/bz2-1.0.1.tgz"
-  integrity sha512-TRUFsKDme+nCMKa1lMx3dkLGh4KvgmCq8/xh/MTMEXAtjPqSC/NqPTzpy5auBZxrJTJX/yjWM0pHxMbpVGc+UQ==
-
 bzip2@^0.1.1:
   version "0.1.1"
   resolved "https://registry.yarnpkg.com/bzip2/-/bzip2-0.1.1.tgz#b0d232bd0f0f750d2023306d40a886ee51b901f4"
@@ -5103,11 +5093,6 @@ idb@^6.1.4:
   version "6.1.5"
   resolved "https://registry.npmjs.org/idb/-/idb-6.1.5.tgz"
   integrity sha512-IJtugpKkiVXQn5Y+LteyBCNk1N8xpGV3wWZk9EVtZWH8DYkjBn0bX1XnGP9RkyZF0sAcywa6unHqSWKe7q4LGw==
-
-idb@^7.1.0:
-  version "7.1.0"
-  resolved "https://registry.yarnpkg.com/idb/-/idb-7.1.0.tgz#2cc886be57738419e57f9aab58f647e5e2160270"
-  integrity sha512-Wsk07aAxDsntgYJY4h0knZJuTxM73eQ4reRAO+Z1liOh8eMCJ/MoDS8fCui1vGT9mnjtl1sOu3I2i/W1swPYZg==
 
 identity-obj-proxy@^3.0.0:
   version "3.0.0"
@@ -8930,11 +8915,6 @@ tsutils@^3.21.0:
   integrity sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==
   dependencies:
     tslib "^1.8.1"
-
-twgl.js@^5.1.0:
-  version "5.1.0"
-  resolved "https://registry.yarnpkg.com/twgl.js/-/twgl.js-5.1.0.tgz#1a4fedd57f63963f63768c627e0e27f41a14776a"
-  integrity sha512-/Sx6JkgQc7ggcmEs7OJ0fmHOYmNfkspMLAPid7CJgn3m8ddBMzKiwPo90+PbG8Xp95dKJOe0IuCXKMv8U8/dfA==
 
 type-check@^0.4.0, type-check@~0.4.0:
   version "0.4.0"
