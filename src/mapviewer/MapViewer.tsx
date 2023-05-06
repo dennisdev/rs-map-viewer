@@ -200,6 +200,7 @@ class MapViewer {
     menuOpen: boolean = false;
 
     projectionType: ProjectionType = ProjectionType.PERSPECTIVE;
+    fov: number = 90;
     orthoZoom: number = 15;
 
     regionViewDistance: number = 1;
@@ -1122,7 +1123,7 @@ class MapViewer {
         if (this.projectionType === ProjectionType.PERSPECTIVE) {
             mat4.perspective(
                 this.projectionMatrix,
-                90 * DEGREES_TO_RADIANS,
+                this.fov * DEGREES_TO_RADIANS,
                 canvasWidth / canvasHeight,
                 0.1,
                 1024.0 * 4
@@ -1654,6 +1655,9 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
         undefined
     );
+    const [projectionType, setProjectionType] = useState<ProjectionType>(
+        mapViewer.projectionType
+    );
     const [hudHidden, setHudHidden] = useState<boolean>(isWallPaperEngine);
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -1764,23 +1768,21 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
         window.requestAnimationFrame(callback);
     }, [isCameraRunning]);
 
-    const generateControls = () => ({
-        "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
-        Camera: folder(
-            {
-                Projection: {
-                    value: mapViewer.projectionType,
-                    options: {
-                        Perspective: ProjectionType.PERSPECTIVE,
-                        Ortho: ProjectionType.ORTHO,
-                    },
+    const createCameraControls = (projectionType: ProjectionType): Schema => {
+        if (projectionType === ProjectionType.PERSPECTIVE) {
+            return {
+                FOV: {
+                    value: mapViewer.fov,
+                    min: 30,
+                    max: 140,
+                    step: 1,
                     onChange: (v) => {
-                        mapViewer.projectionType = v;
-                        setSearchParams(mapViewer.getSearchParams(), {
-                            replace: true,
-                        });
+                        mapViewer.fov = v;
                     },
                 },
+            };
+        } else {
+            return {
                 "Ortho Zoom": {
                     value: mapViewer.orthoZoom,
                     min: 1,
@@ -1793,6 +1795,29 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
                         });
                     },
                 },
+            };
+        }
+    };
+
+    const generateControls = () => ({
+        "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
+        Camera: folder(
+            {
+                Projection: {
+                    value: projectionType,
+                    options: {
+                        Perspective: ProjectionType.PERSPECTIVE,
+                        Ortho: ProjectionType.ORTHO,
+                    },
+                    onChange: (v) => {
+                        setProjectionType(v);
+                        mapViewer.projectionType = v;
+                        setSearchParams(mapViewer.getSearchParams(), {
+                            replace: true,
+                        });
+                    },
+                },
+                ...createCameraControls(projectionType),
             },
             { collapsed: true }
         ),
@@ -1892,7 +1917,10 @@ function MapViewerContainer({ mapViewer }: MapViewerContainerProps) {
             { collapsed: true }
         ),
     });
-    const controls = useControls(generateControls, [pointsControls]);
+    const controls = useControls(generateControls, [
+        projectionType,
+        pointsControls,
+    ]);
 
     useEffect(() => {
         mapViewer.onFps = setFps;
