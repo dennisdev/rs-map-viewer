@@ -61,6 +61,7 @@ import {
     LoadedCache,
 } from "./CacheInfo";
 import { MapViewerControls } from "./MapViewerControls";
+import WebFont from "webfontloader";
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
@@ -1875,6 +1876,12 @@ function MapViewerApp() {
         if (!isIos) {
             load().catch(console.error);
         }
+
+        WebFont.load({
+            custom: {
+                families: ["OSRS"],
+            },
+        });
     }, []);
 
     let content: JSX.Element | undefined = undefined;
