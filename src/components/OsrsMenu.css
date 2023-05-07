@@ -38,6 +38,10 @@
     border: solid black 1px;
 }
 
+.tooltip .options {
+    background-color: #5d5447b2;
+}
+
 .option {
     padding-left: 2px;
     padding-right: 6px;

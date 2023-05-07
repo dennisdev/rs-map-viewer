@@ -195,7 +195,12 @@ export class MapViewer {
     onCameraMove?: (pos: vec3, pitch: number, yaw: number) => void;
     onCameraMoveEnd?: (pos: vec3, pitch: number, yaw: number) => void;
 
-    onMenuOpened?: (x: number, y: number, options: MenuOption[]) => void;
+    onMenuOpened?: (
+        x: number,
+        y: number,
+        options: MenuOption[],
+        tooltip: boolean
+    ) => void;
     onMenuClosed?: () => void;
 
     hudHidden: boolean = false;
@@ -611,7 +616,7 @@ export class MapViewer {
         if (
             this.onMenuClosed &&
             this.menuOpen &&
-            Math.max(Math.abs(this.menuX - x), Math.abs(this.menuY - y)) > 30
+            Math.max(Math.abs(this.menuX - x), Math.abs(this.menuY - y)) > 20
         ) {
             this.onMenuClosed();
             this.menuOpen = false;
@@ -670,6 +675,7 @@ export class MapViewer {
         this.pickX = event.x;
         this.pickY = event.y;
         console.log("clicked,", this.pickX, this.pickY, this.hoveredRegionIds);
+        this.checkInteractions(this.pickX, this.pickY, false);
     }
 
     resetKeyEvents() {
@@ -1052,11 +1058,36 @@ export class MapViewer {
                 gl.RGBA,
                 gl.UNSIGNED_BYTE,
                 this.interactBuffer
-            ).then(this.checkInteractionsCallback(this.pickX, this.pickY));
+            ).then(
+                this.checkInteractionsCallback(this.pickX, this.pickY, false)
+            );
 
             this.pickX = -1;
             this.pickY = -1;
         }
+    }
+
+    readHover() {
+        if (this.currentMouseX === -1 || this.currentMouseY === -1) {
+            return;
+        }
+
+        const gl = this.app.gl as WebGL2RenderingContext;
+
+        this.app.readFramebuffer(this.frameBuffer);
+
+        gl.readBuffer(gl.COLOR_ATTACHMENT0 + 1);
+
+        readPixelsAsync(
+            gl,
+            this.currentMouseX - INTERACTION_RADIUS,
+            gl.canvas.height - this.currentMouseY - INTERACTION_RADIUS,
+            INTERACTION_SIZE,
+            INTERACTION_SIZE,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            this.interactBuffer
+        );
     }
 
     readHoveredRegion() {
@@ -1108,12 +1139,16 @@ export class MapViewer {
         this.app.canvas.focus();
     }
 
-    checkInteractionsCallback(pickedX: number, pickedY: number) {
+    checkInteractionsCallback(
+        pickedX: number,
+        pickedY: number,
+        tooltip: boolean
+    ) {
         return (buf: ArrayBufferView) =>
-            this.checkInteractions(pickedX, pickedY);
+            this.checkInteractions(pickedX, pickedY, tooltip);
     }
 
-    checkInteractions(pickedX: number, pickedY: number) {
+    checkInteractions(pickedX: number, pickedY: number, tooltip: boolean) {
         const closestInteractions = new Map<number, number[]>();
 
         for (let x = 0; x < INTERACTION_SIZE; x++) {
@@ -1273,8 +1308,8 @@ export class MapViewer {
         });
 
         if (this.onMenuOpened) {
-            this.onMenuOpened(pickedX, pickedY, menuOptions);
-            this.menuOpen = true;
+            this.onMenuOpened(pickedX, pickedY, menuOptions, tooltip);
+            this.menuOpen = !tooltip;
             this.menuX = pickedX;
             this.menuY = pickedY;
         }
@@ -1454,7 +1489,15 @@ export class MapViewer {
 
         this.handleInput(time, deltaTime);
         this.readHoveredRegion();
-        this.readPicked();
+        this.readHover();
+
+        if (!this.menuOpen) {
+            this.checkInteractions(
+                this.currentMouseX,
+                this.currentMouseY,
+                true
+            );
+        }
 
         if (this.cameraUpdated) {
             this.runCameraMoveCallback();
@@ -1884,8 +1927,8 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
             setCompassDegrees((2047 - yaw) * RS_TO_DEGREES);
         };
         mapViewer.runCameraMoveCallback();
-        mapViewer.onMenuOpened = (x, y, options) => {
-            setMenuProps({ x, y, options });
+        mapViewer.onMenuOpened = (x, y, options, tooltip) => {
+            setMenuProps({ x, y, options, tooltip });
         };
         mapViewer.onMenuClosed = () => {
             setMenuProps(undefined);
@@ -1912,7 +1955,7 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     return (
         <div>
             {loadingBarOverlay}
-            {menuProps && <OsrsMenu {...menuProps}></OsrsMenu>}
+            {menuProps && <OsrsMenu {...menuProps} />}
             <MapViewerControls
                 mapViewer={mapViewer}
                 caches={caches}
