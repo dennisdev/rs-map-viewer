@@ -99,6 +99,7 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
     const regionLoader = new RegionLoader(
         revision,
         mapIndex,
+        varpManager,
         underlayLoader,
         overlayLoader,
         objectLoader,
@@ -176,12 +177,16 @@ expose({
         chunkDataLoader.objectModelLoader.modelDataCache.clear();
         chunkDataLoader.objectModelLoader.modelCache.clear();
 
+        chunkDataLoader.npcModelLoader.modelCache.clear();
+
         if (chunkData) {
             const transferables: Transferable[] = [
                 chunkData.vertices.buffer,
                 chunkData.indices.buffer,
                 chunkData.modelTextureData.buffer,
                 chunkData.modelTextureDataAlpha.buffer,
+                chunkData.modelTextureDataInteract.buffer,
+                chunkData.modelTextureDataInteractAlpha.buffer,
                 chunkData.heightMapTextureData.buffer,
             ];
             return Transfer(chunkData, transferables);

@@ -36,7 +36,7 @@ uniform SceneUniforms {
     mat4 u_projectionMatrix;
 };
 
-uniform mat4 u_modelMatrix;
+uniform vec2 u_regionPos;
 uniform float u_currentTime;
 uniform float u_timeLoaded;
 uniform float u_deltaTime;
@@ -53,6 +53,7 @@ flat out uint v_texId;
 flat out float v_texAnimated;
 flat out float v_loadAlpha;
 flat out vec4 v_interactId;
+flat out vec4 v_interactRegionId;
 
 #include "./includes/hsl-to-rgb.glsl";
 #include "./includes/branchless-logic.glsl";
@@ -133,18 +134,30 @@ void main() {
     v_texId = vertex.textureId;
     v_texAnimated = or(when_neq(textureAnimation.x, 0.0), when_neq(textureAnimation.y, 0.0));
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
+    v_interactRegionId = vec4(
+        u_regionPos / vec2(255.0),
+        0,
+        1.0
+    );
 
     // ModelInfo modelInfo = decodeModelInfo(offset);
 
     NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_npcDataOffset);
 
-    v_interactId = vec4(float(npcInfo.interactId >> uint(8)) / 255.0, float(npcInfo.interactId & uint(0xFF)) / 255.0, 1, 1);
+    v_interactId = vec4(
+        float(npcInfo.interactId >> uint(8)) / 255.0, 
+        float(npcInfo.interactId & uint(0xFF)) / 255.0, 
+        2.0 / 255.0, 
+        1
+    );
 
     vec4 localPos = vertex.pos / vec4(vec3(128.0), 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
 
     localPos.y -= getHeightInterp(npcInfo.tilePos, npcInfo.plane) / 128.0;
+
+    localPos += vec4(vec3(u_regionPos.x, 0, u_regionPos.y) * vec3(64), 0);
     
-    gl_Position = u_viewMatrix * u_modelMatrix * localPos;
+    gl_Position = u_viewMatrix * localPos;
     gl_Position.z -= float(npcInfo.plane) * 0.005 + (float(vertex.priority) + 20.0) * 0.0007;
     gl_Position = u_projectionMatrix * gl_Position;
     // gl_Position.z -= float(modelInfo.plane) * 0.0005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.00007;

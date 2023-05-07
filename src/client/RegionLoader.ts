@@ -9,11 +9,14 @@ import { StoreSync } from "./fs/Store";
 import { ObjectModelLoader } from "./scene/ObjectModelLoader";
 import { Scene } from "./scene/Scene";
 import { packHsl } from "./util/ColorUtil";
+import { VarpManager } from "./VarpManager";
 
 export class RegionLoader {
     revision: number;
 
     mapIndex: IndexSync<StoreSync>;
+
+    varpManager: VarpManager;
 
     underlayLoader: UnderlayLoader;
 
@@ -52,6 +55,7 @@ export class RegionLoader {
     constructor(
         revision: number,
         mapIndex: IndexSync<StoreSync>,
+        varpManager: VarpManager,
         underlayLoader: UnderlayLoader,
         overlayLoader: OverlayLoader,
         objectLoader: ObjectLoader,
@@ -60,6 +64,7 @@ export class RegionLoader {
     ) {
         this.revision = revision;
         this.mapIndex = mapIndex;
+        this.varpManager = varpManager;
         this.underlayLoader = underlayLoader;
         this.overlayLoader = overlayLoader;
         this.objectLoader = objectLoader;

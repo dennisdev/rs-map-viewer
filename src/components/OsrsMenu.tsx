@@ -1,12 +1,32 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import "./OsrsMenu.css";
 
-export type MenuOption = {
+export enum TargetType {
+    NPC,
+    OBJECT,
+}
+
+export type Target = {
     name: string;
-    npcName?: string;
+    type: TargetType;
+};
+
+export type MenuOption = {
+    id: number;
+    action: string;
+    target?: Target;
     level?: number;
     onClick?: () => void;
 };
+
+function getTargetClassName(targetType: TargetType) {
+    switch (targetType) {
+        case TargetType.NPC:
+            return "npc-name";
+        case TargetType.OBJECT:
+            return "object-name";
+    }
+}
 
 export interface OsrsMenuProps {
     x: number;
@@ -52,19 +72,29 @@ export function OsrsMenu({ x, y, options }: OsrsMenuProps): JSX.Element {
                 <div className="title">Choose Option</div>
                 <div className="line"></div>
                 <div className="options">
-                    {options.map((option) => {
+                    {options.map((option, index) => {
                         return (
                             <div
                                 className="option"
-                                key={option.name}
+                                key={
+                                    option.action +
+                                    "-" +
+                                    option.id +
+                                    "-" +
+                                    index
+                                }
                                 onClick={option.onClick}
                             >
                                 <span className="option-name">
-                                    {option.name}
+                                    {option.action}
                                 </span>{" "}
-                                {option.npcName && (
-                                    <span className="npc-name">
-                                        {option.npcName}
+                                {option.target && (
+                                    <span
+                                        className={getTargetClassName(
+                                            option.target.type
+                                        )}
+                                    >
+                                        {option.target.name}
                                     </span>
                                 )}{" "}
                                 {option.level !== undefined &&

@@ -4,6 +4,9 @@ export class AnimatedObject {
     drawRangeIndex: number;
     drawRangeAlphaIndex: number;
 
+    drawRangeInteractIndex: number;
+    drawRangeInteractAlphaIndex: number;
+
     frames: number[][];
     framesAlpha: number[][] | undefined;
 
@@ -16,6 +19,8 @@ export class AnimatedObject {
     constructor(
         drawRangeIndex: number,
         drawRangeAlphaIndex: number,
+        drawRangeInteractIndex: number,
+        drawRangeInteractAlphaIndex: number,
         frames: number[][],
         framesAlpha: number[][] | undefined,
         animationDef: AnimationDefinition,
@@ -24,6 +29,8 @@ export class AnimatedObject {
     ) {
         this.drawRangeIndex = drawRangeIndex;
         this.drawRangeAlphaIndex = drawRangeAlphaIndex;
+        this.drawRangeInteractIndex = drawRangeInteractIndex;
+        this.drawRangeInteractAlphaIndex = drawRangeInteractAlphaIndex;
         this.frames = frames;
         this.framesAlpha = framesAlpha;
         this.animationDef = animationDef;

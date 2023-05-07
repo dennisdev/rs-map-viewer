@@ -38,7 +38,12 @@ import { Scene } from "../client/scene/Scene";
 import { clamp, lerp, slerp } from "../client/util/MathUtil";
 import WebGLCanvas from "../components/Canvas";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
-import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
+import {
+    MenuOption,
+    OsrsMenu,
+    OsrsMenuProps,
+    TargetType,
+} from "../components/OsrsMenu";
 import { readPixelsAsync } from "./util/AsyncReadUtil";
 import { FrustumIntersection } from "./util/FrustumIntersection";
 import "./MapViewer.css";
@@ -62,6 +67,11 @@ import {
 } from "./CacheInfo";
 import { MapViewerControls } from "./MapViewerControls";
 import WebFont from "webfontloader";
+import {
+    CachedObjectLoader,
+    ObjectLoader,
+} from "../client/fs/loader/ObjectLoader";
+import { ObjectDefinition } from "../client/fs/definition/ObjectDefinition";
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
@@ -105,6 +115,11 @@ const CHUNK_RENDER_FRAME_DELAY = 4;
 const INTERACTION_RADIUS = 5;
 const INTERACTION_SIZE = INTERACTION_RADIUS * 2 + 1;
 
+enum InteractType {
+    OBJECT = 1,
+    NPC = 2,
+}
+
 const NULL_DRAW_RANGE = [0, 0, 0];
 
 export class MapViewer {
@@ -115,6 +130,7 @@ export class MapViewer {
 
     fileSystem!: MemoryFileSystem;
     textureProvider!: TextureLoader;
+    objectLoader!: ObjectLoader;
     npcLoader!: NpcLoader;
     animationLoader!: AnimationLoader;
     varpManager!: VarpManager;
@@ -231,6 +247,11 @@ export class MapViewer {
     interactBuffer: Uint8Array = new Uint8Array(
         INTERACTION_SIZE * INTERACTION_SIZE * 4
     );
+    interactRegionBuffer: Uint8Array = new Uint8Array(
+        INTERACTION_SIZE * INTERACTION_SIZE * 4
+    );
+
+    hoveredRegionIds = new Set<number>();
 
     chunkDataLoader?: ChunkDataLoader;
 
@@ -287,6 +308,7 @@ export class MapViewer {
         this.onPositionJoystickStop = this.onPositionJoystickStop.bind(this);
         this.onCameraJoystickMove = this.onCameraJoystickMove.bind(this);
         this.onCameraJoystickStop = this.onCameraJoystickStop.bind(this);
+        this.closeMenu = this.closeMenu.bind(this);
         this.checkInteractions = this.checkInteractions.bind(this);
         this.render = this.render.bind(this);
     }
@@ -303,10 +325,15 @@ export class MapViewer {
         const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
         const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
 
+        const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
         const npcArchive = configIndex.getArchive(ConfigType.NPC);
         const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
         const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
+        this.objectLoader = new CachedObjectLoader(
+            objectArchive,
+            cache.info.revision
+        );
         this.npcLoader = new CachedNpcLoader(npcArchive, cache.info.revision);
         this.animationLoader = new CachedAnimationLoader(
             animationArchive,
@@ -413,6 +440,13 @@ export class MapViewer {
         const interactTarget = app.createTexture2D(app.width, app.height, {
             internalFormat: PicoGL.RGBA8,
         });
+        const interactRegionTarget = app.createTexture2D(
+            app.width,
+            app.height,
+            {
+                internalFormat: PicoGL.RGBA8,
+            }
+        );
         const depthTarget = app.createRenderbuffer(
             app.width,
             app.height,
@@ -422,6 +456,7 @@ export class MapViewer {
             .createFramebuffer()
             .colorTarget(0, colorTarget)
             .colorTarget(1, interactTarget)
+            .colorTarget(2, interactRegionTarget)
             .depthTarget(depthTarget);
 
         this.quadPositions = app.createVertexBuffer(
@@ -632,9 +667,9 @@ export class MapViewer {
 
     onContextMenu(event: MouseEvent) {
         event.preventDefault();
-        console.log(event);
         this.pickX = event.x;
         this.pickY = event.y;
+        console.log("clicked,", this.pickX, this.pickY, this.hoveredRegionIds);
     }
 
     resetKeyEvents() {
@@ -967,7 +1002,8 @@ export class MapViewer {
                 this.timer.gpuTime,
                 this.chunks.size,
                 "triangles",
-                totalTriangles
+                totalTriangles,
+                this.hoveredRegionIds
             );
             console.log(time);
         }
@@ -1016,108 +1052,232 @@ export class MapViewer {
                 gl.RGBA,
                 gl.UNSIGNED_BYTE,
                 this.interactBuffer
-            ).then(this.checkInteractions(this.pickX, this.pickY));
+            ).then(this.checkInteractionsCallback(this.pickX, this.pickY));
 
             this.pickX = -1;
             this.pickY = -1;
         }
     }
 
-    checkInteractions(pickedX: number, pickedY: number) {
-        return (buf: ArrayBufferView) => {
-            const closestInteractions: number[] = new Array(
-                INTERACTION_SIZE
-            ).fill(-1);
+    readHoveredRegion() {
+        if (this.currentMouseX === -1 || this.currentMouseY === -1) {
+            return;
+        }
+
+        const gl = this.app.gl as WebGL2RenderingContext;
+
+        this.app.readFramebuffer(this.frameBuffer);
+
+        gl.readBuffer(gl.COLOR_ATTACHMENT0 + 2);
+
+        readPixelsAsync(
+            gl,
+            this.currentMouseX - INTERACTION_RADIUS,
+            gl.canvas.height - this.currentMouseY - INTERACTION_RADIUS,
+            INTERACTION_SIZE,
+            INTERACTION_SIZE,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            this.interactRegionBuffer
+        ).then((buf) => {
+            this.hoveredRegionIds.clear();
             for (let x = 0; x < INTERACTION_SIZE; x++) {
                 for (let y = 0; y < INTERACTION_SIZE; y++) {
                     const index = (x + y * INTERACTION_SIZE) * 4;
-                    if (this.interactBuffer[index + 2] === 0xff) {
-                        const dist = Math.max(
-                            Math.abs(x - INTERACTION_RADIUS),
-                            Math.abs(y - INTERACTION_RADIUS)
-                        );
-                        closestInteractions[dist] = index;
+
+                    const regionX = this.interactRegionBuffer[index];
+                    const regionY = this.interactRegionBuffer[index + 1];
+
+                    const regionId = RegionLoader.getRegionId(regionX, regionY);
+
+                    if (regionId !== 0) {
+                        this.hoveredRegionIds.add(regionId);
                     }
                 }
             }
 
-            let closestInteraction = -1;
-            for (let i = 0; i < closestInteractions.length; i++) {
-                if (closestInteractions[i] !== -1) {
-                    closestInteraction = closestInteractions[i];
-                    break;
+            // console.log(Array.from(this.interactRegionBuffer.slice(0, 4)), regionIds);
+        });
+    }
+
+    closeMenu() {
+        if (this.onMenuClosed) {
+            this.onMenuClosed();
+            this.menuOpen = false;
+        }
+        this.app.canvas.focus();
+    }
+
+    checkInteractionsCallback(pickedX: number, pickedY: number) {
+        return (buf: ArrayBufferView) =>
+            this.checkInteractions(pickedX, pickedY);
+    }
+
+    checkInteractions(pickedX: number, pickedY: number) {
+        const closestInteractions = new Map<number, number[]>();
+
+        for (let x = 0; x < INTERACTION_SIZE; x++) {
+            for (let y = 0; y < INTERACTION_SIZE; y++) {
+                const index = (x + y * INTERACTION_SIZE) * 4;
+                if (this.interactBuffer[index + 2] !== 0) {
+                    const dist = Math.max(
+                        Math.abs(x - INTERACTION_RADIUS),
+                        Math.abs(y - INTERACTION_RADIUS)
+                    );
+                    const interactions = closestInteractions.get(dist);
+                    if (interactions) {
+                        interactions.push(index);
+                    } else {
+                        closestInteractions.set(dist, [index]);
+                    }
                 }
             }
+        }
 
-            const closeOnClick = () => {
-                if (this.onMenuClosed) {
-                    this.onMenuClosed();
-                    this.menuOpen = false;
-                }
-            };
+        const menuOptions: MenuOption[] = [];
+        const examineOptions: MenuOption[] = [];
 
-            const cancelOption: MenuOption = {
-                name: "Cancel",
-                onClick: closeOnClick,
-            };
-
-            if (closestInteraction === -1) {
-                if (this.onMenuOpened) {
-                    this.onMenuOpened(pickedX, pickedY, [cancelOption]);
-                    this.menuOpen = true;
-                    this.menuX = pickedX;
-                    this.menuY = pickedY;
-                }
-                return;
+        const interactions: number[] = [];
+        for (let i = 0; i < INTERACTION_SIZE; i++) {
+            const interactionsAtDist = closestInteractions.get(i);
+            if (interactionsAtDist) {
+                interactions.push(...interactionsAtDist);
             }
+        }
+
+        const npcIds = new Set<number>();
+        const objectIds = new Set<number>();
+
+        for (const index of interactions) {
             const interactId =
-                (this.interactBuffer[closestInteraction] << 8) |
-                this.interactBuffer[closestInteraction + 1];
-            let def: NpcDefinition | undefined =
-                this.npcLoader.getDefinition(interactId);
-            if (def.transforms) {
-                def = def.transform(this.varpManager, this.npcLoader);
+                (this.interactBuffer[index] << 8) |
+                this.interactBuffer[index + 1];
+            const interactType = this.interactBuffer[index + 2];
+            if (interactType === InteractType.OBJECT) {
+                if (objectIds.has(interactId)) {
+                    continue;
+                }
+                objectIds.add(interactId);
+
+                let def: ObjectDefinition | undefined =
+                    this.objectLoader.getDefinition(interactId);
+                if (def.transforms) {
+                    def = def.transform(this.varpManager, this.objectLoader);
+                }
+                if (!def) {
+                    continue;
+                }
+                const objectId = def.id;
+                const objectName = def.name;
+                if (objectName !== "null") {
+                    menuOptions.push(
+                        ...def.actions
+                            .filter((action) => !!action)
+                            .map(
+                                (action): MenuOption => ({
+                                    id: objectId,
+                                    action: action,
+                                    target: {
+                                        name: objectName,
+                                        type: TargetType.OBJECT,
+                                    },
+                                    onClick: this.closeMenu,
+                                })
+                            )
+                    );
+
+                    const openWikiOnClick = () => {
+                        window.open(
+                            "https://oldschool.runescape.wiki/w/Special:Lookup?type=object&id=" +
+                                interactId,
+                            "_blank"
+                        );
+                    };
+
+                    examineOptions.push({
+                        id: objectId,
+                        action: "Examine",
+                        target: {
+                            name: objectName,
+                            type: TargetType.OBJECT,
+                        },
+                        level: 0,
+                        onClick: openWikiOnClick,
+                    });
+                }
+            } else if (interactType === InteractType.NPC) {
+                if (npcIds.has(interactId)) {
+                    continue;
+                }
+                npcIds.add(interactId);
+
+                let def: NpcDefinition | undefined =
+                    this.npcLoader.getDefinition(interactId);
+                if (def.transforms) {
+                    def = def.transform(this.varpManager, this.npcLoader);
+                }
+                if (def) {
+                    const npcId = def.id;
+                    const npcName = def.name;
+                    const npcLevel = def.combatLevel;
+
+                    menuOptions.push(
+                        ...def.actions
+                            .filter((action) => !!action)
+                            .map(
+                                (action): MenuOption => ({
+                                    id: npcId,
+                                    action: action,
+                                    target: {
+                                        name: npcName,
+                                        type: TargetType.NPC,
+                                    },
+                                    level: npcLevel,
+                                    onClick: this.closeMenu,
+                                })
+                            )
+                    );
+
+                    const openWikiOnClick = () => {
+                        window.open(
+                            "https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=" +
+                                npcId,
+                            "_blank"
+                        );
+                    };
+
+                    examineOptions.push({
+                        id: npcId,
+                        action: "Examine",
+                        target: {
+                            name: npcName,
+                            type: TargetType.NPC,
+                        },
+                        level: npcLevel,
+                        onClick: openWikiOnClick,
+                    });
+                }
             }
-            if (!def) {
-                return;
-            }
+        }
 
-            const npcId = def.id;
-            const npcName = def.name;
-            const npcLevel = def.combatLevel;
+        menuOptions.push({
+            id: -1,
+            action: "Walk here",
+            onClick: this.closeMenu,
+        });
+        menuOptions.push(...examineOptions);
+        menuOptions.push({
+            id: -1,
+            action: "Cancel",
+            onClick: this.closeMenu,
+        });
 
-            const menuOptions: MenuOption[] = def.actions
-                .filter((action) => !!action)
-                .map((action) => ({
-                    name: action,
-                    npcName,
-                    level: npcLevel,
-                    onClick: closeOnClick,
-                }));
-
-            const openWikiOnClick = () => {
-                window.open(
-                    "https://oldschool.runescape.wiki/w/Special:Lookup?type=npc&id=" +
-                        npcId,
-                    "_blank"
-                );
-            };
-
-            menuOptions.push({
-                name: "Examine",
-                npcName,
-                level: npcLevel,
-                onClick: openWikiOnClick,
-            });
-            menuOptions.push(cancelOption);
-
-            if (this.onMenuOpened) {
-                this.onMenuOpened(pickedX, pickedY, menuOptions);
-                this.menuOpen = true;
-                this.menuX = pickedX;
-                this.menuY = pickedY;
-            }
-        };
+        if (this.onMenuOpened) {
+            this.onMenuOpened(pickedX, pickedY, menuOptions);
+            this.menuOpen = true;
+            this.menuX = pickedX;
+            this.menuY = pickedY;
+        }
     }
 
     updateProjection() {
@@ -1293,6 +1453,7 @@ export class MapViewer {
         this.cameraUpdated = false;
 
         this.handleInput(time, deltaTime);
+        this.readHoveredRegion();
         this.readPicked();
 
         if (this.cameraUpdated) {
@@ -1416,8 +1577,16 @@ export class MapViewer {
                 chunk.timeLoaded = time;
 
                 chunk.drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
-                chunk.drawCallAlpha.uniform("u_timeLoaded", chunk.timeLoaded);
                 chunk.drawCallLowDetail.uniform(
+                    "u_timeLoaded",
+                    chunk.timeLoaded
+                );
+                chunk.drawCallInteract.uniform(
+                    "u_timeLoaded",
+                    chunk.timeLoaded
+                );
+                chunk.drawCallAlpha.uniform("u_timeLoaded", chunk.timeLoaded);
+                chunk.drawCallInteractAlpha.uniform(
                     "u_timeLoaded",
                     chunk.timeLoaded
                 );
@@ -1463,35 +1632,47 @@ export class MapViewer {
                 Math.abs(cameraRegionY - chunk.regionY)
             );
 
+            const isInteract = this.hoveredRegionIds.has(
+                RegionLoader.getRegionId(chunk.regionX, chunk.regionY)
+            );
             const isLowDetail = regionDist >= this.regionLodDistance;
+
+            let drawCall = chunk.drawCall;
+            let drawRanges = chunk.drawRanges;
             let drawRangeOffset = 0;
-            if (isLowDetail) {
+            if (isInteract) {
+                if (isLowDetail) {
+                    drawCall = chunk.drawCallInteractLowDetail;
+                    drawRanges = chunk.drawRangesInteractLowDetail;
+                } else {
+                    drawCall = chunk.drawCallInteract;
+                    drawRanges = chunk.drawRangesInteract;
+                }
+                drawRangeOffset =
+                    drawRanges.length - chunk.drawRangesInteract.length;
+            } else if (isLowDetail) {
+                drawCall = chunk.drawCallLowDetail;
+                drawRanges = chunk.drawRangesLowDetail;
                 drawRangeOffset =
                     chunk.drawRangesLowDetail.length - chunk.drawRanges.length;
             }
 
-            const drawCall = isLowDetail
-                ? chunk.drawCallLowDetail
-                : chunk.drawCall;
-
             this.setMainUniforms(drawCall, time, deltaTime);
-
-            const drawRanges = isLowDetail
-                ? chunk.drawRangesLowDetail
-                : chunk.drawRanges;
 
             for (const object of chunk.animatedObjects) {
                 const frameId = object.frame;
                 const frame = object.frames[frameId];
 
-                (drawCall as any).offsets[
-                    object.drawRangeIndex + drawRangeOffset
-                ] = frame[0];
-                (drawCall as any).numElements[
-                    object.drawRangeIndex + drawRangeOffset
-                ] = frame[1];
+                const drawRangeIndex = isInteract
+                    ? object.drawRangeInteractIndex
+                    : object.drawRangeIndex;
 
-                drawRanges[object.drawRangeIndex + drawRangeOffset] = frame;
+                const offset = drawRangeIndex + drawRangeOffset;
+
+                (drawCall as any).offsets[offset] = frame[0];
+                (drawCall as any).numElements[offset] = frame[1];
+
+                drawRanges[offset] = frame;
             }
 
             this.draw(drawCall, drawRanges);
@@ -1533,23 +1714,33 @@ export class MapViewer {
         for (let i = 0; i < this.visibleChunkCount; i++) {
             const chunk = this.visibleChunks[i];
 
-            const drawCall = chunk.drawCallAlpha;
+            const isInteract = this.hoveredRegionIds.has(
+                RegionLoader.getRegionId(chunk.regionX, chunk.regionY)
+            );
+
+            const drawCall = isInteract
+                ? chunk.drawCallInteractAlpha
+                : chunk.drawCallAlpha;
 
             this.setMainUniforms(drawCall, time, deltaTime);
 
-            const drawRanges = chunk.drawRangesAlpha;
+            const drawRanges = isInteract
+                ? chunk.drawRangesInteractAlpha
+                : chunk.drawRangesAlpha;
 
             for (const object of chunk.animatedObjects) {
                 if (object.framesAlpha) {
                     const frameId = object.frame;
                     const frame = object.framesAlpha[frameId];
 
-                    (drawCall as any).offsets[object.drawRangeAlphaIndex] =
-                        frame[0];
-                    (drawCall as any).numElements[object.drawRangeAlphaIndex] =
-                        frame[1];
+                    const offset = isInteract
+                        ? object.drawRangeInteractAlphaIndex
+                        : object.drawRangeAlphaIndex;
 
-                    drawRanges[object.drawRangeAlphaIndex] = frame;
+                    (drawCall as any).offsets[offset] = frame[0];
+                    (drawCall as any).numElements[offset] = frame[1];
+
+                    drawRanges[offset] = frame;
                 }
             }
 

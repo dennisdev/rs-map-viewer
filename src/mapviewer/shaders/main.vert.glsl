@@ -41,7 +41,7 @@ uniform SceneUniforms {
     mat4 u_projectionMatrix;
 };
 
-uniform mat4 u_modelMatrix;
+uniform vec2 u_regionPos;
 uniform float u_currentTime;
 uniform float u_timeLoaded;
 uniform float u_deltaTime;
@@ -58,6 +58,7 @@ flat out uint v_texId;
 flat out float v_texAnimated;
 flat out float v_loadAlpha;
 flat out vec4 v_interactId;
+flat out vec4 v_interactRegionId;
 
 #include "./includes/hsl-to-rgb.glsl";
 #include "./includes/branchless-logic.glsl";
@@ -106,6 +107,7 @@ struct ModelInfo {
     uint plane;
     uint priority;
     float contourGround;
+    uint interactId;
 };
 
 ModelInfo decodeModelInfo(int offset) {
@@ -113,20 +115,17 @@ ModelInfo decodeModelInfo(int offset) {
 
     ModelInfo info;
 
-    info.plane = data.r >> uint(6);
-    info.contourGround = float(int(data.r) >> 4 & 0x3);
-    info.priority = (data.r & uint(0xF));
-
-    uint tilePosPacked = (data.a << uint(16)) | data.b << uint(8) | data.g;
-
-    info.tilePos = vec2(float(tilePosPacked >> uint(12)), float(tilePosPacked & uint(0xFFF))) / vec2(32);
+    info.tilePos = vec2(float(data.r), float(data.g)) / vec2(128.0);
+    info.plane = data.b & uint(0x3);
+    info.priority = data.b >> uint(8);
+    info.contourGround = float((data.b >> uint(4)) & uint(0x3));
+    info.interactId = data.a;
 
     return info;
 }
 
 void main() {
-    uvec2 offsetVec = texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID + u_drawIdOffset), 0).gr;
-    int offset = int(offsetVec.x) << 8 | int(offsetVec.y);
+    int offset = int(texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID + u_drawIdOffset), 0).r);
 
     VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, u_brightness);
     
@@ -137,17 +136,30 @@ void main() {
     v_texId = vertex.textureId;
     v_texAnimated = or(when_neq(textureAnimation.x, 0.0), when_neq(textureAnimation.y, 0.0));
     v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
-    v_interactId = vec4(0, 0, 0, 1);
+    v_interactRegionId = vec4(
+        u_regionPos / vec2(255.0),
+        0,
+        1.0
+    );
 
     ModelInfo modelInfo = decodeModelInfo(offset);
+    
+    v_interactId = vec4(
+        float(modelInfo.interactId >> uint(8)) / 255.0, 
+        float(modelInfo.interactId & uint(0xFF)) / 255.0, 
+        1.0 / 255.0, 
+        1
+    );
 
     vec3 localPos = vertex.pos / vec3(128.0) + vec3(modelInfo.tilePos.x, 0, modelInfo.tilePos.y);
 
     vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_CENTER_TILE)) 
             + localPos.xz * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_VERTEX));
     localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE) / 128.0;
+
+    localPos += vec3(u_regionPos.x, 0, u_regionPos.y) * vec3(64);
     
-    gl_Position = u_viewMatrix * u_modelMatrix * vec4(localPos, 1.0);
+    gl_Position = u_viewMatrix * vec4(localPos, 1.0);
     gl_Position.z -= float(modelInfo.plane) * 0.005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.0007;
     gl_Position = u_projectionMatrix * gl_Position;
     // gl_Position.z -= float(modelInfo.plane) * 0.0005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.00007;

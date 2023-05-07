@@ -8,7 +8,9 @@ flat in uint v_texId;
 flat in float v_texAnimated;
 flat in float v_loadAlpha;
 flat in vec4 v_interactId;
+flat in vec4 v_interactRegionId;
 
+uniform highp vec2 u_regionPos;
 uniform highp float u_brightness;
 uniform highp float u_colorBanding;
 
@@ -16,13 +18,15 @@ uniform highp sampler2DArray u_textures;
 
 layout(location = 0) out vec4 fragColor;
 layout(location = 1) out vec4 interactId;
+layout(location = 2) out vec4 interactRegionId;
 
 void main() {
     vec4 textureColor = texture(u_textures, vec3(v_texCoord, v_texId)).bgra;
     fragColor = pow(textureColor, vec4(vec3(u_brightness), 1.0)) * 
         vec4(round(v_color.rgb * u_colorBanding) / u_colorBanding, v_color.a) * v_loadAlpha;
-    interactId = v_interactId;
-    if ((v_texId == uint(0) && fragColor.a < 0.01) || (v_texAnimated < 0.5 && textureColor.a < 0.5)) {
+    if ((v_texId == uint(0) && fragColor.a < 0.01) || (v_texAnimated < 0.5 && textureColor.a < 0.5) || (v_texAnimated > 0.5 && textureColor.a < 0.1)) {
         discard;
     }
+    interactId = v_interactId;
+    interactRegionId = v_interactRegionId;
 }

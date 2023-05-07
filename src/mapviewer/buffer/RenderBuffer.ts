@@ -19,6 +19,7 @@ export type DrawData = {
     plane: number;
     contourGround: ContourGroundType;
     priority: number;
+    id: number;
 };
 
 export type DrawCommand = {
@@ -49,7 +50,11 @@ export class RenderBuffer {
     drawCommands: DrawCommand[] = [];
     drawCommandsLowDetail: DrawCommand[] = [];
 
+    drawCommandsInteract: DrawCommand[] = [];
+    drawCommandsInteractLowDetail: DrawCommand[] = [];
+
     drawCommandsAlpha: DrawCommand[] = [];
+    drawCommandsInteractAlpha: DrawCommand[] = [];
 
     constructor(initVertexCount: number) {
         this.vertexBuf = new VertexBuffer(initVertexCount);
@@ -113,7 +118,7 @@ export function addTerrain(
             (renderBuf.indexByteOffset() - indexByteOffset) / 4;
 
         if (planeVertexCount > 0) {
-            renderBuf.drawCommands.push({
+            const command: DrawCommand = {
                 offset: indexByteOffset,
                 elements: planeVertexCount,
                 datas: [
@@ -123,9 +128,13 @@ export function addTerrain(
                         plane,
                         contourGround: ContourGroundType.VERTEX,
                         priority: 0,
+                        id: 0,
                     },
                 ],
-            });
+            };
+
+            renderBuf.drawCommands.push(command);
+            renderBuf.drawCommandsInteract.push(command);
         }
     }
 

@@ -296,39 +296,6 @@ export class Scene {
         return (tile && tile.wallObject && tile.wallObject.tag) || 0n;
     }
 
-    transformObject(
-        regionLoader: RegionLoader,
-        def: ObjectDefinition
-    ): ObjectDefinition | undefined {
-        if (def.transforms && def.transforms.length > 0) {
-            let transformIndex: number | undefined = undefined;
-            if (def.transformVarbit !== -1) {
-                transformIndex = this.varbits.get(def.transformVarbit);
-            } else if (def.transformVarp !== -1) {
-                transformIndex = this.varps.get(def.transformVarp);
-            }
-            if (transformIndex === undefined) {
-                transformIndex = def.transforms.findIndex((id) => id !== -1);
-                if (transformIndex !== -1) {
-                    if (def.transformVarbit !== -1) {
-                        this.varbits.set(def.transformVarbit, transformIndex);
-                    } else if (def.transformVarp !== -1) {
-                        this.varps.set(def.transformVarp, transformIndex);
-                    }
-                }
-            }
-            if (transformIndex === -1) {
-                return undefined;
-            }
-            const transformId = def.transforms[transformIndex];
-            if (transformId === -1) {
-                return undefined;
-            }
-            return regionLoader.getObjectDef(transformId);
-        }
-        return def;
-    }
-
     addObject(
         regionLoader: RegionLoader,
         modelLoader: ObjectModelLoader,
@@ -352,18 +319,20 @@ export class Scene {
         }
 
         const def = regionLoader.getObjectDef(objectId);
-        const defTransform = this.transformObject(regionLoader, def);
+        let defTransform = def.transform(
+            regionLoader.varpManager,
+            regionLoader.objectLoader
+        );
 
         if (!defTransform) {
-            return;
+            if (def.transforms) {
+                return;
+            }
+            defTransform = def;
         }
 
         const baseX = this.regionX * 64;
         const baseY = this.regionY * 64;
-
-        // if (def.animationId === -1) {
-        //     return;
-        // }
 
         let sizeX = def.sizeX;
         let sizeY = def.sizeY;

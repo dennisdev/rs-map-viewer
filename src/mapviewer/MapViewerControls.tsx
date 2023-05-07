@@ -9,7 +9,7 @@ import { CacheInfo, loadCache } from "./CacheInfo";
 import { CameraPosition, MapViewer, ProjectionType } from "./MapViewer";
 import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
 
-const DEFAULT_VIEW_DISTANCE = isWallpaperEngine ? 5 : 2;
+const DEFAULT_VIEW_DISTANCE = isWallpaperEngine ? 5 : 1;
 
 interface MapViewerControlsProps {
     mapViewer: MapViewer;

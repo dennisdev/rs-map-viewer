@@ -1,4 +1,6 @@
+import { VarpManager } from "../../VarpManager";
 import { ByteBuffer } from "../../util/ByteBuffer";
+import { ObjectLoader } from "../loader/ObjectLoader";
 import { Definition, ParamsMap } from "./Definition";
 
 export class ObjectDefinition extends Definition {
@@ -330,5 +332,34 @@ export class ObjectDefinition extends Definition {
         //     this.clipType = 0;
         //     this.blocksProjectile = false;
         // }
+    }
+
+    transform(
+        varpManager: VarpManager,
+        objectLoader: ObjectLoader
+    ): ObjectDefinition | undefined {
+        if (!this.transforms) {
+            return undefined;
+        }
+
+        let transformIndex = -1;
+        if (this.transformVarbit !== -1) {
+            transformIndex = varpManager.getVarbit(this.transformVarbit);
+        } else if (this.transformVarp !== -1) {
+            transformIndex = varpManager.getVarp(this.transformVarp);
+        }
+
+        let transformId = this.transforms[this.transforms.length - 1];
+        if (
+            transformIndex >= 0 &&
+            transformIndex < this.transforms.length - 1
+        ) {
+            transformId = this.transforms[transformIndex];
+        }
+
+        if (transformId === -1) {
+            return undefined;
+        }
+        return objectLoader.getDefinition(transformId);
     }
 }

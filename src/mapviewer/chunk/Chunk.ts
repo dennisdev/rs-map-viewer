@@ -1,4 +1,4 @@
-import { mat4 } from "gl-matrix";
+import { mat4, vec2 } from "gl-matrix";
 import { CollisionMap } from "../../client/pathfinder/collision/CollisionMap";
 import {
     DrawCall,
@@ -26,19 +26,27 @@ export type Chunk = {
     tileRenderFlags: Uint8Array[][];
     collisionMaps: CollisionMap[];
 
-    modelMatrix: mat4;
-
     triangleCount: number;
 
     drawRanges: number[][];
     drawRangesLowDetail: number[][];
+
+    drawRangesInteract: number[][];
+    drawRangesInteractLowDetail: number[][];
+
     drawRangesAlpha: number[][];
+    drawRangesInteractAlpha: number[][];
 
     drawRangesNpc: number[][];
 
     drawCall: DrawCall;
     drawCallLowDetail: DrawCall;
+
+    drawCallInteract: DrawCall;
+    drawCallInteractLowDetail: DrawCall;
+
     drawCallAlpha: DrawCall;
+    drawCallInteractAlpha: DrawCall;
 
     drawCallNpc: DrawCall | undefined;
 
@@ -48,8 +56,12 @@ export type Chunk = {
     interleavedBuffer: VertexBuffer;
     indexBuffer: VertexBuffer;
     vertexArray: VertexArray;
+
     modelDataTexture: Texture;
     modelDataTextureAlpha: Texture;
+
+    modelDataTextureInteract: Texture;
+    modelDataTextureInteractAlpha: Texture;
 
     npcDataTextureOffsets: number[];
 
@@ -58,6 +70,19 @@ export type Chunk = {
     timeLoaded: number;
     frameLoaded: number;
 };
+
+function createModelDataTexture(app: PicoApp, data: Uint16Array): Texture {
+    return app.createTexture2D(
+        data,
+        16,
+        Math.max(Math.ceil(data.length / 16 / 4), 1),
+        {
+            internalFormat: PicoGL.RGBA16UI,
+            minFilter: PicoGL.NEAREST,
+            magFilter: PicoGL.NEAREST,
+        }
+    );
+}
 
 export function loadChunk(
     app: PicoApp,
@@ -75,11 +100,7 @@ export function loadChunk(
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
-    const baseX = regionX * 64;
-    const baseY = regionY * 64;
-
-    const baseModelMatrix = mat4.create();
-    mat4.translate(baseModelMatrix, baseModelMatrix, [baseX, 0, baseY]);
+    const regionPos = vec2.fromValues(regionX, regionY);
 
     const interleavedBuffer = app.createInterleavedBuffer(
         12,
@@ -118,26 +139,22 @@ export function loadChunk(
         })
         .indexBuffer(indexBuffer);
 
-    const modelDataTexture = app.createTexture2D(
-        new Uint8Array(chunkData.modelTextureData.buffer),
-        16,
-        Math.max(Math.ceil(chunkData.modelTextureData.length / 16), 1),
-        {
-            internalFormat: PicoGL.RGBA8UI,
-            minFilter: PicoGL.NEAREST,
-            magFilter: PicoGL.NEAREST,
-        }
+    const modelDataTexture = createModelDataTexture(
+        app,
+        chunkData.modelTextureData
+    );
+    const modelDataTextureAlpha = createModelDataTexture(
+        app,
+        chunkData.modelTextureDataAlpha
     );
 
-    const modelDataTextureAlpha = app.createTexture2D(
-        new Uint8Array(chunkData.modelTextureDataAlpha.buffer),
-        16,
-        Math.max(Math.ceil(chunkData.modelTextureDataAlpha.length / 16), 1),
-        {
-            internalFormat: PicoGL.RGBA8UI,
-            minFilter: PicoGL.NEAREST,
-            magFilter: PicoGL.NEAREST,
-        }
+    const modelDataTextureInteract = createModelDataTexture(
+        app,
+        chunkData.modelTextureDataInteract
+    );
+    const modelDataTextureInteractAlpha = createModelDataTexture(
+        app,
+        chunkData.modelTextureDataInteractAlpha
     );
 
     const heightMapTexture = app.createTextureArray(
@@ -162,19 +179,18 @@ export function loadChunk(
         .uniformBlock("TextureUniforms", textureUniformBuffer)
         .uniformBlock("SceneUniforms", sceneUniformBuffer)
         .uniform("u_timeLoaded", time)
-        .uniform("u_modelMatrix", baseModelMatrix)
+        .uniform("u_regionPos", regionPos)
         .uniform("u_drawIdOffset", 0)
         .texture("u_textures", textureArray)
         .texture("u_modelDataTexture", modelDataTexture)
         .texture("u_heightMap", heightMapTexture)
         .drawRanges(...chunkData.drawRanges);
-
     const drawCallLowDetail = app
         .createDrawCall(program, vertexArray)
         .uniformBlock("TextureUniforms", textureUniformBuffer)
         .uniformBlock("SceneUniforms", sceneUniformBuffer)
         .uniform("u_timeLoaded", time)
-        .uniform("u_modelMatrix", baseModelMatrix)
+        .uniform("u_regionPos", regionPos)
         .uniform(
             "u_drawIdOffset",
             chunkData.drawRanges.length - chunkData.drawRangesLowDetail.length
@@ -184,17 +200,55 @@ export function loadChunk(
         .texture("u_heightMap", heightMapTexture)
         .drawRanges(...chunkData.drawRangesLowDetail);
 
+    const drawCallInteract = app
+        .createDrawCall(program, vertexArray)
+        .uniformBlock("TextureUniforms", textureUniformBuffer)
+        .uniformBlock("SceneUniforms", sceneUniformBuffer)
+        .uniform("u_timeLoaded", time)
+        .uniform("u_regionPos", regionPos)
+        .uniform("u_drawIdOffset", 0)
+        .texture("u_textures", textureArray)
+        .texture("u_modelDataTexture", modelDataTextureInteract)
+        .texture("u_heightMap", heightMapTexture)
+        .drawRanges(...chunkData.drawRangesInteract);
+    const drawCallInteractLowDetail = app
+        .createDrawCall(program, vertexArray)
+        .uniformBlock("TextureUniforms", textureUniformBuffer)
+        .uniformBlock("SceneUniforms", sceneUniformBuffer)
+        .uniform("u_timeLoaded", time)
+        .uniform("u_regionPos", regionPos)
+        .uniform(
+            "u_drawIdOffset",
+            chunkData.drawRangesInteract.length -
+                chunkData.drawRangesInteractLowDetail.length
+        )
+        .texture("u_textures", textureArray)
+        .texture("u_modelDataTexture", modelDataTextureInteract)
+        .texture("u_heightMap", heightMapTexture)
+        .drawRanges(...chunkData.drawRangesInteractLowDetail);
+
     const drawCallAlpha = app
         .createDrawCall(program, vertexArray)
         .uniformBlock("TextureUniforms", textureUniformBuffer)
         .uniformBlock("SceneUniforms", sceneUniformBuffer)
         .uniform("u_timeLoaded", time)
-        .uniform("u_modelMatrix", baseModelMatrix)
+        .uniform("u_regionPos", regionPos)
         .uniform("u_drawIdOffset", 0)
         .texture("u_textures", textureArray)
         .texture("u_modelDataTexture", modelDataTextureAlpha)
         .texture("u_heightMap", heightMapTexture)
         .drawRanges(...chunkData.drawRangesAlpha);
+    const drawCallInteractAlpha = app
+        .createDrawCall(program, vertexArray)
+        .uniformBlock("TextureUniforms", textureUniformBuffer)
+        .uniformBlock("SceneUniforms", sceneUniformBuffer)
+        .uniform("u_timeLoaded", time)
+        .uniform("u_regionPos", regionPos)
+        .uniform("u_drawIdOffset", 0)
+        .texture("u_textures", textureArray)
+        .texture("u_modelDataTexture", modelDataTextureInteractAlpha)
+        .texture("u_heightMap", heightMapTexture)
+        .drawRanges(...chunkData.drawRangesInteractAlpha);
 
     const animatedObjects: AnimatedObject[] = [];
     for (const object of chunkData.animatedObjects) {
@@ -203,6 +257,8 @@ export function loadChunk(
             new AnimatedObject(
                 object.drawRangeIndex,
                 object.drawRangeAlphaIndex,
+                object.drawRangeInteractIndex,
+                object.drawRangeInteractAlphaIndex,
                 object.frames,
                 object.framesAlpha,
                 animationDef,
@@ -224,7 +280,7 @@ export function loadChunk(
             .uniformBlock("TextureUniforms", textureUniformBuffer)
             .uniformBlock("SceneUniforms", sceneUniformBuffer)
             .uniform("u_timeLoaded", time)
-            .uniform("u_modelMatrix", baseModelMatrix)
+            .uniform("u_regionPos", regionPos)
             .uniform("u_npcDataOffset", 0)
             .texture("u_textures", textureArray)
             .texture("u_heightMap", heightMapTexture)
@@ -261,18 +317,27 @@ export function loadChunk(
         tileRenderFlags: chunkData.tileRenderFlags,
         collisionMaps,
 
-        modelMatrix: baseModelMatrix,
-
         triangleCount: chunkData.indices.length / 3,
+
         drawRanges: chunkData.drawRanges,
         drawRangesLowDetail: chunkData.drawRangesLowDetail,
+
+        drawRangesInteract: chunkData.drawRangesInteract,
+        drawRangesInteractLowDetail: chunkData.drawRangesInteractLowDetail,
+
         drawRangesAlpha: chunkData.drawRangesAlpha,
+        drawRangesInteractAlpha: chunkData.drawRangesInteractAlpha,
 
         drawRangesNpc: chunkData.drawRangesNpc,
 
         drawCall,
         drawCallLowDetail,
+
+        drawCallInteract: drawCallInteract,
+        drawCallInteractLowDetail: drawCallInteractLowDetail,
+
         drawCallAlpha,
+        drawCallInteractAlpha: drawCallInteractAlpha,
 
         drawCallNpc,
 
@@ -282,8 +347,12 @@ export function loadChunk(
         interleavedBuffer,
         indexBuffer,
         vertexArray,
+
         modelDataTexture,
         modelDataTextureAlpha,
+        modelDataTextureInteract: modelDataTextureInteract,
+        modelDataTextureInteractAlpha: modelDataTextureInteractAlpha,
+
         npcDataTextureOffsets: new Array(NPC_DATA_TEXTURE_BUFFER_SIZE),
         heightMapTexture,
 
@@ -298,5 +367,7 @@ export function deleteChunk(chunk: Chunk) {
     chunk.vertexArray.delete();
     chunk.modelDataTexture.delete();
     chunk.modelDataTextureAlpha.delete();
+    chunk.modelDataTextureInteract.delete();
+    chunk.modelDataTextureInteractAlpha.delete();
     chunk.heightMapTexture.delete();
 }
