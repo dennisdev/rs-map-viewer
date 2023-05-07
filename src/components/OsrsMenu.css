@@ -8,6 +8,10 @@
     white-space: nowrap;
 }
 
+.context-menu-container.tooltip {
+    pointer-events: none;
+}
+
 .context-menu {
     cursor: default;
     font-size: 16px;

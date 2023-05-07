@@ -191,9 +191,12 @@ export class MapViewer {
     lastClientTick: number = 0;
     lastTick: number = 0;
 
+    onInited?: () => void;
     onFps?: (fps: number) => void;
-    onCameraMove?: (pos: vec3, pitch: number, yaw: number) => void;
+    onCameraMoved?: (pos: vec3, pitch: number, yaw: number) => void;
     onCameraMoveEnd?: (pos: vec3, pitch: number, yaw: number) => void;
+
+    onMouseMoved?: (x: number, y: number) => void;
 
     onMenuOpened?: (
         x: number,
@@ -230,6 +233,8 @@ export class MapViewer {
 
     loadNpcs: boolean = false;
     maxPlane: number = Scene.MAX_PLANE - 1;
+
+    tooltips: boolean = true;
 
     cullBackFace: boolean = true;
     lastCullBackFace: boolean = true;
@@ -424,6 +429,8 @@ export class MapViewer {
 
         this.hasMultiDraw = !!PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED;
 
+        this.tooltips = this.hasMultiDraw;
+
         console.log(PicoGL.WEBGL_INFO);
 
         console.log(gl.getParameter(gl.MAX_SAMPLES));
@@ -508,6 +515,10 @@ export class MapViewer {
         console.timeEnd("first load");
 
         console.log(gl.getSupportedExtensions());
+
+        if (this.onInited) {
+            this.onInited();
+        }
     }
 
     initTextures() {
@@ -621,6 +632,9 @@ export class MapViewer {
             this.onMenuClosed();
             this.menuOpen = false;
         }
+        if (this.onMouseMoved) {
+            this.onMouseMoved(x, y);
+        }
     }
 
     onMouseDown(event: MouseEvent) {
@@ -675,7 +689,11 @@ export class MapViewer {
         this.pickX = event.x;
         this.pickY = event.y;
         console.log("clicked,", this.pickX, this.pickY, this.hoveredRegionIds);
-        this.checkInteractions(this.pickX, this.pickY, false);
+        if (this.tooltips) {
+            this.checkInteractions(this.pickX, this.pickY, false);
+        } else {
+            this.readPicked();
+        }
     }
 
     resetKeyEvents() {
@@ -785,9 +803,9 @@ export class MapViewer {
     }
 
     runCameraMoveCallback() {
-        if (this.onCameraMove) {
+        if (this.onCameraMoved) {
             const yaw = this.yaw & 2047;
-            this.onCameraMove(this.cameraPos, this.pitch, yaw);
+            this.onCameraMoved(this.cameraPos, this.pitch, yaw);
         }
     }
 
@@ -1488,10 +1506,14 @@ export class MapViewer {
         this.cameraUpdated = false;
 
         this.handleInput(time, deltaTime);
-        this.readHoveredRegion();
-        this.readHover();
+        if (this.hasMultiDraw) {
+            this.readHoveredRegion();
+        }
+        if (this.tooltips) {
+            this.readHover();
+        }
 
-        if (!this.menuOpen) {
+        if (!this.menuOpen && this.tooltips) {
             this.checkInteractions(
                 this.currentMouseX,
                 this.currentMouseY,
@@ -1911,6 +1933,9 @@ interface MapViewerContainerProps {
 }
 
 function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
+    const [inited, setInited] = useState<boolean>(
+        !!mapViewer.textureUniformBuffer
+    );
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
@@ -1922,11 +1947,32 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     >(undefined);
 
     useEffect(() => {
+        mapViewer.onInited = () => {
+            setInited(true);
+        };
+        if (mapViewer.textureUniformBuffer) {
+            setInited(true);
+        }
         mapViewer.onFps = setFps;
-        mapViewer.onCameraMove = (pos, pitch, yaw) => {
+        mapViewer.onCameraMoved = (pos, pitch, yaw) => {
             setCompassDegrees((2047 - yaw) * RS_TO_DEGREES);
         };
         mapViewer.runCameraMoveCallback();
+        mapViewer.onMouseMoved = (x, y) => {
+            setMenuProps((props) => {
+                if (!props) {
+                    return undefined;
+                }
+                if (!props.tooltip) {
+                    return props;
+                }
+                return {
+                    ...props,
+                    x,
+                    y,
+                };
+            });
+        };
         mapViewer.onMenuOpened = (x, y, options, tooltip) => {
             setMenuProps({ x, y, options, tooltip });
         };
@@ -1956,12 +2002,14 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         <div>
             {loadingBarOverlay}
             {menuProps && <OsrsMenu {...menuProps} />}
-            <MapViewerControls
-                mapViewer={mapViewer}
-                caches={caches}
-                setDownloadProgress={setDownloadProgress}
-                hidden={hudHidden}
-            />
+            {inited && (
+                <MapViewerControls
+                    mapViewer={mapViewer}
+                    caches={caches}
+                    setDownloadProgress={setDownloadProgress}
+                    hidden={hudHidden}
+                />
+            )}
             {!hudHidden && (
                 <span>
                     <div className="hud left-top">

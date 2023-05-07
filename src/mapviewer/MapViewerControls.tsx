@@ -186,17 +186,6 @@ export function MapViewerControls({
             },
             { collapsed: false }
         ),
-        Npc: folder(
-            {
-                Load: {
-                    value: true,
-                    onChange: (v) => {
-                        mapViewer.setLoadNpcs(v);
-                    },
-                },
-            },
-            { collapsed: true }
-        ),
         Cache: folder(
             {
                 Version: {
@@ -227,6 +216,12 @@ export function MapViewerControls({
         ),
         Render: folder(
             {
+                Npcs: {
+                    value: true,
+                    onChange: (v) => {
+                        mapViewer.setLoadNpcs(v);
+                    },
+                },
                 "Max Plane": {
                     value: mapViewer.maxPlane,
                     min: 0,
@@ -258,6 +253,17 @@ export function MapViewerControls({
                     value: true,
                     onChange: (v) => {
                         mapViewer.cullBackFace = v;
+                    },
+                },
+            },
+            { collapsed: true }
+        ),
+        Misc: folder(
+            {
+                Tooltips: {
+                    value: mapViewer.tooltips,
+                    onChange: (v) => {
+                        mapViewer.tooltips = v;
                     },
                 },
             },
