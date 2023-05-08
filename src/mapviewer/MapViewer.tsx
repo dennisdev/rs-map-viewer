@@ -427,7 +427,7 @@ export class MapViewer {
 
         this.hasMultiDraw = !!PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED;
 
-        this.tooltips = this.hasMultiDraw;
+        this.tooltips = this.hasMultiDraw && !isTouchDevice;
 
         console.log(PicoGL.WEBGL_INFO);
 
@@ -1507,7 +1507,7 @@ export class MapViewer {
         this.cameraUpdated = false;
 
         this.handleInput(time, deltaTime);
-        if (this.hasMultiDraw) {
+        if (this.hasMultiDraw && (!isTouchDevice || this.tooltips)) {
             this.readHoveredRegion();
         }
         if (this.tooltips) {
