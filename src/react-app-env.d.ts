@@ -5,6 +5,10 @@ import Bzip2 from "@foxglove/wasm-bz2";
 declare global {
     interface Window {
         wallpaperRegisterAudioListener: any;
+
+        wallpaperPropertyListener: any;
+
+        wallpaperFpsLimit?: number;
     }
 }
 

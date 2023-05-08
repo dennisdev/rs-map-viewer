@@ -7,6 +7,14 @@ import reportWebVitals from "./reportWebVitals";
 import { Compression } from "./client/util/Compression";
 import registerServiceWorker from "./registerServiceWorker";
 
+window.wallpaperPropertyListener = {
+    applyGeneralProperties: (properties: any) => {
+        if (properties.fps) {
+            window.wallpaperFpsLimit = properties.fps;
+        }
+    },
+};
+
 // console.log('start index', performance.now());
 Compression.initWasm();
 

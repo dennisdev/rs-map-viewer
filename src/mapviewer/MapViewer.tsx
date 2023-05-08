@@ -185,7 +185,7 @@ export class MapViewer {
 
     fps: number = 0;
 
-    fpsLimit: number = isWallpaperEngine ? 60 : 0;
+    fpsLimit: number = 0;
 
     lastFrameTime: number = 0;
     lastClientTick: number = 0;
@@ -239,8 +239,8 @@ export class MapViewer {
     cullBackFace: boolean = true;
     lastCullBackFace: boolean = true;
 
-    currentMouseX: number = 0;
-    currentMouseY: number = 0;
+    currentMouseX: number = -1;
+    currentMouseY: number = -1;
 
     startMouseX: number = -1;
     startMouseY: number = -1;
@@ -299,6 +299,18 @@ export class MapViewer {
         this.npcSpawns = npcSpawns;
 
         this.initCache(loadedCache);
+
+        if (isWallpaperEngine && window.wallpaperFpsLimit) {
+            this.fpsLimit = window.wallpaperFpsLimit;
+        }
+
+        window.wallpaperPropertyListener = {
+            applyGeneralProperties: (properties: any) => {
+                if (properties.fps) {
+                    this.fpsLimit = properties.fps;
+                }
+            },
+        };
 
         // console.log('create map viewer', performance.now());
 
@@ -1514,7 +1526,12 @@ export class MapViewer {
             this.readHover();
         }
 
-        if (!this.menuOpen && this.tooltips) {
+        if (
+            !this.menuOpen &&
+            this.tooltips &&
+            this.currentMouseX !== -1 &&
+            this.currentMouseY !== -1
+        ) {
             this.checkInteractions(
                 this.currentMouseX,
                 this.currentMouseY,
@@ -2064,7 +2081,7 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     );
 }
 
-const MAX_POOL_SIZE = isIos ? 1 : 4;
+const MAX_POOL_SIZE = isWallpaperEngine ? 1 : 4;
 
 const poolSize = Math.min(navigator.hardwareConcurrency, MAX_POOL_SIZE);
 const pool = ChunkLoaderWorkerPool.init(poolSize);
