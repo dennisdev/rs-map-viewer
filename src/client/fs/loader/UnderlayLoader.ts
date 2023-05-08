@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { Archive } from "../Archive";
 import { UnderlayDefinition } from "../definition/UnderlayDefinition";
 import {
@@ -6,13 +7,13 @@ import {
 } from "./DefinitionLoader";
 
 export class UnderlayLoader extends ArchiveDefinitionLoader<UnderlayDefinition> {
-    constructor(archive: Archive, revision: number) {
-        super(archive, UnderlayDefinition, revision);
+    constructor(archive: Archive, cacheInfo: CacheInfo) {
+        super(archive, UnderlayDefinition, cacheInfo);
     }
 }
 
 export class CachedUnderlayLoader extends CachedArchiveDefinitionLoader<UnderlayDefinition> {
-    constructor(archive: Archive, revision: number) {
-        super(archive, UnderlayDefinition, revision);
+    constructor(archive: Archive, cacheInfo: CacheInfo) {
+        super(archive, UnderlayDefinition, cacheInfo);
     }
 }

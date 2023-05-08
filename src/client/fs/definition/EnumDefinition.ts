@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition } from "./Definition";
 
@@ -18,8 +19,8 @@ export class EnumDefinition extends Definition {
 
     stringValues!: string[];
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.defaultString = "null";
         this.outputCount = 0;
     }

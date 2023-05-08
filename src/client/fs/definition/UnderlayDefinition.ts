@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition } from "./Definition";
 
@@ -9,8 +10,8 @@ export class UnderlayDefinition extends Definition {
     public lightness: number;
     public hueMultiplier: number;
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.rgbColor = 0;
         this.hue = 0;
         this.saturation = 0;

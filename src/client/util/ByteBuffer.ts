@@ -14,6 +14,9 @@ export class ByteBuffer {
     }
 
     readByte(): number {
+        if (this.offset > this._data.length - 1) {
+            throw new Error("Buffer overflow");
+        }
         return this._data[this.offset++];
     }
 

@@ -1,11 +1,12 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition } from "./Definition";
 
 export class InvDefinition extends Definition {
     itemCount: number;
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.itemCount = 0;
     }
 

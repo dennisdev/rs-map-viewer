@@ -61,17 +61,20 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
 
     const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
-    const underlayLoader = new CachedUnderlayLoader(underlayArchive, revision);
-    const overlayLoader = new CachedOverlayLoader(overlayArchive, revision);
-    const objectLoader = new CachedObjectLoader(objectArchive, revision);
-    const npcLoader = new CachedNpcLoader(npcArchive, revision);
+    const underlayLoader = new CachedUnderlayLoader(
+        underlayArchive,
+        cache.info
+    );
+    const overlayLoader = new CachedOverlayLoader(overlayArchive, cache.info);
+    const objectLoader = new CachedObjectLoader(objectArchive, cache.info);
+    const npcLoader = new CachedNpcLoader(npcArchive, cache.info);
 
     const animationLoader = new CachedAnimationLoader(
         animationArchive,
-        revision
+        cache.info
     );
 
-    const varbitLoader = new CachedVarbitLoader(varbitArchive, revision);
+    const varbitLoader = new CachedVarbitLoader(varbitArchive, cache.info);
 
     const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
     const frameMapLoader = new CachedAnimationFrameMapLoader(
@@ -97,7 +100,7 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
     );
 
     const regionLoader = new RegionLoader(
-        revision,
+        cache.info,
         mapIndex,
         varpManager,
         underlayLoader,
@@ -108,7 +111,11 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
     );
 
     // console.time('load textures');
-    const textureProvider = TextureLoader.load(textureIndex, spriteIndex);
+    const textureProvider = TextureLoader.load(
+        textureIndex,
+        spriteIndex,
+        cache.info
+    );
     // console.timeEnd('load textures');
     // console.time('load textures sprites');
     // for (const texture of textureProvider.definitions.values()) {

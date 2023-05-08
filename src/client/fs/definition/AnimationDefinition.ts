@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition } from "./Definition";
 
@@ -42,8 +43,8 @@ export class AnimationDefinition extends Definition {
 
     animMayaMasks?: boolean[];
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.frameStep = -1;
         this.stretches = false;
         this.forcedPriority = 5;
@@ -61,7 +62,15 @@ export class AnimationDefinition extends Definition {
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
         if (opcode === 1) {
-            const count = buffer.readUnsignedShort();
+            let count = 0;
+            if (
+                this.cacheInfo.game === "runescape" &&
+                this.cacheInfo.revision < 456
+            ) {
+                count = buffer.readUnsignedByte();
+            } else {
+                count = buffer.readUnsignedShort();
+            }
             this.frameLengths = new Array(count);
 
             for (let i = 0; i < count; i++) {

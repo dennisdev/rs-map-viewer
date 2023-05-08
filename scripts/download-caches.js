@@ -41,6 +41,8 @@ function askQuestion(query) {
 }
 
 async function downloadCaches(count) {
+    // renameCacheDirs();
+
     const resp = await fetch("https://archive.openrs2.org/caches.json");
     const json = await resp.json();
 
@@ -49,17 +51,38 @@ async function downloadCaches(count) {
             cache.scope === "runescape" &&
             cache.game === "oldschool" &&
             cache.environment === "live" &&
+            cache.language === "en" &&
             cache.builds.length > 0 &&
             cache.timestamp
     );
 
+    caches.push(
+        ...json.filter(
+            (cache) =>
+                cache.scope === "runescape" &&
+                cache.game === "runescape" &&
+                cache.environment === "live" &&
+                cache.language === "en" &&
+                cache.builds.length > 0 &&
+                cache.builds[0].major >= 410 &&
+                cache.builds[0].major <= 471 &&
+                cache.timestamp
+        )
+    );
+
     // sort new to old
     caches.sort((a, b) => {
+        const isOsrsA = a.game === "oldschool";
+        const isOsrsB = b.game === "oldschool";
         const buildA = a.builds[0].major;
         const buildB = b.builds[0].major;
         const dateA = Date.parse(a.timestamp);
         const dateB = Date.parse(b.timestamp);
-        return buildB - buildA || dateB - dateA;
+        return (
+            (isOsrsB ? 1 : 0) - (isOsrsA ? 1 : 0) ||
+            buildB - buildA ||
+            dateB - dateA
+        );
     });
 
     const cachesToDownload = [];
@@ -95,7 +118,10 @@ async function downloadCaches(count) {
 function getCacheDir(cache) {
     const build = cache.builds[0].major;
     const date = cache.timestamp.split("T")[0];
-    return `caches/cache-${build}_${date}/`;
+    if (cache.game === "oldschool") {
+        return `caches/osrs-${build}_${date}/`;
+    }
+    return `caches/rs2-${build}_${date}/`;
 }
 
 async function downloadCache(cache, cacheDir) {
@@ -136,6 +162,26 @@ async function fetchXteas(cache) {
     return xteas;
 }
 
+function renameCacheDirs() {
+    const cachesPath = "caches/";
+
+    const fileNames = fs.readdirSync(cachesPath);
+    for (const name of fileNames) {
+        const isDir = fs.lstatSync(cachesPath + name).isDirectory();
+        if (!isDir || !fs.existsSync(cachesPath + name + "/info.json")) {
+            continue;
+        }
+        if (name.startsWith("cache-")) {
+            console.log("Renaming cache dir:", name);
+            fs.renameSync(
+                cachesPath + name,
+                cachesPath + name.replace("cache-", "osrs-")
+            );
+        }
+        // break;
+    }
+}
+
 function createCacheList() {
     const cachesPath = "caches/";
 
@@ -154,6 +200,7 @@ function createCacheList() {
 
         const cache = {
             name,
+            game: cacheInfo.game,
             revision,
             timestamp: cacheInfo.timestamp,
             size: cacheInfo.size,

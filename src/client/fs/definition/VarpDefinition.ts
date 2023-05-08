@@ -1,11 +1,12 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition } from "./Definition";
 
 export class VarpDefinition extends Definition {
     type: number;
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.type = 0;
     }
 

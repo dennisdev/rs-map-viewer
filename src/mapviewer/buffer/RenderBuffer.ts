@@ -128,7 +128,7 @@ export function addTerrain(
                         plane,
                         contourGround: ContourGroundType.VERTEX,
                         priority: 0,
-                        id: 0,
+                        id: 0xffff,
                     },
                 ],
             };

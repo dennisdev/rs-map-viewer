@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { VarpManager } from "../../VarpManager";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { ObjectLoader } from "../loader/ObjectLoader";
@@ -94,8 +95,8 @@ export class ObjectDefinition extends Definition {
 
     params!: ParamsMap;
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.lowDetail = false;
         this.name = "null";
         this.sizeX = 1;
@@ -151,6 +152,9 @@ export class ObjectDefinition extends Definition {
             }
         } else if (opcode === 2) {
             this.name = buffer.readString();
+        } else if (opcode === 3) {
+            // description
+            buffer.readString();
         } else if (opcode === 5) {
             const count = buffer.readUnsignedByte();
             if (count > 0) {

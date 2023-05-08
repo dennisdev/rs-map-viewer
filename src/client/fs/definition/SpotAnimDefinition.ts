@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition } from "./Definition";
 
@@ -24,8 +25,8 @@ export class SpotAnimDefinition extends Definition {
 
     contrast: number;
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.sequenceId = -1;
         this.widthScale = 128;
         this.heightScale = 128;

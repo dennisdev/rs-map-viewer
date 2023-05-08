@@ -4,6 +4,9 @@ import { Xtea } from "../util/Xtea";
 
 export class Container {
     public static decode(buffer: ByteBuffer, key: number[] = []): Container {
+        if (buffer.remaining === 0) {
+            throw new Error("Empty container");
+        }
         const compression: CompressionType = buffer.readUnsignedByte();
         const size = buffer.readInt();
         if (key.length) {

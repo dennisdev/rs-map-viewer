@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 
 export type ParamsMap = Map<number, number | string>;
@@ -5,7 +6,7 @@ export type ParamsMap = Map<number, number | string>;
 export abstract class Definition {
     public readonly id: number;
 
-    public readonly revision: number;
+    public readonly cacheInfo: CacheInfo;
 
     public static readParamsMap(
         buf: ByteBuffer,
@@ -28,9 +29,9 @@ export abstract class Definition {
         return params;
     }
 
-    constructor(id: number, revision: number) {
+    constructor(id: number, cacheInfo: CacheInfo) {
         this.id = id;
-        this.revision = revision;
+        this.cacheInfo = cacheInfo;
     }
 
     decode(buffer: ByteBuffer): void {

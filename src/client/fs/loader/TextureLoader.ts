@@ -3,6 +3,7 @@ import { IndexSync } from "../Index";
 import { StoreSync } from "../Store";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
 import { brightenRgb } from "../../util/ColorUtil";
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 
 export class TextureLoader {
     textureIndex: IndexSync<StoreSync>;
@@ -32,21 +33,28 @@ export class TextureLoader {
 
     public static load(
         textureIndex: IndexSync<StoreSync>,
-        spriteIndex: IndexSync<StoreSync>
+        spriteIndex: IndexSync<StoreSync>,
+        cacheInfo: CacheInfo
     ): TextureLoader {
         const definitions: Map<number, TextureDefinition> = new Map();
 
-        const texturesArchive = textureIndex.getArchive(0);
+        // TODO: Load newer revision textures
+        if (
+            cacheInfo.game === "oldschool" ||
+            (cacheInfo.game === "runescape" && cacheInfo.revision < 474)
+        ) {
+            const texturesArchive = textureIndex.getArchive(0);
 
-        Array.from(texturesArchive.fileIds).forEach((id) => {
-            const file = texturesArchive.getFile(id);
-            if (file) {
-                definitions.set(
-                    id,
-                    TextureDefinition.decode(file.getDataAsBuffer(), id)
-                );
-            }
-        });
+            Array.from(texturesArchive.fileIds).forEach((id) => {
+                const file = texturesArchive.getFile(id);
+                if (file) {
+                    definitions.set(
+                        id,
+                        TextureDefinition.decode(file.getDataAsBuffer(), id)
+                    );
+                }
+            });
+        }
 
         return new TextureLoader(textureIndex, spriteIndex, definitions);
     }

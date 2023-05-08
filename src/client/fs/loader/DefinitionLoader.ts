@@ -1,25 +1,26 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { Archive } from "../Archive";
 import { Definition } from "../definition/Definition";
 
 export class ArchiveDefinitionLoader<T extends Definition> {
     archive: Archive;
 
-    defType: { new (id: number, revision: number): T };
+    defType: { new (id: number, cacheInfo: CacheInfo): T };
 
-    revision: number;
+    cacheInfo: CacheInfo;
 
     constructor(
         archive: Archive,
-        defType: { new (id: number, revision: number): T },
-        revision: number
+        defType: { new (id: number, cacheInfo: CacheInfo): T },
+        cacheInfo: CacheInfo
     ) {
         this.archive = archive;
         this.defType = defType;
-        this.revision = revision;
+        this.cacheInfo = cacheInfo;
     }
 
     getDefinition(id: number): T {
-        const def = new this.defType(id, this.revision);
+        const def = new this.defType(id, this.cacheInfo);
         const file = this.archive.getFile(id);
         if (file) {
             def.decode(file.getDataAsBuffer());
@@ -36,10 +37,10 @@ export class CachedArchiveDefinitionLoader<
 
     constructor(
         archive: Archive,
-        defType: { new (id: number, revision: number): T },
-        revision: number
+        defType: { new (id: number, cacheInfo: CacheInfo): T },
+        cacheInfo: CacheInfo
     ) {
-        super(archive, defType, revision);
+        super(archive, defType, cacheInfo);
         this.cache = new Map();
     }
 

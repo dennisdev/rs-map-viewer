@@ -1,3 +1,4 @@
+import { CacheInfo } from "../mapviewer/CacheInfo";
 import { ObjectDefinition } from "./fs/definition/ObjectDefinition";
 import { OverlayDefinition } from "./fs/definition/OverlayDefinition";
 import { UnderlayDefinition } from "./fs/definition/UnderlayDefinition";
@@ -12,7 +13,7 @@ import { packHsl } from "./util/ColorUtil";
 import { VarpManager } from "./VarpManager";
 
 export class RegionLoader {
-    revision: number;
+    cacheInfo: CacheInfo;
 
     mapIndex: IndexSync<StoreSync>;
 
@@ -53,7 +54,7 @@ export class RegionLoader {
     }
 
     constructor(
-        revision: number,
+        cacheInfo: CacheInfo,
         mapIndex: IndexSync<StoreSync>,
         varpManager: VarpManager,
         underlayLoader: UnderlayLoader,
@@ -62,7 +63,7 @@ export class RegionLoader {
         objectModelLoader: ObjectModelLoader,
         xteasMap: Map<number, number[]>
     ) {
-        this.revision = revision;
+        this.cacheInfo = cacheInfo;
         this.mapIndex = mapIndex;
         this.varpManager = varpManager;
         this.underlayLoader = underlayLoader;
@@ -89,8 +90,12 @@ export class RegionLoader {
         if (archiveId === -1) {
             return undefined;
         }
-        const file = this.mapIndex.getFile(archiveId, 0);
-        return file && file.data;
+        try {
+            const file = this.mapIndex.getFile(archiveId, 0);
+            return file && file.data;
+        } catch (e) {
+            return undefined;
+        }
     }
 
     getLandscapeData(regionX: number, regionY: number): Int8Array | undefined {
@@ -133,7 +138,8 @@ export class RegionLoader {
                     0,
                     regionX * 64,
                     regionY * 64,
-                    this.revision >= 209
+                    this.cacheInfo.game === "oldschool" &&
+                        this.cacheInfo.revision >= 209
                 );
 
                 this.regions.set(id, region);

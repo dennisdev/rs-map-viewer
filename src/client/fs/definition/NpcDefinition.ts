@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { VarpManager } from "../../VarpManager";
 import { NpcLoader } from "../loader/NpcLoader";
@@ -89,8 +90,8 @@ export class NpcDefinition extends Definition {
 
     params!: ParamsMap;
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.name = "null";
         this.size = 1;
         this.idleSequence = -1;
@@ -198,7 +199,10 @@ export class NpcDefinition extends Definition {
         } else if (opcode === 101) {
             this.contrast = buffer.readByte() * 5;
         } else if (opcode === 102) {
-            if (this.revision < 210) {
+            if (
+                this.cacheInfo.game === "oldschool" &&
+                this.cacheInfo.revision < 210
+            ) {
                 this.headIconPrayer = buffer.readUnsignedShort();
             } else {
                 const flag = buffer.readUnsignedByte();
@@ -283,8 +287,8 @@ export class NpcDefinition extends Definition {
                     opcode +
                     " not implemented. ID: " +
                     this.id +
-                    ". rev: " +
-                    this.revision
+                    ". cache: " +
+                    this.cacheInfo
             );
         }
     }

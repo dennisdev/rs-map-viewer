@@ -948,7 +948,7 @@ function addModelGroup(
                     plane: modelGroup.plane,
                     contourGround: ContourGroundType.NONE,
                     priority: modelGroup.priority,
-                    id: 0,
+                    id: 0xffff,
                 },
             ];
         } else {
@@ -1030,7 +1030,7 @@ export class ChunkDataLoader {
         }
 
         let npcSpawns: NpcSpawn[] = [];
-        if (loadNpcs) {
+        if (loadNpcs && this.cacheInfo.game === "oldschool") {
             npcSpawns = this.npcSpawns.filter((npc) => {
                 const npcRegionX = (npc.x / 64) | 0;
                 const npcRegionY = (npc.y / 64) | 0;
@@ -1040,10 +1040,6 @@ export class ChunkDataLoader {
                     npc.p <= maxPlane
                 );
             });
-            // npcSpawns = npcSpawns.filter(npc => npc.id === 2812);
-            // npcSpawns = npcSpawns.filter(npc => npc.p === 2 && npc.id === 3227);
-            // npcSpawns = npcSpawns.slice(45, 46);
-            console.log(npcSpawns);
         }
 
         console.time("read landscape data");

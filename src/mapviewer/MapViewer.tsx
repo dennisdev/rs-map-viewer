@@ -340,19 +340,13 @@ export class MapViewer {
         const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
         const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
-        this.objectLoader = new CachedObjectLoader(
-            objectArchive,
-            cache.info.revision
-        );
-        this.npcLoader = new CachedNpcLoader(npcArchive, cache.info.revision);
+        this.objectLoader = new CachedObjectLoader(objectArchive, cache.info);
+        this.npcLoader = new CachedNpcLoader(npcArchive, cache.info);
         this.animationLoader = new CachedAnimationLoader(
             animationArchive,
-            cache.info.revision
+            cache.info
         );
-        const varbitLoader = new CachedVarbitLoader(
-            varbitArchive,
-            cache.info.revision
-        );
+        const varbitLoader = new CachedVarbitLoader(varbitArchive, cache.info);
 
         this.varpManager = new VarpManager(varbitLoader);
 
@@ -369,7 +363,11 @@ export class MapViewer {
 
         this.regionPositions = undefined;
 
-        this.textureProvider = TextureLoader.load(textureIndex, spriteIndex);
+        this.textureProvider = TextureLoader.load(
+            textureIndex,
+            spriteIndex,
+            cache.info
+        );
 
         if (this.app) {
             this.deleteChunks();
@@ -1205,6 +1203,9 @@ export class MapViewer {
             const interactId =
                 (this.interactBuffer[index] << 8) |
                 this.interactBuffer[index + 1];
+            if (interactId === 0xffff) {
+                continue;
+            }
             const interactType = this.interactBuffer[index + 2];
             if (interactType === InteractType.OBJECT) {
                 if (objectIds.has(interactId)) {

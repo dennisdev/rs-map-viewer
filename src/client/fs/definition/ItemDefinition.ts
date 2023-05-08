@@ -1,3 +1,4 @@
+import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition, ParamsMap } from "./Definition";
 
@@ -104,8 +105,8 @@ export class ItemDefinition extends Definition {
 
     params?: ParamsMap;
 
-    constructor(id: number, revision: number) {
-        super(id, revision);
+    constructor(id: number, cacheInfo: CacheInfo) {
+        super(id, cacheInfo);
         this.name = "null";
         this.zoom2d = 2000;
         this.xan2d = 0;
