@@ -73,3 +73,15 @@ export async function loadCache(
         xteas,
     };
 }
+
+export async function deleteOldCaches(cacheInfos: CacheInfo[]) {
+    const cacheNames = new Set(cacheInfos.map((c) => c.name));
+
+    const cacheKeys = await caches.keys();
+
+    for (const key of cacheKeys) {
+        if (!cacheNames.has(key)) {
+            caches.delete(key);
+        }
+    }
+}

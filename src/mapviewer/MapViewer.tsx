@@ -60,6 +60,7 @@ import { Chunk, deleteChunk, loadChunk } from "./chunk/Chunk";
 import { isIos, isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
 import {
     CacheInfo,
+    deleteOldCaches,
     fetchCacheList,
     getLatestCache,
     loadCache,
@@ -2110,6 +2111,7 @@ function MapViewerApp() {
             const cacheNameParam = searchParams.get("cache");
             const npcSpawnsPromise = fetchNpcSpawns();
             const caches = await cachesPromise;
+            deleteOldCaches(caches);
             const latestCacheInfo = getLatestCache(caches);
             if (!latestCacheInfo) {
                 console.error("Could not load the latest cache info");
