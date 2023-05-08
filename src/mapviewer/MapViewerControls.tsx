@@ -7,9 +7,7 @@ import { DownloadProgress } from "../client/fs/FileSystem";
 import { lerp, slerp } from "../client/util/MathUtil";
 import { CacheInfo, loadCache } from "./CacheInfo";
 import { CameraPosition, MapViewer, ProjectionType } from "./MapViewer";
-import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
-
-const DEFAULT_VIEW_DISTANCE = isWallpaperEngine ? 5 : 2;
+import { isTouchDevice } from "./util/DeviceUtil";
 
 interface MapViewerControlsProps {
     mapViewer: MapViewer;
@@ -157,7 +155,7 @@ export function MapViewerControls({
         Distance: folder(
             {
                 View: {
-                    value: DEFAULT_VIEW_DISTANCE,
+                    value: mapViewer.regionViewDistance,
                     min: 1,
                     max: 30,
                     step: 1,
@@ -166,7 +164,7 @@ export function MapViewerControls({
                     },
                 },
                 Unload: {
-                    value: 2,
+                    value: mapViewer.regionUnloadDistance,
                     min: 1,
                     max: 30,
                     step: 1,
@@ -175,7 +173,7 @@ export function MapViewerControls({
                     },
                 },
                 Lod: {
-                    value: 3,
+                    value: mapViewer.regionLodDistance,
                     min: 1,
                     max: 30,
                     step: 1,
@@ -217,7 +215,7 @@ export function MapViewerControls({
         Render: folder(
             {
                 Npcs: {
-                    value: true,
+                    value: mapViewer.loadNpcs,
                     onChange: (v) => {
                         mapViewer.setLoadNpcs(v);
                     },

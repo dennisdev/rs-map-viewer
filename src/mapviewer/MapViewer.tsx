@@ -122,6 +122,8 @@ enum InteractType {
 
 const NULL_DRAW_RANGE = [0, 0, 0];
 
+const DEFAULT_VIEW_DISTANCE = isWallpaperEngine ? 5 : 2;
+
 export class MapViewer {
     chunkLoaderWorker: ChunkLoaderWorkerPool;
     loadedCache!: LoadedCache;
@@ -217,9 +219,9 @@ export class MapViewer {
     fov: number = 90;
     orthoZoom: number = 15;
 
-    regionViewDistance: number = 1;
-    regionLodDistance: number = 1;
-    regionUnloadDistance: number = 1;
+    regionViewDistance: number = DEFAULT_VIEW_DISTANCE;
+    regionUnloadDistance: number = 2;
+    regionLodDistance: number = 3;
 
     lastRegionViewDistance: number = -1;
 
@@ -231,7 +233,7 @@ export class MapViewer {
     brightness: number = 1.0;
     colorBanding: number = 255;
 
-    loadNpcs: boolean = false;
+    loadNpcs: boolean = true;
     maxPlane: number = Scene.MAX_PLANE - 1;
 
     tooltips: boolean = true;
@@ -404,7 +406,6 @@ export class MapViewer {
         if (!isWallpaperEngine) {
             gl.canvas.addEventListener("keydown", this.onKeyDown);
             gl.canvas.addEventListener("keyup", this.onKeyUp);
-            gl.canvas.addEventListener("mousemove", this.onMouseMove);
             gl.canvas.addEventListener("mousedown", this.onMouseDown);
             gl.canvas.addEventListener("mouseup", this.onMouseUp);
             gl.canvas.addEventListener("mouseleave", this.onMouseLeave);
@@ -415,6 +416,7 @@ export class MapViewer {
             gl.canvas.addEventListener("contextmenu", this.onContextMenu);
             gl.canvas.focus();
         }
+        gl.canvas.addEventListener("mousemove", this.onMouseMove);
 
         const cameraX = -this.cameraPos[0];
         const cameraY = -this.cameraPos[2];
