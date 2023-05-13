@@ -242,6 +242,11 @@ export class MapViewer {
     cullBackFace: boolean = true;
     lastCullBackFace: boolean = true;
 
+    positionJoystickEvent?: IJoystickUpdateEvent;
+    cameraJoystickEvent?: IJoystickUpdateEvent;
+
+    gamepadIndex?: number;
+
     currentMouseX: number = -1;
     currentMouseY: number = -1;
 
@@ -314,6 +319,14 @@ export class MapViewer {
                 }
             },
         };
+
+        window.addEventListener("gamepadconnected", (e) => {
+            console.log("gamepad connected", e.gamepad);
+            this.gamepadIndex = e.gamepad.index;
+        });
+        window.addEventListener("gamepaddisconnected", (e) => {
+            this.gamepadIndex = undefined;
+        });
 
         // console.log('create map viewer', performance.now());
 
@@ -690,6 +703,8 @@ export class MapViewer {
 
     onMouseLeave(event: MouseEvent) {
         this.resetMouseEvents();
+        this.currentMouseX = -1;
+        this.currentMouseY = -1;
     }
 
     onFocusOut(event: FocusEvent) {
@@ -717,10 +732,6 @@ export class MapViewer {
         this.startMouseX = -1;
         this.startMouseY = -1;
     }
-
-    positionJoystickEvent?: IJoystickUpdateEvent;
-
-    cameraJoystickEvent?: IJoystickUpdateEvent;
 
     onPositionJoystickMove(event: IJoystickUpdateEvent) {
         this.positionJoystickEvent = event;
@@ -989,6 +1000,41 @@ export class MapViewer {
             const moveY = this.cameraJoystickEvent.y || 0;
             this.updatePitch(this.pitch, deltaPitch * -1.5 * moveY);
             this.updateYaw(this.yaw, deltaYaw * -1.5 * moveX);
+        }
+
+        // controller
+        let gamepad: Gamepad | null = null;
+        if (this.gamepadIndex !== undefined) {
+            const gamepads = navigator.getGamepads();
+            if (gamepads) {
+                gamepad = gamepads[this.gamepadIndex];
+            }
+        }
+
+        if (gamepad && gamepad.connected && gamepad.mapping === "standard") {
+            // X
+            if (gamepad.buttons[0].value === 1) {
+                cameraSpeedMult = 10;
+            }
+
+            const leftX = gamepad.axes[0];
+            const leftY = -gamepad.axes[1];
+            const leftTrigger = gamepad.buttons[6].value;
+
+            const rightX = gamepad.axes[2];
+            const rightY = -gamepad.axes[3];
+            const rightTrigger = gamepad.buttons[7].value;
+
+            const trigger = leftTrigger - rightTrigger;
+
+            this.moveCamera(
+                leftX * 32 * cameraSpeedMult * -deltaTime,
+                trigger * 32 * cameraSpeedMult * deltaTime,
+                leftY * 32 * cameraSpeedMult * -deltaTime
+            );
+
+            this.updatePitch(this.pitch, deltaPitch * -1.5 * rightY);
+            this.updateYaw(this.yaw, deltaYaw * -1.5 * rightX);
         }
 
         // mouse/touch controls
