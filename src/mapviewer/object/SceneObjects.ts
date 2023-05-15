@@ -25,7 +25,7 @@ function isLowDetail(
     if (
         type === 22 &&
         def.int1 === 0 &&
-        def.clipType != 1 &&
+        def.clipType !== 1 &&
         !def.obstructsGround
     ) {
         return true;

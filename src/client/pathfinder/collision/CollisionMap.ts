@@ -1,5 +1,4 @@
 import { ObjectType } from "../../scene/ObjectType";
-import { CollisionFlag } from "../flag/CollisionFlag";
 
 export class CollisionMap {
     width: number;

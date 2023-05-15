@@ -16,7 +16,7 @@ export function buildPalette(
             let var13 = var11;
             let var15 = var11;
             let var17 = var11;
-            if (var8 != 0.0) {
+            if (var8 !== 0.0) {
                 let var19: number;
                 if (var11 < 0.5) {
                     var19 = var11 * (1.0 + var8);
@@ -78,7 +78,7 @@ export function buildPalette(
             const rgb = (r << 16) + (g << 8) + b;
 
             let newRgb = brightenRgb(rgb, brightness);
-            if (newRgb == 0) {
+            if (newRgb === 0) {
                 newRgb = 1;
             }
 
@@ -125,7 +125,7 @@ export function packHsl(hue: number, saturation: number, lightness: number) {
 }
 
 export function adjustUnderlayLight(hsl: number, light: number) {
-    if (hsl == -1) {
+    if (hsl === -1) {
         return 12345678;
     } else {
         light = ((hsl & 127) * light) >> 7;
@@ -140,9 +140,9 @@ export function adjustUnderlayLight(hsl: number, light: number) {
 }
 
 export function adjustOverlayLight(hsl: number, light: number) {
-    if (hsl == -2) {
+    if (hsl === -2) {
         return 12345678;
-    } else if (hsl == -1) {
+    } else if (hsl === -1) {
         if (light < 2) {
             light = 2;
         } else if (light > 126) {

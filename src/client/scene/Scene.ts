@@ -341,7 +341,7 @@ export class Scene {
 
         let sizeX = def.sizeX;
         let sizeY = def.sizeY;
-        if (rotation == 1 || rotation == 3) {
+        if (rotation === 1 || rotation === 3) {
             sizeX = def.sizeY;
             sizeY = def.sizeX;
         }
@@ -394,7 +394,7 @@ export class Scene {
             flags += 256;
         }
 
-        const isDynamic = def.animationId !== -1 || !!def.transforms;
+        // const isDynamic = def.animationId !== -1 || !!def.transforms;
 
         const contourGroundInfo: ContourGroundInfo = {
             heightMap,
@@ -538,7 +538,7 @@ export class Scene {
                     }
 
                     if (
-                        def.decorDisplacement !=
+                        def.decorDisplacement !==
                         ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
                     ) {
                         this.updateWallDecorationDisplacement(
@@ -751,7 +751,7 @@ export class Scene {
                     }
 
                     if (
-                        def.decorDisplacement !=
+                        def.decorDisplacement !==
                         ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
                     ) {
                         this.updateWallDecorationDisplacement(
@@ -886,7 +886,7 @@ export class Scene {
                     }
 
                     if (
-                        def.decorDisplacement !=
+                        def.decorDisplacement !==
                         ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
                     ) {
                         this.updateWallDecorationDisplacement(
@@ -935,7 +935,7 @@ export class Scene {
                     );
 
                     if (
-                        def.decorDisplacement !=
+                        def.decorDisplacement !==
                         ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT
                     ) {
                         this.updateWallDecorationDisplacement(
@@ -1295,7 +1295,7 @@ export class Scene {
                             (!hideOccludedFaces ||
                                 localX >= endX ||
                                 localY >= endY ||
-                                (localY < tileY && tileX != localX))
+                                (localY < tileY && tileX !== localX))
                         ) {
                             const tile = this.tiles[plane][localX][localY];
                             if (tile) {
@@ -1699,7 +1699,7 @@ export class Scene {
             while (true) {
                 const v = this.readTerrainValue(buffer, newFormat);
                 if (v === 0) {
-                    if (plane == 0) {
+                    if (plane === 0) {
                         const actualX = x + baseX + 932731;
                         const actualY = y + baseY + 556238;
                         this.tileHeights[plane][x][y] =
@@ -1803,7 +1803,7 @@ export class Scene {
 
                     const overlayId = overlayIds[plane][x][y] - 1;
 
-                    if (underlayId == -1 && overlayId == -1) {
+                    if (underlayId === -1 && overlayId === -1) {
                         continue;
                     }
 
@@ -1865,7 +1865,7 @@ export class Scene {
                     }
 
                     let tileModel: SceneTileModel;
-                    if (overlayId == -1) {
+                    if (overlayId === -1) {
                         tileModel = new SceneTileModel(
                             0,
                             0,
@@ -1898,7 +1898,7 @@ export class Scene {
                         let overlayHsl: number;
                         if (textureId !== -1) {
                             overlayHsl = -1;
-                        } else if (overlay.primaryRgb == 0xff00ff) {
+                        } else if (overlay.primaryRgb === 0xff00ff) {
                             overlayHsl = -2;
                         } else {
                             overlayHsl = packHsl(

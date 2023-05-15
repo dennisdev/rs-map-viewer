@@ -58,7 +58,7 @@ export class SpriteLoader {
 
         for (let i = 1; i < paletteSize; i++) {
             SpriteLoader.palette[i] = buffer.readMedium();
-            if (SpriteLoader.palette[i] == 0) {
+            if (SpriteLoader.palette[i] === 0) {
                 SpriteLoader.palette[i] = 1;
             }
         }
@@ -73,11 +73,11 @@ export class SpriteLoader {
                 pixelCount
             ));
             const readPixelsDimension = buffer.readUnsignedByte();
-            if (readPixelsDimension == 0) {
+            if (readPixelsDimension === 0) {
                 for (let pi = 0; pi < pixelCount; pi++) {
                     pixels[pi] = buffer.readByte();
                 }
-            } else if (readPixelsDimension == 1) {
+            } else if (readPixelsDimension === 1) {
                 for (let x = 0; x < width; x++) {
                     for (let y = 0; y < height; y++) {
                         pixels[x + y * width] = buffer.readByte();

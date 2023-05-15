@@ -92,7 +92,7 @@ export class ByteBuffer {
     readSmart3(): number {
         let i = 0;
         let i_33_ = this.readUnsignedSmart();
-        while (i_33_ == 32767) {
+        while (i_33_ === 32767) {
             i_33_ = this.readUnsignedSmart();
             i += 32767;
         }

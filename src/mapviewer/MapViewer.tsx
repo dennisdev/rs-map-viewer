@@ -35,7 +35,7 @@ import { TextureLoader } from "../client/fs/loader/TextureLoader";
 import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
 import { Pathfinder } from "../client/pathfinder/Pathfinder";
 import { Scene } from "../client/scene/Scene";
-import { clamp, lerp, slerp } from "../client/util/MathUtil";
+import { clamp } from "../client/util/MathUtil";
 import WebGLCanvas from "../components/Canvas";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
@@ -1613,7 +1613,7 @@ export class MapViewer {
             return;
         }
 
-        if (this.lastCullBackFace != this.cullBackFace) {
+        if (this.lastCullBackFace !== this.cullBackFace) {
             this.updateCullFace();
         }
 
@@ -1670,13 +1670,13 @@ export class MapViewer {
         viewDistanceRegionIds.clear();
 
         let sortRegionPositions =
-            this.lastCameraX != cameraX ||
-            this.lastCameraY != cameraY ||
-            this.lastRegionViewDistance != this.regionViewDistance;
+            this.lastCameraX !== cameraX ||
+            this.lastCameraY !== cameraY ||
+            this.lastRegionViewDistance !== this.regionViewDistance;
         if (
-            this.lastCameraRegionX != cameraRegionX ||
-            this.lastCameraRegionY != cameraRegionY ||
-            this.lastRegionViewDistance != this.regionViewDistance ||
+            this.lastCameraRegionX !== cameraRegionX ||
+            this.lastCameraRegionY !== cameraRegionY ||
+            this.lastRegionViewDistance !== this.regionViewDistance ||
             this.regionPositions === undefined
         ) {
             const viewDistance = this.regionViewDistance;

@@ -51,7 +51,7 @@ export function createModelGroups(
         const totalFaceCount = model.faceCount * sceneModels.length;
 
         let merge =
-            sceneModels.length == 1 ||
+            sceneModels.length === 1 ||
             totalFaceCount < 100 ||
             minimizeDrawCalls;
 

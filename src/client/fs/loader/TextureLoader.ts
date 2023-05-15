@@ -129,7 +129,7 @@ export class TextureLoader {
                     const color = palette[pi];
                     const rg = color >> 8;
                     const gb = color & 0xffff;
-                    if (rg == gb) {
+                    if (rg === gb) {
                         const blue = color & 0xff;
                         palette[pi] =
                             (((r_b * blue) >> 8) & 0xff00ff) |
@@ -155,7 +155,7 @@ export class TextureLoader {
             }
 
             if (index === 0) {
-                if (size == sprite.subWidth) {
+                if (size === sprite.subWidth) {
                     for (
                         let pixelIndex = 0;
                         pixelIndex < pixelCount;
@@ -167,7 +167,7 @@ export class TextureLoader {
                         }
                         pixels[pixelIndex] = palette[paletteIndex];
                     }
-                } else if (sprite.subWidth == 64 && size == 128) {
+                } else if (sprite.subWidth === 64 && size === 128) {
                     let pixelIndex = 0;
 
                     for (let x = 0; x < size; x++) {

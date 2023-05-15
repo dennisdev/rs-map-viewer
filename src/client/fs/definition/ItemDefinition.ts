@@ -159,7 +159,8 @@ export class ItemDefinition extends Definition {
         } else if (opcode === 2) {
             this.name = buffer.readString();
         } else if (opcode === 3) {
-            const desc = buffer.readString();
+            // desc
+            buffer.readString();
         } else if (opcode === 4) {
             this.zoom2d = buffer.readUnsignedShort();
         } else if (opcode === 5) {

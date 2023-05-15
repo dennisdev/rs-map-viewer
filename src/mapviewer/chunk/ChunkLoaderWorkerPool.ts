@@ -1,11 +1,4 @@
-import {
-    spawn,
-    Pool,
-    Worker,
-    Transfer,
-    TransferDescriptor,
-    ModuleThread,
-} from "threads";
+import { spawn, Pool, Worker, ModuleThread } from "threads";
 import { LoadedCache } from "../CacheInfo";
 import { NpcSpawn } from "../npc/NpcSpawn";
 import { ChunkData } from "./ChunkData";

@@ -16,7 +16,7 @@ export function createOcclusionMap(
                 const overlayId = overlayIds[plane][x][y];
                 // everything below a roof or tile can be occluded
                 if (
-                    (renderFlags[plane][x][y] & 16) != 0 ||
+                    (renderFlags[plane][x][y] & 16) !== 0 ||
                     underlayId ||
                     overlayId
                 ) {

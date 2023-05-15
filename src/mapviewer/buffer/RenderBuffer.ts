@@ -252,7 +252,7 @@ export function addModel(
         let hslB = model.faceColors2[f];
         let hslC = model.faceColors3[f];
 
-        if (hslC == -1) {
+        if (hslC === -1) {
             hslC = hslB = hslA;
         }
 

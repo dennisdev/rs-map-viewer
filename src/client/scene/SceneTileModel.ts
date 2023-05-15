@@ -89,7 +89,7 @@ export class SceneTileModel {
 
         for (let i = 0; i < vertexCount; i++) {
             let vertexIndex = vertexIndices[i];
-            if ((vertexIndex & 1) == 0 && vertexIndex <= 8) {
+            if ((vertexIndex & 1) === 0 && vertexIndex <= 8) {
                 vertexIndex = ((vertexIndex - rotation - rotation - 1) & 7) + 1;
             }
 
@@ -107,91 +107,91 @@ export class SceneTileModel {
             let underlayHsl = 0;
             let overlayHsl = 0;
 
-            if (vertexIndex == 1) {
+            if (vertexIndex === 1) {
                 vertX = tileX;
                 vertZ = tileY;
                 vertY = heightSw;
                 underlayHsl = underlayHslSw;
                 overlayHsl = overlayHslSw;
-            } else if (vertexIndex == 2) {
+            } else if (vertexIndex === 2) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY;
                 vertY = (heightSe + heightSw) >> 1;
                 underlayHsl = (underlayHslSe + underlayHslSw) >> 1;
                 overlayHsl = (overlayHslSe + overlayHslSw) >> 1;
-            } else if (vertexIndex == 3) {
+            } else if (vertexIndex === 3) {
                 vertX = tileX + TILE_SIZE;
                 vertZ = tileY;
                 vertY = heightSe;
                 underlayHsl = underlayHslSe;
                 overlayHsl = overlayHslSe;
-            } else if (vertexIndex == 4) {
+            } else if (vertexIndex === 4) {
                 vertX = tileX + TILE_SIZE;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNe + heightSe) >> 1;
                 underlayHsl = (underlayHslSe + underlayHslNe) >> 1;
                 overlayHsl = (overlayHslSe + overlayHslNe) >> 1;
-            } else if (vertexIndex == 5) {
+            } else if (vertexIndex === 5) {
                 vertX = tileX + TILE_SIZE;
                 vertZ = tileY + TILE_SIZE;
                 vertY = heightNe;
                 underlayHsl = underlayHslNe;
                 overlayHsl = overlayHslNe;
-            } else if (vertexIndex == 6) {
+            } else if (vertexIndex === 6) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY + TILE_SIZE;
                 vertY = (heightNe + heightNw) >> 1;
                 underlayHsl = (underlayHslNw + underlayHslNe) >> 1;
                 overlayHsl = (overlayHslNw + overlayHslNe) >> 1;
-            } else if (vertexIndex == 7) {
+            } else if (vertexIndex === 7) {
                 vertX = tileX;
                 vertZ = tileY + TILE_SIZE;
                 vertY = heightNw;
                 underlayHsl = underlayHslNw;
                 overlayHsl = overlayHslNw;
-            } else if (vertexIndex == 8) {
+            } else if (vertexIndex === 8) {
                 vertX = tileX;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNw + heightSw) >> 1;
                 underlayHsl = (underlayHslNw + underlayHslSw) >> 1;
                 overlayHsl = (overlayHslNw + overlayHslSw) >> 1;
-            } else if (vertexIndex == 9) {
+            } else if (vertexIndex === 9) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY + QUARTER_TILE_SIZE;
                 vertY = (heightSe + heightSw) >> 1;
                 underlayHsl = (underlayHslSe + underlayHslSw) >> 1;
                 overlayHsl = (overlayHslSe + overlayHslSw) >> 1;
-            } else if (vertexIndex == 10) {
+            } else if (vertexIndex === 10) {
                 vertX = tileX + THREE_QTR_TILE_SIZE;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNe + heightSe) >> 1;
                 underlayHsl = (underlayHslSe + underlayHslNe) >> 1;
                 overlayHsl = (overlayHslSe + overlayHslNe) >> 1;
-            } else if (vertexIndex == 11) {
+            } else if (vertexIndex === 11) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY + THREE_QTR_TILE_SIZE;
                 vertY = (heightNe + heightNw) >> 1;
                 underlayHsl = (underlayHslNw + underlayHslNe) >> 1;
                 overlayHsl = (overlayHslNw + overlayHslNe) >> 1;
-            } else if (vertexIndex == 12) {
+            } else if (vertexIndex === 12) {
                 vertX = tileX + QUARTER_TILE_SIZE;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNw + heightSw) >> 1;
                 underlayHsl = (underlayHslNw + underlayHslSw) >> 1;
                 overlayHsl = (overlayHslNw + overlayHslSw) >> 1;
-            } else if (vertexIndex == 13) {
+            } else if (vertexIndex === 13) {
                 vertX = tileX + QUARTER_TILE_SIZE;
                 vertZ = tileY + QUARTER_TILE_SIZE;
                 vertY = heightSw;
                 underlayHsl = underlayHslSw;
                 overlayHsl = overlayHslSw;
-            } else if (vertexIndex == 14) {
+            } else if (vertexIndex === 14) {
                 vertX = tileX + THREE_QTR_TILE_SIZE;
                 vertZ = tileY + QUARTER_TILE_SIZE;
                 vertY = heightSe;
                 underlayHsl = underlayHslSe;
                 overlayHsl = overlayHslSe;
-            } else if (vertexIndex == 15) {
+            } else if (vertexIndex === 15) {
                 vertX = tileX + THREE_QTR_TILE_SIZE;
                 vertZ = tileY + THREE_QTR_TILE_SIZE;
                 vertY = heightNe;
@@ -218,7 +218,7 @@ export class SceneTileModel {
         let tileFaceIndex = 0;
 
         for (let i = 0; i < faceCount; i++) {
-            const isOverlay = tileFaces[tileFaceIndex++] == 1;
+            const isOverlay = tileFaces[tileFaceIndex++] === 1;
             let a = tileFaces[tileFaceIndex++];
             let b = tileFaces[tileFaceIndex++];
             let c = tileFaces[tileFaceIndex++];
@@ -250,7 +250,7 @@ export class SceneTileModel {
                 hslC = underlayHsls[c];
             }
 
-            if (hslA === 12345678 && faceTextureId == -1) {
+            if (hslA === 12345678 && faceTextureId === -1) {
                 continue;
             }
 

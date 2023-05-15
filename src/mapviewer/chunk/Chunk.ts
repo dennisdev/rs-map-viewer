@@ -1,4 +1,4 @@
-import { mat4, vec2 } from "gl-matrix";
+import { vec2 } from "gl-matrix";
 import { CollisionMap } from "../../client/pathfinder/collision/CollisionMap";
 import {
     DrawCall,
