@@ -95,8 +95,11 @@ function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
 function getAxisDeadzone(axis: number, zone: number): number {
     if (Math.abs(axis) < zone) {
         return 0;
+    } else if (axis < 0) {
+        return axis + zone;
+    } else {
+        return axis - zone;
     }
-    return axis;
 }
 
 function getRegionDistance(x: number, y: number, region: vec2): number {
@@ -1046,14 +1049,20 @@ export class MapViewer {
 
             const trigger = leftTrigger - rightTrigger;
 
-            this.moveCamera(
-                leftX * 32 * cameraSpeedMult * -deltaTime,
-                trigger * 32 * cameraSpeedMult * deltaTime,
-                leftY * 32 * cameraSpeedMult * -deltaTime
-            );
+            if (leftX !== 0 || leftY !== 0 || trigger !== 0) {
+                this.moveCamera(
+                    leftX * 32 * cameraSpeedMult * -deltaTime,
+                    trigger * 32 * cameraSpeedMult * deltaTime,
+                    leftY * 32 * cameraSpeedMult * -deltaTime
+                );
+            }
 
-            this.updatePitch(this.pitch, deltaPitch * -1.5 * rightY);
-            this.updateYaw(this.yaw, deltaYaw * -1.5 * rightX);
+            if (rightX !== 0) {
+                this.updateYaw(this.yaw, deltaYaw * -1.5 * rightX);
+            }
+            if (rightY !== 0) {
+                this.updatePitch(this.pitch, deltaPitch * -1.5 * rightY);
+            }
         }
 
         // mouse/touch controls
