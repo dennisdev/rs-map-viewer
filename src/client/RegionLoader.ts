@@ -7,7 +7,7 @@ import { ObjectLoader } from "./fs/loader/ObjectLoader";
 import { OverlayLoader } from "./fs/loader/OverlayLoader";
 import { UnderlayLoader } from "./fs/loader/UnderlayLoader";
 import { StoreSync } from "./fs/Store";
-import { ObjectModelLoader } from "./scene/ObjectModelLoader";
+import { ObjectModelLoader } from "./fs/loader/model/ObjectModelLoader";
 import { Scene } from "./scene/Scene";
 import { packHsl } from "./util/ColorUtil";
 import { VarpManager } from "./VarpManager";

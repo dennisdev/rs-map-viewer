@@ -13,6 +13,7 @@ export class TextureLoader {
     definitions: Map<number, TextureDefinition>;
 
     idIndexMap: Map<number, number>;
+    indexIdMap: Map<number, number>;
 
     idAlphaMap: Map<number, boolean>;
 
@@ -25,8 +26,10 @@ export class TextureLoader {
         this.spriteIndex = spriteIndex;
         this.definitions = definitions;
         this.idIndexMap = new Map();
+        this.indexIdMap = new Map();
         this.getDefinitions().forEach((def, index) => {
             this.idIndexMap.set(def.id, index);
+            this.indexIdMap.set(index, def.id);
         });
         this.idAlphaMap = new Map();
     }

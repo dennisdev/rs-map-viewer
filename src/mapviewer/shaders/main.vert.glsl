@@ -104,9 +104,11 @@ VertexData decodeVertex(int v0, int v1, int v2, float brightness) {
 
 struct ModelInfo {
     vec2 tilePos;
+    uint height;
     uint plane;
     uint priority;
     float contourGround;
+    uint interactType;
     uint interactId;
 };
 
@@ -115,10 +117,12 @@ ModelInfo decodeModelInfo(int offset) {
 
     ModelInfo info;
 
-    info.tilePos = vec2(float(data.r), float(data.g)) / vec2(128.0);
-    info.plane = data.b & uint(0x3);
-    info.priority = data.b >> uint(8);
-    info.contourGround = float((data.b >> uint(4)) & uint(0x3));
+    info.tilePos = vec2(float(data.r & uint(0x3FFF)), float(data.g & uint(0x3FFF))) / vec2(128.0);
+    info.height = data.b >> 6;
+    info.plane = data.r >> uint(14);
+    info.priority = data.b & uint(0xF);
+    info.contourGround = float((data.g >> uint(14)) & uint(0x3));
+    info.interactType = (data.b >> uint(4)) & uint(0x3);
     info.interactId = data.a;
 
     return info;
@@ -147,7 +151,7 @@ void main() {
     v_interactId = vec4(
         float(modelInfo.interactId >> uint(8)) / 255.0, 
         float(modelInfo.interactId & uint(0xFF)) / 255.0, 
-        1.0 / 255.0, 
+        float(modelInfo.interactType) / 255.0, 
         1
     );
 
@@ -155,6 +159,7 @@ void main() {
 
     vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_CENTER_TILE)) 
             + localPos.xz * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_VERTEX));
+    localPos.y -= float(modelInfo.height) / 128.0;
     localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE) / 128.0;
 
     localPos += vec3(u_regionPos.x, 0, u_regionPos.y) * vec3(64);

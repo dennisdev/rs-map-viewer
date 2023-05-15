@@ -3,7 +3,7 @@ import { ByteBuffer } from "../../util/ByteBuffer";
 import { Definition, ParamsMap } from "./Definition";
 
 export class ItemDefinition extends Definition {
-    inventoryModel!: number;
+    inventoryModel?: number;
 
     name: string;
 
@@ -149,6 +149,8 @@ export class ItemDefinition extends Definition {
         this.notedId = -1;
         this.placeholder = -1;
         this.placeholderTemplate = -1;
+
+        this.inventoryModel = 0;
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
@@ -156,6 +158,8 @@ export class ItemDefinition extends Definition {
             this.inventoryModel = buffer.readUnsignedShort();
         } else if (opcode === 2) {
             this.name = buffer.readString();
+        } else if (opcode === 3) {
+            const desc = buffer.readString();
         } else if (opcode === 4) {
             this.zoom2d = buffer.readUnsignedShort();
         } else if (opcode === 5) {
@@ -174,6 +178,8 @@ export class ItemDefinition extends Definition {
             }
         } else if (opcode === 9) {
             this.op9 = buffer.readString();
+        } else if (opcode === 10) {
+            buffer.readUnsignedShort();
         } else if (opcode === 11) {
             this.isStackable = 1;
         } else if (opcode === 12) {

@@ -15,7 +15,10 @@ import {
 } from "../util/ColorUtil";
 import { TextureLoader } from "../fs/loader/TextureLoader";
 import { ObjectType } from "./ObjectType";
-import { ObjectModelLoader, ContourGroundInfo } from "./ObjectModelLoader";
+import {
+    ObjectModelLoader,
+    ContourGroundInfo,
+} from "../fs/loader/model/ObjectModelLoader";
 import {
     calculateEntityTag,
     EntityType,
@@ -233,6 +236,7 @@ export class Scene {
         sizeY: number,
         renderable: Renderable | undefined,
         tag: bigint,
+        flags: number,
         type: number,
         def: ObjectDefinition
     ): boolean {
@@ -258,6 +262,7 @@ export class Scene {
             endX,
             endY,
             tag,
+            flags,
             type,
             def
         );
@@ -374,7 +379,6 @@ export class Scene {
         const sceneY = (tileY << 7) + (sizeY << 6);
 
         let tag = 0n;
-
         if (!objOcclusionOnly) {
             tag = calculateEntityTag(
                 tileX,
@@ -383,6 +387,11 @@ export class Scene {
                 def.int1 === 0,
                 objectId
             );
+        }
+
+        let flags = (rotation << 6) | type;
+        if (def.supportItems === 1) {
+            flags += 256;
         }
 
         const isDynamic = def.animationId !== -1 || !!def.transforms;
@@ -468,6 +477,7 @@ export class Scene {
                         1,
                         renderable,
                         tag,
+                        flags,
                         type,
                         def
                     );
@@ -861,6 +871,7 @@ export class Scene {
                         1,
                         renderable,
                         tag,
+                        flags,
                         type,
                         def
                     );
@@ -1218,6 +1229,7 @@ export class Scene {
                     sizeY,
                     renderable,
                     tag,
+                    flags,
                     type,
                     def
                 ) &&

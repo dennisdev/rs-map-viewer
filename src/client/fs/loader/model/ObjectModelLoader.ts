@@ -1,11 +1,11 @@
-import { AnimationDefinition } from "../fs/definition/AnimationDefinition";
-import { ObjectDefinition } from "../fs/definition/ObjectDefinition";
-import { AnimationFrameMapLoader } from "../fs/loader/AnimationFrameMapLoader";
-import { AnimationLoader } from "../fs/loader/AnimationLoader";
-import { ModelLoader } from "../fs/loader/ModelLoader";
-import { Model } from "../model/Model";
-import { ModelData } from "../model/ModelData";
-import { ObjectType } from "./ObjectType";
+import { AnimationDefinition } from "../../definition/AnimationDefinition";
+import { ObjectDefinition } from "../../definition/ObjectDefinition";
+import { AnimationFrameMapLoader } from "../AnimationFrameMapLoader";
+import { AnimationLoader } from "../AnimationLoader";
+import { ModelLoader } from "./ModelLoader";
+import { Model } from "../../../model/Model";
+import { ModelData } from "../../../model/ModelData";
+import { ObjectType } from "../../../scene/ObjectType";
 
 export type ContourGroundInfo = {
     heightMap: Int32Array[];

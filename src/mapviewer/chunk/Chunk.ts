@@ -14,8 +14,9 @@ import { AnimatedObject } from "../object/AnimatedObject";
 import { Npc } from "../npc/Npc";
 import { NpcLoader } from "../../client/fs/loader/NpcLoader";
 import { AnimationLoader } from "../../client/fs/loader/AnimationLoader";
-import { ChunkData } from "./ChunkDataLoader";
 import { Scene } from "../../client/scene/Scene";
+import { ChunkData } from "./ChunkData";
+import { DrawRange } from "./DrawRange";
 
 const NPC_DATA_TEXTURE_BUFFER_SIZE = 5;
 
@@ -28,16 +29,16 @@ export type Chunk = {
 
     triangleCount: number;
 
-    drawRanges: number[][];
-    drawRangesLowDetail: number[][];
+    drawRanges: DrawRange[];
+    drawRangesLowDetail: DrawRange[];
 
-    drawRangesInteract: number[][];
-    drawRangesInteractLowDetail: number[][];
+    drawRangesInteract: DrawRange[];
+    drawRangesInteractLowDetail: DrawRange[];
 
-    drawRangesAlpha: number[][];
-    drawRangesInteractAlpha: number[][];
+    drawRangesAlpha: DrawRange[];
+    drawRangesInteractAlpha: DrawRange[];
 
-    drawRangesNpc: number[][];
+    drawRangesNpc: DrawRange[];
 
     drawCall: DrawCall;
     drawCallLowDetail: DrawCall;
@@ -287,13 +288,9 @@ export function loadChunk(
             .drawRanges(...chunkData.drawRangesNpc);
     }
 
-    // console.log(chunkData.collisionFlags.find(flags => flags.find(x => (x & 0x1000000) !== 0)));
-    const collisionMaps = chunkData.collisionFlags.map((flags) => {
-        // TODO: create constructor with flags
-        const map = new CollisionMap(Scene.MAP_SIZE, Scene.MAP_SIZE);
-        map.flags = flags;
-        return map;
-    });
+    const collisionMaps = chunkData.collisionFlags.map(
+        (flags) => new CollisionMap(Scene.MAP_SIZE, Scene.MAP_SIZE, flags)
+    );
 
     for (const npc of npcs) {
         const collisionMap = collisionMaps[npc.data.plane];

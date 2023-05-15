@@ -12,13 +12,17 @@ export class CollisionMap {
 
     flags: Int32Array;
 
-    constructor(width: number, height: number) {
+    constructor(width: number, height: number, flags?: Int32Array) {
         this.width = width + 1 + 5;
         this.height = height + 1 + 5;
         this.offsetX = 0;
         this.offsetY = 0;
-        this.flags = new Int32Array(this.width * this.height);
-        this.reset();
+        if (flags) {
+            this.flags = flags;
+        } else {
+            this.flags = new Int32Array(this.width * this.height);
+            this.reset();
+        }
     }
 
     reset(): void {

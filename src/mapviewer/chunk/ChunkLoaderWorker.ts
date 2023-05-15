@@ -10,28 +10,33 @@ import { RegionLoader } from "../../client/RegionLoader";
 import { TextureLoader } from "../../client/fs/loader/TextureLoader";
 import { Compression } from "../../client/util/Compression";
 import { ChunkDataLoader } from "./ChunkDataLoader";
-import { IndexModelLoader } from "../../client/fs/loader/ModelLoader";
+import { IndexModelLoader } from "../../client/fs/loader/model/ModelLoader";
 import { Hasher } from "../util/Hasher";
 import { CachedAnimationLoader } from "../../client/fs/loader/AnimationLoader";
 import { CachedSkeletonLoader } from "../../client/fs/loader/SkeletonLoader";
 import { CachedAnimationFrameMapLoader } from "../../client/fs/loader/AnimationFrameMapLoader";
-import { ObjectModelLoader } from "../../client/scene/ObjectModelLoader";
+import { ObjectModelLoader } from "../../client/fs/loader/model/ObjectModelLoader";
 import { CachedVarbitLoader } from "../../client/fs/loader/VarbitLoader";
 import { VarpManager } from "../../client/VarpManager";
-import { NpcModelLoader } from "../../client/scene/NpcModelLoader";
+import { NpcModelLoader } from "../../client/fs/loader/model/NpcModelLoader";
 import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
 import { NpcSpawn } from "../npc/NpcSpawn";
 import { LoadedCache } from "../CacheInfo";
+import { ItemModelLoader } from "../../client/fs/loader/model/ItemModelLoader";
+import { CachedItemLoader } from "../../client/fs/loader/ItemLoader";
+import { ItemSpawn } from "../item/ItemSpawn";
 
 let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
-async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
+async function init0(
+    cache: LoadedCache,
+    npcSpawns: NpcSpawn[],
+    itemSpawns: ItemSpawn[]
+) {
     await wasmCompressionPromise;
-
-    const revision = cache.info.revision;
 
     // Create new store because it is a structured clone
     const store = new MemoryStore(
@@ -55,6 +60,7 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
     const overlayArchive = configIndex.getArchive(ConfigType.OVERLAY);
     const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
     const npcArchive = configIndex.getArchive(ConfigType.NPC);
+    const itemArchive = configIndex.getArchive(ConfigType.ITEM);
     // console.timeEnd('load config archives');
 
     const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
@@ -68,6 +74,7 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
     const overlayLoader = new CachedOverlayLoader(overlayArchive, cache.info);
     const objectLoader = new CachedObjectLoader(objectArchive, cache.info);
     const npcLoader = new CachedNpcLoader(npcArchive, cache.info);
+    const itemLoader = new CachedItemLoader(itemArchive, cache.info);
 
     const animationLoader = new CachedAnimationLoader(
         animationArchive,
@@ -98,6 +105,7 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
         frameMapLoader,
         npcLoader
     );
+    const itemModelLoader = new ItemModelLoader(modelLoader, itemLoader);
 
     const regionLoader = new RegionLoader(
         cache.info,
@@ -129,8 +137,10 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
         regionLoader,
         objectModelLoader,
         npcModelLoader,
+        itemModelLoader,
         textureProvider,
-        npcSpawns
+        npcSpawns,
+        itemSpawns
     );
 }
 
@@ -141,14 +151,15 @@ async function init0(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
 // }
 
 expose({
-    init(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
-        chunkDataLoaderPromise = init0(cache, npcSpawns);
+    init(cache: LoadedCache, npcSpawns: NpcSpawn[], itemSpawns: ItemSpawn[]) {
+        chunkDataLoaderPromise = init0(cache, npcSpawns, itemSpawns);
     },
     async load(
         regionX: number,
         regionY: number,
         minimizeDrawCalls: boolean,
         loadNpcs: boolean,
+        loadItems: boolean,
         maxPlane: number
     ) {
         // console.log('request', regionX, regionY);
@@ -166,6 +177,7 @@ expose({
             regionY,
             minimizeDrawCalls,
             loadNpcs,
+            loadItems,
             maxPlane
         );
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
@@ -185,6 +197,8 @@ expose({
         chunkDataLoader.objectModelLoader.modelCache.clear();
 
         chunkDataLoader.npcModelLoader.modelCache.clear();
+
+        chunkDataLoader.itemModelLoader.modelCache.clear();
 
         if (chunkData) {
             const transferables: Transferable[] = [

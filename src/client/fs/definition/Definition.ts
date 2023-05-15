@@ -36,6 +36,9 @@ export abstract class Definition {
 
     decode(buffer: ByteBuffer): void {
         while (true) {
+            if (buffer.offset > buffer.length - 1) {
+                throw new Error("Buffer overflow");
+            }
             const opcode = buffer.readUnsignedByte();
             if (opcode === 0) {
                 break;

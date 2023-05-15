@@ -38,17 +38,12 @@ import { Scene } from "../client/scene/Scene";
 import { clamp, lerp, slerp } from "../client/util/MathUtil";
 import WebGLCanvas from "../components/Canvas";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
-import {
-    MenuOption,
-    OsrsMenu,
-    OsrsMenuProps,
-    TargetType,
-} from "../components/OsrsMenu";
+import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
 import { readPixelsAsync } from "./util/AsyncReadUtil";
 import { FrustumIntersection } from "./util/FrustumIntersection";
 import "./MapViewer.css";
 import { fetchNpcSpawns, NpcSpawn } from "./npc/NpcSpawn";
-import { ChunkData, ChunkDataLoader } from "./chunk/ChunkDataLoader";
+import { ChunkDataLoader } from "./chunk/ChunkDataLoader";
 import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
 import mainFragShader from "./shaders/main.frag.glsl";
 import mainVertShader from "./shaders/main.vert.glsl";
@@ -73,6 +68,11 @@ import {
     ObjectLoader,
 } from "../client/fs/loader/ObjectLoader";
 import { ObjectDefinition } from "../client/fs/definition/ObjectDefinition";
+import { InteractType } from "./chunk/InteractType";
+import { CachedItemLoader, ItemLoader } from "../client/fs/loader/ItemLoader";
+import { ChunkData } from "./chunk/ChunkData";
+import { DrawRange } from "./chunk/DrawRange";
+import { ItemSpawn, fetchItemSpawns } from "./item/ItemSpawn";
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
@@ -116,12 +116,7 @@ const CHUNK_RENDER_FRAME_DELAY = 4;
 const INTERACTION_RADIUS = 5;
 const INTERACTION_SIZE = INTERACTION_RADIUS * 2 + 1;
 
-enum InteractType {
-    OBJECT = 1,
-    NPC = 2,
-}
-
-const NULL_DRAW_RANGE = [0, 0, 0];
+const NULL_DRAW_RANGE: DrawRange = [0, 0, 0];
 
 const DEFAULT_VIEW_DISTANCE = isWallpaperEngine ? 5 : 2;
 
@@ -130,11 +125,13 @@ export class MapViewer {
     loadedCache!: LoadedCache;
     latestCacheInfo: CacheInfo;
     npcSpawns: NpcSpawn[];
+    itemSpawns: ItemSpawn[];
 
     fileSystem!: MemoryFileSystem;
     textureProvider!: TextureLoader;
     objectLoader!: ObjectLoader;
     npcLoader!: NpcLoader;
+    itemLoader!: ItemLoader;
     animationLoader!: AnimationLoader;
     varpManager!: VarpManager;
 
@@ -235,6 +232,7 @@ export class MapViewer {
     colorBanding: number = 255;
 
     loadNpcs: boolean = true;
+    loadItems: boolean = true;
     maxPlane: number = Scene.MAX_PLANE - 1;
 
     tooltips: boolean = true;
@@ -300,11 +298,13 @@ export class MapViewer {
         chunkLoaderWorker: ChunkLoaderWorkerPool,
         loadedCache: LoadedCache,
         latestCacheInfo: CacheInfo,
-        npcSpawns: NpcSpawn[]
+        npcSpawns: NpcSpawn[],
+        itemSpawns: ItemSpawn[]
     ) {
         this.chunkLoaderWorker = chunkLoaderWorker;
         this.latestCacheInfo = latestCacheInfo;
         this.npcSpawns = npcSpawns;
+        this.itemSpawns = itemSpawns;
 
         this.initCache(loadedCache);
 
@@ -354,7 +354,7 @@ export class MapViewer {
     initCache(cache: LoadedCache) {
         this.loadedCache = cache;
 
-        this.chunkLoaderWorker.init(cache, this.npcSpawns);
+        this.chunkLoaderWorker.init(cache, this.npcSpawns, this.itemSpawns);
 
         this.fileSystem = loadFromStore(cache.store);
 
@@ -365,11 +365,13 @@ export class MapViewer {
 
         const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
         const npcArchive = configIndex.getArchive(ConfigType.NPC);
+        const itemArchive = configIndex.getArchive(ConfigType.ITEM);
         const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
         const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
         this.objectLoader = new CachedObjectLoader(objectArchive, cache.info);
         this.npcLoader = new CachedNpcLoader(npcArchive, cache.info);
+        this.itemLoader = new CachedItemLoader(itemArchive, cache.info);
         this.animationLoader = new CachedAnimationLoader(
             animationArchive,
             cache.info
@@ -858,6 +860,7 @@ export class MapViewer {
                         regionY,
                         !this.hasMultiDraw,
                         this.loadNpcs,
+                        this.loadItems,
                         this.maxPlane
                     )
                 )
@@ -885,6 +888,13 @@ export class MapViewer {
             this.deleteChunks();
         }
         this.loadNpcs = load;
+    }
+
+    setLoadItems(load: boolean) {
+        if (this.loadItems !== load) {
+            this.deleteChunks();
+        }
+        this.loadItems = load;
     }
 
     setMaxPlane(maxPlane: number) {
@@ -1105,6 +1115,7 @@ export class MapViewer {
                     50,
                     false,
                     false,
+                    false,
                     Scene.MAX_PLANE - 1
                 );
 
@@ -1259,6 +1270,7 @@ export class MapViewer {
 
         const npcIds = new Set<number>();
         const objectIds = new Set<number>();
+        const itemIds = new Set<number>();
 
         for (const index of interactions) {
             const interactId =
@@ -1267,7 +1279,7 @@ export class MapViewer {
             if (interactId === 0xffff) {
                 continue;
             }
-            const interactType = this.interactBuffer[index + 2];
+            const interactType: InteractType = this.interactBuffer[index + 2];
             if (interactType === InteractType.OBJECT) {
                 if (objectIds.has(interactId)) {
                     continue;
@@ -1285,17 +1297,19 @@ export class MapViewer {
                 const objectId = def.id;
                 const objectName = def.name;
                 if (objectName !== "null") {
+                    const target = {
+                        name: objectName,
+                        type: InteractType.OBJECT,
+                    };
+
                     menuOptions.push(
                         ...def.actions
                             .filter((action) => !!action)
                             .map(
                                 (action): MenuOption => ({
                                     id: objectId,
-                                    action: action,
-                                    target: {
-                                        name: objectName,
-                                        type: TargetType.OBJECT,
-                                    },
+                                    action,
+                                    target,
                                     onClick: this.closeMenu,
                                 })
                             )
@@ -1312,10 +1326,7 @@ export class MapViewer {
                     examineOptions.push({
                         id: objectId,
                         action: "Examine",
-                        target: {
-                            name: objectName,
-                            type: TargetType.OBJECT,
-                        },
+                        target,
                         level: 0,
                         onClick: openWikiOnClick,
                     });
@@ -1336,17 +1347,19 @@ export class MapViewer {
                     const npcName = def.name;
                     const npcLevel = def.combatLevel;
 
+                    const target = {
+                        name: npcName,
+                        type: InteractType.NPC,
+                    };
+
                     menuOptions.push(
                         ...def.actions
                             .filter((action) => !!action)
                             .map(
                                 (action): MenuOption => ({
                                     id: npcId,
-                                    action: action,
-                                    target: {
-                                        name: npcName,
-                                        type: TargetType.NPC,
-                                    },
+                                    action,
+                                    target,
                                     level: npcLevel,
                                     onClick: this.closeMenu,
                                 })
@@ -1364,14 +1377,54 @@ export class MapViewer {
                     examineOptions.push({
                         id: npcId,
                         action: "Examine",
-                        target: {
-                            name: npcName,
-                            type: TargetType.NPC,
-                        },
+                        target,
                         level: npcLevel,
                         onClick: openWikiOnClick,
                     });
                 }
+            } else if (interactType === InteractType.ITEM) {
+                if (itemIds.has(interactId)) {
+                    continue;
+                }
+                itemIds.add(interactId);
+
+                const def = this.itemLoader.getDefinition(interactId);
+
+                const itemId = def.id;
+                const itemName = def.name;
+
+                const target = {
+                    name: itemName,
+                    type: InteractType.ITEM,
+                };
+
+                menuOptions.push(
+                    ...def.groundActions
+                        .filter((action): action is string => !!action)
+                        .map(
+                            (action): MenuOption => ({
+                                id: itemId,
+                                action,
+                                target,
+                                onClick: this.closeMenu,
+                            })
+                        )
+                );
+
+                const openWikiOnClick = () => {
+                    window.open(
+                        "https://oldschool.runescape.wiki/w/Special:Lookup?type=item&id=" +
+                            itemId,
+                        "_blank"
+                    );
+                };
+
+                examineOptions.push({
+                    id: itemId,
+                    action: "Examine",
+                    target,
+                    onClick: openWikiOnClick,
+                });
             }
         }
 
@@ -1900,7 +1953,7 @@ export class MapViewer {
                 const anim = npc.getAnimationFrames();
 
                 const frameId = npc.movementFrame;
-                let frame: number[] = NULL_DRAW_RANGE;
+                let frame: DrawRange = NULL_DRAW_RANGE;
                 if (anim.framesAlpha) {
                     frame = anim.framesAlpha[frameId];
                 }
@@ -1941,6 +1994,7 @@ export class MapViewer {
                 );
                 if (
                     chunkData.loadNpcs === this.loadNpcs &&
+                    chunkData.loadItems === this.loadItems &&
                     chunkData.maxPlane === this.maxPlane &&
                     chunkData.cacheInfo.name === this.loadedCache.info.name
                 ) {
@@ -2154,8 +2208,10 @@ function MapViewerApp() {
         // console.log('start fetch', performance.now());
         console.time("first load");
         const load = async () => {
-            const cacheNameParam = searchParams.get("cache");
             const npcSpawnsPromise = fetchNpcSpawns();
+            const itemSpawnsPromise = fetchItemSpawns();
+
+            const cacheNameParam = searchParams.get("cache");
             const caches = await cachesPromise;
             deleteOldCaches(caches);
             const latestCacheInfo = getLatestCache(caches);
@@ -2181,11 +2237,16 @@ function MapViewerApp() {
             const npcSpawns = await npcSpawnsPromise;
             console.timeEnd("load npc spawns");
 
+            console.time("load item spawns");
+            const itemSpawns = await itemSpawnsPromise;
+            console.timeEnd("load item spawns");
+
             const mapViewer = new MapViewer(
                 pool,
                 loadedCache,
                 latestCacheInfo,
-                npcSpawns
+                npcSpawns,
+                itemSpawns
             );
 
             const cx = searchParams.get("cx");

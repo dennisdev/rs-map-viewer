@@ -220,6 +220,12 @@ export function MapViewerControls({
                         mapViewer.setLoadNpcs(v);
                     },
                 },
+                Items: {
+                    value: mapViewer.loadItems,
+                    onChange: (v) => {
+                        mapViewer.setLoadItems(v);
+                    },
+                },
                 "Max Plane": {
                     value: mapViewer.maxPlane,
                     min: 0,

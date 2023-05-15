@@ -1,4 +1,5 @@
 import { AnimationDefinition } from "../../client/fs/definition/AnimationDefinition";
+import { DrawRange } from "../chunk/DrawRange";
 
 export class AnimatedObject {
     drawRangeIndex: number;
@@ -7,8 +8,8 @@ export class AnimatedObject {
     drawRangeInteractIndex: number;
     drawRangeInteractAlphaIndex: number;
 
-    frames: number[][];
-    framesAlpha: number[][] | undefined;
+    frames: DrawRange[];
+    framesAlpha: DrawRange[] | undefined;
 
     animationDef?: AnimationDefinition;
 
@@ -21,8 +22,8 @@ export class AnimatedObject {
         drawRangeAlphaIndex: number,
         drawRangeInteractIndex: number,
         drawRangeInteractAlphaIndex: number,
-        frames: number[][],
-        framesAlpha: number[][] | undefined,
+        frames: DrawRange[],
+        framesAlpha: DrawRange[] | undefined,
         animationDef: AnimationDefinition,
         cycle: number,
         randomStart: boolean

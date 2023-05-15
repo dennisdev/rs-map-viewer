@@ -62,6 +62,7 @@ export class GameObject implements SceneObject {
         public endX: number,
         public endY: number,
         public tag: bigint,
+        public flags: number,
         public type: number,
         public def: ObjectDefinition
     ) {}

@@ -4,8 +4,9 @@ import { computeTextureCoords, Model } from "../../client/model/Model";
 import { Scene } from "../../client/scene/Scene";
 import { SceneTile } from "../../client/scene/SceneTile";
 import { clamp } from "../../client/util/MathUtil";
-import { NpcSpawn } from "../npc/NpcSpawn";
 import { VertexBuffer } from "./VertexBuffer";
+import { InteractType } from "../chunk/InteractType";
+import { DrawRange } from "../chunk/DrawRange";
 
 export enum ContourGroundType {
     CENTER_TILE = 0,
@@ -16,30 +17,18 @@ export enum ContourGroundType {
 export type DrawData = {
     sceneX: number;
     sceneY: number;
+    heightOffset: number;
     plane: number;
     contourGround: ContourGroundType;
     priority: number;
-    id: number;
+    interactType: InteractType;
+    interactId: number;
 };
 
 export type DrawCommand = {
     offset: number;
     elements: number;
     datas: DrawData[];
-};
-
-export type NpcDrawData = {
-    sceneX: number;
-    sceneY: number;
-    plane: number;
-    size: number;
-    rotation: number;
-};
-
-export type NpcDrawCommand = {
-    offset: number;
-    elements: number;
-    spawns: NpcSpawn[];
 };
 
 export class RenderBuffer {
@@ -125,10 +114,12 @@ export function addTerrain(
                     {
                         sceneX: 0,
                         sceneY: 0,
+                        heightOffset: 0,
                         plane,
                         contourGround: ContourGroundType.VERTEX,
                         priority: 0,
-                        id: 0xffff,
+                        interactType: InteractType.NONE,
+                        interactId: 0xffff,
                     },
                 ],
             };
@@ -149,6 +140,18 @@ export type ModelFace = {
     priority: number;
     textureId: number;
 };
+
+export function isAlphaModelFace(
+    textureLoader: TextureLoader,
+    face: ModelFace
+): boolean {
+    const textureId = textureLoader.indexIdMap.get(face.textureId);
+    if (textureId !== undefined) {
+        return textureLoader.hasAlpha(textureId);
+    }
+
+    return face.alpha !== 0xff;
+}
 
 export function getModelFaces(
     textureProvider: TextureLoader,
@@ -335,4 +338,66 @@ export function addModel(
 
         renderBuf.indices.push(index0, index1, index2);
     }
+}
+
+export function addModelAnimFrame(
+    textureLoader: TextureLoader,
+    renderBuf: RenderBuffer,
+    model: Model,
+    alphaOnly: boolean | undefined = undefined
+): DrawRange {
+    let faces = getModelFaces(textureLoader, model);
+
+    if (alphaOnly !== undefined) {
+        faces = faces.filter(
+            (face) =>
+                (face.alpha !== 0xff ||
+                    textureLoader.hasAlpha(face.textureId)) === alphaOnly
+        );
+    }
+
+    const indexByteOffset = renderBuf.indexByteOffset();
+    if (faces.length > 0) {
+        addModel(renderBuf, model, faces);
+    }
+    const modelVertexCount =
+        (renderBuf.indexByteOffset() - indexByteOffset) / 4;
+
+    return [indexByteOffset, modelVertexCount, 1];
+}
+
+export function createModelTextureData(
+    drawCommands: DrawCommand[]
+): Uint16Array {
+    const datas: DrawData[] = [];
+    for (const cmd of drawCommands) {
+        datas.push(...cmd.datas);
+    }
+    const dataCount = datas.length;
+
+    const dataLength =
+        Math.ceil((drawCommands.length * 4 + dataCount) / 16) * 16;
+    const textureData = new Uint16Array(Math.max(dataLength, 16) * 4);
+    let dataOffset = 0;
+    drawCommands.forEach((cmd, index) => {
+        textureData[index * 4] = drawCommands.length + dataOffset;
+
+        dataOffset += cmd.datas.length;
+    });
+
+    datas.forEach((data, index) => {
+        let offset = drawCommands.length * 4 + index * 4;
+
+        const contourGround = data.contourGround;
+
+        const height = data.heightOffset;
+
+        textureData[offset++] = data.sceneX | (data.plane << 14);
+        textureData[offset++] = data.sceneY | (contourGround << 14);
+        textureData[offset++] =
+            (data.priority & 0xf) | (data.interactType << 4) | (height << 6);
+        textureData[offset++] = data.interactId;
+    });
+
+    return textureData;
 }

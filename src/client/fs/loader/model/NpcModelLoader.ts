@@ -1,12 +1,12 @@
-import { AnimationDefinition } from "../fs/definition/AnimationDefinition";
-import { NpcDefinition } from "../fs/definition/NpcDefinition";
-import { AnimationFrameMapLoader } from "../fs/loader/AnimationFrameMapLoader";
-import { AnimationLoader } from "../fs/loader/AnimationLoader";
-import { ModelLoader } from "../fs/loader/ModelLoader";
-import { NpcLoader } from "../fs/loader/NpcLoader";
-import { Model } from "../model/Model";
-import { ModelData } from "../model/ModelData";
-import { VarpManager } from "../VarpManager";
+import { AnimationDefinition } from "../../definition/AnimationDefinition";
+import { NpcDefinition } from "../../definition/NpcDefinition";
+import { AnimationFrameMapLoader } from "../AnimationFrameMapLoader";
+import { AnimationLoader } from "../AnimationLoader";
+import { ModelLoader } from "./ModelLoader";
+import { NpcLoader } from "../NpcLoader";
+import { Model } from "../../../model/Model";
+import { ModelData } from "../../../model/ModelData";
+import { VarpManager } from "../../../VarpManager";
 
 export class NpcModelLoader {
     varpManager: VarpManager;

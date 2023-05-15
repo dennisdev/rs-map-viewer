@@ -56,6 +56,10 @@
     color: #ffff00;
 }
 
+.object-name {
+    color: #00ffff;
+}
+
 .npc-name {
     color: #ffff00;
 }
@@ -64,6 +68,6 @@
     color: #c0ff00;
 }
 
-.object-name {
-    color: #00ffff;
+.item-name {
+    color: #ff9040;
 }

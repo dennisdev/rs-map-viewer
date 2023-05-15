@@ -110,7 +110,7 @@ export class ByteBuffer {
     }
 
     readNullString(): string | undefined {
-        if (this.getByte(this.offset) == 0) {
+        if (this.getByte(this.offset) === 0) {
             this.offset++;
             return undefined;
         } else {

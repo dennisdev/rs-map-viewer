@@ -1,14 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import "./OsrsMenu.css";
-
-export enum TargetType {
-    NPC,
-    OBJECT,
-}
+import { InteractType } from "../mapviewer/chunk/InteractType";
 
 export type Target = {
     name: string;
-    type: TargetType;
+    type: InteractType;
 };
 
 export type MenuOption = {
@@ -19,12 +15,14 @@ export type MenuOption = {
     onClick?: () => void;
 };
 
-function getTargetClassName(targetType: TargetType) {
-    switch (targetType) {
-        case TargetType.NPC:
-            return "npc-name";
-        case TargetType.OBJECT:
+function getTargetClassName(type: InteractType) {
+    switch (type) {
+        case InteractType.OBJECT:
             return "object-name";
+        case InteractType.NPC:
+            return "npc-name";
+        case InteractType.ITEM:
+            return "item-name";
     }
 }
 

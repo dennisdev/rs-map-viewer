@@ -6,19 +6,24 @@ import {
     TransferDescriptor,
     ModuleThread,
 } from "threads";
-import { MemoryStore } from "../../client/fs/MemoryStore";
 import { LoadedCache } from "../CacheInfo";
 import { NpcSpawn } from "../npc/NpcSpawn";
-import { ChunkData } from "./ChunkDataLoader";
+import { ChunkData } from "./ChunkData";
+import { ItemSpawn } from "../item/ItemSpawn";
 
 export type ChunkLoaderWorker = {
-    init(cache: LoadedCache, npcSpawns: NpcSpawn[]): void;
+    init(
+        cache: LoadedCache,
+        npcSpawns: NpcSpawn[],
+        itemSpawns: ItemSpawn[]
+    ): void;
 
     load(
         regionX: number,
         regionY: number,
         minimizeDrawCalls: boolean,
         loadNpcs: boolean,
+        loadItems: boolean,
         maxPlane: number
     ): ChunkData | undefined;
 };
@@ -54,11 +59,11 @@ export class ChunkLoaderWorkerPool {
         this.size = size;
     }
 
-    init(cache: LoadedCache, npcSpawns: NpcSpawn[]) {
+    init(cache: LoadedCache, npcSpawns: NpcSpawn[], itemSpawns: ItemSpawn[]) {
         for (const promise of this.workerPromises) {
             promise.then((worker) => {
                 // console.log('send init worker', performance.now());
-                worker.init(cache, npcSpawns);
+                worker.init(cache, npcSpawns, itemSpawns);
                 return worker;
             });
         }

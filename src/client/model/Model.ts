@@ -202,6 +202,8 @@ export class Model extends Renderable {
 
     field2474!: number;
 
+    contourHeight: number = 0;
+
     public static copy(model: Model): Model {
         return Model.merge([model], 1);
     }
@@ -415,6 +417,13 @@ export class Model extends Renderable {
                     this.height = -vertY;
                 }
 
+                if (this.contourVerticesY) {
+                    const contourY = this.contourVerticesY[i];
+                    if (-contourY > this.contourHeight) {
+                        this.contourHeight = -contourY;
+                    }
+                }
+
                 if (vertY > this.bottomY) {
                     this.bottomY = vertY;
                 }
@@ -423,6 +432,10 @@ export class Model extends Renderable {
                 if (var5 > this.xzRadius) {
                     this.xzRadius = var5;
                 }
+            }
+
+            if (!this.contourVerticesY) {
+                this.contourHeight = this.height;
             }
 
             this.xzRadius = (Math.sqrt(this.xzRadius) + 0.99) | 0;

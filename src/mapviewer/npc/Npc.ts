@@ -4,7 +4,7 @@ import { CollisionMap } from "../../client/pathfinder/collision/CollisionMap";
 import { Pathfinder } from "../../client/pathfinder/Pathfinder";
 import { ExactRouteStrategy } from "../../client/pathfinder/RouteStrategy";
 import { clamp } from "../../client/util/MathUtil";
-import { NpcData } from "../chunk/ChunkDataLoader";
+import { NpcData } from "./NpcData";
 
 export enum MovementType {
     CRAWL = 0,
