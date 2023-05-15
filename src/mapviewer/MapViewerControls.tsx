@@ -259,6 +259,14 @@ export function MapViewerControls({
                         mapViewer.cullBackFace = v;
                     },
                 },
+                "Fps Limit": {
+                    value: mapViewer.fpsLimit,
+                    min: 0,
+                    max: 999,
+                    onChange: (v) => {
+                        mapViewer.fpsLimit = v;
+                    },
+                },
             },
             { collapsed: true }
         ),
