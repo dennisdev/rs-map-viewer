@@ -228,10 +228,16 @@ export class Model extends Renderable {
             copy.verticesZ[i] = model.verticesZ[i];
         }
 
-        if (!shallowTransparencies && model.faceAlphas) {
+        if (shallowTransparencies) {
+            copy.faceAlphas = model.faceAlphas;
+        } else {
             copy.faceAlphas = new Int8Array(model.faceCount);
-            for (let i = 0; i < model.faceCount; i++) {
-                copy.faceAlphas[i] = model.faceAlphas[i];
+            if (model.faceAlphas) {
+                for (let i = 0; i < model.faceCount; i++) {
+                    copy.faceAlphas[i] = model.faceAlphas[i];
+                }
+            } else {
+                copy.faceAlphas.fill(0);
             }
         }
 

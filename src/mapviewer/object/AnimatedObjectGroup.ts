@@ -13,7 +13,7 @@ export type AnimatedObjectGroup = {
     objects: AnimatedSceneObject[];
 };
 
-function getAnimatedModelKey(
+function getAnimatedObjectKey(
     id: number,
     type: number,
     rotation: number,
@@ -35,27 +35,27 @@ export function createAnimatedObjectGroups(
     renderBuf: RenderBuffer,
     animatedObjects: AnimatedSceneObject[]
 ): AnimatedObjectGroup[] {
-    const uniqueObjectsMap: Map<bigint, AnimatedSceneObject[]> = new Map();
+    const groupedObjects: Map<bigint, AnimatedSceneObject[]> = new Map();
 
     for (const object of animatedObjects) {
         const animatedObject = object.animatedObject;
-        const key = getAnimatedModelKey(
+        const key = getAnimatedObjectKey(
             animatedObject.id,
             animatedObject.type,
             animatedObject.rotation,
             animatedObject.animationId
         );
 
-        const uniqueObjects = uniqueObjectsMap.get(key);
-        if (uniqueObjects) {
-            uniqueObjects.push(object);
+        const objects = groupedObjects.get(key);
+        if (objects) {
+            objects.push(object);
         } else {
-            uniqueObjectsMap.set(key, [object]);
+            groupedObjects.set(key, [object]);
         }
     }
 
     const groups: AnimatedObjectGroup[] = [];
-    for (const objects of uniqueObjectsMap.values()) {
+    for (const objects of groupedObjects.values()) {
         const { animatedObject, sceneObject } = objects[0];
 
         const animDef = objectModelLoader.animationLoader.getDefinition(
@@ -102,6 +102,7 @@ export function createAnimatedObjectGroups(
                 framesAlpha.push(alphaFrame);
             }
         }
+
         if (frames.length > 0) {
             groups.push({
                 animationId: animatedObject.animationId,
