@@ -92,6 +92,13 @@ function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     return [event.clientX - rect.left, event.clientY - rect.top];
 }
 
+function getAxisDeadzone(axis: number, zone: number): number {
+    if (Math.abs(axis) < zone) {
+        return 0;
+    }
+    return axis;
+}
+
 function getRegionDistance(x: number, y: number, region: vec2): number {
     const dx = Math.max(Math.abs(x - (region[0] * 64 + 32)) - 32, 0);
     const dy = Math.max(Math.abs(y - (region[1] * 64 + 32)) - 32, 0);
@@ -1027,12 +1034,14 @@ export class MapViewer {
                 cameraSpeedMult = 10;
             }
 
-            const leftX = gamepad.axes[0];
-            const leftY = -gamepad.axes[1];
+            const zone = 0.1;
+
+            const leftX = getAxisDeadzone(gamepad.axes[0], zone);
+            const leftY = getAxisDeadzone(-gamepad.axes[1], zone);
             const leftTrigger = gamepad.buttons[6].value;
 
-            const rightX = gamepad.axes[2];
-            const rightY = -gamepad.axes[3];
+            const rightX = getAxisDeadzone(gamepad.axes[2], zone);
+            const rightY = getAxisDeadzone(-gamepad.axes[3], zone);
             const rightTrigger = gamepad.buttons[7].value;
 
             const trigger = leftTrigger - rightTrigger;
