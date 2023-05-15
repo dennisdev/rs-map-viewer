@@ -23,7 +23,7 @@ import { getSceneObjects } from "../object/SceneObjects";
 import { createNpcSpawnGroups, NpcSpawnGroup } from "../npc/NpcSpawnGroup";
 import {
     AnimatedObjectGroup,
-    getAnimatedObjectGroups as createAnimatedObjectGroups,
+    createAnimatedObjectGroups,
 } from "../object/AnimatedObjectGroup";
 import { addModelGroup, createModelGroups } from "./ModelGroup";
 import { createItemModelArray, ItemSpawn } from "../item/ItemSpawn";
@@ -126,27 +126,6 @@ export class ChunkDataLoader {
                     item.plane <= maxPlane
                 );
             });
-            // for (let tileX = 0; tileX < 64; tileX++) {
-            //     for (let tileY = 0; tileY < 64; tileY++) {
-            //         const itemCount =
-            //             this.itemModelLoader.itemLoader.archive.fileCount;
-            //         let itemId = Math.round(Math.random() * itemCount);
-            //         while (
-            //             this.itemModelLoader.itemLoader.getDefinition(itemId)
-            //                 .price === 1
-            //         ) {
-            //             itemId = Math.round(Math.random() * itemCount);
-            //         }
-
-            //         itemSpawns.push({
-            //             id: itemId,
-            //             count: 1,
-            //             x: regionX * 64 + tileX,
-            //             y: regionY * 64 + tileY,
-            //             plane: 0,
-            //         });
-            //     }
-            // }
         }
 
         console.time("read landscape data");

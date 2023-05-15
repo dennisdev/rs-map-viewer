@@ -28,7 +28,7 @@ function getAnimatedModelKey(
     );
 }
 
-export function getAnimatedObjectGroups(
+export function createAnimatedObjectGroups(
     regionLoader: RegionLoader,
     objectModelLoader: ObjectModelLoader,
     textureLoader: TextureLoader,

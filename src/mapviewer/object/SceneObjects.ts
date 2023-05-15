@@ -114,7 +114,7 @@ export function createAnimatedSceneObject(
         plane,
         contourGround,
         priority,
-        interactType: InteractType.NONE,
+        interactType: InteractType.OBJECT,
         interactId: def.id,
     };
 }
