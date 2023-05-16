@@ -789,7 +789,9 @@ export class MapViewer {
     }
 
     updatePitch(pitch: number, deltaPitch: number): void {
-        this.pitch = clamp(pitch + deltaPitch, 0, 512);
+        const minPitch =
+            this.projectionType === ProjectionType.PERSPECTIVE ? -512 : 0;
+        this.pitch = clamp(pitch + deltaPitch, minPitch, 512);
         this.cameraUpdated = true;
     }
 
@@ -1746,7 +1748,8 @@ export class MapViewer {
                         dist,
                         this.regionViewDistance,
                         this.regionUnloadDistance,
-                        chunk
+                        chunk.regionX,
+                        chunk.regionY
                     );
                 }
             }
