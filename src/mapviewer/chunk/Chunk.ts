@@ -115,26 +115,10 @@ export function loadChunk(
 
     const vertexArray = app
         .createVertexArray()
-        // v0
+        // v0, v1, v2
         .vertexAttributeBuffer(0, interleavedBuffer, {
             type: PicoGL.INT,
-            size: 1,
-            stride: 12,
-            integer: true as any,
-        })
-        // v1
-        .vertexAttributeBuffer(1, interleavedBuffer, {
-            type: PicoGL.INT,
-            size: 1,
-            offset: 4,
-            stride: 12,
-            integer: true as any,
-        })
-        // v2
-        .vertexAttributeBuffer(2, interleavedBuffer, {
-            type: PicoGL.INT,
-            size: 1,
-            offset: 8,
+            size: 3,
             stride: 12,
             integer: true as any,
         })

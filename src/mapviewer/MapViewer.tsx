@@ -1830,6 +1830,8 @@ export class MapViewer {
 
         this.app.drawFramebuffer(this.frameBuffer).clear();
 
+        this.app.disable(gl.BLEND);
+
         // opaque pass
         for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
             const chunk = this.visibleChunks[i];
@@ -1915,6 +1917,8 @@ export class MapViewer {
 
             this.draw(drawCall, drawRanges);
         }
+
+        this.app.enable(gl.BLEND);
 
         // alpha pass
         for (let i = 0; i < this.visibleChunkCount; i++) {

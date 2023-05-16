@@ -27,9 +27,7 @@ precision highp float;
 
 layout(std140, column_major) uniform;
 
-layout(location = 0) in int a_v0;
-layout(location = 1) in int a_v1;
-layout(location = 2) in int a_v2;
+layout(location = 0) in ivec3 a_vertex;
 
 uniform TextureUniforms {
     vec2 textureAnimations[128];
@@ -131,7 +129,7 @@ ModelInfo decodeModelInfo(int offset) {
 void main() {
     int offset = int(texelFetch(u_modelDataTexture, getDataTexCoordFromIndex(DRAW_ID + u_drawIdOffset), 0).r);
 
-    VertexData vertex = decodeVertex(a_v0, a_v1, a_v2, u_brightness);
+    VertexData vertex = decodeVertex(a_vertex.x, a_vertex.y, a_vertex.z, u_brightness);
     
     v_color = vertex.color;
 
