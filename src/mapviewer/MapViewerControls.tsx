@@ -9,6 +9,12 @@ import { CacheInfo, loadCache } from "./CacheInfo";
 import { CameraPosition, MapViewer, ProjectionType } from "./MapViewer";
 import { isTouchDevice } from "./util/DeviceUtil";
 
+interface ColorRgb {
+    r: number;
+    g: number;
+    b: number;
+}
+
 interface MapViewerControlsProps {
     mapViewer: MapViewer;
     caches: CacheInfo[];
@@ -154,13 +160,14 @@ export function MapViewerControls({
         ),
         Distance: folder(
             {
-                View: {
-                    value: mapViewer.regionViewDistance,
-                    min: 1,
-                    max: 30,
-                    step: 1,
+                Render: {
+                    value: mapViewer.renderDistance,
+                    min: 16,
+                    max: 2000,
+                    step: 16,
                     onChange: (v) => {
-                        mapViewer.regionViewDistance = v;
+                        mapViewer.renderDistance = v;
+                        mapViewer.renderDistanceUpdated = true;
                     },
                 },
                 Unload: {
@@ -214,6 +221,14 @@ export function MapViewerControls({
         ),
         Render: folder(
             {
+                "Fps Limit": {
+                    value: mapViewer.fpsLimit,
+                    min: 0,
+                    max: 999,
+                    onChange: (v) => {
+                        mapViewer.fpsLimit = v;
+                    },
+                },
                 Npcs: {
                     value: mapViewer.loadNpcs,
                     onChange: (v) => {
@@ -233,6 +248,23 @@ export function MapViewerControls({
                     step: 1,
                     onChange: (v) => {
                         mapViewer.setMaxPlane(v);
+                    },
+                },
+                Sky: {
+                    r: mapViewer.skyColor[0] * 255,
+                    g: mapViewer.skyColor[1] * 255,
+                    b: mapViewer.skyColor[2] * 255,
+                    onChange: (v: ColorRgb) => {
+                        mapViewer.setSkyColor(v.r, v.g, v.b);
+                    },
+                },
+                "Fog Depth": {
+                    value: mapViewer.fogDepth,
+                    min: 0,
+                    max: 256,
+                    step: 8,
+                    onChange: (v) => {
+                        mapViewer.fogDepth = v;
                     },
                 },
                 Brightness: {
@@ -257,14 +289,6 @@ export function MapViewerControls({
                     value: true,
                     onChange: (v) => {
                         mapViewer.cullBackFace = v;
-                    },
-                },
-                "Fps Limit": {
-                    value: mapViewer.fpsLimit,
-                    min: 0,
-                    max: 999,
-                    onChange: (v) => {
-                        mapViewer.fpsLimit = v;
                     },
                 },
             },

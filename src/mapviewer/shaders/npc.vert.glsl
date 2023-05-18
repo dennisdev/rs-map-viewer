@@ -18,6 +18,8 @@
 // TAU / 2048.0
 #define RS_TO_RADIANS 0.00306796157
 
+#define FOG_CORNER_ROUNDING 8.0
+
 precision highp float;
 
 layout(std140, column_major) uniform;
@@ -32,6 +34,10 @@ uniform SceneUniforms {
     mat4 u_viewProjMatrix;
     mat4 u_viewMatrix;
     mat4 u_projectionMatrix;
+    vec4 u_skyColor;
+    vec2 u_cameraPos;
+    float u_renderDistance;
+    float u_fogDepth;
 };
 
 uniform vec2 u_regionPos;
@@ -52,10 +58,12 @@ flat out float v_texAnimated;
 flat out float v_loadAlpha;
 flat out vec4 v_interactId;
 flat out vec4 v_interactRegionId;
+out float v_fogAmount;
 
 #include "./includes/hsl-to-rgb.glsl";
 #include "./includes/branchless-logic.glsl";
 #include "./includes/unpack-float.glsl";
+#include "./includes/fog.glsl";
 
 float getHeightInterp(vec2 pos, uint plane) {
     vec2 uv = (pos + vec2(0.5)) / vec2(72.0);
@@ -142,18 +150,35 @@ void main() {
 
     NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_npcDataOffset);
 
-    v_interactId = vec4(
-        float(npcInfo.interactId >> uint(8)) / 255.0, 
-        float(npcInfo.interactId & uint(0xFF)) / 255.0, 
-        2.0 / 255.0, 
-        1
-    );
 
     vec4 localPos = vertex.pos / vec4(vec3(128.0), 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
 
     localPos.y -= getHeightInterp(npcInfo.tilePos, npcInfo.plane) / 128.0;
 
     localPos += vec4(vec3(u_regionPos.x, 0, u_regionPos.y) * vec3(64), 0);
+
+    float isLoading = when_neq(v_loadAlpha, 1.0);
+
+    float dist = -sdRoundedBox(
+        vec2(localPos.x - u_cameraPos.x, localPos.z - u_cameraPos.y),
+        vec2(u_renderDistance),
+        FOG_CORNER_ROUNDING
+    );
+
+    float fogDepth = min(u_fogDepth, u_renderDistance);
+
+    v_fogAmount = fogFactorLinear(dist, 0.0, fogDepth);
+    v_fogAmount = isLoading * max(1.0 - v_loadAlpha, v_fogAmount) +
+        (1.0 - isLoading) * v_fogAmount;
+
+    float interactType = 2.0 * when_neq(v_fogAmount, 1.0);
+
+    v_interactId = vec4(
+        float(npcInfo.interactId >> uint(8)) / 255.0,
+        float(npcInfo.interactId & uint(0xFF)) / 255.0,
+        interactType / 255.0,
+        1
+    );
     
     gl_Position = u_viewMatrix * localPos;
     gl_Position.z -= float(npcInfo.plane) * 0.005 + (float(vertex.priority) + 20.0) * 0.0007;

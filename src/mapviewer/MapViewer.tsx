@@ -1,5 +1,5 @@
 import Denque from "denque";
-import { mat4, vec2, vec3 } from "gl-matrix";
+import { mat4, vec2, vec3, vec4 } from "gl-matrix";
 import {
     DrawCall,
     Framebuffer,
@@ -102,9 +102,14 @@ function getAxisDeadzone(axis: number, zone: number): number {
     }
 }
 
-function getRegionDistance(x: number, y: number, region: vec2): number {
-    const dx = Math.max(Math.abs(x - (region[0] * 64 + 32)) - 32, 0);
-    const dy = Math.max(Math.abs(y - (region[1] * 64 + 32)) - 32, 0);
+function getRegionDistance(
+    x: number,
+    y: number,
+    regionX: number,
+    regionY: number
+): number {
+    const dx = Math.max(Math.abs(x - (regionX * 64 + 32)) - 32, 0);
+    const dy = Math.max(Math.abs(y - (regionY * 64 + 32)) - 32, 0);
     return Math.sqrt(dx * dx + dy * dy);
 }
 
@@ -119,6 +124,8 @@ export interface CameraPosition {
     yaw: number;
 }
 
+type RegionId = number;
+
 const TEXTURE_SIZE = 128;
 
 const CHUNK_RENDER_FRAME_DELAY = 4;
@@ -129,6 +136,8 @@ const INTERACTION_SIZE = INTERACTION_RADIUS * 2 + 1;
 const NULL_DRAW_RANGE: DrawRange = [0, 0, 0];
 
 const DEFAULT_VIEW_DISTANCE = isWallpaperEngine ? 5 : 2;
+
+const DEFAULT_RENDER_DISTANCE = DEFAULT_VIEW_DISTANCE * 64;
 
 export class MapViewer {
     chunkLoaderWorker: ChunkLoaderWorkerPool;
@@ -195,6 +204,9 @@ export class MapViewer {
 
     fps: number = 0;
 
+    fpsFrameCount: number = 0;
+    fpsLastTime: number = 0;
+
     fpsLimit: number = 0;
 
     lastFrameTime: number = 0;
@@ -227,17 +239,22 @@ export class MapViewer {
     fov: number = 90;
     orthoZoom: number = 15;
 
-    regionViewDistance: number = DEFAULT_VIEW_DISTANCE;
+    renderDistance: number = DEFAULT_RENDER_DISTANCE;
+    renderDistanceUpdated: boolean = false;
+
     regionUnloadDistance: number = 2;
     regionLodDistance: number = 3;
 
-    lastRegionViewDistance: number = -1;
+    renderRegionBounds: vec4 = vec4.fromValues(0, 0, 0, 0);
 
-    viewDistanceRegionIds: Set<number>[] = [new Set(), new Set()];
+    visibleRegionCount: number = 0;
+    visibleRegions: RegionId[] = [];
 
     visibleChunkCount: number = 0;
     visibleChunks: Chunk[] = [];
 
+    skyColor: vec4 = vec4.fromValues(0, 0, 0, 1);
+    fogDepth: number = 16;
     brightness: number = 1.0;
     colorBanding: number = 255;
 
@@ -270,6 +287,8 @@ export class MapViewer {
     menuX: number = -1;
     menuY: number = -1;
 
+    closestInteractions = new Map<number, number[]>();
+
     interactBuffer: Uint8Array = new Uint8Array(
         INTERACTION_SIZE * INTERACTION_SIZE * 4
     );
@@ -281,13 +300,13 @@ export class MapViewer {
 
     chunkDataLoader?: ChunkDataLoader;
 
+    cameraPosUni: vec2 = vec2.fromValues(0, 0);
+
     lastCameraX: number = -1;
     lastCameraY: number = -1;
 
     lastCameraRegionX: number = -1;
     lastCameraRegionY: number = -1;
-
-    regionPositions?: vec2[];
 
     frustumIntersection: FrustumIntersection = new FrustumIntersection();
     chunkIntersectBox: number[][] = [
@@ -357,6 +376,7 @@ export class MapViewer {
         this.onCameraJoystickMove = this.onCameraJoystickMove.bind(this);
         this.onCameraJoystickStop = this.onCameraJoystickStop.bind(this);
         this.closeMenu = this.closeMenu.bind(this);
+        this.onHoveredRegionBuffer = this.onHoveredRegionBuffer.bind(this);
         this.checkInteractions = this.checkInteractions.bind(this);
         this.render = this.render.bind(this);
     }
@@ -401,8 +421,6 @@ export class MapViewer {
         }
         console.timeEnd("check invalid regions");
 
-        this.regionPositions = undefined;
-
         this.textureProvider = TextureLoader.load(
             textureIndex,
             spriteIndex,
@@ -421,6 +439,8 @@ export class MapViewer {
             }
             this.initTextures();
         }
+
+        this.renderRegionBounds.fill(0);
     }
 
     init(gl: WebGL2RenderingContext) {
@@ -502,6 +522,7 @@ export class MapViewer {
             app.height,
             PicoGL.DEPTH_COMPONENT24
         );
+
         this.frameBuffer = app
             .createFramebuffer()
             .colorTarget(0, colorTarget)
@@ -546,6 +567,10 @@ export class MapViewer {
             PicoGL.FLOAT_MAT4,
             PicoGL.FLOAT_MAT4,
             PicoGL.FLOAT_MAT4,
+            PicoGL.FLOAT_VEC4,
+            PicoGL.FLOAT_VEC2,
+            PicoGL.FLOAT,
+            PicoGL.FLOAT,
         ]);
 
         this.initTextures();
@@ -636,6 +661,12 @@ export class MapViewer {
         }
 
         return params;
+    }
+
+    setSkyColor(r: number, g: number, b: number) {
+        this.skyColor[0] = r / 255;
+        this.skyColor[1] = g / 255;
+        this.skyColor[2] = b / 255;
     }
 
     onKeyDown(event: KeyboardEvent) {
@@ -1116,6 +1147,7 @@ export class MapViewer {
                 this.chunks.size,
                 "triangles",
                 totalTriangles,
+                this.fps,
                 this.hoveredRegionIds
             );
             console.log(time);
@@ -1218,25 +1250,25 @@ export class MapViewer {
             gl.RGBA,
             gl.UNSIGNED_BYTE,
             this.interactRegionBuffer
-        ).then((buf) => {
-            this.hoveredRegionIds.clear();
-            for (let x = 0; x < INTERACTION_SIZE; x++) {
-                for (let y = 0; y < INTERACTION_SIZE; y++) {
-                    const index = (x + y * INTERACTION_SIZE) * 4;
+        ).then(this.onHoveredRegionBuffer);
+    }
 
-                    const regionX = this.interactRegionBuffer[index];
-                    const regionY = this.interactRegionBuffer[index + 1];
+    onHoveredRegionBuffer(buf: ArrayBufferView) {
+        this.hoveredRegionIds.clear();
+        for (let x = 0; x < INTERACTION_SIZE; x++) {
+            for (let y = 0; y < INTERACTION_SIZE; y++) {
+                const index = (x + y * INTERACTION_SIZE) * 4;
 
-                    const regionId = RegionLoader.getRegionId(regionX, regionY);
+                const regionX = this.interactRegionBuffer[index];
+                const regionY = this.interactRegionBuffer[index + 1];
 
-                    if (regionId !== 0) {
-                        this.hoveredRegionIds.add(regionId);
-                    }
+                const regionId = RegionLoader.getRegionId(regionX, regionY);
+
+                if (regionId !== 0) {
+                    this.hoveredRegionIds.add(regionId);
                 }
             }
-
-            // console.log(Array.from(this.interactRegionBuffer.slice(0, 4)), regionIds);
-        });
+        }
     }
 
     closeMenu() {
@@ -1257,7 +1289,7 @@ export class MapViewer {
     }
 
     checkInteractions(pickedX: number, pickedY: number, tooltip: boolean) {
-        const closestInteractions = new Map<number, number[]>();
+        this.closestInteractions.clear();
 
         for (let x = 0; x < INTERACTION_SIZE; x++) {
             for (let y = 0; y < INTERACTION_SIZE; y++) {
@@ -1267,11 +1299,11 @@ export class MapViewer {
                         Math.abs(x - INTERACTION_RADIUS),
                         Math.abs(y - INTERACTION_RADIUS)
                     );
-                    const interactions = closestInteractions.get(dist);
+                    const interactions = this.closestInteractions.get(dist);
                     if (interactions) {
                         interactions.push(index);
                     } else {
-                        closestInteractions.set(dist, [index]);
+                        this.closestInteractions.set(dist, [index]);
                     }
                 }
             }
@@ -1282,7 +1314,7 @@ export class MapViewer {
 
         const interactions: number[] = [];
         for (let i = 0; i < INTERACTION_SIZE; i++) {
-            const interactionsAtDist = closestInteractions.get(i);
+            const interactionsAtDist = this.closestInteractions.get(i);
             if (interactionsAtDist) {
                 interactions.push(...interactionsAtDist);
             }
@@ -1445,6 +1477,8 @@ export class MapViewer {
                     target,
                     onClick: openWikiOnClick,
                 });
+            } else {
+                console.warn("Unknown interact type: " + interactType);
             }
         }
 
@@ -1561,22 +1595,6 @@ export class MapViewer {
         }
     }
 
-    sortRegionPositions() {
-        if (!this.regionPositions) {
-            return;
-        }
-
-        const cameraX = -this.cameraPos[0];
-        const cameraY = -this.cameraPos[2];
-
-        // sort front to back
-        this.regionPositions.sort((a, b) => {
-            const regionDistA = getRegionDistance(cameraX, cameraY, a);
-            const regionDistB = getRegionDistance(cameraX, cameraY, b);
-            return regionDistA - regionDistB;
-        });
-    }
-
     render(
         gl: WebGL2RenderingContext,
         time: DOMHighResTimeStamp,
@@ -1594,7 +1612,15 @@ export class MapViewer {
 
         this.lastFrameTime = time;
 
-        this.setFps(1.0 / deltaTime);
+        // this.setFps(1.0 / deltaTime);
+
+        if (time - this.fpsLastTime > 1.0) {
+            this.fpsLastTime = time;
+            this.setFps(this.fpsFrameCount);
+            this.fpsFrameCount = 0;
+        }
+
+        this.fpsFrameCount++;
 
         const cycle = time / 0.02;
 
@@ -1670,47 +1696,47 @@ export class MapViewer {
 
         this.updateProjection();
 
-        this.sceneUniformBuffer
-            .set(0, this.viewProjMatrix as Float32Array)
-            .set(1, this.viewMatrix as Float32Array)
-            .set(2, this.projectionMatrix as Float32Array)
-            .update();
-
         const cameraX = -this.cameraPos[0];
         const cameraY = -this.cameraPos[2];
+
+        this.cameraPosUni[0] = cameraX;
+        this.cameraPosUni[1] = cameraY;
 
         const cameraRegionX = (cameraX / 64) | 0;
         const cameraRegionY = (cameraY / 64) | 0;
 
-        const viewDistanceRegionIds =
-            this.viewDistanceRegionIds[this.frameCount % 2];
-        const lastViewDistanceRegionIds =
-            this.viewDistanceRegionIds[(this.frameCount + 1) % 2];
+        this.sceneUniformBuffer
+            .set(0, this.viewProjMatrix as Float32Array)
+            .set(1, this.viewMatrix as Float32Array)
+            .set(2, this.projectionMatrix as Float32Array)
+            .set(3, this.skyColor as Float32Array)
+            .set(4, this.cameraPosUni as Float32Array)
+            .set(5, this.renderDistance as any)
+            .set(6, this.fogDepth as any)
+            .update();
 
-        viewDistanceRegionIds.clear();
+        const renderDistance = this.renderDistance;
 
-        let sortRegionPositions =
-            this.lastCameraX !== cameraX ||
-            this.lastCameraY !== cameraY ||
-            this.lastRegionViewDistance !== this.regionViewDistance;
-        if (
-            this.lastCameraRegionX !== cameraRegionX ||
-            this.lastCameraRegionY !== cameraRegionY ||
-            this.lastRegionViewDistance !== this.regionViewDistance ||
-            this.regionPositions === undefined
-        ) {
-            const viewDistance = this.regionViewDistance;
+        const renderStartX = Math.floor((cameraX - renderDistance) / 64);
+        const renderStartY = Math.floor((cameraY - renderDistance) / 64);
 
-            if (!this.regionPositions) {
-                this.regionPositions = [];
-                sortRegionPositions = true;
-            }
+        const renderEndX = Math.ceil((cameraX + renderDistance) / 64);
+        const renderEndY = Math.ceil((cameraY + renderDistance) / 64);
 
-            this.regionPositions.length = 0;
-            for (let x = -(viewDistance - 1); x < viewDistance; x++) {
-                for (let y = -(viewDistance - 1); y < viewDistance; y++) {
-                    const regionX = cameraRegionX + x;
-                    const regionY = cameraRegionY + y;
+        this.timer.start();
+
+        const renderBoundsChanged =
+            this.renderRegionBounds[0] !== renderStartX ||
+            this.renderRegionBounds[1] !== renderStartY ||
+            this.renderRegionBounds[2] !== renderEndX ||
+            this.renderRegionBounds[3] !== renderEndY;
+
+        if (renderBoundsChanged) {
+            this.visibleRegionCount = 0;
+            for (let x = renderStartX; x < renderEndX; x++) {
+                for (let y = renderStartY; y < renderEndY; y++) {
+                    const regionX = x;
+                    const regionY = y;
                     if (
                         regionX < 0 ||
                         regionX >= 100 ||
@@ -1723,81 +1749,51 @@ export class MapViewer {
                     if (this.invalidRegionIds.has(regionId)) {
                         continue;
                     }
-                    viewDistanceRegionIds.add(regionId);
-                    this.regionPositions.push([regionX, regionY]);
-                }
-            }
 
-            for (const [regionId, chunk] of this.chunks) {
-                if (viewDistanceRegionIds.has(regionId)) {
-                    continue;
-                }
-                const regionX = regionId >> 8;
-                const regionY = regionId & 0xff;
-                const xDist = Math.abs(regionX - cameraRegionX);
-                const yDist = Math.abs(regionY - cameraRegionY);
-                const dist = Math.max(xDist, yDist);
-                if (
-                    dist >=
-                    this.regionViewDistance + this.regionUnloadDistance - 1
-                ) {
-                    deleteChunk(chunk);
-                    this.chunks.delete(regionId);
-                    console.log(
-                        "deleting chunk ",
-                        dist,
-                        this.regionViewDistance,
-                        this.regionUnloadDistance,
-                        chunk.regionX,
-                        chunk.regionY
-                    );
+                    this.visibleRegions[this.visibleRegionCount++] = regionId;
                 }
             }
         }
 
-        this.timer.start();
-
-        if (sortRegionPositions) {
-            this.sortRegionPositions();
-        }
+        this.visibleRegions.length = this.visibleRegionCount;
+        // sort front to back
+        this.visibleRegions.sort((a, b) => {
+            const regionDistA = getRegionDistance(
+                cameraX,
+                cameraY,
+                a >> 8,
+                a & 0xff
+            );
+            const regionDistB = getRegionDistance(
+                cameraX,
+                cameraY,
+                b >> 8,
+                b & 0xff
+            );
+            return regionDistA - regionDistB;
+        });
 
         this.visibleChunkCount = 0;
-        this.npcRenderCount = 0;
-
-        // draw back to front
-        for (let i = this.regionPositions.length - 1; i >= 0; i--) {
-            const pos = this.regionPositions[i];
-            const regionId = RegionLoader.getRegionId(pos[0], pos[1]);
+        for (let i = 0; i < this.visibleRegionCount; i++) {
+            const regionId = this.visibleRegions[i];
             const chunk = this.chunks.get(regionId);
-            viewDistanceRegionIds.add(regionId);
+            if (!chunk) {
+                this.queueChunkLoad(regionId >> 8, regionId & 0xff);
+                continue;
+            }
             if (
-                !chunk ||
-                !this.isChunkVisible(pos[0], pos[1]) ||
+                !this.isChunkVisible(chunk.regionX, chunk.regionY) ||
                 this.frameCount - chunk.frameLoaded < CHUNK_RENDER_FRAME_DELAY
             ) {
                 continue;
             }
 
-            // fade in chunks even if it loaded a while ago
-            if (!lastViewDistanceRegionIds.has(regionId)) {
-                chunk.timeLoaded = time;
+            this.visibleChunks[this.visibleChunkCount++] = chunk;
+        }
 
-                chunk.drawCall.uniform("u_timeLoaded", chunk.timeLoaded);
-                chunk.drawCallLowDetail.uniform(
-                    "u_timeLoaded",
-                    chunk.timeLoaded
-                );
-                chunk.drawCallInteract.uniform(
-                    "u_timeLoaded",
-                    chunk.timeLoaded
-                );
-                chunk.drawCallAlpha.uniform("u_timeLoaded", chunk.timeLoaded);
-                chunk.drawCallInteractAlpha.uniform(
-                    "u_timeLoaded",
-                    chunk.timeLoaded
-                );
-                chunk.drawCallNpc?.uniform("u_timeLoaded", chunk.timeLoaded);
-            }
+        this.npcRenderCount = 0;
+        for (let i = 0; i < this.visibleChunkCount; i++) {
+            const chunk = this.visibleChunks[i];
 
             for (const object of chunk.animatedObjects) {
                 // advance frame
@@ -1820,20 +1816,22 @@ export class MapViewer {
             }
 
             this.addNpcRenderData(chunk, chunk.npcs);
-
-            this.visibleChunks[this.visibleChunkCount++] = chunk;
         }
 
         const npcDataTextureIndex = this.updateNpcDataTexture();
         const npcRenderDataTexture =
             this.npcDataTextureBuffer[npcDataTextureIndex];
 
-        this.app.drawFramebuffer(this.frameBuffer).clear();
+        this.app.drawFramebuffer(this.frameBuffer);
+
+        // There might be a more efficient way to do this
+        this.app.clear();
+        gl.clearBufferfv(gl.COLOR, 0, this.skyColor);
 
         this.app.disable(gl.BLEND);
 
-        // opaque pass
-        for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
+        // opaque pass, front to back
+        for (let i = 0; i < this.visibleChunkCount; i++) {
             const chunk = this.visibleChunks[i];
             const regionDist = Math.max(
                 Math.abs(cameraRegionX - chunk.regionX),
@@ -1885,8 +1883,8 @@ export class MapViewer {
 
             this.draw(drawCall, drawRanges);
         }
-        // opaque npc pass
-        for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
+        // opaque npc pass, front to back
+        for (let i = 0; i < this.visibleChunkCount; i++) {
             const chunk = this.visibleChunks[i];
 
             const drawCall = chunk.drawCallNpc;
@@ -1920,8 +1918,8 @@ export class MapViewer {
 
         this.app.enable(gl.BLEND);
 
-        // alpha pass
-        for (let i = 0; i < this.visibleChunkCount; i++) {
+        // alpha pass, back to front
+        for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
             const chunk = this.visibleChunks[i];
 
             const isInteract = this.hoveredRegionIds.has(
@@ -1956,8 +1954,8 @@ export class MapViewer {
 
             this.draw(drawCall, drawRanges);
         }
-        // alpha npc pass
-        for (let i = 0; i < this.visibleChunkCount; i++) {
+        // alpha npc pass, back to front
+        for (let i = this.visibleChunkCount - 1; i >= 0; i--) {
             const chunk = this.visibleChunks[i];
 
             const drawCall = chunk.drawCallNpc;
@@ -2004,10 +2002,6 @@ export class MapViewer {
             );
         }
 
-        for (const regionPos of this.regionPositions) {
-            this.queueChunkLoad(regionPos[0], regionPos[1]);
-        }
-
         // TODO: upload x bytes per frame
         if (this.frameCount % 30 || this.chunks.size === 0) {
             const chunkData = this.chunksToLoad.shift();
@@ -2044,11 +2038,36 @@ export class MapViewer {
             }
         }
 
+        if (this.visibleChunkCount > this.visibleChunks.length) {
+            // Delete 1 per frame
+            this.visibleChunks.length -= 1;
+        }
+
+        for (const chunk of this.chunks.values()) {
+            const regionX = chunk.regionX;
+            const regionY = chunk.regionY;
+            if (
+                regionX < renderStartX - this.regionUnloadDistance ||
+                regionX > renderEndX + this.regionUnloadDistance ||
+                regionY < renderStartY - this.regionUnloadDistance ||
+                regionY > renderEndY + this.regionUnloadDistance
+            ) {
+                console.log("deleting chunk", regionX, regionY);
+                deleteChunk(chunk);
+                this.chunks.delete(RegionLoader.getRegionId(regionX, regionY));
+            }
+        }
+
         this.timer.end();
 
         this.frameCount++;
 
-        this.lastRegionViewDistance = this.regionViewDistance;
+        this.renderDistanceUpdated = false;
+
+        this.renderRegionBounds[0] = renderStartX;
+        this.renderRegionBounds[1] = renderStartY;
+        this.renderRegionBounds[2] = renderEndX;
+        this.renderRegionBounds[3] = renderEndY;
 
         this.lastCullBackFace = this.cullBackFace;
 
