@@ -6,7 +6,12 @@ import { useSearchParams } from "react-router-dom";
 import { DownloadProgress } from "../client/fs/FileSystem";
 import { lerp, slerp } from "../client/util/MathUtil";
 import { CacheInfo, loadCache } from "./CacheInfo";
-import { CameraPosition, MapViewer, ProjectionType } from "./MapViewer";
+import {
+    AntiAliasType,
+    CameraPosition,
+    MapViewer,
+    ProjectionType,
+} from "./MapViewer";
 import { isTouchDevice } from "./util/DeviceUtil";
 
 interface ColorRgb {
@@ -283,6 +288,16 @@ export function MapViewerControls({
                     step: 1,
                     onChange: (v) => {
                         mapViewer.colorBanding = 255 - v * 2;
+                    },
+                },
+                "Anti-Aliasing": {
+                    value: mapViewer.antiAliasing,
+                    options: {
+                        None: AntiAliasType.NONE,
+                        FXAA: AntiAliasType.FXAA,
+                    },
+                    onChange: (v) => {
+                        mapViewer.antiAliasing = v;
                     },
                 },
                 "Cull Back-faces": {

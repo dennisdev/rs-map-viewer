@@ -48,8 +48,10 @@ import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
 import mainFragShader from "./shaders/main.frag.glsl";
 import mainVertShader from "./shaders/main.vert.glsl";
 import npcVertShader from "./shaders/npc.vert.glsl";
-import quadFragShader from "./shaders/quad.frag.glsl";
-import quadVertShader from "./shaders/quad.vert.glsl";
+import frameFragShader from "./shaders/frame.frag.glsl";
+import frameVertShader from "./shaders/frame.vert.glsl";
+import frameFxaaFragShader from "./shaders/frame-fxaa.frag.glsl";
+import frameFxaaVertShader from "./shaders/frame-fxaa.vert.glsl";
 import { Npc } from "./npc/Npc";
 import { Chunk, deleteChunk, loadChunk } from "./chunk/Chunk";
 import { isIos, isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
@@ -118,6 +120,11 @@ export enum ProjectionType {
     ORTHO,
 }
 
+export enum AntiAliasType {
+    NONE,
+    FXAA,
+}
+
 export interface CameraPosition {
     position: vec3;
     pitch: number;
@@ -166,11 +173,14 @@ export class MapViewer {
 
     program?: Program;
     programNpc?: Program;
-    programQuad?: Program;
+    programFrame?: Program;
+    programFrameFxaa?: Program;
 
     frameBuffer!: Framebuffer;
 
+    resolutionUni: vec2 = vec2.fromValues(0, 0);
     frameDrawCall!: DrawCall;
+    frameFxaaDrawCall!: DrawCall;
 
     quadPositions!: VertexBuffer;
     quadArray!: VertexArray;
@@ -257,6 +267,8 @@ export class MapViewer {
     fogDepth: number = 16;
     brightness: number = 1.0;
     colorBanding: number = 255;
+
+    antiAliasing: AntiAliasType = AntiAliasType.NONE;
 
     loadNpcs: boolean = true;
     loadItems: boolean = true;
@@ -550,16 +562,25 @@ export class MapViewer {
                 prependShader(mainFragShader, this.hasMultiDraw),
             ],
             [
-                prependShader(quadVertShader, this.hasMultiDraw),
-                prependShader(quadFragShader, this.hasMultiDraw),
+                prependShader(frameVertShader, this.hasMultiDraw),
+                prependShader(frameFragShader, this.hasMultiDraw),
+            ],
+            [
+                prependShader(frameFxaaVertShader, this.hasMultiDraw),
+                prependShader(frameFxaaFragShader, this.hasMultiDraw),
             ]
-        ).then(([program, programNpc, programQuad]) => {
+        ).then(([program, programNpc, programFrame, programFrameFxaa]) => {
             this.program = program;
             this.programNpc = programNpc;
-            this.programQuad = programQuad;
+            this.programFrame = programFrame;
+            this.programFrameFxaa = programFrameFxaa;
 
             this.frameDrawCall = app
-                .createDrawCall(this.programQuad, this.quadArray)
+                .createDrawCall(this.programFrame, this.quadArray)
+                .texture("u_frame", this.frameBuffer.colorAttachments[0]);
+
+            this.frameFxaaDrawCall = app
+                .createDrawCall(this.programFrameFxaa, this.quadArray)
                 .texture("u_frame", this.frameBuffer.colorAttachments[0]);
         });
 
@@ -1992,7 +2013,15 @@ export class MapViewer {
 
         this.app.defaultDrawFramebuffer().clear();
 
-        this.frameDrawCall.draw();
+        if (this.antiAliasing === AntiAliasType.FXAA) {
+            this.resolutionUni[0] = canvasWidth;
+            this.resolutionUni[1] = canvasHeight;
+
+            this.frameFxaaDrawCall.uniform("u_resolution", this.resolutionUni);
+            this.frameFxaaDrawCall.draw();
+        } else {
+            this.frameDrawCall.draw();
+        }
 
         if (this.keys.get("h")) {
             console.log(
