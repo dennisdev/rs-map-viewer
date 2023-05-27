@@ -395,7 +395,9 @@ export function createModelTextureData(
         textureData[offset++] = data.sceneX | (data.plane << 14);
         textureData[offset++] = data.sceneY | (contourGround << 14);
         textureData[offset++] =
-            (data.priority & 0xf) | (data.interactType << 4) | (height << 6);
+            (data.priority & 0xf) |
+            (data.interactType << 4) |
+            (Math.round(height / 8) << 6);
         textureData[offset++] = data.interactId;
     });
 

@@ -55,7 +55,6 @@ out vec4 v_color;
 out vec2 v_texCoord;
 flat out uint v_texId;
 flat out float v_texAnimated;
-flat out float v_loadAlpha;
 flat out vec4 v_interactId;
 flat out vec4 v_interactRegionId;
 out float v_fogAmount;
@@ -116,8 +115,8 @@ NpcInfo decodeNpcInfo(int offset) {
     NpcInfo info;
 
     info.tilePos = vec2(float(data.r), float(data.g)) / vec2(128);
-    info.plane = data.b & uint(0x3);
-    info.rotation = data.b >> uint(2);
+    info.plane = data.b & 0x3u;
+    info.rotation = data.b >> 2;
     info.interactId = data.a;
 
     return info;
@@ -139,7 +138,6 @@ void main() {
     v_texCoord = vertex.texCoord + (u_currentTime / 0.02) * textureAnimation * TEXTURE_ANIM_UNIT;
     v_texId = vertex.textureId;
     v_texAnimated = or(when_neq(textureAnimation.x, 0.0), when_neq(textureAnimation.y, 0.0));
-    v_loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
     v_interactRegionId = vec4(
         u_regionPos / vec2(255.0),
         0,
@@ -150,14 +148,14 @@ void main() {
 
     NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_npcDataOffset);
 
-
     vec4 localPos = vertex.pos / vec4(vec3(128.0), 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
 
     localPos.y -= getHeightInterp(npcInfo.tilePos, npcInfo.plane) / 128.0;
 
     localPos += vec4(vec3(u_regionPos.x, 0, u_regionPos.y) * vec3(64), 0);
 
-    float isLoading = when_neq(v_loadAlpha, 1.0);
+    float loadAlpha = smoothstep(0.0, 1.0, min((u_currentTime - u_timeLoaded), 1.0));
+    float isLoading = when_neq(loadAlpha, 1.0);
 
     float dist = -sdRoundedBox(
         vec2(localPos.x - u_cameraPos.x, localPos.z - u_cameraPos.y),
@@ -168,14 +166,14 @@ void main() {
     float fogDepth = min(u_fogDepth, u_renderDistance);
 
     v_fogAmount = fogFactorLinear(dist, 0.0, fogDepth);
-    v_fogAmount = isLoading * max(1.0 - v_loadAlpha, v_fogAmount) +
+    v_fogAmount = isLoading * max(1.0 - loadAlpha, v_fogAmount) +
         (1.0 - isLoading) * v_fogAmount;
 
     float interactType = 2.0 * when_neq(v_fogAmount, 1.0);
 
     v_interactId = vec4(
-        float(npcInfo.interactId >> uint(8)) / 255.0,
-        float(npcInfo.interactId & uint(0xFF)) / 255.0,
+        float(npcInfo.interactId >> 8) / 255.0,
+        float(npcInfo.interactId & 0xFFu) / 255.0,
         interactType / 255.0,
         1
     );
