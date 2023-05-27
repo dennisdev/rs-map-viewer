@@ -2285,6 +2285,8 @@ function MapViewerApp() {
             const itemSpawns = await itemSpawnsPromise;
             console.timeEnd("load item spawns");
 
+            console.log("item spawn count", itemSpawns.length);
+
             const mapViewer = new MapViewer(
                 pool,
                 loadedCache,
