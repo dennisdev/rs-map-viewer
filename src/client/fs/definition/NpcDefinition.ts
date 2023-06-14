@@ -200,8 +200,9 @@ export class NpcDefinition extends Definition {
             this.contrast = buffer.readByte() * 5;
         } else if (opcode === 102) {
             if (
-                this.cacheInfo.game === "oldschool" &&
-                this.cacheInfo.revision < 210
+                (this.cacheInfo.game === "oldschool" &&
+                    this.cacheInfo.revision < 210) ||
+                this.cacheInfo.game === "runescape"
             ) {
                 this.headIconPrayer = buffer.readUnsignedShort();
             } else {
