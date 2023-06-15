@@ -55,8 +55,8 @@ export class FileStore extends StoreAsync {
                     sectorReader.onload = (e: any) => {
                         const sectorBuffer = new ByteBuffer(e.target.result);
                         const sector = extended
-                            ? Sector.decodeExtended(sectorBuffer)
-                            : Sector.decode(sectorBuffer);
+                            ? Sector.decodeExtendedNew(sectorBuffer)
+                            : Sector.decodeNew(sectorBuffer);
                         const dataSize = extended
                             ? Sector.EXTENDED_DATA_SIZE
                             : Sector.DATA_SIZE;

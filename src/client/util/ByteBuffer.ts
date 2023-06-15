@@ -1,7 +1,7 @@
 export class ByteBuffer {
-    private readonly _data: Int8Array;
+    _data: Int8Array;
 
-    public offset: number = 0;
+    offset: number = 0;
 
     constructor(dataOrSize: Int8Array | ArrayBuffer | number) {
         if (dataOrSize instanceof Int8Array) {

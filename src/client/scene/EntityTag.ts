@@ -28,6 +28,10 @@ export function isEntityInteractive(tag: bigint): boolean {
     return interactive;
 }
 
-export function getIdFromEntityTag(tag: bigint): number {
+export function getIdFromTag(tag: bigint): number {
     return Number(tag >> 17n);
+}
+
+export function getEntityTypeFromTag(tag: bigint): EntityType {
+    return Number(tag >> 14n) & 0x3;
 }

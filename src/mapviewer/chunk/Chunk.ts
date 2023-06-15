@@ -118,7 +118,9 @@ export function loadChunk(
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
 
-    // console.log(pixelsToUrl(chunkData.minimapPixels));
+    // if (regionX === 50 && regionY === 49) {
+    //     console.log(pixelsToUrl(chunkData.minimapPixels));
+    // }
 
     const regionPos = vec2.fromValues(regionX, regionY);
 

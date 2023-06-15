@@ -11,33 +11,45 @@ export class Sector {
 
     public static readonly SIZE = Sector.HEADER_SIZE + Sector.DATA_SIZE;
 
-    public static decode(buffer: ByteBuffer): Sector {
-        const archiveId = buffer.readUnsignedShort();
-        const chunk = buffer.readUnsignedShort();
-        const nextSector = buffer.readMedium();
-        const indexId = buffer.readUnsignedByte();
-        const data = buffer.readBytes(Sector.DATA_SIZE);
-        return new Sector(indexId, archiveId, chunk, nextSector, data);
+    public indexId!: number;
+    public archiveId!: number;
+    public chunk!: number;
+    public nextSector!: number;
+    public data!: Int8Array;
+
+    public static decodeNew(buffer: ByteBuffer): Sector {
+        return Sector.decode(new Sector(), buffer);
     }
 
-    public static decodeExtended(buffer: ByteBuffer): Sector {
-        const archiveId = buffer.readInt();
-        const chunk = buffer.readUnsignedShort();
-        const nextSector = buffer.readMedium();
-        const indexId = buffer.readUnsignedByte();
-        const data = buffer.readBytes(Sector.EXTENDED_DATA_SIZE);
-        return new Sector(indexId, archiveId, chunk, nextSector, data);
+    public static decodeExtendedNew(buffer: ByteBuffer): Sector {
+        return Sector.decodeExtended(new Sector(), buffer);
     }
 
-    constructor(
-        public readonly indexId: number,
-        public readonly archiveId: number,
-        public readonly chunk: number,
-        public readonly nextSector: number,
-        private readonly _data: Int8Array
-    ) {}
-
-    get data(): Int8Array {
-        return this._data;
+    public static decode(
+        sector: Sector,
+        buffer: ByteBuffer,
+        dataSize = Sector.DATA_SIZE
+    ): Sector {
+        sector.archiveId = buffer.readUnsignedShort();
+        sector.chunk = buffer.readUnsignedShort();
+        sector.nextSector = buffer.readMedium();
+        sector.indexId = buffer.readUnsignedByte();
+        sector.data = buffer.readBytes(dataSize);
+        return sector;
     }
+
+    public static decodeExtended(
+        sector: Sector,
+        buffer: ByteBuffer,
+        dataSize = Sector.EXTENDED_DATA_SIZE
+    ): Sector {
+        sector.archiveId = buffer.readInt();
+        sector.chunk = buffer.readUnsignedShort();
+        sector.nextSector = buffer.readMedium();
+        sector.indexId = buffer.readUnsignedByte();
+        sector.data = buffer.readBytes(dataSize);
+        return sector;
+    }
+
+    constructor() {}
 }

@@ -87,6 +87,15 @@ export class SpriteLoader {
         }
     }
 
+    static reset() {
+        SpriteLoader.xOffsets = undefined;
+        SpriteLoader.yOffsets = undefined;
+        SpriteLoader.widths = undefined;
+        SpriteLoader.heights = undefined;
+        SpriteLoader.palette = undefined;
+        SpriteLoader.pixels = undefined;
+    }
+
     static loadFromIndex(
         spriteIndex: IndexSync<StoreSync>,
         id: number
@@ -123,14 +132,43 @@ export class SpriteLoader {
             sprite.palette = SpriteLoader.palette;
             sprite.pixels = SpriteLoader.pixels[0];
 
-            SpriteLoader.xOffsets = undefined;
-            SpriteLoader.yOffsets = undefined;
-            SpriteLoader.widths = undefined;
-            SpriteLoader.heights = undefined;
-            SpriteLoader.palette = undefined;
-            SpriteLoader.pixels = undefined;
+            SpriteLoader.reset();
 
             return sprite;
+        }
+        return undefined;
+    }
+
+    static loadIntoIndexedSprites(
+        spriteIndex: IndexSync<StoreSync>,
+        id: number
+    ): IndexedSprite[] | undefined {
+        if (
+            SpriteLoader.loadFromIndex(spriteIndex, id) &&
+            SpriteLoader.xOffsets &&
+            SpriteLoader.yOffsets &&
+            SpriteLoader.widths &&
+            SpriteLoader.heights &&
+            SpriteLoader.palette &&
+            SpriteLoader.pixels
+        ) {
+            const sprites = new Array<IndexedSprite>(SpriteLoader.spriteCount);
+            for (let i = 0; i < SpriteLoader.spriteCount; i++) {
+                const sprite = (sprites[i] = new IndexedSprite());
+
+                sprite.width = SpriteLoader.width;
+                sprite.height = SpriteLoader.height;
+                sprite.xOffset = SpriteLoader.xOffsets[i];
+                sprite.yOffset = SpriteLoader.yOffsets[i];
+                sprite.subWidth = SpriteLoader.widths[i];
+                sprite.subHeight = SpriteLoader.heights[i];
+                sprite.palette = SpriteLoader.palette;
+                sprite.pixels = SpriteLoader.pixels[i];
+            }
+
+            SpriteLoader.reset();
+
+            return sprites;
         }
         return undefined;
     }

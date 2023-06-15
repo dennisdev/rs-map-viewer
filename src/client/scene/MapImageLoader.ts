@@ -1,5 +1,7 @@
 import { ObjectLoader } from "../fs/loader/ObjectLoader";
-import { getIdFromEntityTag, isEntityInteractive } from "./EntityTag";
+import { IndexedSprite } from "../sprite/IndexedSprite";
+import { SpritePixels } from "../sprite/SpritePixels";
+import { getIdFromTag, isEntityInteractive } from "./EntityTag";
 import { ObjectType } from "./ObjectType";
 import { Scene } from "./Scene";
 
@@ -29,23 +31,26 @@ const tileRotation2D = [
 export class MapImageLoader {
     objectLoader: ObjectLoader;
 
-    constructor(objectLoader: ObjectLoader) {
+    mapScenes: IndexedSprite[];
+
+    constructor(objectLoader: ObjectLoader, mapScenes: IndexedSprite[]) {
         this.objectLoader = objectLoader;
+        this.mapScenes = mapScenes;
     }
 
     createMinimapPixels(scene: Scene, plane: number): Int32Array {
         const width = Scene.MAP_SIZE * 4;
-        const pixels = new Int32Array(width * width);
-        const view = new DataView(pixels.buffer);
+        const spritePixels = SpritePixels.fromDimensions(width, width);
+        const pixels = spritePixels.pixels;
 
         for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
             let offset = (Scene.MAP_SIZE - 1 - tileY) * width * 4;
 
             for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
                 if ((scene.tileRenderFlags[plane][tileX][tileY] & 0x18) === 0) {
-                    this.drawTileMinimap(
+                    this.drawTile(
                         scene,
-                        view,
+                        pixels,
                         offset,
                         width,
                         plane,
@@ -58,9 +63,9 @@ export class MapImageLoader {
                     plane < 3 &&
                     (scene.tileRenderFlags[plane + 1][tileX][tileY] & 0x8) !== 0
                 ) {
-                    this.drawTileMinimap(
+                    this.drawTile(
                         scene,
-                        view,
+                        pixels,
                         offset,
                         width,
                         plane + 1,
@@ -76,12 +81,14 @@ export class MapImageLoader {
         const wallRgb = 0xeeeeee;
         const wallInteractiveRgb = 0xee0000;
 
+        spritePixels.setRaster();
+
         for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
             for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
                 if ((scene.tileRenderFlags[plane][tileX][tileY] & 0x18) === 0) {
                     this.drawObject(
                         scene,
-                        view,
+                        pixels,
                         width,
                         plane,
                         tileX,
@@ -97,7 +104,7 @@ export class MapImageLoader {
                 ) {
                     this.drawObject(
                         scene,
-                        view,
+                        pixels,
                         width,
                         plane + 1,
                         tileX,
@@ -109,12 +116,12 @@ export class MapImageLoader {
             }
         }
 
-        return pixels;
+        return spritePixels.pixels;
     }
 
-    drawTileMinimap(
+    drawTile(
         scene: Scene,
-        pixels: DataView,
+        pixels: Int32Array,
         offset: number,
         width: number,
         plane: number,
@@ -143,37 +150,28 @@ export class MapImageLoader {
                     shape2d[rot2d[index++]] === 0 ? underlayRgb : overlayRgb;
                 const rgb3 =
                     shape2d[rot2d[index++]] === 0 ? underlayRgb : overlayRgb;
-                pixels.setUint32(offset * 4, (rgb0 << 8) | 0xff);
-                pixels.setUint32((offset + 1) * 4, (rgb1 << 8) | 0xff);
-                pixels.setUint32((offset + 2) * 4, (rgb2 << 8) | 0xff);
-                pixels.setUint32((offset + 3) * 4, (rgb3 << 8) | 0xff);
+                pixels[offset] = rgb0;
+                pixels[offset + 1] = rgb1;
+                pixels[offset + 2] = rgb2;
+                pixels[offset + 3] = rgb3;
                 offset += width;
             }
         } else {
             for (let i = 0; i < 4; i++) {
                 if (shape2d[rot2d[index++]] !== 0) {
-                    pixels.setUint32(offset * 4, (overlayRgb << 8) | 0xff);
+                    pixels[offset] = overlayRgb;
                 }
 
                 if (shape2d[rot2d[index++]] !== 0) {
-                    pixels.setUint32(
-                        (offset + 1) * 4,
-                        (overlayRgb << 8) | 0xff
-                    );
+                    pixels[offset + 1] = overlayRgb;
                 }
 
                 if (shape2d[rot2d[index++]] !== 0) {
-                    pixels.setUint32(
-                        (offset + 2) * 4,
-                        (overlayRgb << 8) | 0xff
-                    );
+                    pixels[offset + 2] = overlayRgb;
                 }
 
                 if (shape2d[rot2d[index++]] !== 0) {
-                    pixels.setUint32(
-                        (offset + 3) * 4,
-                        (overlayRgb << 8) | 0xff
-                    );
+                    pixels[offset + 3] = overlayRgb;
                 }
 
                 offset += width;
@@ -183,7 +181,7 @@ export class MapImageLoader {
 
     drawObject(
         scene: Scene,
-        pixels: DataView,
+        pixels: Int32Array,
         width: number,
         plane: number,
         tileX: number,
@@ -202,18 +200,23 @@ export class MapImageLoader {
             const rotation = (objectFlags >> 6) & 0x3;
             const type = objectFlags & 0x1f;
 
-            const objectId = getIdFromEntityTag(wallObjectTag);
+            const objectId = getIdFromTag(wallObjectTag);
             const objectDef = this.objectLoader.getDefinition(objectId);
 
             if (objectDef.mapSceneId !== -1) {
-                // draw map scene
+                const mapScene = this.mapScenes[objectDef.mapSceneId];
+
+                const x = ((objectDef.sizeX * 4 - mapScene.subWidth) / 2) | 0;
+                const y = ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
+                mapScene.drawAt(
+                    tileX * 4 + x,
+                    y + (Scene.MAP_SIZE - tileY - objectDef.sizeY) * 4
+                );
             } else {
                 let rgb = wallRgb;
                 if (isEntityInteractive(wallObjectTag)) {
                     rgb = wallInteractiveRgb;
                 }
-
-                const rgba = (rgb << 8) | 0xff;
 
                 const offset =
                     tileX * 4 + (Scene.MAP_SIZE - 1 - tileY) * width * 4;
@@ -222,61 +225,61 @@ export class MapImageLoader {
                     type === ObjectType.WALL_CORNER
                 ) {
                     if (rotation === 0) {
-                        pixels.setUint32(offset * 4, rgba);
-                        pixels.setUint32((offset + width) * 4, rgba);
-                        pixels.setUint32((offset + width * 2) * 4, rgba);
-                        pixels.setUint32((offset + width * 3) * 4, rgba);
+                        pixels[offset] = rgb;
+                        pixels[offset + width] = rgb;
+                        pixels[offset + width * 2] = rgb;
+                        pixels[offset + width * 3] = rgb;
                     } else if (rotation === 1) {
-                        pixels.setUint32(offset * 4, rgba);
-                        pixels.setUint32((offset + 1) * 4, rgba);
-                        pixels.setUint32((offset + 2) * 4, rgba);
-                        pixels.setUint32((offset + 3) * 4, rgba);
+                        pixels[offset] = rgb;
+                        pixels[offset + 1] = rgb;
+                        pixels[offset + 2] = rgb;
+                        pixels[offset + 3] = rgb;
                     } else if (rotation === 2) {
-                        pixels.setUint32((offset + 3) * 4, rgba);
-                        pixels.setUint32((offset + width + 3) * 4, rgba);
-                        pixels.setUint32((offset + width * 2 + 3) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 3) * 4, rgba);
+                        pixels[offset + 3] = rgb;
+                        pixels[offset + width + 3] = rgb;
+                        pixels[offset + width * 2 + 3] = rgb;
+                        pixels[offset + width * 3 + 3] = rgb;
                     } else if (rotation === 3) {
-                        pixels.setUint32((offset + width * 3) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 1) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 2) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 3) * 4, rgba);
+                        pixels[offset + width * 3] = rgb;
+                        pixels[offset + width * 3 + 1] = rgb;
+                        pixels[offset + width * 3 + 2] = rgb;
+                        pixels[offset + width * 3 + 3] = rgb;
                     }
                 }
 
                 if (type === ObjectType.WALL_RECT_CORNER) {
                     if (rotation === 0) {
-                        pixels.setUint32(offset * 4, rgba);
+                        pixels[offset] = rgb;
                     } else if (rotation === 1) {
-                        pixels.setUint32((offset + 3) * 4, rgba);
+                        pixels[offset + 3] = rgb;
                     } else if (rotation === 2) {
-                        pixels.setUint32((offset + width * 3 + 3) * 4, rgba);
+                        pixels[offset + width * 3 + 3] = rgb;
                     } else if (rotation === 3) {
-                        pixels.setUint32((offset + width * 3) * 4, rgba);
+                        pixels[offset + width * 3] = rgb;
                     }
                 }
 
                 if (type === ObjectType.WALL_CORNER) {
                     if (rotation === 3) {
-                        pixels.setUint32(offset * 4, rgba);
-                        pixels.setUint32((offset + width) * 4, rgba);
-                        pixels.setUint32((offset + width * 2) * 4, rgba);
-                        pixels.setUint32((offset + width * 3) * 4, rgba);
+                        pixels[offset] = rgb;
+                        pixels[offset + width] = rgb;
+                        pixels[offset + width * 2] = rgb;
+                        pixels[offset + width * 3] = rgb;
                     } else if (rotation === 0) {
-                        pixels.setUint32(offset * 4, rgba);
-                        pixels.setUint32((offset + 1) * 4, rgba);
-                        pixels.setUint32((offset + 2) * 4, rgba);
-                        pixels.setUint32((offset + 3) * 4, rgba);
+                        pixels[offset] = rgb;
+                        pixels[offset + 1] = rgb;
+                        pixels[offset + 2] = rgb;
+                        pixels[offset + 3] = rgb;
                     } else if (rotation === 1) {
-                        pixels.setUint32((offset + 3) * 4, rgba);
-                        pixels.setUint32((offset + width + 3) * 4, rgba);
-                        pixels.setUint32((offset + width * 2 + 3) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 3) * 4, rgba);
+                        pixels[offset + 3] = rgb;
+                        pixels[offset + width + 3] = rgb;
+                        pixels[offset + width * 2 + 3] = rgb;
+                        pixels[offset + width * 3 + 3] = rgb;
                     } else if (rotation === 2) {
-                        pixels.setUint32((offset + width * 3) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 1) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 2) * 4, rgba);
-                        pixels.setUint32((offset + width * 3 + 3) * 4, rgba);
+                        pixels[offset + width * 3] = rgb;
+                        pixels[offset + width * 3 + 1] = rgb;
+                        pixels[offset + width * 3 + 2] = rgb;
+                        pixels[offset + width * 3 + 3] = rgb;
                     }
                 }
             }
@@ -293,32 +296,61 @@ export class MapImageLoader {
             const rotation = (objectFlags >> 6) & 0x3;
             const type = objectFlags & 0x1f;
 
-            const objectId = getIdFromEntityTag(gameObjectTag);
+            const objectId = getIdFromTag(gameObjectTag);
             const objectDef = this.objectLoader.getDefinition(objectId);
 
             if (objectDef.mapSceneId !== -1) {
-                // draw map scene
+                const mapScene = this.mapScenes[objectDef.mapSceneId];
+
+                const x = ((objectDef.sizeX * 4 - mapScene.subWidth) / 2) | 0;
+                const y = ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
+                mapScene.drawAt(
+                    tileX * 4 + x,
+                    (Scene.MAP_SIZE - tileY - objectDef.sizeY) * 4 + y
+                );
             } else if (type === ObjectType.WALL_DIAGONAL) {
                 let rgb = wallRgb;
-                if (isEntityInteractive(wallObjectTag)) {
+                if (isEntityInteractive(gameObjectTag)) {
                     rgb = wallInteractiveRgb;
                 }
-
-                const rgba = (rgb << 8) | 0xff;
 
                 const offset =
                     tileX * 4 + (Scene.MAP_SIZE - 1 - tileY) * width * 4;
                 if (rotation !== 0 && rotation !== 2) {
-                    pixels.setUint32(offset * 4, rgba);
-                    pixels.setUint32((offset + width + 1) * 4, rgba);
-                    pixels.setUint32((offset + width * 2 + 2) * 4, rgba);
-                    pixels.setUint32((offset + width * 3 + 3) * 4, rgba);
+                    pixels[offset] = rgb;
+                    pixels[offset + width + 1] = rgb;
+                    pixels[offset + width * 2 + 2] = rgb;
+                    pixels[offset + width * 3 + 3] = rgb;
                 } else {
-                    pixels.setUint32((offset + width * 3) * 4, rgba);
-                    pixels.setUint32((offset + width * 2 + 1) * 4, rgba);
-                    pixels.setUint32((offset + width + 2) * 4, rgba);
-                    pixels.setUint32((offset + 3) * 4, rgba);
+                    pixels[offset + width * 3] = rgb;
+                    pixels[offset + width * 2 + 1] = rgb;
+                    pixels[offset + width + 2] = rgb;
+                    pixels[offset + 3] = rgb;
                 }
+            }
+        }
+
+        const floorDecorationTag = scene.getFloorDecorationTag(
+            plane,
+            tileX,
+            tileY
+        );
+        if (floorDecorationTag !== 0n) {
+            const objectId = getIdFromTag(floorDecorationTag);
+            const objectDef = this.objectLoader.getDefinition(objectId);
+
+            if (objectDef.mapSceneId !== -1) {
+                const mapScene = this.mapScenes[objectDef.mapSceneId];
+                if (plane === 1) {
+                    console.log(objectDef.mapSceneId, objectDef);
+                }
+
+                const x = (objectDef.sizeX * 4 - mapScene.subWidth) / 2;
+                const y = (objectDef.sizeY * 4 - mapScene.subHeight) / 2;
+                mapScene.drawAt(
+                    tileX * 4 + x,
+                    y + (Scene.MAP_SIZE - tileY - objectDef.sizeY) * 4
+                );
             }
         }
     }

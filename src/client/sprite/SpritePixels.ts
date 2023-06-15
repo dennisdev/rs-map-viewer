@@ -1,3 +1,5 @@
+import { Rasterizer2D } from "../Rasterizer2D";
+
 export class SpritePixels {
     pixels!: Int32Array;
 
@@ -201,5 +203,9 @@ export class SpritePixels {
                 }
             }
         }
+    }
+
+    setRaster() {
+        Rasterizer2D.setRaster(this.pixels, this.subWidth, this.subHeight);
     }
 }

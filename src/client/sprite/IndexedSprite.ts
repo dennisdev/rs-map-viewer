@@ -1,3 +1,5 @@
+import { Rasterizer2D } from "../Rasterizer2D";
+
 export class IndexedSprite {
     pixels!: Uint8Array;
 
@@ -14,6 +16,65 @@ export class IndexedSprite {
     width!: number;
 
     height!: number;
+
+    static raster(
+        pixels: Int32Array,
+        spritePixels: Uint8Array,
+        palette: Int32Array,
+        startX: number,
+        startY: number,
+        width: number,
+        height: number,
+        endX: number,
+        endY: number
+    ): void {
+        let var9 = -(width >> 2);
+        width = -(width & 3);
+
+        for (let var10 = -height; var10 < 0; var10++) {
+            for (let var11 = var9; var11 < 0; var11++) {
+                let p = spritePixels[startX++];
+                if (p !== 0) {
+                    pixels[startY++] = palette[p & 0xff];
+                } else {
+                    startY++;
+                }
+
+                p = spritePixels[startX++];
+                if (p !== 0) {
+                    pixels[startY++] = palette[p & 0xff];
+                } else {
+                    startY++;
+                }
+
+                p = spritePixels[startX++];
+                if (p !== 0) {
+                    pixels[startY++] = palette[p & 0xff];
+                } else {
+                    startY++;
+                }
+
+                p = spritePixels[startX++];
+                if (p !== 0) {
+                    pixels[startY++] = palette[p & 0xff];
+                } else {
+                    startY++;
+                }
+            }
+
+            for (let var11 = width; var11 < 0; ++var11) {
+                let var12 = spritePixels[startX++];
+                if (var12 !== 0) {
+                    pixels[startY++] = palette[var12 & 0xff];
+                } else {
+                    startY++;
+                }
+            }
+
+            startY += endX;
+            startX += endY;
+        }
+    }
 
     normalize(): void {
         if (this.subWidth !== this.width || this.subHeight !== this.height) {
@@ -62,6 +123,59 @@ export class IndexedSprite {
             }
 
             this.palette[i] = b + (g << 8) + (r << 16);
+        }
+    }
+
+    drawAt(x: number, y: number): void {
+        x += this.xOffset;
+        y += this.yOffset;
+        let startY = x + y * Rasterizer2D.width;
+        let startX = 0;
+        let height = this.subHeight;
+        let width = this.subWidth;
+        let endX = Rasterizer2D.width - width;
+        let endY = 0;
+        if (y < Rasterizer2D.yClipStart) {
+            const var9 = Rasterizer2D.yClipStart - y;
+            height -= var9;
+            y = Rasterizer2D.yClipStart;
+            startX += var9 * width;
+            startY += var9 * Rasterizer2D.width;
+        }
+
+        if (height + y > Rasterizer2D.yClipEnd) {
+            height -= height + y - Rasterizer2D.yClipEnd;
+        }
+
+        if (x < Rasterizer2D.xClipStart) {
+            const var9 = Rasterizer2D.xClipStart - x;
+            width -= var9;
+            x = Rasterizer2D.xClipStart;
+            startX += var9;
+            startY += var9;
+            endY += var9;
+            endX += var9;
+        }
+
+        if (width + x > Rasterizer2D.xClipEnd) {
+            const var9 = width + x - Rasterizer2D.xClipEnd;
+            width -= var9;
+            endY += var9;
+            endX += var9;
+        }
+
+        if (width > 0 && height > 0) {
+            IndexedSprite.raster(
+                Rasterizer2D.pixels,
+                this.pixels,
+                this.palette,
+                startX,
+                startY,
+                width,
+                height,
+                endX,
+                endY
+            );
         }
     }
 }

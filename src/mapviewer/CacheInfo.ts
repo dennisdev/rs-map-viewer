@@ -60,6 +60,7 @@ export async function loadCache(
                 IndexType.MODELS,
                 IndexType.SPRITES,
                 IndexType.TEXTURES,
+                IndexType.GRAPHIC_DEFAULTS,
             ],
             true,
             progressListener

@@ -78,6 +78,7 @@ export class ChunkDataLoader {
         npcModelLoader: NpcModelLoader,
         itemModelLoader: ItemModelLoader,
         textureProvider: TextureLoader,
+        mapImageLoader: MapImageLoader,
         npcSpawns: NpcSpawn[],
         itemSpawns: ItemSpawn[]
     ) {
@@ -87,7 +88,7 @@ export class ChunkDataLoader {
         this.npcModelLoader = npcModelLoader;
         this.itemModelLoader = itemModelLoader;
         this.textureLoader = textureProvider;
-        this.mapImageLoader = new MapImageLoader(regionLoader.objectLoader);
+        this.mapImageLoader = mapImageLoader;
         this.npcSpawns = npcSpawns;
         this.itemSpawns = itemSpawns;
         this.modelHashBuf = new ModelHashBuffer(5000);
@@ -338,10 +339,25 @@ export class ChunkDataLoader {
             drawRangesAlpha.length
         );
 
+        console.time("create minimap " + regionX + "," + regionY);
+        // For bridges
+        for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
+            for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
+                if ((region.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
+                    region.setLinkBelow(tileX, tileY);
+                }
+            }
+        }
         const minimapPixels = this.mapImageLoader.createMinimapPixels(
             region,
             0
         );
+        // convert to rgba
+        const minimapView = new DataView(minimapPixels.buffer);
+        for (let i = 0; i < minimapPixels.length; i++) {
+            minimapView.setUint32(i * 4, (minimapPixels[i] << 8) | 0xff);
+        }
+        console.timeEnd("create minimap " + regionX + "," + regionY);
 
         return {
             regionX,

@@ -25,6 +25,9 @@ import { LoadedCache } from "../CacheInfo";
 import { ItemModelLoader } from "../../client/fs/loader/model/ItemModelLoader";
 import { CachedItemLoader } from "../../client/fs/loader/ItemLoader";
 import { ItemSpawn } from "../item/ItemSpawn";
+import { MapImageLoader } from "../../client/scene/MapImageLoader";
+import { GraphicDefaults } from "../../client/fs/definition/GraphicDefaults";
+import { SpriteLoader } from "../../client/sprite/SpriteLoader";
 
 let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 
@@ -124,6 +127,17 @@ async function init0(
         spriteIndex,
         cache.info
     );
+
+    const graphicDefaults = GraphicDefaults.load(fileSystem, cache.info);
+    const mapScenes = SpriteLoader.loadIntoIndexedSprites(
+        spriteIndex,
+        graphicDefaults.mapScenes
+    );
+    if (!mapScenes) {
+        throw new Error("Failed to load map scenes");
+    }
+
+    const mapImageLoader = new MapImageLoader(objectLoader, mapScenes);
     // console.timeEnd('load textures');
     // console.time('load textures sprites');
     // for (const texture of textureProvider.definitions.values()) {
@@ -139,6 +153,7 @@ async function init0(
         npcModelLoader,
         itemModelLoader,
         textureProvider,
+        mapImageLoader,
         npcSpawns,
         itemSpawns
     );

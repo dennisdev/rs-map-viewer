@@ -7,6 +7,8 @@ import {
 import { SceneTileModel } from "./SceneTileModel";
 
 export class SceneTile {
+    originalPlane: number;
+
     plane: number;
 
     x: number;
@@ -25,8 +27,10 @@ export class SceneTile {
 
     gameObjects: GameObject[];
 
+    linkedBelowTile?: SceneTile;
+
     constructor(plane: number, x: number, y: number) {
-        this.plane = plane;
+        this.plane = this.originalPlane = plane;
         this.x = x;
         this.y = y;
         this.minPlane = 0;

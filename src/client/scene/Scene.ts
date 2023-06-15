@@ -23,7 +23,8 @@ import {
 import {
     calculateEntityTag,
     EntityType,
-    getIdFromEntityTag,
+    getEntityTypeFromTag,
+    getIdFromTag,
 } from "./EntityTag";
 import { SceneTile } from "./SceneTile";
 import {
@@ -315,7 +316,7 @@ export class Scene {
         }
 
         for (const object of tile.gameObjects) {
-            const entityType = Number((object.tag >> 14n) & 0x3n);
+            const entityType = getEntityTypeFromTag(object.tag);
             if (
                 entityType === EntityType.OBJECT &&
                 tileX === object.startX &&
@@ -326,6 +327,11 @@ export class Scene {
         }
 
         return 0n;
+    }
+
+    getFloorDecorationTag(plane: number, tileX: number, tileY: number): bigint {
+        const tile = this.tiles[plane][tileX][tileY];
+        return (tile && tile.floorDecoration && tile.floorDecoration.tag) || 0n;
     }
 
     getObjectFlags(
@@ -1014,7 +1020,7 @@ export class Scene {
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
                     if (wallTag !== 0n) {
                         displacement = regionLoader.getObjectDef(
-                            getIdFromEntityTag(wallTag)
+                            getIdFromTag(wallTag)
                         ).decorDisplacement;
                     }
 
@@ -1066,9 +1072,8 @@ export class Scene {
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
                     if (wallTag !== 0n) {
                         displacement =
-                            regionLoader.getObjectDef(
-                                getIdFromEntityTag(wallTag)
-                            ).decorDisplacement / 2;
+                            regionLoader.getObjectDef(getIdFromTag(wallTag))
+                                .decorDisplacement / 2;
                     }
 
                     let renderable: Renderable | undefined;
@@ -1159,9 +1164,8 @@ export class Scene {
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
                     if (wallTag !== 0n) {
                         displacement =
-                            regionLoader.getObjectDef(
-                                getIdFromEntityTag(wallTag)
-                            ).decorDisplacement / 2;
+                            regionLoader.getObjectDef(getIdFromTag(wallTag))
+                                .decorDisplacement / 2;
                     }
 
                     const insideRotation = (rotation + 2) & 3;
@@ -1929,7 +1933,7 @@ export class Scene {
                         underlayHsl = blendedColors[plane][x][y];
                     }
 
-                    let underlayRgb = -1;
+                    let underlayRgb = 0;
                     if (underlayHsl !== -1) {
                         underlayRgb =
                             HSL_RGB_MAP[adjustUnderlayLight(underlayHsl, 96)];
@@ -2066,5 +2070,35 @@ export class Scene {
                 }
             }
         }
+    }
+
+    setLinkBelow(tileX: number, tileY: number) {
+        const tile = this.tiles[0][tileX][tileY];
+
+        for (let i = 0; i < Scene.MAX_PLANE - 1; i++) {
+            const t = (this.tiles[i][tileX][tileY] =
+                this.tiles[i + 1][tileX][tileY]);
+            if (t) {
+                t.plane--;
+
+                for (const object of t.gameObjects) {
+                    const entityType = getEntityTypeFromTag(object.tag);
+                    if (
+                        entityType === EntityType.OBJECT &&
+                        object.startX === tileX &&
+                        object.startY === tileY
+                    ) {
+                        object.plane--;
+                    }
+                }
+            }
+        }
+
+        if (!this.tiles[0][tileX][tileY]) {
+            this.tiles[0][tileX][tileY] = new SceneTile(0, tileX, tileY);
+        }
+
+        this.tiles[0][tileX][tileY].linkedBelowTile = tile;
+        delete this.tiles[3][tileX][tileY];
     }
 }

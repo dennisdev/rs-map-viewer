@@ -47,16 +47,31 @@ export class MemoryStore extends StoreSync {
         let remaining = sectorCluster.size;
         let sectorPtr = sectorCluster.sector * Sector.SIZE;
 
+        const sectorBuffer = new ByteBuffer(0);
+        const sector = new Sector();
+
         while (remaining > 0) {
-            const sectorBuffer = new ByteBuffer(
-                new Int8Array(this.dataFile, sectorPtr, Sector.SIZE)
-            );
-            const sector = extended
-                ? Sector.decodeExtended(sectorBuffer)
-                : Sector.decode(sectorBuffer);
+            const headerSize = extended
+                ? Sector.EXTENDED_HEADER_SIZE
+                : Sector.HEADER_SIZE;
             const dataSize = extended
                 ? Sector.EXTENDED_DATA_SIZE
                 : Sector.DATA_SIZE;
+
+            const actualDataSize = Math.min(dataSize, remaining);
+
+            sectorBuffer._data = new Int8Array(
+                this.dataFile,
+                sectorPtr,
+                headerSize + actualDataSize
+            );
+            sectorBuffer.offset = 0;
+
+            if (extended) {
+                Sector.decodeExtended(sector, sectorBuffer, actualDataSize);
+            } else {
+                Sector.decode(sector, sectorBuffer, actualDataSize);
+            }
             if (remaining > dataSize) {
                 data.set(sector.data, sectorCluster.size - remaining);
 
