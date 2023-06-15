@@ -9,6 +9,7 @@ import { Renderable } from "./Renderable";
 import { DynamicObject } from "./DynamicObject";
 import { SceneTileModel } from "./SceneTileModel";
 import {
+    HSL_RGB_MAP,
     adjustOverlayLight,
     adjustUnderlayLight,
     packHsl,
@@ -137,6 +138,7 @@ export class Scene {
         renderable: Renderable | undefined,
         tag: bigint,
         type: number,
+        flags: number,
         def: ObjectDefinition
     ) {
         if (renderable) {
@@ -150,6 +152,7 @@ export class Scene {
                 renderable,
                 tag,
                 type,
+                flags,
                 def
             );
 
@@ -168,6 +171,7 @@ export class Scene {
         renderable1: Renderable | undefined,
         tag: bigint,
         type: number,
+        flags: number,
         def: ObjectDefinition
     ) {
         if (renderable0 || renderable1) {
@@ -182,6 +186,7 @@ export class Scene {
                 renderable1,
                 tag,
                 type,
+                flags,
                 def
             );
 
@@ -202,6 +207,7 @@ export class Scene {
         offsetY: number,
         tag: bigint,
         type: number,
+        flags: number,
         def: ObjectDefinition
     ) {
         if (renderable0) {
@@ -218,6 +224,7 @@ export class Scene {
                 offsetY,
                 tag,
                 type,
+                flags,
                 def
             );
 
@@ -299,6 +306,54 @@ export class Scene {
     getWallObjectTag(plane: number, tileX: number, tileY: number): bigint {
         const tile = this.tiles[plane][tileX][tileY];
         return (tile && tile.wallObject && tile.wallObject.tag) || 0n;
+    }
+
+    getGameObjectTag(plane: number, tileX: number, tileY: number): bigint {
+        const tile = this.tiles[plane][tileX][tileY];
+        if (!tile) {
+            return 0n;
+        }
+
+        for (const object of tile.gameObjects) {
+            const entityType = Number((object.tag >> 14n) & 0x3n);
+            if (
+                entityType === EntityType.OBJECT &&
+                tileX === object.startX &&
+                tileY === object.startY
+            ) {
+                return object.tag;
+            }
+        }
+
+        return 0n;
+    }
+
+    getObjectFlags(
+        plane: number,
+        tileX: number,
+        tileY: number,
+        tag: bigint
+    ): number {
+        const tile = this.tiles[plane][tileX][tileY];
+        if (!tile) {
+            return -1;
+        }
+
+        if (tile.wallObject && tile.wallObject.tag === tag) {
+            return tile.wallObject.flags & 0xff;
+        } else if (tile.wallDecoration && tile.wallDecoration.tag === tag) {
+            return tile.wallDecoration.flags & 0xff;
+        } else if (tile.floorDecoration && tile.floorDecoration.tag === tag) {
+            return tile.floorDecoration.flags & 0xff;
+        } else {
+            for (const object of tile.gameObjects) {
+                if (object.tag === tag) {
+                    return object.flags & 0xff;
+                }
+            }
+
+            return -1;
+        }
     }
 
     addObject(
@@ -434,6 +489,7 @@ export class Scene {
                     renderable,
                     tag,
                     type,
+                    flags,
                     def
                 );
                 if (def.clipType === 1 && collisionMap) {
@@ -524,6 +580,7 @@ export class Scene {
                         undefined,
                         tag,
                         type,
+                        flags,
                         def
                     );
 
@@ -643,6 +700,7 @@ export class Scene {
                         undefined,
                         tag,
                         type,
+                        flags,
                         def
                     );
 
@@ -737,6 +795,7 @@ export class Scene {
                         renderable1,
                         tag,
                         type,
+                        flags,
                         def
                     );
 
@@ -794,6 +853,7 @@ export class Scene {
                         undefined,
                         tag,
                         type,
+                        flags,
                         def
                     );
 
@@ -931,6 +991,7 @@ export class Scene {
                         0,
                         tag,
                         type,
+                        flags,
                         def
                     );
 
@@ -994,6 +1055,7 @@ export class Scene {
                         displacementY,
                         tag,
                         type,
+                        flags,
                         def
                     );
                 }
@@ -1046,6 +1108,7 @@ export class Scene {
                         displacementY,
                         tag,
                         type,
+                        flags,
                         def
                     );
                 }
@@ -1085,6 +1148,7 @@ export class Scene {
                         0,
                         tag,
                         type,
+                        flags,
                         def
                     );
                 }
@@ -1156,6 +1220,7 @@ export class Scene {
                         displacementY,
                         tag,
                         type,
+                        flags,
                         def
                     );
                 }
@@ -1864,6 +1929,12 @@ export class Scene {
                         underlayHsl = blendedColors[plane][x][y];
                     }
 
+                    let underlayRgb = -1;
+                    if (underlayHsl !== -1) {
+                        underlayRgb =
+                            HSL_RGB_MAP[adjustUnderlayLight(underlayHsl, 96)];
+                    }
+
                     let tileModel: SceneTileModel;
                     if (overlayId === -1) {
                         tileModel = new SceneTileModel(
@@ -1883,6 +1954,8 @@ export class Scene {
                             0,
                             0,
                             0,
+                            0,
+                            underlayRgb,
                             0
                         );
                     } else {
@@ -1891,27 +1964,43 @@ export class Scene {
 
                         const overlay = regionLoader.getOverlayDef(overlayId);
 
-                        const textureId =
-                            textureProvider.getTextureIndex(
-                                overlay.textureId
-                            ) || -1;
                         let overlayHsl: number;
-                        if (textureId !== -1) {
+                        let overlayMinimapHsl: number;
+                        if (overlay.textureId !== -1) {
+                            overlayMinimapHsl = textureProvider.getAverageHsl(
+                                overlay.textureId
+                            );
                             overlayHsl = -1;
                         } else if (overlay.primaryRgb === 0xff00ff) {
-                            overlayHsl = -2;
+                            overlayHsl = overlayMinimapHsl = -2;
                         } else {
-                            overlayHsl = packHsl(
+                            overlayHsl = overlayMinimapHsl = packHsl(
                                 overlay.hue,
                                 overlay.saturation,
                                 overlay.lightness
                             );
                         }
 
+                        if (overlay.secondaryRgb !== -1) {
+                            overlayMinimapHsl = packHsl(
+                                overlay.secondaryHue,
+                                overlay.secondarySaturation,
+                                overlay.secondaryLightness
+                            );
+                        }
+
+                        let overlayRgb = 0;
+                        if (overlayMinimapHsl !== -2) {
+                            overlayRgb =
+                                HSL_RGB_MAP[
+                                    adjustOverlayLight(overlayMinimapHsl, 96)
+                                ];
+                        }
+
                         tileModel = new SceneTileModel(
                             shape,
                             rotation,
-                            textureId,
+                            overlay.textureId,
                             x,
                             y,
                             heightSw,
@@ -1925,7 +2014,9 @@ export class Scene {
                             adjustOverlayLight(overlayHsl, lightSw),
                             adjustOverlayLight(overlayHsl, lightSe),
                             adjustOverlayLight(overlayHsl, lightNe),
-                            adjustOverlayLight(overlayHsl, lightNw)
+                            adjustOverlayLight(overlayHsl, lightNw),
+                            underlayRgb,
+                            overlayRgb
                         );
                     }
 

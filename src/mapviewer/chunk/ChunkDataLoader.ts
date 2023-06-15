@@ -27,6 +27,7 @@ import {
 } from "../object/AnimatedObjectGroup";
 import { addModelGroup, createModelGroups } from "./ModelGroup";
 import { createItemModelArray, ItemSpawn } from "../item/ItemSpawn";
+import { MapImageLoader } from "../../client/scene/MapImageLoader";
 
 function loadHeightMapTextureData(
     regionLoader: RegionLoader,
@@ -63,6 +64,8 @@ export class ChunkDataLoader {
 
     textureLoader: TextureLoader;
 
+    mapImageLoader: MapImageLoader;
+
     modelHashBuf: ModelHashBuffer;
 
     npcSpawns: NpcSpawn[];
@@ -84,6 +87,7 @@ export class ChunkDataLoader {
         this.npcModelLoader = npcModelLoader;
         this.itemModelLoader = itemModelLoader;
         this.textureLoader = textureProvider;
+        this.mapImageLoader = new MapImageLoader(regionLoader.objectLoader);
         this.npcSpawns = npcSpawns;
         this.itemSpawns = itemSpawns;
         this.modelHashBuf = new ModelHashBuffer(5000);
@@ -151,7 +155,12 @@ export class ChunkDataLoader {
 
         const renderBuf = new RenderBuffer(100000);
 
-        const terrainVertexCount = addTerrain(renderBuf, region, maxPlane);
+        const terrainVertexCount = addTerrain(
+            this.textureLoader,
+            renderBuf,
+            region,
+            maxPlane
+        );
 
         let animatedObjectGroups: AnimatedObjectGroup[] = [];
         let npcSpawnGroups: NpcSpawnGroup[] = [];
@@ -329,9 +338,16 @@ export class ChunkDataLoader {
             drawRangesAlpha.length
         );
 
+        const minimapPixels = this.mapImageLoader.createMinimapPixels(
+            region,
+            0
+        );
+
         return {
             regionX,
             regionY,
+
+            minimapPixels,
 
             vertices: renderBuf.vertexBuf.byteArray(),
             indices: new Int32Array(renderBuf.indices),

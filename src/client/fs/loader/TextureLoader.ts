@@ -70,8 +70,12 @@ export class TextureLoader {
         return Array.from(this.definitions.values());
     }
 
-    getTextureIndex(id: number): number | undefined {
-        return this.idIndexMap.get(id);
+    getTextureIndex(id: number): number {
+        const index = this.idIndexMap.get(id);
+        if (index === undefined) {
+            return -1;
+        }
+        return index;
     }
 
     getTextureCount(): number {
@@ -80,6 +84,14 @@ export class TextureLoader {
 
     getDefinition(id: number): TextureDefinition | undefined {
         return this.definitions.get(id);
+    }
+
+    getAverageHsl(id: number): number {
+        const def = this.getDefinition(id);
+        if (def === undefined) {
+            return 0;
+        }
+        return def.averageHsl;
     }
 
     hasAlpha(id: number): boolean {

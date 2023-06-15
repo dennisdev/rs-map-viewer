@@ -202,6 +202,7 @@ expose({
 
         if (chunkData) {
             const transferables: Transferable[] = [
+                chunkData.minimapPixels.buffer,
                 chunkData.vertices.buffer,
                 chunkData.indices.buffer,
                 chunkData.modelTextureData.buffer,

@@ -55,6 +55,9 @@ export class SceneTileModel {
 
     faces: SceneTileFace[] = [];
 
+    underlayRgb: number;
+    overlayRgb: number;
+
     constructor(
         shape: number,
         rotation: number,
@@ -72,10 +75,15 @@ export class SceneTileModel {
         overlayHslSw: number,
         overlayHslSe: number,
         overlayHslNe: number,
-        overlayHslNw: number
+        overlayHslNw: number,
+        underlayRgb: number,
+        overlayRgb: number
     ) {
         this.shape = shape;
         this.rotation = rotation;
+
+        this.underlayRgb = underlayRgb;
+        this.overlayRgb = overlayRgb;
 
         const vertexIndices = tileShapeVertexIndices[shape];
         const vertexCount = vertexIndices.length;

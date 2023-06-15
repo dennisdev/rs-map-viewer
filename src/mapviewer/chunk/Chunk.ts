@@ -85,6 +85,23 @@ function createModelDataTexture(app: PicoApp, data: Uint16Array): Texture {
     );
 }
 
+function pixelsToUrl(pixels: Int32Array): string {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    if (ctx) {
+        canvas.width = 256;
+        canvas.height = 256;
+
+        const imageData = ctx.createImageData(canvas.width, canvas.height);
+        imageData.data.set(new Uint8ClampedArray(pixels.buffer));
+
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    return canvas.toDataURL();
+}
+
 export function loadChunk(
     app: PicoApp,
     program: Program,
@@ -100,6 +117,8 @@ export function loadChunk(
 ): Chunk {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
+
+    // console.log(pixelsToUrl(chunkData.minimapPixels));
 
     const regionPos = vec2.fromValues(regionX, regionY);
 

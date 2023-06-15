@@ -12,7 +12,7 @@ export function calculateEntityTag(
     let tag =
         BigInt(tileX & 0x7f) |
         (BigInt(tileY & 0x7f) << 7n) |
-        (BigInt(entityType & 3) << 14n) |
+        (BigInt(entityType & 0x3) << 14n) |
         (BigInt(id) << 17n);
     if (notInteractive) {
         tag |= 0x10000n;
@@ -20,6 +20,14 @@ export function calculateEntityTag(
     return tag;
 }
 
-export function getIdFromEntityTag(tag: bigint) {
+export function isEntityInteractive(tag: bigint): boolean {
+    let interactive = tag !== 0n;
+    if (interactive) {
+        interactive = (Number(tag >> 16n) & 0x1) === 0;
+    }
+    return interactive;
+}
+
+export function getIdFromEntityTag(tag: bigint): number {
     return Number(tag >> 17n);
 }

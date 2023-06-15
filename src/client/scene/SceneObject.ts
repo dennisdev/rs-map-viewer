@@ -18,6 +18,7 @@ export class FloorDecoration implements SceneObject {
         public renderable: Renderable,
         public tag: bigint,
         public type: number,
+        public flags: number,
         public def: ObjectDefinition
     ) {}
 }
@@ -31,6 +32,7 @@ export class WallObject implements SceneObject {
         public renderable1: Renderable | undefined,
         public tag: bigint,
         public type: number,
+        public flags: number,
         public def: ObjectDefinition
     ) {}
 }
@@ -46,6 +48,7 @@ export class WallDecoration implements SceneObject {
         public offsetY: number,
         public tag: bigint,
         public type: number,
+        public flags: number,
         public def: ObjectDefinition
     ) {}
 }

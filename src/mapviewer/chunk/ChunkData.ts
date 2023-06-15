@@ -7,6 +7,8 @@ export type ChunkData = {
     regionX: number;
     regionY: number;
 
+    minimapPixels: Int32Array;
+
     vertices: Uint8Array;
     indices: Int32Array;
 

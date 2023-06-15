@@ -58,13 +58,21 @@ export class RenderBuffer {
     }
 }
 
-export function addTerrainTile(renderBuf: RenderBuffer, tile: SceneTile) {
+export function addTerrainTile(
+    textureLoader: TextureLoader,
+    renderBuf: RenderBuffer,
+    tile: SceneTile
+) {
     const tileModel = tile.tileModel;
     if (!tileModel) {
         return;
     }
     for (const face of tileModel.faces) {
         for (const vertex of face.vertices) {
+            const textureIndex = textureLoader.getTextureIndex(
+                vertex.textureId
+            );
+
             const index = renderBuf.vertexBuf.addVertex(
                 vertex.x,
                 0,
@@ -73,7 +81,7 @@ export function addTerrainTile(renderBuf: RenderBuffer, tile: SceneTile) {
                 0xff,
                 vertex.u,
                 vertex.v,
-                vertex.textureId,
+                textureIndex,
                 0
             );
 
@@ -83,6 +91,7 @@ export function addTerrainTile(renderBuf: RenderBuffer, tile: SceneTile) {
 }
 
 export function addTerrain(
+    textureLoader: TextureLoader,
     renderBuf: RenderBuffer,
     region: Scene,
     maxPlane: number
@@ -99,7 +108,7 @@ export function addTerrain(
                 if (!tile || tile.minPlane > maxPlane) {
                     continue;
                 }
-                addTerrainTile(renderBuf, tile);
+                addTerrainTile(textureLoader, renderBuf, tile);
             }
         }
 
