@@ -339,26 +339,7 @@ export class ChunkDataLoader {
             drawRangesAlpha.length
         );
 
-        console.time("create minimap " + regionX + "," + regionY);
-        // For bridges
-        for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
-            for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
-                if ((region.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
-                    region.setLinkBelow(tileX, tileY);
-                }
-            }
-        }
-        const minimapPixels = this.mapImageLoader.createMinimapPixels(
-            region,
-            0
-        );
-        // convert to rgba
-        const minimapView = new DataView(minimapPixels.buffer);
-        for (let i = 0; i < minimapPixels.length; i++) {
-            minimapView.setUint32(i * 4, (minimapPixels[i] << 8) | 0xff);
-        }
-        const minimapBlob = await pixelsToBlob(minimapPixels);
-        console.timeEnd("create minimap " + regionX + "," + regionY);
+        const minimapBlob = await this.loadMinimapBlob(region, 0);
 
         return {
             regionX,
@@ -400,6 +381,67 @@ export class ChunkDataLoader {
             maxPlane,
             cacheInfo: this.cacheInfo,
         };
+    }
+
+    private async loadMinimapBlob(region: Scene, plane: number): Promise<Blob> {
+        console.time("create minimap " + region.regionX + "," + region.regionY);
+        // For bridges
+        for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
+            for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
+                if ((region.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
+                    region.setLinkBelow(tileX, tileY);
+                }
+            }
+        }
+        const minimapPixels = this.mapImageLoader.createMinimapPixels(
+            region,
+            plane
+        );
+        // convert to rgba
+        const minimapView = new DataView(minimapPixels.buffer);
+        for (let i = 0; i < minimapPixels.length; i++) {
+            minimapView.setUint32(i * 4, (minimapPixels[i] << 8) | 0xff);
+        }
+        const minimapBlob = await pixelsToBlob(minimapPixels);
+        console.timeEnd(
+            "create minimap " + region.regionX + "," + region.regionY
+        );
+
+        return minimapBlob;
+    }
+
+    async loadMinimap(
+        regionX: number,
+        regionY: number,
+        plane: number
+    ): Promise<Blob | undefined> {
+        const region = this.regionLoader.getRegion(regionX, regionY);
+        if (!region) {
+            return undefined;
+        }
+
+        console.time("read landscape data");
+        const landscapeData = this.regionLoader.getLandscapeData(
+            regionX,
+            regionY
+        );
+        console.timeEnd("read landscape data");
+
+        if (landscapeData) {
+            console.time("load landscape");
+            region.decodeLandscape(
+                this.regionLoader,
+                this.objectModelLoader,
+                landscapeData
+            );
+            console.timeEnd("load landscape");
+        }
+
+        // Create scene tile models from map data
+        region.addTileModels(this.regionLoader, this.textureLoader);
+        region.setTileMinPlanes();
+
+        return this.loadMinimapBlob(region, plane);
     }
 }
 

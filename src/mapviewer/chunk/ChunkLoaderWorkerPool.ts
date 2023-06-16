@@ -3,6 +3,7 @@ import { LoadedCache } from "../CacheInfo";
 import { NpcSpawn } from "../npc/NpcSpawn";
 import { ChunkData } from "./ChunkData";
 import { ItemSpawn } from "../item/ItemSpawn";
+import { MinimapData } from "./MinimapData";
 
 export type ChunkLoaderWorker = {
     init(
@@ -19,6 +20,12 @@ export type ChunkLoaderWorker = {
         loadItems: boolean,
         maxPlane: number
     ): ChunkData | undefined;
+
+    loadMinimap(
+        regionX: number,
+        regionY: number,
+        plane: number
+    ): MinimapData | undefined;
 };
 
 export class ChunkLoaderWorkerPool {

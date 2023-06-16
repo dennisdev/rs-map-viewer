@@ -28,6 +28,9 @@ import { ItemSpawn } from "../item/ItemSpawn";
 import { MapImageLoader } from "../../client/scene/MapImageLoader";
 import { GraphicDefaults } from "../../client/fs/definition/GraphicDefaults";
 import { SpriteLoader } from "../../client/sprite/SpriteLoader";
+import { TransferDescriptor } from "threads";
+import { ChunkData } from "./ChunkData";
+import { MinimapData } from "./MinimapData";
 
 let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 
@@ -165,6 +168,21 @@ async function init0(
 //     console.log('on msg', event, performance.now());
 // }
 
+function clearCache(chunkDataLoader: ChunkDataLoader) {
+    chunkDataLoader.regionLoader.regions.clear();
+    chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
+    chunkDataLoader.regionLoader.objectLightOcclusionMap.clear();
+    chunkDataLoader.regionLoader.objectLightOcclusionMapLoaded.clear();
+    chunkDataLoader.regionLoader.lightLevels.clear();
+
+    chunkDataLoader.objectModelLoader.modelDataCache.clear();
+    chunkDataLoader.objectModelLoader.modelCache.clear();
+
+    chunkDataLoader.npcModelLoader.modelCache.clear();
+
+    chunkDataLoader.itemModelLoader.modelCache.clear();
+}
+
 expose({
     init(cache: LoadedCache, npcSpawns: NpcSpawn[], itemSpawns: ItemSpawn[]) {
         chunkDataLoaderPromise = init0(cache, npcSpawns, itemSpawns);
@@ -176,7 +194,7 @@ expose({
         loadNpcs: boolean,
         loadItems: boolean,
         maxPlane: number
-    ) {
+    ): Promise<TransferDescriptor<ChunkData> | undefined> {
         // console.log('request', regionX, regionY);
         if (!chunkDataLoaderPromise) {
             throw new Error(
@@ -202,18 +220,7 @@ expose({
             chunkDataLoader.objectModelLoader.modelCache.size
         );
 
-        chunkDataLoader.regionLoader.regions.clear();
-        chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
-        chunkDataLoader.regionLoader.objectLightOcclusionMap.clear();
-        chunkDataLoader.regionLoader.objectLightOcclusionMapLoaded.clear();
-        chunkDataLoader.regionLoader.lightLevels.clear();
-
-        chunkDataLoader.objectModelLoader.modelDataCache.clear();
-        chunkDataLoader.objectModelLoader.modelCache.clear();
-
-        chunkDataLoader.npcModelLoader.modelCache.clear();
-
-        chunkDataLoader.itemModelLoader.modelCache.clear();
+        clearCache(chunkDataLoader);
 
         if (chunkData) {
             const transferables: Transferable[] = [
@@ -229,5 +236,35 @@ expose({
         }
 
         return undefined;
+    },
+    async loadMinimap(
+        regionX: number,
+        regionY: number,
+        plane: number
+    ): Promise<MinimapData | undefined> {
+        if (!chunkDataLoaderPromise) {
+            throw new Error(
+                "ChunkDataLoaderWorker has not been initialized yet"
+            );
+        }
+        const chunkDataLoader = await chunkDataLoaderPromise;
+
+        const minimapBlob = await chunkDataLoader.loadMinimap(
+            regionX,
+            regionY,
+            plane
+        );
+
+        clearCache(chunkDataLoader);
+
+        return (
+            minimapBlob && {
+                regionX,
+                regionY,
+                plane,
+                cacheInfo: chunkDataLoader.cacheInfo,
+                minimapBlob,
+            }
+        );
     },
 });

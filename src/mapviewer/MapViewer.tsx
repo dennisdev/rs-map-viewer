@@ -194,6 +194,13 @@ export class MapViewer {
     textureArray?: Texture;
 
     chunks: Map<number, Chunk> = new Map();
+    minimapUrls: Map<number, string> = new Map();
+
+    loadingRegionIds: Set<number> = new Set();
+    loadingMinimapRegionIds: Set<number> = new Set();
+    invalidRegionIds: Set<number> = new Set();
+
+    chunksToLoad: Denque<ChunkData> = new Denque();
 
     pitch: number = 245;
     yaw: number = 186;
@@ -208,15 +215,8 @@ export class MapViewer {
     viewMatrix: mat4 = mat4.create();
     viewProjMatrix: mat4 = mat4.create();
 
-    loadingRegionIds: Set<number> = new Set();
-    invalidRegionIds: Set<number> = new Set();
-
-    chunksToLoad: Denque<ChunkData> = new Denque();
-
     frameCount: number = 0;
-
     fps: number = 0;
-
     fpsFrameCount: number = 0;
     fpsLastTime: number = 0;
 
@@ -444,6 +444,7 @@ export class MapViewer {
 
         if (this.app) {
             this.deleteChunks();
+            this.deleteMinimaps();
             if (this.textureUniformBuffer) {
                 this.textureUniformBuffer.delete();
                 this.textureUniformBuffer = undefined;
@@ -941,6 +942,51 @@ export class MapViewer {
         }
     }
 
+    async queueMinimapLoad(regionX: number, regionY: number) {
+        const regionId = RegionLoader.getRegionId(regionX, regionY);
+        if (
+            this.loadingMinimapRegionIds.size <
+                this.chunkLoaderWorker.size * 2 &&
+            !this.loadingMinimapRegionIds.has(regionId) &&
+            !this.loadingRegionIds.has(regionId) &&
+            !this.minimapUrls.has(regionId) &&
+            !this.invalidRegionIds.has(regionId)
+        ) {
+            this.loadingRegionIds.add(regionId);
+
+            const minimapData = await this.chunkLoaderWorker.pool.queue(
+                (worker) => worker.loadMinimap(regionX, regionY, 0)
+            );
+
+            if (!minimapData) {
+                this.invalidRegionIds.add(regionId);
+            } else if (
+                minimapData.cacheInfo.name === this.loadedCache.info.name
+            ) {
+                this.setMinimapUrl(
+                    regionId,
+                    URL.createObjectURL(minimapData.minimapBlob)
+                );
+            }
+
+            this.loadingRegionIds.delete(regionId);
+        }
+    }
+
+    getMinimapUrl(regionX: number, regionY: number) {
+        this.queueMinimapLoad(regionX, regionY);
+        const regionId = RegionLoader.getRegionId(regionX, regionY);
+        return this.minimapUrls.get(regionId);
+    }
+
+    setMinimapUrl(regionId: number, url: string) {
+        const old = this.minimapUrls.get(regionId);
+        if (old) {
+            URL.revokeObjectURL(old);
+        }
+        this.minimapUrls.set(regionId, url);
+    }
+
     deleteChunks() {
         for (const chunk of this.chunks.values()) {
             deleteChunk(chunk);
@@ -948,6 +994,14 @@ export class MapViewer {
         this.chunks.clear();
         this.loadingRegionIds.clear();
         this.chunksToLoad.clear();
+    }
+
+    deleteMinimaps() {
+        for (const url of this.minimapUrls.values()) {
+            URL.revokeObjectURL(url);
+        }
+        this.minimapUrls.clear();
+        this.loadingMinimapRegionIds.clear();
     }
 
     setLoadNpcs(load: boolean) {
@@ -2065,6 +2119,10 @@ export class MapViewer {
                             cycle
                         )
                     );
+                    this.setMinimapUrl(
+                        regionId,
+                        URL.createObjectURL(chunkData.minimapBlob)
+                    );
                 }
                 this.loadingRegionIds.delete(regionId);
             }
@@ -2212,10 +2270,14 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                             regionX,
                             regionY
                         );
-                        const chunk = mapViewer.chunks.get(regionId);
 
-                        const url = chunk
-                            ? chunk.minimapBlobUrl
+                        const minimapUrl = mapViewer.getMinimapUrl(
+                            regionX,
+                            regionY
+                        );
+
+                        const url = minimapUrl
+                            ? minimapUrl
                             : "/minimap-black.png";
 
                         const x = rx * 255 - offsetX;
@@ -2223,7 +2285,7 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
 
                         images.push(
                             <MinimapImage
-                                key={`${url}-${x}-${y}`}
+                                key={regionId}
                                 src={url}
                                 left={x}
                                 top={y}
@@ -2266,12 +2328,11 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     }
 
     function loadMapImageUrl(regionX: number, regionY: number) {
-        const regionId = RegionLoader.getRegionId(regionX, regionY);
-        const chunk = mapViewer.chunks.get(regionId);
-        if (!chunk) {
+        const url = mapViewer.getMinimapUrl(regionX, regionY);
+        if (!url) {
             return "/minimap-black.png";
         }
-        return chunk.minimapBlobUrl;
+        return url;
     }
 
     return (

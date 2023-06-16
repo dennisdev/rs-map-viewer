@@ -25,7 +25,6 @@ export type Chunk = {
     regionY: number;
 
     minimapBlob: Blob;
-    minimapBlobUrl: string;
 
     tileRenderFlags: Uint8Array[][];
     collisionMaps: CollisionMap[];
@@ -299,7 +298,6 @@ export function loadChunk(
         regionY,
 
         minimapBlob: chunkData.minimapBlob,
-        minimapBlobUrl: URL.createObjectURL(chunkData.minimapBlob),
 
         tileRenderFlags: chunkData.tileRenderFlags,
         collisionMaps,
@@ -349,7 +347,6 @@ export function loadChunk(
 }
 
 export function deleteChunk(chunk: Chunk) {
-    URL.revokeObjectURL(chunk.minimapBlobUrl);
     chunk.interleavedBuffer.delete();
     chunk.indexBuffer.delete();
     chunk.vertexArray.delete();
