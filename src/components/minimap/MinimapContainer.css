@@ -13,6 +13,21 @@
     top: -4px;
 }
 
+.minimap-container .worldmap-icon {
+    cursor: pointer;
+    position: absolute;
+    left: 144px;
+    top: 128px;
+    width: 32px;
+    height: 32px;
+    background-image: url(./worldmap-icon.png);
+    background-size: 32px 32px;
+}
+
+.minimap-container .worldmap-icon:hover {
+    background-image: url(./worldmap-icon-hover.png);
+}
+
 .minimap-container .minimap {
     clip-path: circle(77px at 384px 384px);
     position: absolute;

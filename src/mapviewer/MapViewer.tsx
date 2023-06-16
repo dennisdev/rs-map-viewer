@@ -77,6 +77,7 @@ import { DrawRange } from "./chunk/DrawRange";
 import { ItemSpawn, fetchItemSpawns } from "./item/ItemSpawn";
 import { MinimapContainer } from "../components/minimap/MinimapContainer";
 import { MinimapImage } from "../components/minimap/MinimapImage";
+import { WorldMapModal } from "../components/worldmap/WorldMapModal";
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
@@ -2142,6 +2143,16 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     );
     const [hudHidden, setHudHidden] = useState<boolean>(isWallpaperEngine);
     const [minimapImages, setMinimapImages] = useState<JSX.Element[]>([]);
+    const [isWorldMapOpen, setWorldMapOpen] = useState<boolean>(false);
+
+    function openWorldMap() {
+        setWorldMapOpen(true);
+    }
+
+    function closeWorldMap() {
+        setWorldMapOpen(false);
+        mapViewer.app.canvas.focus();
+    }
 
     useEffect(() => {
         mapViewer.onInited = () => {
@@ -2244,6 +2255,25 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         );
     }
 
+    function getMapPosition() {
+        const cameraX = -mapViewer.cameraPos[0];
+        const cameraY = -mapViewer.cameraPos[2];
+
+        return {
+            x: cameraX | 0,
+            y: cameraY | 0,
+        };
+    }
+
+    function loadMapImageUrl(regionX: number, regionY: number) {
+        const regionId = RegionLoader.getRegionId(regionX, regionY);
+        const chunk = mapViewer.chunks.get(regionId);
+        if (!chunk) {
+            return "/minimap-black.png";
+        }
+        return chunk.minimapBlobUrl;
+    }
+
     return (
         <div>
             {loadingBarOverlay}
@@ -2266,6 +2296,7 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                                     mapViewer.yaw = 0;
                                     mapViewer.runCameraCallbacks();
                                 }}
+                                onWorldMapClick={openWorldMap}
                             >
                                 {minimapImages}
                             </MinimapContainer>
@@ -2274,6 +2305,12 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                             {fps.toFixed(1)}
                         </div>
                     </div>
+                    <WorldMapModal
+                        isOpen={isWorldMapOpen}
+                        onRequestClose={closeWorldMap}
+                        getPosition={getMapPosition}
+                        loadMapImageUrl={loadMapImageUrl}
+                    />
                 </span>
             )}
             {isTouchDevice && (
