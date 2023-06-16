@@ -62,6 +62,7 @@
   },
   "devDependencies": {
     "@types/gzip-js": "^0.3.3",
+    "@types/offscreencanvas": "^2019.7.0",
     "@types/webfontloader": "^1.6.35",
     "adm-zip": "^0.5.10",
     "husky": "^8.0.3",

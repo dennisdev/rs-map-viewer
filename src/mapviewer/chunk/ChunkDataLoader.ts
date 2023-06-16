@@ -94,14 +94,14 @@ export class ChunkDataLoader {
         this.modelHashBuf = new ModelHashBuffer(5000);
     }
 
-    load(
+    async load(
         regionX: number,
         regionY: number,
         minimizeDrawCalls: boolean,
         loadNpcs: boolean,
         loadItems: boolean,
         maxPlane: number
-    ): ChunkData | undefined {
+    ): Promise<ChunkData | undefined> {
         const region = this.regionLoader.getRegion(regionX, regionY);
         if (!region) {
             return undefined;
@@ -357,13 +357,14 @@ export class ChunkDataLoader {
         for (let i = 0; i < minimapPixels.length; i++) {
             minimapView.setUint32(i * 4, (minimapPixels[i] << 8) | 0xff);
         }
+        const minimapBlob = await pixelsToBlob(minimapPixels);
         console.timeEnd("create minimap " + regionX + "," + regionY);
 
         return {
             regionX,
             regionY,
 
-            minimapPixels,
+            minimapBlob,
 
             vertices: renderBuf.vertexBuf.byteArray(),
             indices: new Int32Array(renderBuf.indices),
@@ -400,4 +401,19 @@ export class ChunkDataLoader {
             cacheInfo: this.cacheInfo,
         };
     }
+}
+
+async function pixelsToBlob(pixels: Int32Array): Promise<Blob> {
+    const canvas = new OffscreenCanvas(256, 256);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+        throw new Error("Could not get canvas context");
+    }
+
+    const imgd = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    imgd.data.set(new Uint8ClampedArray(pixels.buffer));
+
+    ctx.putImageData(imgd, 0, 0);
+
+    return canvas.convertToBlob();
 }

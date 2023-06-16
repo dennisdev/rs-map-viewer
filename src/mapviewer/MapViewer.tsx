@@ -75,6 +75,8 @@ import { CachedItemLoader, ItemLoader } from "../client/fs/loader/ItemLoader";
 import { ChunkData } from "./chunk/ChunkData";
 import { DrawRange } from "./chunk/DrawRange";
 import { ItemSpawn, fetchItemSpawns } from "./item/ItemSpawn";
+import { MinimapContainer } from "../components/minimap/MinimapContainer";
+import { MinimapImage } from "../components/minimap/MinimapImage";
 
 const TAU = Math.PI * 2;
 const RS_TO_RADIANS = TAU / 2048.0;
@@ -2130,15 +2132,16 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     const [inited, setInited] = useState<boolean>(
         !!mapViewer.textureUniformBuffer
     );
+    const [downloadProgress, setDownloadProgress] = useState<
+        DownloadProgress | undefined
+    >(undefined);
     const [fps, setFps] = useState<number>(0);
     const [compassDegrees, setCompassDegrees] = useState<number>(0);
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
         undefined
     );
     const [hudHidden, setHudHidden] = useState<boolean>(isWallpaperEngine);
-    const [downloadProgress, setDownloadProgress] = useState<
-        DownloadProgress | undefined
-    >(undefined);
+    const [minimapImages, setMinimapImages] = useState<JSX.Element[]>([]);
 
     useEffect(() => {
         mapViewer.onInited = () => {
@@ -2175,6 +2178,55 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         };
         mapViewer.hudHidden = hudHidden;
         mapViewer.setHudHidden = setHudHidden;
+
+        const callback = (time: number) => {
+            if (!hudHidden) {
+                const cameraX = -mapViewer.cameraPos[0];
+                const cameraY = -mapViewer.cameraPos[2];
+
+                const cameraRegionX = (cameraX / 64) | 0;
+                const cameraRegionY = (cameraY / 64) | 0;
+
+                const offsetX = (-128 + (cameraX % 64) * 4) | 0;
+                const offsetY = (-128 + (cameraY % 64) * 4) | 0;
+
+                const images: JSX.Element[] = [];
+
+                for (let rx = 0; rx < 3; rx++) {
+                    for (let ry = 0; ry < 3; ry++) {
+                        const regionX = cameraRegionX - 1 + rx;
+                        const regionY = cameraRegionY - 1 + ry;
+
+                        const regionId = RegionLoader.getRegionId(
+                            regionX,
+                            regionY
+                        );
+                        const chunk = mapViewer.chunks.get(regionId);
+
+                        const url = chunk
+                            ? chunk.minimapBlobUrl
+                            : "/minimap-black.png";
+
+                        const x = rx * 255 - offsetX;
+                        const y = 255 * 2 - ry * 255 + offsetY;
+
+                        images.push(
+                            <MinimapImage
+                                key={`${url}-${x}-${y}`}
+                                src={url}
+                                left={x}
+                                top={y}
+                            />
+                        );
+                    }
+                }
+
+                setMinimapImages(images);
+            }
+
+            window.requestAnimationFrame(callback);
+        };
+        window.requestAnimationFrame(callback);
     }, [mapViewer]);
 
     let loadingBarOverlay: JSX.Element | undefined = undefined;
@@ -2207,17 +2259,17 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
             {!hudHidden && (
                 <span>
                     <div className="hud left-top">
-                        <img
-                            className="compass"
-                            style={{
-                                transform: `rotate(${compassDegrees}deg)`,
-                            }}
-                            src="/compass.png"
-                            onClick={() => {
-                                mapViewer.yaw = 0;
-                                mapViewer.runCameraCallbacks();
-                            }}
-                        />
+                        {minimapImages && (
+                            <MinimapContainer
+                                yawDegrees={compassDegrees}
+                                onCompassClick={() => {
+                                    mapViewer.yaw = 0;
+                                    mapViewer.runCameraCallbacks();
+                                }}
+                            >
+                                {minimapImages}
+                            </MinimapContainer>
+                        )}
                         <div className="fps-counter content-text">
                             {fps.toFixed(1)}
                         </div>

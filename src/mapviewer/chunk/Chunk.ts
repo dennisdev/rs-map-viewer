@@ -24,6 +24,9 @@ export type Chunk = {
     regionX: number;
     regionY: number;
 
+    minimapBlob: Blob;
+    minimapBlobUrl: string;
+
     tileRenderFlags: Uint8Array[][];
     collisionMaps: CollisionMap[];
 
@@ -85,23 +88,6 @@ function createModelDataTexture(app: PicoApp, data: Uint16Array): Texture {
     );
 }
 
-function pixelsToUrl(pixels: Int32Array): string {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-
-    if (ctx) {
-        canvas.width = 256;
-        canvas.height = 256;
-
-        const imageData = ctx.createImageData(canvas.width, canvas.height);
-        imageData.data.set(new Uint8ClampedArray(pixels.buffer));
-
-        ctx.putImageData(imageData, 0, 0);
-    }
-
-    return canvas.toDataURL();
-}
-
 export function loadChunk(
     app: PicoApp,
     program: Program,
@@ -117,10 +103,6 @@ export function loadChunk(
 ): Chunk {
     const regionX = chunkData.regionX;
     const regionY = chunkData.regionY;
-
-    // if (regionX === 50 && regionY === 49) {
-    //     console.log(pixelsToUrl(chunkData.minimapPixels));
-    // }
 
     const regionPos = vec2.fromValues(regionX, regionY);
 
@@ -316,6 +298,9 @@ export function loadChunk(
         regionX,
         regionY,
 
+        minimapBlob: chunkData.minimapBlob,
+        minimapBlobUrl: URL.createObjectURL(chunkData.minimapBlob),
+
         tileRenderFlags: chunkData.tileRenderFlags,
         collisionMaps,
 
@@ -364,6 +349,7 @@ export function loadChunk(
 }
 
 export function deleteChunk(chunk: Chunk) {
+    URL.revokeObjectURL(chunk.minimapBlobUrl);
     chunk.interleavedBuffer.delete();
     chunk.indexBuffer.delete();
     chunk.vertexArray.delete();

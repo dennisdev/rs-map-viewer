@@ -1,0 +1,32 @@
+.minimap-container {
+    position: relative;
+    width: 181px;
+    height: 165px;
+    /* overflow: hidden; */
+}
+
+.minimap-container .compass {
+    cursor: pointer;
+    clip-path: circle(18px);
+    position: absolute;
+    left: -4px;
+    top: -4px;
+}
+
+.minimap-container .minimap {
+    clip-path: circle(77px at 384px 384px);
+    position: absolute;
+    left: -285px;
+    top: -301px;
+    transform-origin: 384px 384px;
+}
+
+.minimap-images {
+    position: relative;
+}
+
+.minimap-image {
+    position: absolute;
+    padding: 0;
+    margin: 0;
+}

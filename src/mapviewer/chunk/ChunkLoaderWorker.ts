@@ -187,7 +187,7 @@ expose({
         await hasherPromise;
 
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = chunkDataLoader.load(
+        const chunkData = await chunkDataLoader.load(
             regionX,
             regionY,
             minimizeDrawCalls,
@@ -217,7 +217,6 @@ expose({
 
         if (chunkData) {
             const transferables: Transferable[] = [
-                chunkData.minimapPixels.buffer,
                 chunkData.vertices.buffer,
                 chunkData.indices.buffer,
                 chunkData.modelTextureData.buffer,
