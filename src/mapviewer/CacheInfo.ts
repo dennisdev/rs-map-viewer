@@ -48,23 +48,20 @@ export async function loadCache(
     progressListener?: ProgressListener
 ): Promise<LoadedCache> {
     const cachePath = "/caches/" + info.name + "/";
+    const indices = [
+        IndexType.ANIMATIONS,
+        IndexType.SKELETONS,
+        IndexType.CONFIGS,
+        IndexType.MAPS,
+        IndexType.MODELS,
+        IndexType.SPRITES,
+        IndexType.TEXTURES,
+    ];
+    if (info.game === "oldschool" && info.revision >= 174) {
+        indices.push(IndexType.GRAPHIC_DEFAULTS);
+    }
     const [store, xteas] = await Promise.all([
-        fetchMemoryStore(
-            cachePath,
-            info.name,
-            [
-                IndexType.ANIMATIONS,
-                IndexType.SKELETONS,
-                IndexType.CONFIGS,
-                IndexType.MAPS,
-                IndexType.MODELS,
-                IndexType.SPRITES,
-                IndexType.TEXTURES,
-                IndexType.GRAPHIC_DEFAULTS,
-            ],
-            true,
-            progressListener
-        ),
+        fetchMemoryStore(cachePath, info.name, indices, true, progressListener),
         fetchXteas(cachePath + "keys.json"),
     ]);
 
