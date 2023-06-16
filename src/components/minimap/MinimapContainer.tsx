@@ -22,7 +22,7 @@ export function MinimapContainer({
                 style={{
                     transform: `rotate(${yawDegrees}deg)`,
                 }}
-                src="/compass.png"
+                src="/compass2.png"
                 onClick={onCompassClick}
             />
 

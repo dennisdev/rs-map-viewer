@@ -2,7 +2,7 @@
     position: relative;
     width: 181px;
     height: 165px;
-    /* overflow: hidden; */
+    overflow: hidden;
 }
 
 .minimap-container .compass {
