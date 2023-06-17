@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, RefObject } from "react";
 import "./WorldMap.css";
 import { useElementSize, useEventListener } from "usehooks-ts";
 import { RegionLoader } from "../../client/RegionLoader";
+import { clamp } from "../../client/util/MathUtil";
 
 interface Position {
     x: number;
@@ -11,7 +12,7 @@ interface Position {
 export interface WorldMapProps {
     getPosition: () => Position;
 
-    loadMapImageUrl: (regionX: number, regionY: number) => string;
+    loadMapImageUrl: (regionX: number, regionY: number) => string | undefined;
 }
 
 export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
@@ -23,6 +24,11 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
     const [startY, setStartY] = useState(0);
 
     const [pos, setPos] = useState(getPosition);
+    const [tileSize, setTileSize] = useState(3);
+
+    // const tileSize = 3;
+    const halfTileSize = tileSize / 2;
+    const imageSize = 64 * tileSize;
 
     const onMouseDown = (event: MouseEvent) => {
         setIsDragging(true);
@@ -32,8 +38,8 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
 
     const onMouseMove = (event: MouseEvent) => {
         if (isDragging) {
-            const deltaX = (startX - event.x) / 4;
-            const deltaY = (event.y - startY) / 4;
+            const deltaX = (startX - event.x) / tileSize;
+            const deltaY = (event.y - startY) / tileSize;
 
             setStartX(event.x);
             setStartY(event.y);
@@ -48,9 +54,15 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
         setIsDragging(false);
     };
 
+    const onMouseWheel = (event: WheelEvent) => {
+        setTileSize(clamp(tileSize - Math.sign(event.deltaY), 1, 8));
+        console.log(event);
+    };
+
     useEventListener("mousedown", onMouseDown, dragRef);
     useEventListener("mousemove", onMouseMove, dragRef);
     useEventListener("mouseup", onMouseUp, dragRef);
+    useEventListener("wheel", onMouseWheel, dragRef);
 
     // const pos = getPosition();
 
@@ -65,14 +77,14 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
     const halfWidth = (dimensions.width / 2) | 0;
     const halfHeight = (dimensions.height / 2) | 0;
 
-    const x = halfWidth - (cameraX % 64) * 4 - 2;
-    const y = halfHeight - (cameraY % 64) * 4 - 2;
+    const x = halfWidth - (cameraX % 64) * tileSize - halfTileSize;
+    const y = halfHeight - (cameraY % 64) * tileSize - halfTileSize;
 
-    const renderStartX = -Math.ceil(x / 256);
-    const renderStartY = -Math.ceil(y / 256);
+    const renderStartX = -Math.ceil(x / imageSize);
+    const renderStartY = -Math.ceil(y / imageSize);
 
-    const renderEndX = Math.ceil((dimensions.width - x) / 256);
-    const renderEndY = Math.ceil((dimensions.height - y) / 256);
+    const renderEndX = Math.ceil((dimensions.width - x) / imageSize);
+    const renderEndY = Math.ceil((dimensions.height - y) / imageSize);
 
     const images: JSX.Element[] = [];
 
@@ -88,19 +100,22 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
                 imageRegionX,
                 imageRegionY
             );
-            images.push(
-                <img
-                    key={regionId}
-                    className={`worldmap-image ${imageRegionX}_${imageRegionY}`}
-                    src={loadMapImageUrl(imageRegionX, imageRegionY)}
-                    style={{
-                        left: x + rx * 256,
-                        bottom: y + ry * 256,
-                        width: 256,
-                        height: 256,
-                    }}
-                />
-            );
+            const mapUrl = loadMapImageUrl(imageRegionX, imageRegionY);
+            if (mapUrl) {
+                images.push(
+                    <img
+                        key={regionId}
+                        className={`worldmap-image ${imageRegionX}_${imageRegionY}`}
+                        src={mapUrl}
+                        style={{
+                            left: x + rx * imageSize,
+                            bottom: y + ry * imageSize,
+                            width: imageSize,
+                            height: imageSize,
+                        }}
+                    />
+                );
+            }
         }
     }
 

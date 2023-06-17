@@ -2328,11 +2328,7 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     }
 
     function loadMapImageUrl(regionX: number, regionY: number) {
-        const url = mapViewer.getMinimapUrl(regionX, regionY);
-        if (!url) {
-            return "/minimap-black.png";
-        }
-        return url;
+        return mapViewer.getMinimapUrl(regionX, regionY);
     }
 
     return (
