@@ -120,11 +120,11 @@ export function WorldMap(props: WorldMapProps) {
     useEventListener("touchend", stopDragging, dragRef);
     useEventListener("wheel", onMouseWheel, dragRef);
 
-    const renderStartX = -Math.ceil(x / imageSize);
-    const renderStartY = -Math.ceil(y / imageSize);
+    const renderStartX = -Math.ceil(x / imageSize) - 1;
+    const renderStartY = -Math.ceil(y / imageSize) - 1;
 
-    const renderEndX = Math.ceil((dimensions.width - x) / imageSize);
-    const renderEndY = Math.ceil((dimensions.height - y) / imageSize);
+    const renderEndX = Math.ceil((dimensions.width - x) / imageSize) + 1;
+    const renderEndY = Math.ceil((dimensions.height - y) / imageSize) + 1;
 
     const images: JSX.Element[] = [];
 
