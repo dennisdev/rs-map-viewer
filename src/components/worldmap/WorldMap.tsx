@@ -57,27 +57,53 @@ export function WorldMap(props: WorldMapProps) {
         props.onDoubleClick(pos.x + deltaX, pos.y + deltaY);
     };
 
-    const onMouseDown = (event: MouseEvent) => {
+    function startDragging(startX: number, startY: number) {
         setIsDragging(true);
-        setStartX(event.x);
-        setStartY(event.y);
+        setStartX(startX);
+        setStartY(startY);
+    }
+
+    const onMouseDown = (event: MouseEvent) => {
+        startDragging(event.x, event.y);
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+        const touch = event.touches[0];
+        const rect = dragRef.current?.getBoundingClientRect();
+        const offsetX = rect?.left ?? 0;
+        const offsetY = rect?.top ?? 0;
+        startDragging(touch.clientX - offsetX, touch.clientY - offsetY);
+    };
+
+    const drag = (x: number, y: number) => {
+        const deltaX = (startX - x) / tileSize;
+        const deltaY = (y - startY) / tileSize;
+
+        setStartX(x);
+        setStartY(y);
+        setPos({
+            x: pos.x + deltaX,
+            y: pos.y + deltaY,
+        });
     };
 
     const onMouseMove = (event: MouseEvent) => {
         if (isDragging) {
-            const deltaX = (startX - event.x) / tileSize;
-            const deltaY = (event.y - startY) / tileSize;
-
-            setStartX(event.x);
-            setStartY(event.y);
-            setPos({
-                x: pos.x + deltaX,
-                y: pos.y + deltaY,
-            });
+            drag(event.x, event.y);
         }
     };
 
-    const onMouseUp = (event: MouseEvent) => {
+    const onTouchMove = (event: TouchEvent) => {
+        if (isDragging) {
+            const touch = event.touches[0];
+            const rect = dragRef.current?.getBoundingClientRect();
+            const offsetX = rect?.left ?? 0;
+            const offsetY = rect?.top ?? 0;
+            drag(touch.clientX - offsetX, touch.clientY - offsetY);
+        }
+    };
+
+    const stopDragging = (event: MouseEvent | TouchEvent) => {
         setIsDragging(false);
     };
 
@@ -87,8 +113,11 @@ export function WorldMap(props: WorldMapProps) {
 
     useEventListener("dblclick", onDoubleClick, dragRef);
     useEventListener("mousedown", onMouseDown, dragRef);
+    useEventListener("touchstart", onTouchStart, dragRef);
     useEventListener("mousemove", onMouseMove, dragRef);
-    useEventListener("mouseup", onMouseUp, dragRef);
+    useEventListener("touchmove", onTouchMove, dragRef);
+    useEventListener("mouseup", stopDragging, dragRef);
+    useEventListener("touchend", stopDragging, dragRef);
     useEventListener("wheel", onMouseWheel, dragRef);
 
     const renderStartX = -Math.ceil(x / imageSize);

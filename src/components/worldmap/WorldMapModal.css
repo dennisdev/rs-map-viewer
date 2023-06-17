@@ -9,7 +9,7 @@
 
 .worldmap-modal {
     position: absolute;
-    inset: 80px;
+    inset: 60px 20px 60px 20px;
     background-color: black;
     overflow: auto;
     -webkit-overflow-scrolling: "touch";
@@ -17,6 +17,12 @@
 
     border: 6px solid;
     border-image: url(./interface-border.png) 6 / 6px / 0px repeat;
+}
+
+@media screen and (min-width: 480px) {
+    .worldmap-modal {
+        inset: 80px;
+    }
 }
 
 .worldmap-close-button {
