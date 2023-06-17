@@ -1184,8 +1184,8 @@ export class MapViewer {
             if (isTouchDevice) {
                 this.moveCamera(0, clamp(deltaMouseY, -100, 100) * 0.004, 0);
             } else {
-                this.updatePitch(this.startPitch, deltaMouseY * 0.6);
-                this.updateYaw(this.startYaw, deltaMouseX * -0.9);
+                this.updatePitch(this.startPitch, deltaMouseY * -0.9);
+                this.updateYaw(this.startYaw, deltaMouseX * 0.9);
             }
         }
 
