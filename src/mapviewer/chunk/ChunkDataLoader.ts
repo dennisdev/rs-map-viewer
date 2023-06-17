@@ -1,6 +1,6 @@
 import { TextureLoader } from "../../client/fs/loader/TextureLoader";
 import { RegionLoader } from "../../client/RegionLoader";
-import { Scene } from "../../client/scene/Scene";
+import { LandscapeLoadMode, Scene } from "../../client/scene/Scene";
 import { ObjectModelLoader } from "../../client/fs/loader/model/ObjectModelLoader";
 import { ModelHashBuffer } from "../buffer/ModelHashBuffer";
 import {
@@ -432,7 +432,8 @@ export class ChunkDataLoader {
             region.decodeLandscape(
                 this.regionLoader,
                 this.objectModelLoader,
-                landscapeData
+                landscapeData,
+                LandscapeLoadMode.NO_MODELS
             );
             console.timeEnd("load landscape");
         }

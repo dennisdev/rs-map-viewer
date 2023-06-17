@@ -5,7 +5,7 @@ import { Model } from "../model/Model";
 import { ModelData } from "../model/ModelData";
 import { RegionLoader } from "../RegionLoader";
 import { ByteBuffer } from "../util/ByteBuffer";
-import { Renderable } from "./Renderable";
+import { DUMMY_RENDERABLE, Renderable } from "./Renderable";
 import { DynamicObject } from "./DynamicObject";
 import { SceneTileModel } from "./SceneTileModel";
 import {
@@ -33,6 +33,12 @@ import {
     WallDecoration,
     WallObject,
 } from "./SceneObject";
+
+export enum LandscapeLoadMode {
+    MODELS,
+    NO_MODELS,
+    NO_TILES,
+}
 
 export class Scene {
     public static readonly MAX_PLANE = 4;
@@ -365,7 +371,7 @@ export class Scene {
     addObject(
         regionLoader: RegionLoader,
         modelLoader: ObjectModelLoader,
-        objOcclusionOnly: boolean,
+        loadMode: LandscapeLoadMode,
         expandedTileHeights: Int32Array[][],
         plane: number,
         tileX: number,
@@ -439,8 +445,11 @@ export class Scene {
         const sceneX = (tileX << 7) + (sizeX << 6);
         const sceneY = (tileY << 7) + (sizeY << 6);
 
+        const isLoadTiles = loadMode !== LandscapeLoadMode.NO_TILES;
+        const isLoadModels = loadMode === LandscapeLoadMode.MODELS;
+
         let tag = 0n;
-        if (!objOcclusionOnly) {
+        if (isLoadTiles) {
             tag = calculateEntityTag(
                 tileX,
                 tileY,
@@ -465,9 +474,11 @@ export class Scene {
         };
 
         if (type === ObjectType.FLOOR_DECORATION) {
-            if (!objOcclusionOnly) {
+            if (isLoadTiles) {
                 let renderable: Renderable | undefined;
-                if (def.animationId === -1) {
+                if (!isLoadModels) {
+                    renderable = DUMMY_RENDERABLE;
+                } else if (def.animationId === -1) {
                     renderable = modelLoader.getObjectModel(
                         defTransform,
                         type,
@@ -508,9 +519,11 @@ export class Scene {
         ) {
             // roofs
             if (type >= ObjectType.ROOF_SLOPED) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             type,
@@ -555,9 +568,11 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             type,
@@ -675,9 +690,11 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_TRI_CORNER) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             type,
@@ -753,10 +770,13 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_CORNER) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let renderable0: Renderable | undefined;
                     let renderable1: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable0 = DUMMY_RENDERABLE;
+                        renderable1 = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable0 = modelLoader.getObjectModel(
                             defTransform,
                             type,
@@ -828,9 +848,11 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_RECT_CORNER) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             type,
@@ -906,9 +928,11 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_DIAGONAL) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             type,
@@ -964,9 +988,11 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_DECORATION_INSIDE) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             ObjectType.WALL_DECORATION_INSIDE,
@@ -1014,7 +1040,7 @@ export class Scene {
                     }
                 }
             } else if (type === ObjectType.WALL_DECORATION_OUTSIDE) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let displacement =
                         ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT;
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
@@ -1025,7 +1051,9 @@ export class Scene {
                     }
 
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             ObjectType.WALL_DECORATION_INSIDE,
@@ -1066,7 +1094,7 @@ export class Scene {
                     );
                 }
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_OUTSIDE) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let displacement =
                         ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
@@ -1077,7 +1105,9 @@ export class Scene {
                     }
 
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             ObjectType.WALL_DECORATION_INSIDE,
@@ -1118,11 +1148,13 @@ export class Scene {
                     );
                 }
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_INSIDE) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     const insideRotation = (rotation + 2) & 3;
 
                     let renderable: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable = modelLoader.getObjectModel(
                             defTransform,
                             ObjectType.WALL_DECORATION_INSIDE,
@@ -1158,7 +1190,7 @@ export class Scene {
                     );
                 }
             } else if (type === ObjectType.WALL_DECORATION_DIAGONAL_DOUBLE) {
-                if (!objOcclusionOnly) {
+                if (isLoadTiles) {
                     let displacement =
                         ObjectDefinition.DEFAULT_DECOR_DISPLACEMENT / 2;
                     const wallTag = this.getWallObjectTag(plane, tileX, tileY);
@@ -1172,7 +1204,10 @@ export class Scene {
 
                     let renderable0: Renderable | undefined;
                     let renderable1: Renderable | undefined;
-                    if (def.animationId === -1) {
+                    if (!isLoadModels) {
+                        renderable0 = DUMMY_RENDERABLE;
+                        renderable1 = DUMMY_RENDERABLE;
+                    } else if (def.animationId === -1) {
                         renderable0 = modelLoader.getObjectModel(
                             defTransform,
                             ObjectType.WALL_DECORATION_INSIDE,
@@ -1229,7 +1264,7 @@ export class Scene {
                     );
                 }
             }
-        } else if (objOcclusionOnly) {
+        } else if (!isLoadTiles) {
             if (
                 def.clipped &&
                 (tileX + sizeX >= 63 ||
@@ -1267,7 +1302,9 @@ export class Scene {
             }
         } else {
             let renderable: Renderable | undefined;
-            if (def.animationId === -1) {
+            if (!isLoadModels) {
+                renderable = DUMMY_RENDERABLE;
+            } else if (def.animationId === -1) {
                 renderable = modelLoader.getObjectModel(
                     defTransform,
                     type,
@@ -1646,7 +1683,7 @@ export class Scene {
         regionLoader: RegionLoader,
         objectModelLoader: ObjectModelLoader,
         data: Int8Array,
-        objOcclusionOnly: boolean = false
+        loadMode: LandscapeLoadMode = LandscapeLoadMode.MODELS
     ): void {
         // Needed for larger objects that spill over to the neighboring regions
         const expandedTileHeights = regionLoader.loadHeightMap(
@@ -1679,7 +1716,7 @@ export class Scene {
                 this.addObject(
                     regionLoader,
                     objectModelLoader,
-                    objOcclusionOnly,
+                    loadMode,
                     expandedTileHeights,
                     plane,
                     localX,

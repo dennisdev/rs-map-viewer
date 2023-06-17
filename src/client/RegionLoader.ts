@@ -8,7 +8,7 @@ import { OverlayLoader } from "./fs/loader/OverlayLoader";
 import { UnderlayLoader } from "./fs/loader/UnderlayLoader";
 import { StoreSync } from "./fs/Store";
 import { ObjectModelLoader } from "./fs/loader/model/ObjectModelLoader";
-import { Scene } from "./scene/Scene";
+import { LandscapeLoadMode, Scene } from "./scene/Scene";
 import { packHsl } from "./util/ColorUtil";
 import { VarpManager } from "./VarpManager";
 
@@ -440,7 +440,7 @@ export class RegionLoader {
                     this,
                     this.objectModelLoader,
                     landscapeData,
-                    true
+                    LandscapeLoadMode.NO_TILES
                 );
                 // console.log('decode land: ', regionX, regionY);
                 this.objectLightOcclusionMapLoaded.set(regionId, true);
