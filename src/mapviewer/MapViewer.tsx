@@ -78,11 +78,8 @@ import { ItemSpawn, fetchItemSpawns } from "./item/ItemSpawn";
 import { MinimapContainer } from "../components/minimap/MinimapContainer";
 import { MinimapImage } from "../components/minimap/MinimapImage";
 import { WorldMapModal } from "../components/worldmap/WorldMapModal";
-
-const TAU = Math.PI * 2;
-const RS_TO_RADIANS = TAU / 2048.0;
-const RS_TO_DEGREES = (RS_TO_RADIANS * 180) / Math.PI;
-const DEGREES_TO_RADIANS = Math.PI / 180;
+import { Camera, ProjectionType } from "./Camera";
+import { RS_TO_DEGREES, RS_TO_RADIANS } from "./MathConstants";
 
 function prependShader(shader: string, multiDraw: boolean): string {
     let header = "#version 300 es\n";
@@ -116,11 +113,6 @@ function getRegionDistance(
     const dx = Math.max(Math.abs(x - (regionX * 64 + 32)) - 32, 0);
     const dy = Math.max(Math.abs(y - (regionY * 64 + 32)) - 32, 0);
     return Math.sqrt(dx * dx + dy * dy);
-}
-
-export enum ProjectionType {
-    PERSPECTIVE,
-    ORTHO,
 }
 
 export enum AntiAliasType {
@@ -202,18 +194,7 @@ export class MapViewer {
 
     chunksToLoad: Denque<ChunkData> = new Denque();
 
-    pitch: number = 245;
-    yaw: number = 186;
-
-    cameraPos: vec3 = vec3.fromValues(-3242, 26, -3202);
-
-    cameraUpdated: boolean = false;
-    // cameraPos: vec3 = vec3.fromValues(-3200, 10, -3200);
-    // cameraPos: vec3 = vec3.fromValues(-2270, 10, -5342);
-
-    projectionMatrix: mat4 = mat4.create();
-    viewMatrix: mat4 = mat4.create();
-    viewProjMatrix: mat4 = mat4.create();
+    camera: Camera = new Camera(3242, -26, 3202, 0, 0);
 
     frameCount: number = 0;
     fps: number = 0;
@@ -226,9 +207,9 @@ export class MapViewer {
     lastClientTick: number = 0;
     lastTick: number = 0;
 
-    onInited?: () => void;
+    onInit?: () => void;
     onFps?: (fps: number) => void;
-    onCameraMoved?: (pos: vec3, pitch: number, yaw: number) => void;
+    onCameraMove?: (pos: vec3, pitch: number, yaw: number) => void;
     onCameraMoveEnd?: (pos: vec3, pitch: number, yaw: number) => void;
 
     onMouseMoved?: (x: number, y: number) => void;
@@ -247,10 +228,6 @@ export class MapViewer {
     setHudHidden?: (hidden: boolean) => void;
 
     menuOpen: boolean = false;
-
-    projectionType: ProjectionType = ProjectionType.PERSPECTIVE;
-    fov: number = 90;
-    orthoZoom: number = 15;
 
     renderDistance: number = DEFAULT_RENDER_DISTANCE;
     renderDistanceUpdated: boolean = false;
@@ -330,7 +307,6 @@ export class MapViewer {
     ];
 
     isVisiblePos: vec3 = [0, 0, 0];
-    moveCameraRotOrigin: vec3 = [0, 0, 0];
 
     npcRenderCount: number = 0;
     npcRenderData: Uint16Array = new Uint16Array(16 * 4);
@@ -480,8 +456,8 @@ export class MapViewer {
         }
         gl.canvas.addEventListener("mousemove", this.onMouseMove);
 
-        const cameraX = -this.cameraPos[0];
-        const cameraY = -this.cameraPos[2];
+        const cameraX = this.camera.getPosX();
+        const cameraY = this.camera.getPosZ();
 
         const cameraRegionX = (cameraX / 64) | 0;
         const cameraRegionY = (cameraY / 64) | 0;
@@ -604,8 +580,8 @@ export class MapViewer {
 
         console.log(gl.getSupportedExtensions());
 
-        if (this.onInited) {
-            this.onInited();
+        if (this.onInit) {
+            this.onInit();
         }
     }
 
@@ -659,13 +635,13 @@ export class MapViewer {
     }
 
     getSearchParams(): URLSearchParamsInit {
-        const cx = (-this.cameraPos[0].toFixed(2)).toString();
-        const cy = this.cameraPos[1].toFixed(2).toString();
-        const cz = (-this.cameraPos[2].toFixed(2)).toString();
+        const cx = this.camera.getPosX().toFixed(2).toString();
+        const cy = -this.camera.getPosY().toFixed(2).toString();
+        const cz = this.camera.getPosZ().toFixed(2).toString();
 
-        const yaw = (this.yaw | 0) & 2047;
+        const yaw = this.camera.yaw & 2047;
 
-        const p = (this.pitch | 0).toString();
+        const p = (this.camera.pitch | 0).toString();
         const y = yaw.toString();
 
         const params: any = {
@@ -676,9 +652,9 @@ export class MapViewer {
             y,
         };
 
-        if (this.projectionType === ProjectionType.ORTHO) {
+        if (this.camera.projectionType === ProjectionType.ORTHO) {
             params["pt"] = "o";
-            params["z"] = this.orthoZoom.toString();
+            params["z"] = this.camera.orthoZoom.toString();
         }
 
         if (this.loadedCache.info.name !== this.latestCacheInfo.name) {
@@ -740,8 +716,8 @@ export class MapViewer {
         this.startMouseY = y;
         this.currentMouseX = x;
         this.currentMouseY = y;
-        this.startPitch = this.pitch;
-        this.startYaw = this.yaw;
+        this.startPitch = this.camera.pitch;
+        this.startYaw = this.camera.yaw;
     }
 
     onTouchStart(event: TouchEvent) {
@@ -750,8 +726,8 @@ export class MapViewer {
         this.startMouseY = y;
         this.currentMouseX = x;
         this.currentMouseY = y;
-        this.startPitch = this.pitch;
-        this.startYaw = this.yaw;
+        this.startPitch = this.camera.pitch;
+        this.startYaw = this.camera.yaw;
     }
 
     onTouchMove(event: TouchEvent) {
@@ -818,7 +794,7 @@ export class MapViewer {
     }
 
     isPositionVisible(pos: vec3): boolean {
-        vec3.transformMat4(pos, pos, this.viewProjMatrix);
+        vec3.transformMat4(pos, pos, this.camera.viewProjMatrix);
         return (
             pos[0] >= -1.0 &&
             pos[0] <= 1.0 &&
@@ -841,37 +817,7 @@ export class MapViewer {
         this.chunkIntersectBox[1][0] = endX;
         this.chunkIntersectBox[1][2] = endY;
 
-        return this.frustumIntersection.intersectsBox(this.chunkIntersectBox);
-    }
-
-    updatePitch(pitch: number, deltaPitch: number): void {
-        const minPitch =
-            this.projectionType === ProjectionType.PERSPECTIVE ? -512 : 0;
-        this.pitch = clamp(pitch + deltaPitch, minPitch, 512);
-        this.cameraUpdated = true;
-    }
-
-    setYaw(yaw: number): void {
-        this.yaw = yaw;
-        this.cameraUpdated = true;
-    }
-
-    updateYaw(yaw: number, deltaYaw: number): void {
-        this.setYaw(yaw + deltaYaw);
-    }
-
-    moveCamera(deltaX: number, deltaY: number, deltaZ: number): void {
-        const delta = vec3.fromValues(deltaX, deltaY, deltaZ);
-
-        vec3.rotateY(
-            delta,
-            delta,
-            this.moveCameraRotOrigin,
-            (2047 - this.yaw) * RS_TO_RADIANS
-        );
-
-        vec3.add(this.cameraPos, this.cameraPos, delta);
-        this.cameraUpdated = true;
+        return this.camera.frustum.intersectsBox(this.chunkIntersectBox);
     }
 
     /**
@@ -880,15 +826,15 @@ export class MapViewer {
      */
     setCamera(newPosition: Partial<CameraPosition>): void {
         if (newPosition.position) {
-            vec3.copy(this.cameraPos, newPosition.position);
+            vec3.copy(this.camera.pos, newPosition.position);
         }
         if (newPosition.pitch) {
-            this.pitch = newPosition.pitch;
+            this.camera.pitch = newPosition.pitch;
         }
         if (newPosition.yaw) {
-            this.yaw = newPosition.yaw;
+            this.camera.yaw = newPosition.yaw;
         }
-        this.cameraUpdated = true;
+        this.camera.updated = true;
     }
 
     runCameraCallbacks() {
@@ -897,16 +843,16 @@ export class MapViewer {
     }
 
     runCameraMoveCallback() {
-        if (this.onCameraMoved) {
-            const yaw = this.yaw & 2047;
-            this.onCameraMoved(this.cameraPos, this.pitch, yaw);
+        if (this.onCameraMove) {
+            const yaw = this.camera.yaw & 2047;
+            this.onCameraMove(this.camera.pos, this.camera.pitch, yaw);
         }
     }
 
     runCameraMoveEndCallback() {
         if (this.onCameraMoveEnd) {
-            const yaw = this.yaw & 2047;
-            this.onCameraMoveEnd(this.cameraPos, this.pitch, yaw);
+            const yaw = this.camera.yaw & 2047;
+            this.onCameraMoveEnd(this.camera.pos, this.camera.pitch, yaw);
         }
     }
 
@@ -1093,16 +1039,16 @@ export class MapViewer {
 
         // camera direction controls
         if (this.keys.get("ArrowUp")) {
-            this.updatePitch(this.pitch, -deltaPitch);
+            this.camera.updatePitch(this.camera.pitch, deltaPitch);
         }
         if (this.keys.get("ArrowDown")) {
-            this.updatePitch(this.pitch, deltaPitch);
+            this.camera.updatePitch(this.camera.pitch, -deltaPitch);
         }
         if (this.keys.get("ArrowRight")) {
-            this.updateYaw(this.yaw, -deltaYaw);
+            this.camera.updateYaw(this.camera.yaw, deltaYaw);
         }
         if (this.keys.get("ArrowLeft")) {
-            this.updateYaw(this.yaw, deltaYaw);
+            this.camera.updateYaw(this.camera.yaw, -deltaYaw);
         }
 
         // 200ms cooldown
@@ -1119,7 +1065,7 @@ export class MapViewer {
             const moveX = this.positionJoystickEvent.x || 0;
             const moveY = this.positionJoystickEvent.y || 0;
 
-            this.moveCamera(
+            this.camera.move(
                 moveX * 32 * -deltaTime,
                 0,
                 moveY * 32 * -deltaTime
@@ -1129,8 +1075,11 @@ export class MapViewer {
         if (this.cameraJoystickEvent) {
             const moveX = this.cameraJoystickEvent.x || 0;
             const moveY = this.cameraJoystickEvent.y || 0;
-            this.updatePitch(this.pitch, deltaPitch * -1.5 * moveY);
-            this.updateYaw(this.yaw, deltaYaw * -1.5 * moveX);
+            this.camera.updatePitch(
+                this.camera.pitch,
+                deltaPitch * 1.5 * moveY
+            );
+            this.camera.updateYaw(this.camera.yaw, deltaYaw * 1.5 * moveX);
         }
 
         // controller
@@ -1161,18 +1110,21 @@ export class MapViewer {
             const trigger = leftTrigger - rightTrigger;
 
             if (leftX !== 0 || leftY !== 0 || trigger !== 0) {
-                this.moveCamera(
+                this.camera.move(
                     leftX * 32 * cameraSpeedMult * -deltaTime,
-                    trigger * 32 * cameraSpeedMult * deltaTime,
+                    trigger * 32 * cameraSpeedMult * -deltaTime,
                     leftY * 32 * cameraSpeedMult * -deltaTime
                 );
             }
 
             if (rightX !== 0) {
-                this.updateYaw(this.yaw, deltaYaw * -1.5 * rightX);
+                this.camera.updateYaw(this.camera.yaw, deltaYaw * 1.5 * rightX);
             }
             if (rightY !== 0) {
-                this.updatePitch(this.pitch, deltaPitch * -1.5 * rightY);
+                this.camera.updatePitch(
+                    this.camera.pitch,
+                    deltaPitch * 1.5 * rightY
+                );
             }
         }
 
@@ -1182,28 +1134,28 @@ export class MapViewer {
             const deltaMouseY = this.startMouseY - this.currentMouseY;
 
             if (isTouchDevice) {
-                this.moveCamera(0, clamp(deltaMouseY, -100, 100) * 0.004, 0);
+                this.camera.move(0, clamp(deltaMouseY, -100, 100) * 0.004, 0);
             } else {
-                this.updatePitch(this.startPitch, deltaMouseY * -0.9);
-                this.updateYaw(this.startYaw, deltaMouseX * 0.9);
+                this.camera.updatePitch(this.startPitch, deltaMouseY * 0.9);
+                this.camera.updateYaw(this.startYaw, deltaMouseX * -0.9);
             }
         }
 
         // camera position controls
         if (this.keys.get("w") || this.keys.get("W")) {
-            this.moveCamera(0, 0, -16 * cameraSpeedMult * deltaTime);
+            this.camera.move(0, 0, -16 * cameraSpeedMult * deltaTime);
         }
         if (this.keys.get("a") || this.keys.get("A")) {
-            this.moveCamera(16 * cameraSpeedMult * deltaTime, 0, 0);
+            this.camera.move(16 * cameraSpeedMult * deltaTime, 0, 0);
         }
         if (this.keys.get("s") || this.keys.get("S")) {
-            this.moveCamera(0, 0, 16 * cameraSpeedMult * deltaTime);
+            this.camera.move(0, 0, 16 * cameraSpeedMult * deltaTime);
         }
         if (this.keys.get("d") || this.keys.get("D")) {
-            this.moveCamera(-16 * cameraSpeedMult * deltaTime, 0, 0);
+            this.camera.move(-16 * cameraSpeedMult * deltaTime, 0, 0);
         }
         if (this.keys.get("e") || this.keys.get("E")) {
-            this.moveCamera(0, 8 * cameraSpeedMult * deltaTime, 0);
+            this.camera.move(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
         if (
             this.keys.get("q") ||
@@ -1211,7 +1163,7 @@ export class MapViewer {
             this.keys.get("c") ||
             this.keys.get("C")
         ) {
-            this.moveCamera(0, -8 * cameraSpeedMult * deltaTime, 0);
+            this.camera.move(0, 8 * cameraSpeedMult * deltaTime, 0);
         }
 
         if (this.keys.get("t") && this.timer.ready()) {
@@ -1580,59 +1532,6 @@ export class MapViewer {
         }
     }
 
-    updateProjection() {
-        const canvasWidth = this.app.width;
-        const canvasHeight = this.app.height;
-
-        mat4.identity(this.projectionMatrix);
-        if (this.projectionType === ProjectionType.PERSPECTIVE) {
-            mat4.perspective(
-                this.projectionMatrix,
-                this.fov * DEGREES_TO_RADIANS,
-                canvasWidth / canvasHeight,
-                0.1,
-                1024.0 * 4
-            );
-        } else {
-            mat4.ortho(
-                this.projectionMatrix,
-                -canvasWidth / this.orthoZoom,
-                canvasWidth / this.orthoZoom,
-                -canvasHeight / this.orthoZoom,
-                canvasHeight / this.orthoZoom,
-                -1024.0 * 8,
-                1024.0 * 8
-            );
-        }
-        mat4.rotateX(this.projectionMatrix, this.projectionMatrix, Math.PI);
-
-        // TODO: properly invert this
-        mat4.identity(this.viewMatrix);
-        if (this.pitch !== 0) {
-            mat4.rotateX(
-                this.viewMatrix,
-                this.viewMatrix,
-                this.pitch * RS_TO_RADIANS
-            );
-        }
-        if (this.yaw !== 0) {
-            mat4.rotateY(
-                this.viewMatrix,
-                this.viewMatrix,
-                this.yaw * RS_TO_RADIANS
-            );
-        }
-        mat4.translate(this.viewMatrix, this.viewMatrix, this.cameraPos);
-
-        mat4.multiply(
-            this.viewProjMatrix,
-            this.projectionMatrix,
-            this.viewMatrix
-        );
-
-        this.frustumIntersection.setPlanes(this.viewProjMatrix);
-    }
-
     updateNpcDataTexture() {
         const newNpcDataTextureIndex =
             this.frameCount % this.npcDataTextureBuffer.length;
@@ -1741,8 +1640,8 @@ export class MapViewer {
             this.updateCullFace();
         }
 
-        const movedCameraLastFrame = this.cameraUpdated;
-        this.cameraUpdated = false;
+        const lastCameraUpdated = this.camera.updated;
+        this.camera.updated = false;
 
         this.handleInput(time, deltaTime);
         if (this.hasMultiDraw && (!isTouchDevice || this.tooltips)) {
@@ -1765,17 +1664,17 @@ export class MapViewer {
             );
         }
 
-        if (this.cameraUpdated) {
+        if (this.camera.updated) {
             this.runCameraMoveCallback();
         }
-        if (movedCameraLastFrame && !this.cameraUpdated) {
+        if (lastCameraUpdated && !this.camera.updated) {
             this.runCameraMoveEndCallback();
         }
 
-        this.updateProjection();
+        this.camera.update(canvasWidth, canvasHeight);
 
-        const cameraX = -this.cameraPos[0];
-        const cameraY = -this.cameraPos[2];
+        const cameraX = this.camera.getPosX();
+        const cameraY = this.camera.getPosZ();
 
         this.cameraPosUni[0] = cameraX;
         this.cameraPosUni[1] = cameraY;
@@ -1784,9 +1683,9 @@ export class MapViewer {
         const cameraRegionY = (cameraY / 64) | 0;
 
         this.sceneUniformBuffer
-            .set(0, this.viewProjMatrix as Float32Array)
-            .set(1, this.viewMatrix as Float32Array)
-            .set(2, this.projectionMatrix as Float32Array)
+            .set(0, this.camera.viewProjMatrix as Float32Array)
+            .set(1, this.camera.viewMatrix as Float32Array)
+            .set(2, this.camera.projectionMatrix as Float32Array)
             .set(3, this.skyColor as Float32Array)
             .set(4, this.cameraPosUni as Float32Array)
             .set(5, this.renderDistance as any)
@@ -2213,17 +2112,12 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     }
 
     useEffect(() => {
-        mapViewer.onInited = () => {
+        mapViewer.onInit = () => {
             setInited(true);
         };
         if (mapViewer.textureUniformBuffer) {
             setInited(true);
         }
-        mapViewer.onFps = setFps;
-        mapViewer.onCameraMoved = (pos, pitch, yaw) => {
-            setCompassDegrees((2047 - yaw) * RS_TO_DEGREES);
-        };
-        mapViewer.runCameraMoveCallback();
         mapViewer.onMouseMoved = (x, y) => {
             setMenuProps((props) => {
                 if (!props) {
@@ -2249,9 +2143,9 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         mapViewer.setHudHidden = setHudHidden;
 
         const callback = (time: number) => {
-            if (!hudHidden) {
-                const cameraX = -mapViewer.cameraPos[0];
-                const cameraY = -mapViewer.cameraPos[2];
+            if (!mapViewer.hudHidden) {
+                const cameraX = mapViewer.camera.getPosX();
+                const cameraY = mapViewer.camera.getPosZ();
 
                 const cameraRegionX = (cameraX / 64) | 0;
                 const cameraRegionY = (cameraY / 64) | 0;
@@ -2294,6 +2188,10 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                     }
                 }
 
+                setFps(mapViewer.fps);
+                setCompassDegrees(
+                    (mapViewer.camera.yaw & 2047) * RS_TO_DEGREES
+                );
                 setMinimapImages(images);
             }
 
@@ -2318,8 +2216,8 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     }
 
     function getMapPosition() {
-        const cameraX = -mapViewer.cameraPos[0];
-        const cameraY = -mapViewer.cameraPos[2];
+        const cameraX = mapViewer.camera.getPosX();
+        const cameraY = mapViewer.camera.getPosZ();
 
         return {
             x: cameraX | 0,
@@ -2328,9 +2226,9 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
     }
 
     function onMapClicked(x: number, y: number) {
-        mapViewer.cameraPos[0] = -x;
-        mapViewer.cameraPos[2] = -y;
-        mapViewer.cameraUpdated = true;
+        mapViewer.camera.pos[0] = x;
+        mapViewer.camera.pos[2] = y;
+        mapViewer.camera.updated = true;
         closeWorldMap();
     }
 
@@ -2357,8 +2255,7 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                             <MinimapContainer
                                 yawDegrees={compassDegrees}
                                 onCompassClick={() => {
-                                    mapViewer.yaw = 0;
-                                    mapViewer.runCameraCallbacks();
+                                    mapViewer.camera.setYaw(0);
                                 }}
                                 onWorldMapClick={openWorldMap}
                             >
@@ -2486,27 +2383,27 @@ function MapViewerApp() {
             const yaw = searchParams.get("y");
 
             if (searchParams.get("pt") === "o") {
-                mapViewer.projectionType = ProjectionType.ORTHO;
+                mapViewer.camera.projectionType = ProjectionType.ORTHO;
             }
 
             const zoom = searchParams.get("z");
             if (zoom) {
-                mapViewer.orthoZoom = parseInt(zoom);
+                mapViewer.camera.orthoZoom = parseInt(zoom);
             }
 
             if (cx && cy && cz) {
-                const pos: vec3 = [
-                    -parseFloat(cx),
-                    parseFloat(cy),
-                    -parseFloat(cz),
-                ];
-                mapViewer.cameraPos = pos;
+                const pos: vec3 = vec3.fromValues(
+                    parseFloat(cx),
+                    -parseFloat(cy),
+                    parseFloat(cz)
+                );
+                mapViewer.camera.pos = pos;
             }
             if (pitch) {
-                mapViewer.pitch = parseInt(pitch);
+                mapViewer.camera.pitch = parseInt(pitch);
             }
             if (yaw) {
-                mapViewer.yaw = parseInt(yaw);
+                mapViewer.camera.yaw = parseInt(yaw);
             }
 
             setCaches(caches);

@@ -179,7 +179,7 @@ void main() {
     );
     
     gl_Position = u_viewMatrix * localPos;
-    gl_Position.z -= float(npcInfo.plane) * 0.005 + (float(vertex.priority) + 20.0) * 0.0007;
+    gl_Position.z += float(npcInfo.plane) * 0.005 + (float(vertex.priority) + 20.0) * 0.0007;
     gl_Position = u_projectionMatrix * gl_Position;
     // gl_Position.z -= float(modelInfo.plane) * 0.0005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.00007;
 }

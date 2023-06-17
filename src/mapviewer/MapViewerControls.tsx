@@ -1,18 +1,14 @@
 import { vec3 } from "gl-matrix";
 import { Leva, button, buttonGroup, folder, useControls } from "leva";
 import { Schema } from "leva/dist/declarations/src/types";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DownloadProgress } from "../client/fs/FileSystem";
 import { lerp, slerp } from "../client/util/MathUtil";
 import { CacheInfo, loadCache } from "./CacheInfo";
-import {
-    AntiAliasType,
-    CameraPosition,
-    MapViewer,
-    ProjectionType,
-} from "./MapViewer";
+import { AntiAliasType, CameraPosition, MapViewer } from "./MapViewer";
 import { isTouchDevice } from "./util/DeviceUtil";
+import { ProjectionType } from "./Camera";
 
 interface ColorRgb {
     r: number;
@@ -27,14 +23,14 @@ interface MapViewerControlsProps {
     hidden: boolean;
 }
 
-export function MapViewerControls({
+export const MapViewerControls = memo(function MapViewerControls({
     mapViewer,
     caches,
     setDownloadProgress,
     hidden,
 }: MapViewerControlsProps) {
     const [projectionType, setProjectionType] = useState<ProjectionType>(
-        mapViewer.projectionType
+        mapViewer.camera.projectionType
     );
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -59,12 +55,12 @@ export function MapViewerControls({
             ...pts,
             {
                 position: vec3.fromValues(
-                    mapViewer.cameraPos[0],
-                    mapViewer.cameraPos[1],
-                    mapViewer.cameraPos[2]
+                    mapViewer.camera.pos[0],
+                    mapViewer.camera.pos[1],
+                    mapViewer.camera.pos[2]
                 ),
-                pitch: mapViewer.pitch,
-                yaw: mapViewer.yaw,
+                pitch: mapViewer.camera.pitch,
+                yaw: mapViewer.camera.yaw,
             },
         ]);
     };
@@ -152,7 +148,7 @@ export function MapViewerControls({
                         Ortho: ProjectionType.ORTHO,
                     },
                     onChange: (v) => {
-                        mapViewer.projectionType = v;
+                        mapViewer.camera.projectionType = v;
                         setProjectionType(v);
                         setSearchParams(mapViewer.getSearchParams(), {
                             replace: true,
@@ -354,30 +350,30 @@ export function MapViewerControls({
             hidden={hidden}
         />
     );
-}
+});
 
 function createCameraControls(mapViewer: MapViewer): Schema {
-    if (mapViewer.projectionType === ProjectionType.PERSPECTIVE) {
+    if (mapViewer.camera.projectionType === ProjectionType.PERSPECTIVE) {
         return {
             FOV: {
-                value: mapViewer.fov,
+                value: mapViewer.camera.fov,
                 min: 30,
                 max: 140,
                 step: 1,
                 onChange: (v) => {
-                    mapViewer.fov = v;
+                    mapViewer.camera.fov = v;
                 },
             },
         };
     } else {
         return {
             "Ortho Zoom": {
-                value: mapViewer.orthoZoom,
+                value: mapViewer.camera.orthoZoom,
                 min: 1,
                 max: 60,
                 step: 1,
                 onChange: (v) => {
-                    mapViewer.orthoZoom = v;
+                    mapViewer.camera.orthoZoom = v;
                     mapViewer.runCameraMoveEndCallback();
                 },
             },
