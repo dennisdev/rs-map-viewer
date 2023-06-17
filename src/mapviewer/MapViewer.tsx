@@ -194,7 +194,7 @@ export class MapViewer {
 
     chunksToLoad: Denque<ChunkData> = new Denque();
 
-    camera: Camera = new Camera(3242, -26, 3202, 0, 0);
+    camera: Camera = new Camera(3242, -26, 3202, -245, 1862);
 
     frameCount: number = 0;
     fps: number = 0;
@@ -661,7 +661,50 @@ export class MapViewer {
             params["cache"] = this.loadedCache.info.name;
         }
 
+        params["v"] = 1;
+
         return params;
+    }
+
+    applySearchParams(searchParams: URLSearchParams) {
+        const cx = searchParams.get("cx");
+        const cy = searchParams.get("cy");
+        const cz = searchParams.get("cz");
+
+        const pitch = searchParams.get("p");
+        const yaw = searchParams.get("y");
+
+        const v = searchParams.get("v");
+
+        if (searchParams.get("pt") === "o") {
+            this.camera.projectionType = ProjectionType.ORTHO;
+        }
+
+        const zoom = searchParams.get("z");
+        if (zoom) {
+            this.camera.orthoZoom = parseInt(zoom);
+        }
+
+        if (cx && cy && cz) {
+            const pos: vec3 = vec3.fromValues(
+                parseFloat(cx),
+                -parseFloat(cy),
+                parseFloat(cz)
+            );
+            this.camera.pos = pos;
+        }
+        if (pitch) {
+            this.camera.pitch = parseInt(pitch);
+            if (!v) {
+                this.camera.pitch = -this.camera.pitch;
+            }
+        }
+        if (yaw) {
+            this.camera.yaw = parseInt(yaw);
+            if (!v) {
+                this.camera.yaw = 2048 - this.camera.yaw;
+            }
+        }
     }
 
     setSkyColor(r: number, g: number, b: number) {
@@ -2374,37 +2417,7 @@ function MapViewerApp() {
                 npcSpawns,
                 itemSpawns
             );
-
-            const cx = searchParams.get("cx");
-            const cy = searchParams.get("cy");
-            const cz = searchParams.get("cz");
-
-            const pitch = searchParams.get("p");
-            const yaw = searchParams.get("y");
-
-            if (searchParams.get("pt") === "o") {
-                mapViewer.camera.projectionType = ProjectionType.ORTHO;
-            }
-
-            const zoom = searchParams.get("z");
-            if (zoom) {
-                mapViewer.camera.orthoZoom = parseInt(zoom);
-            }
-
-            if (cx && cy && cz) {
-                const pos: vec3 = vec3.fromValues(
-                    parseFloat(cx),
-                    -parseFloat(cy),
-                    parseFloat(cz)
-                );
-                mapViewer.camera.pos = pos;
-            }
-            if (pitch) {
-                mapViewer.camera.pitch = parseInt(pitch);
-            }
-            if (yaw) {
-                mapViewer.camera.yaw = parseInt(yaw);
-            }
+            mapViewer.applySearchParams(searchParams);
 
             setCaches(caches);
             setMapViewer(mapViewer);
