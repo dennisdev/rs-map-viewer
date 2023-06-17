@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, RefObject } from "react";
 import "./WorldMap.css";
-import { useElementSize } from "usehooks-ts";
+import { useElementSize, useEventListener } from "usehooks-ts";
 import { RegionLoader } from "../../client/RegionLoader";
 
 interface Position {
@@ -16,13 +16,43 @@ export interface WorldMapProps {
 
 export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
     const [ref, dimensions] = useElementSize();
+    const dragRef = useRef<HTMLDivElement>(null);
 
-    // const pos: Position = {
-    //     x: 3222,
-    //     y: 3222,
-    // };
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [startY, setStartY] = useState(0);
 
-    const pos = getPosition();
+    const [pos, setPos] = useState(getPosition);
+
+    const onMouseDown = (event: MouseEvent) => {
+        setIsDragging(true);
+        setStartX(event.x);
+        setStartY(event.y);
+    };
+
+    const onMouseMove = (event: MouseEvent) => {
+        if (isDragging) {
+            const deltaX = (startX - event.x) / 4;
+            const deltaY = (event.y - startY) / 4;
+
+            setStartX(event.x);
+            setStartY(event.y);
+            setPos({
+                x: pos.x + deltaX,
+                y: pos.y + deltaY,
+            });
+        }
+    };
+
+    const onMouseUp = (event: MouseEvent) => {
+        setIsDragging(false);
+    };
+
+    useEventListener("mousedown", onMouseDown, dragRef);
+    useEventListener("mousemove", onMouseMove, dragRef);
+    useEventListener("mouseup", onMouseUp, dragRef);
+
+    // const pos = getPosition();
 
     const cameraX = pos.x;
     const cameraY = pos.y;
@@ -66,6 +96,8 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
                     style={{
                         left: x + rx * 256,
                         bottom: y + ry * 256,
+                        width: 256,
+                        height: 256,
                     }}
                 />
             );
@@ -74,12 +106,12 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
 
     return (
         <div className="worldmap" ref={ref}>
-            {/* <img className="worldmap-image" src="/0_50_50.png" style={{
-                left: x,
-                bottom: y
-            }} /> */}
             {images}
             <div
+                className={`worldmap-drag ${isDragging ? "dragging" : ""}`}
+                ref={dragRef}
+            ></div>
+            {/* <div
                 style={{
                     position: "absolute",
                     left: halfWidth - 2,
@@ -89,7 +121,7 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
                     backgroundColor: "cyan",
                     zIndex: 10,
                 }}
-            ></div>
+            ></div> */}
         </div>
     );
 }

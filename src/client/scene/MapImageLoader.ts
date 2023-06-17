@@ -341,9 +341,6 @@ export class MapImageLoader {
 
             if (objectDef.mapSceneId !== -1) {
                 const mapScene = this.mapScenes[objectDef.mapSceneId];
-                if (plane === 1) {
-                    console.log(objectDef.mapSceneId, objectDef);
-                }
 
                 const x = (objectDef.sizeX * 4 - mapScene.subWidth) / 2;
                 const y = (objectDef.sizeY * 4 - mapScene.subHeight) / 2;
