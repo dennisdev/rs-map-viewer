@@ -2327,6 +2327,13 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
         };
     }
 
+    function onMapClicked(x: number, y: number) {
+        mapViewer.cameraPos[0] = -x;
+        mapViewer.cameraPos[2] = -y;
+        mapViewer.cameraUpdated = true;
+        closeWorldMap();
+    }
+
     function loadMapImageUrl(regionX: number, regionY: number) {
         return mapViewer.getMinimapUrl(regionX, regionY);
     }
@@ -2366,6 +2373,7 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                         isOpen={isWorldMapOpen}
                         onRequestClose={closeWorldMap}
                         getPosition={getMapPosition}
+                        onDoubleClick={onMapClicked}
                         loadMapImageUrl={loadMapImageUrl}
                     />
                 </span>

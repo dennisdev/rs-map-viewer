@@ -12,10 +12,14 @@ interface Position {
 export interface WorldMapProps {
     getPosition: () => Position;
 
+    onDoubleClick: (x: number, y: number) => void;
+
     loadMapImageUrl: (regionX: number, regionY: number) => string | undefined;
 }
 
-export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
+export function WorldMap(props: WorldMapProps) {
+    const { getPosition, loadMapImageUrl } = props;
+
     const [ref, dimensions] = useElementSize();
     const dragRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +33,29 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
     // const tileSize = 3;
     const halfTileSize = tileSize / 2;
     const imageSize = 64 * tileSize;
+
+    const cameraX = pos.x;
+    const cameraY = pos.y;
+
+    const regionX = pos.x >> 6;
+    const regionY = pos.y >> 6;
+
+    // console.log(dimensions)
+
+    const halfWidth = (dimensions.width / 2) | 0;
+    const halfHeight = (dimensions.height / 2) | 0;
+
+    const x = halfWidth - (cameraX % 64) * tileSize - halfTileSize;
+    const y = halfHeight - (cameraY % 64) * tileSize - halfTileSize;
+
+    const onDoubleClick = (event: MouseEvent) => {
+        setIsDragging(false);
+
+        const deltaX = (event.offsetX - halfWidth) / tileSize;
+        const deltaY = (halfHeight - event.offsetY) / tileSize;
+
+        props.onDoubleClick(pos.x + deltaX, pos.y + deltaY);
+    };
 
     const onMouseDown = (event: MouseEvent) => {
         setIsDragging(true);
@@ -56,29 +83,13 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
 
     const onMouseWheel = (event: WheelEvent) => {
         setTileSize(clamp(tileSize - Math.sign(event.deltaY), 1, 8));
-        console.log(event);
     };
 
+    useEventListener("dblclick", onDoubleClick, dragRef);
     useEventListener("mousedown", onMouseDown, dragRef);
     useEventListener("mousemove", onMouseMove, dragRef);
     useEventListener("mouseup", onMouseUp, dragRef);
     useEventListener("wheel", onMouseWheel, dragRef);
-
-    // const pos = getPosition();
-
-    const cameraX = pos.x;
-    const cameraY = pos.y;
-
-    const regionX = pos.x >> 6;
-    const regionY = pos.y >> 6;
-
-    // console.log(dimensions)
-
-    const halfWidth = (dimensions.width / 2) | 0;
-    const halfHeight = (dimensions.height / 2) | 0;
-
-    const x = halfWidth - (cameraX % 64) * tileSize - halfTileSize;
-    const y = halfHeight - (cameraY % 64) * tileSize - halfTileSize;
 
     const renderStartX = -Math.ceil(x / imageSize);
     const renderStartY = -Math.ceil(y / imageSize);
@@ -87,10 +98,6 @@ export function WorldMap({ getPosition, loadMapImageUrl }: WorldMapProps) {
     const renderEndY = Math.ceil((dimensions.height - y) / imageSize);
 
     const images: JSX.Element[] = [];
-
-    // console.log(x, y, renderStartX, renderStartY, renderEndX, renderEndY, regionX, regionY, dimensions.width, dimensions.height)
-
-    // console.log(x, y, renderStartX, renderEndX);
 
     for (let rx = renderStartX; rx < renderEndX; rx++) {
         for (let ry = renderStartY; ry < renderEndY; ry++) {
