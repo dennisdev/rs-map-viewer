@@ -51,8 +51,8 @@ export function WorldMap(props: WorldMapProps) {
     const onDoubleClick = (event: MouseEvent) => {
         setIsDragging(false);
 
-        const deltaX = (event.offsetX - halfWidth) / tileSize;
-        const deltaY = (halfHeight - event.offsetY) / tileSize;
+        const deltaX = (event.offsetX - halfWidth) / tileSize + 0.5;
+        const deltaY = (halfHeight - event.offsetY) / tileSize + 0.5;
 
         props.onDoubleClick(pos.x + deltaX, pos.y + deltaY);
     };
