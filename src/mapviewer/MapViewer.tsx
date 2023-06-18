@@ -270,6 +270,9 @@ export class MapViewer {
     startMouseX: number = -1;
     startMouseY: number = -1;
 
+    deltaMouseX: number = 0;
+    deltaMouseY: number = 0;
+
     startPitch: number = -1;
     startYaw: number = -1;
 
@@ -442,6 +445,20 @@ export class MapViewer {
         }
 
         if (!isWallpaperEngine) {
+            gl.canvas.addEventListener("dblclick", () => {
+                if (
+                    !document.pointerLockElement &&
+                    gl.canvas instanceof HTMLCanvasElement
+                ) {
+                    gl.canvas.requestPointerLock();
+
+                    if (this.onMenuClosed) {
+                        this.onMenuClosed();
+                        this.menuOpen = false;
+                    }
+                }
+            });
+
             gl.canvas.addEventListener("keydown", this.onKeyDown);
             gl.canvas.addEventListener("keyup", this.onKeyUp);
             gl.canvas.addEventListener("mousedown", this.onMouseDown);
@@ -737,6 +754,11 @@ export class MapViewer {
         const [x, y] = getMousePos(this.app.canvas, event);
         this.currentMouseX = x;
         this.currentMouseY = y;
+
+        if (document.pointerLockElement) {
+            this.deltaMouseX += event.movementX;
+            this.deltaMouseY += event.movementY;
+        }
         if (
             this.onMenuClosed &&
             this.menuOpen &&
@@ -1172,12 +1194,18 @@ export class MapViewer {
         }
 
         // mouse/touch controls
-        if (this.startMouseX !== -1 && this.startMouseY !== -1) {
+        if (document.pointerLockElement) {
+            this.camera.updatePitch(this.camera.pitch, this.deltaMouseY * -0.9);
+            this.camera.updateYaw(this.camera.yaw, this.deltaMouseX * 0.9);
+
+            this.deltaMouseX = 0;
+            this.deltaMouseY = 0;
+        } else if (this.startMouseX !== -1 && this.startMouseY !== -1) {
             const deltaMouseX = this.startMouseX - this.currentMouseX;
             const deltaMouseY = this.startMouseY - this.currentMouseY;
 
             if (isTouchDevice) {
-                this.camera.move(0, clamp(deltaMouseY, -100, 100) * 0.004, 0);
+                this.camera.move(0, clamp(-deltaMouseY, -100, 100) * 0.004, 0);
             } else {
                 this.camera.updatePitch(this.startPitch, deltaMouseY * 0.9);
                 this.camera.updateYaw(this.startYaw, deltaMouseX * -0.9);
@@ -1687,16 +1715,19 @@ export class MapViewer {
         this.camera.updated = false;
 
         this.handleInput(time, deltaTime);
-        if (this.hasMultiDraw && (!isTouchDevice || this.tooltips)) {
+
+        const tooltipsEnabled = !document.pointerLockElement && this.tooltips;
+
+        if (this.hasMultiDraw && !isTouchDevice && tooltipsEnabled) {
             this.readHoveredRegion();
         }
-        if (this.tooltips) {
+        if (tooltipsEnabled) {
             this.readHover();
         }
 
         if (
             !this.menuOpen &&
-            this.tooltips &&
+            tooltipsEnabled &&
             this.currentMouseX !== -1 &&
             this.currentMouseY !== -1
         ) {
