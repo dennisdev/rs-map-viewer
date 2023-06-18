@@ -195,6 +195,7 @@ export class MapViewer {
     chunksToLoad: Denque<ChunkData> = new Denque();
 
     camera: Camera = new Camera(3242, -26, 3202, -245, 1862);
+    cameraMoveTowardsPitch: boolean = false;
 
     frameCount: number = 0;
     fps: number = 0;
@@ -1133,7 +1134,8 @@ export class MapViewer {
             this.camera.move(
                 moveX * 32 * -deltaTime,
                 0,
-                moveY * 32 * -deltaTime
+                moveY * 32 * -deltaTime,
+                this.cameraMoveTowardsPitch
             );
         }
 
@@ -1157,8 +1159,8 @@ export class MapViewer {
         }
 
         if (gamepad && gamepad.connected && gamepad.mapping === "standard") {
-            // X
-            if (gamepad.buttons[0].value === 1) {
+            // X, R1
+            if (gamepad.buttons[0].pressed || gamepad.buttons[5].pressed) {
                 cameraSpeedMult = 10;
             }
 
@@ -1177,8 +1179,14 @@ export class MapViewer {
             if (leftX !== 0 || leftY !== 0 || trigger !== 0) {
                 this.camera.move(
                     leftX * 32 * cameraSpeedMult * -deltaTime,
+                    0,
+                    leftY * 32 * cameraSpeedMult * -deltaTime,
+                    this.cameraMoveTowardsPitch
+                );
+                this.camera.move(
+                    0,
                     trigger * 32 * cameraSpeedMult * -deltaTime,
-                    leftY * 32 * cameraSpeedMult * -deltaTime
+                    0
                 );
             }
 
@@ -1214,18 +1222,43 @@ export class MapViewer {
 
         // camera position controls
         if (this.keys.get("w") || this.keys.get("W")) {
-            this.camera.move(0, 0, -16 * cameraSpeedMult * deltaTime);
+            // Forward
+            this.camera.move(
+                0,
+                0,
+                -16 * cameraSpeedMult * deltaTime,
+                this.cameraMoveTowardsPitch
+            );
         }
         if (this.keys.get("a") || this.keys.get("A")) {
-            this.camera.move(16 * cameraSpeedMult * deltaTime, 0, 0);
+            // Left
+            this.camera.move(
+                16 * cameraSpeedMult * deltaTime,
+                0,
+                0,
+                this.cameraMoveTowardsPitch
+            );
         }
         if (this.keys.get("s") || this.keys.get("S")) {
-            this.camera.move(0, 0, 16 * cameraSpeedMult * deltaTime);
+            // Back
+            this.camera.move(
+                0,
+                0,
+                16 * cameraSpeedMult * deltaTime,
+                this.cameraMoveTowardsPitch
+            );
         }
         if (this.keys.get("d") || this.keys.get("D")) {
-            this.camera.move(-16 * cameraSpeedMult * deltaTime, 0, 0);
+            // Right
+            this.camera.move(
+                -16 * cameraSpeedMult * deltaTime,
+                0,
+                0,
+                this.cameraMoveTowardsPitch
+            );
         }
         if (this.keys.get("e") || this.keys.get("E")) {
+            // Move up
             this.camera.move(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
         if (
@@ -1234,6 +1267,7 @@ export class MapViewer {
             this.keys.get("c") ||
             this.keys.get("C")
         ) {
+            // Move down
             this.camera.move(0, 8 * cameraSpeedMult * deltaTime, 0);
         }
 
