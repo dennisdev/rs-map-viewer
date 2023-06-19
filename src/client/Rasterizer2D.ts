@@ -13,6 +13,7 @@ export class Rasterizer2D {
         Rasterizer2D.pixels = pixels;
         Rasterizer2D.width = width;
         Rasterizer2D.height = height;
+        Rasterizer2D.setClip(0, 0, width, height);
     }
 
     static setClip(x: number, y: number, width: number, height: number) {
