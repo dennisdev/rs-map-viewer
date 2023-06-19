@@ -167,7 +167,7 @@ export class ChunkDataLoader {
         let npcSpawnGroups: NpcSpawnGroup[] = [];
         if (landscapeData) {
             console.time("light scene");
-            region.applyLighting(-50, -10, -50);
+            region.applyLighting(this.regionLoader, -50, -10, -50);
             console.timeEnd("light scene");
 
             const occlusionMap = createOcclusionMap(

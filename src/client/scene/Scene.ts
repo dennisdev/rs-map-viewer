@@ -1374,6 +1374,7 @@ export class Scene {
     }
 
     mergeLargeObjectNormals(
+        regionLoader: RegionLoader,
         model: ModelData,
         startPlane: number,
         tileX: number,
@@ -1386,6 +1387,9 @@ export class Scene {
         const endX = tileX + sizeX;
         const startY = tileY - 1;
         const endY = tileY + sizeY;
+
+        const baseX = this.regionX * 64;
+        const baseY = this.regionY * 64;
 
         for (let plane = startPlane; plane <= startPlane + 1; plane++) {
             if (plane === this.planes) {
@@ -1405,35 +1409,18 @@ export class Scene {
                         ) {
                             const tile = this.tiles[plane][localX][localY];
                             if (tile) {
-                                const var16 =
-                                    (((this.tileHeights[plane][localX + 1][
-                                        localY
-                                    ] +
-                                        this.tileHeights[plane][localX + 1][
-                                            localY + 1
-                                        ] +
-                                        this.tileHeights[plane][localX][
-                                            localY
-                                        ] +
-                                        this.tileHeights[plane][localX][
-                                            localY + 1
-                                        ]) /
-                                        4) |
-                                        0) -
-                                    (((this.tileHeights[startPlane][tileX + 1][
-                                        tileY
-                                    ] +
-                                        this.tileHeights[startPlane][tileX][
-                                            tileY
-                                        ] +
-                                        this.tileHeights[startPlane][tileX + 1][
-                                            tileY + 1
-                                        ] +
-                                        this.tileHeights[startPlane][tileX][
-                                            tileY + 1
-                                        ]) /
-                                        4) |
-                                        0);
+                                const heightDiff =
+                                    regionLoader.getHeightInterp(
+                                        baseX + localX + 0.5,
+                                        baseY + localY + 0.5,
+                                        plane
+                                    ) -
+                                    regionLoader.getHeightInterp(
+                                        baseX + tileX + 0.5,
+                                        baseY + tileY + 0.5,
+                                        startPlane
+                                    );
+
                                 const wall = tile.wallObject;
                                 if (wall) {
                                     if (wall.renderable0 instanceof ModelData) {
@@ -1442,7 +1429,7 @@ export class Scene {
                                             wall.renderable0,
                                             (1 - sizeX) * 64 +
                                                 (localX - tileX) * 128,
-                                            var16,
+                                            heightDiff,
                                             (localY - tileY) * 128 +
                                                 (1 - sizeY) * 64,
                                             hideOccludedFaces
@@ -1454,7 +1441,7 @@ export class Scene {
                                             wall.renderable1,
                                             (1 - sizeX) * 64 +
                                                 (localX - tileX) * 128,
-                                            var16,
+                                            heightDiff,
                                             (localY - tileY) * 128 +
                                                 (1 - sizeY) * 64,
                                             hideOccludedFaces
@@ -1481,7 +1468,7 @@ export class Scene {
                                             (var21 - sizeX) * 64 +
                                                 (gameObject.startX - tileX) *
                                                     128,
-                                            var16,
+                                            heightDiff,
                                             (gameObject.startY - tileY) * 128 +
                                                 (var22 - sizeY) * 64,
                                             hideOccludedFaces
@@ -1578,7 +1565,12 @@ export class Scene {
         }
     }
 
-    applyLighting(lightX: number, lightY: number, lightZ: number) {
+    applyLighting(
+        regionLoader: RegionLoader,
+        lightX: number,
+        lightY: number,
+        lightZ: number
+    ) {
         for (let plane = 0; plane < this.planes; plane++) {
             for (let tileX = 0; tileX < this.sizeX; tileX++) {
                 for (let tileY = 0; tileY < this.sizeY; tileY++) {
@@ -1590,6 +1582,7 @@ export class Scene {
                     if (wall && wall.renderable0 instanceof ModelData) {
                         const model0 = wall.renderable0;
                         this.mergeLargeObjectNormals(
+                            regionLoader,
                             model0,
                             plane,
                             tileX,
@@ -1601,6 +1594,7 @@ export class Scene {
                         if (wall.renderable1 instanceof ModelData) {
                             const model1 = wall.renderable1;
                             this.mergeLargeObjectNormals(
+                                regionLoader,
                                 model1,
                                 plane,
                                 tileX,
@@ -1637,6 +1631,7 @@ export class Scene {
                     for (const gameObject of tile.gameObjects) {
                         if (gameObject.renderable instanceof ModelData) {
                             this.mergeLargeObjectNormals(
+                                regionLoader,
                                 gameObject.renderable,
                                 plane,
                                 tileX,
