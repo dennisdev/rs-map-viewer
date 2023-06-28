@@ -36,7 +36,7 @@ export const MapViewerControls = memo(function MapViewerControls({
 
     const positionControls = isTouchDevice
         ? "Left joystick, Drag up and down."
-        : "WASD, E (up), C (down)\nUse SHIFT to go faster.";
+        : "WASD,\nR or E (up),\nF or C (down),\nUse SHIFT to go faster.";
     const directionControls = isTouchDevice
         ? "Right joystick."
         : "Arrow Keys or Click and Drag.";

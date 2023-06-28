@@ -1257,7 +1257,12 @@ export class MapViewer {
                 this.cameraMoveTowardsPitch
             );
         }
-        if (this.keys.get("e") || this.keys.get("E")) {
+        if (
+            this.keys.get("e") ||
+            this.keys.get("E") ||
+            this.keys.get("r") ||
+            this.keys.get("R")
+        ) {
             // Move up
             this.camera.move(0, -8 * cameraSpeedMult * deltaTime, 0);
         }
@@ -1265,7 +1270,9 @@ export class MapViewer {
             this.keys.get("q") ||
             this.keys.get("Q") ||
             this.keys.get("c") ||
-            this.keys.get("C")
+            this.keys.get("C") ||
+            this.keys.get("f") ||
+            this.keys.get("F")
         ) {
             // Move down
             this.camera.move(0, 8 * cameraSpeedMult * deltaTime, 0);
@@ -1288,12 +1295,12 @@ export class MapViewer {
             console.log(time);
         }
 
-        if (this.keys.get("r") && this.timer.ready()) {
-            this.app.enable(PicoGL.RASTERIZER_DISCARD);
-        }
-        if (this.keys.get("f") && this.timer.ready()) {
-            this.app.disable(PicoGL.RASTERIZER_DISCARD);
-        }
+        // if (this.keys.get("r") && this.timer.ready()) {
+        //     this.app.enable(PicoGL.RASTERIZER_DISCARD);
+        // }
+        // if (this.keys.get("f") && this.timer.ready()) {
+        //     this.app.disable(PicoGL.RASTERIZER_DISCARD);
+        // }
 
         if (this.keys.get("p") && this.chunkDataLoader) {
             for (let i = 0; i < 20; i++) {
