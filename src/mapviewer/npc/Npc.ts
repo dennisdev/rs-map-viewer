@@ -286,6 +286,7 @@ export class Npc {
 
     updateServerMovement(
         pathfinder: Pathfinder,
+        borderRadius: number,
         collisionMaps: CollisionMap[]
     ) {
         const canWalk =
@@ -319,6 +320,7 @@ export class Npc {
                 this.data.tileX,
                 this.data.tileY,
                 5,
+                borderRadius,
                 collisionMap
             );
 
@@ -344,27 +346,37 @@ export class Npc {
         }
 
         if (this.serverPathLength > 0) {
-            const currentX = this.pathX[0];
-            const currentY = this.pathY[0];
+            const currX = this.pathX[0];
+            const currY = this.pathY[0];
             const targetX = this.serverPathX[this.serverPathLength - 1];
             const targetY = this.serverPathY[this.serverPathLength - 1];
-            const deltaX = clamp(targetX - currentX, -1, 1);
-            const deltaY = clamp(targetY - currentY, -1, 1);
+            const deltaX = clamp(targetX - currX, -1, 1);
+            const deltaY = clamp(targetY - currY, -1, 1);
             // const deltaX = 0;
             // const deltaY = 0;
-            const nextX = currentX + deltaX;
-            const nextY = currentY + deltaY;
+            const nextX = currX + deltaX;
+            const nextY = currY + deltaY;
 
-            for (let flagX = currentX; flagX < currentX + size; flagX++) {
-                for (let flagY = currentY; flagY < currentY + size; flagY++) {
-                    collisionMap.unflag(flagX, flagY, 0x1000000);
+            for (let flagX = currX; flagX < currX + size; flagX++) {
+                for (let flagY = currY; flagY < currY + size; flagY++) {
+                    collisionMap.unflag(
+                        flagX + borderRadius,
+                        flagY + borderRadius,
+                        0x1000000
+                    );
                 }
             }
 
             let canMove = true;
             exit: for (let flagX = nextX; flagX < nextX + size; flagX++) {
                 for (let flagY = nextY; flagY < nextY + size; flagY++) {
-                    if (collisionMap.hasFlag(flagX, flagY, 0x1000000)) {
+                    if (
+                        collisionMap.hasFlag(
+                            flagX + borderRadius,
+                            flagY + borderRadius,
+                            0x1000000
+                        )
+                    ) {
                         canMove = false;
                         break exit;
                     }
@@ -374,19 +386,23 @@ export class Npc {
             if (canMove) {
                 for (let flagX = nextX; flagX < nextX + size; flagX++) {
                     for (let flagY = nextY; flagY < nextY + size; flagY++) {
-                        collisionMap.flag(flagX, flagY, 0x1000000);
+                        collisionMap.flag(
+                            flagX + borderRadius,
+                            flagY + borderRadius,
+                            0x1000000
+                        );
                     }
                 }
 
                 this.queuePath(nextX, nextY, MovementType.WALK);
             } else {
-                for (let flagX = currentX; flagX < currentX + size; flagX++) {
-                    for (
-                        let flagY = currentY;
-                        flagY < currentY + size;
-                        flagY++
-                    ) {
-                        collisionMap.flag(flagX, flagY, 0x1000000);
+                for (let flagX = currX; flagX < currX + size; flagX++) {
+                    for (let flagY = currY; flagY < currY + size; flagY++) {
+                        collisionMap.flag(
+                            flagX + borderRadius,
+                            flagY + borderRadius,
+                            0x1000000
+                        );
                     }
                 }
             }

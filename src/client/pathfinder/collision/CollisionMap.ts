@@ -1,37 +1,45 @@
 import { ObjectType } from "../../scene/ObjectType";
 
-export class CollisionMap {
-    width: number;
+export interface CollisionData {
+    sizeX: number;
+    sizeY: number;
+    flags: Int32Array;
+}
 
-    height: number;
+export class CollisionMap {
+    sizeX: number;
+    sizeY: number;
 
     offsetX: number;
-
     offsetY: number;
 
     flags: Int32Array;
 
-    constructor(width: number, height: number, flags?: Int32Array) {
-        this.width = width + 1 + 5;
-        this.height = height + 1 + 5;
+    static fromData(data: CollisionData): CollisionMap {
+        return new CollisionMap(data.sizeX, data.sizeY, data.flags);
+    }
+
+    constructor(sizeX: number, sizeY: number, flags?: Int32Array) {
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
         this.offsetX = 0;
         this.offsetY = 0;
         if (flags) {
             this.flags = flags;
         } else {
-            this.flags = new Int32Array(this.width * this.height);
+            this.flags = new Int32Array(this.sizeX * this.sizeY);
             this.reset();
         }
     }
 
     reset(): void {
-        for (let x = 0; x < this.width; x++) {
-            for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.sizeX; x++) {
+            for (let y = 0; y < this.sizeY; y++) {
                 if (
                     x !== 0 &&
                     y !== 0 &&
-                    x < this.width - 5 &&
-                    y < this.height - 5
+                    x < this.sizeX - 5 &&
+                    y < this.sizeY - 5
                 ) {
                     // this.setFlag(x, y, 0x1000000);
                 } else {
@@ -42,8 +50,12 @@ export class CollisionMap {
         }
     }
 
+    isWithinBounds(x: number, y: number): boolean {
+        return x >= 0 && x < this.sizeX && y >= 0 && y < this.sizeY;
+    }
+
     getFlag(x: number, y: number): number {
-        return this.flags[x + y * this.width];
+        return this.flags[x + y * this.sizeX];
     }
 
     hasFlag(x: number, y: number, flag: number): boolean {
@@ -51,15 +63,15 @@ export class CollisionMap {
     }
 
     setFlag(x: number, y: number, flag: number): void {
-        this.flags[x + y * this.width] = flag;
+        this.flags[x + y * this.sizeX] = flag;
     }
 
     flag(x: number, y: number, flag: number): void {
-        this.flags[x + y * this.width] |= flag;
+        this.flags[x + y * this.sizeX] |= flag;
     }
 
     unflag(x: number, y: number, flag: number): void {
-        this.flags[x + y * this.width] &= ~flag;
+        this.flags[x + y * this.sizeX] &= ~flag;
     }
 
     setBlockedByFloor(x: number, y: number) {
@@ -83,9 +95,9 @@ export class CollisionMap {
         }
 
         for (let fx = x; fx < sizeX + x; fx++) {
-            if (fx >= 0 && fx < this.width) {
+            if (fx >= 0 && fx < this.sizeX) {
                 for (let fy = y; fy < y + sizeY; fy++) {
-                    if (fy >= 0 && fy < this.height) {
+                    if (fy >= 0 && fy < this.sizeY) {
                         this.flag(fx, fy, flag);
                     }
                 }
@@ -100,10 +112,6 @@ export class CollisionMap {
         rotation: number,
         blockProjectile: boolean
     ) {
-        // if (1) {
-        //     this.addObject(x, y, 1, 1, blockProjectile);
-        //     return;
-        // }
         if (type === ObjectType.WALL) {
             if (rotation === 0) {
                 this.flag(x, y, 128);
@@ -253,5 +261,3 @@ export class CollisionMap {
         }
     }
 }
-
-export type CollisionMaps = CollisionMap[];

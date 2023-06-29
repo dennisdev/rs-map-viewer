@@ -39,14 +39,15 @@ export class MapImageLoader {
     }
 
     createMinimapPixels(scene: Scene, plane: number): Int32Array {
-        const width = Scene.MAP_SIZE * 4;
-        const spritePixels = SpritePixels.fromDimensions(width, width);
+        const width = scene.sizeX * 4;
+        const height = scene.sizeY * 4;
+        const spritePixels = SpritePixels.fromDimensions(width, height);
         const pixels = spritePixels.pixels;
 
-        for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
-            let offset = (Scene.MAP_SIZE - 1 - tileY) * width * 4;
+        for (let tileY = 0; tileY < scene.sizeY; tileY++) {
+            let offset = (scene.sizeY - 1 - tileY) * width * 4;
 
-            for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
+            for (let tileX = 0; tileX < scene.sizeX; tileX++) {
                 if ((scene.tileRenderFlags[plane][tileX][tileY] & 0x18) === 0) {
                     this.drawTile(
                         scene,
@@ -83,8 +84,8 @@ export class MapImageLoader {
 
         spritePixels.setRaster();
 
-        for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
-            for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
+        for (let tileX = 0; tileX < scene.sizeX; tileX++) {
+            for (let tileY = 0; tileY < scene.sizeY; tileY++) {
                 if ((scene.tileRenderFlags[plane][tileX][tileY] & 0x18) === 0) {
                     this.drawObject(
                         scene,
@@ -210,7 +211,7 @@ export class MapImageLoader {
                 const y = ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
                 mapScene.drawAt(
                     tileX * 4 + x,
-                    y + (Scene.MAP_SIZE - tileY - objectDef.sizeY) * 4
+                    y + (scene.sizeY - tileY - objectDef.sizeY) * 4
                 );
             } else {
                 let rgb = wallRgb;
@@ -219,7 +220,7 @@ export class MapImageLoader {
                 }
 
                 const offset =
-                    tileX * 4 + (Scene.MAP_SIZE - 1 - tileY) * width * 4;
+                    tileX * 4 + (scene.sizeY - 1 - tileY) * width * 4;
                 if (
                     type === ObjectType.WALL ||
                     type === ObjectType.WALL_CORNER
@@ -306,7 +307,7 @@ export class MapImageLoader {
                 const y = ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
                 mapScene.drawAt(
                     tileX * 4 + x,
-                    (Scene.MAP_SIZE - tileY - objectDef.sizeY) * 4 + y
+                    (scene.sizeY - tileY - objectDef.sizeY) * 4 + y
                 );
             } else if (type === ObjectType.WALL_DIAGONAL) {
                 let rgb = wallRgb;
@@ -315,7 +316,7 @@ export class MapImageLoader {
                 }
 
                 const offset =
-                    tileX * 4 + (Scene.MAP_SIZE - 1 - tileY) * width * 4;
+                    tileX * 4 + (scene.sizeY - 1 - tileY) * width * 4;
                 if (rotation !== 0 && rotation !== 2) {
                     pixels[offset] = rgb;
                     pixels[offset + width + 1] = rgb;
@@ -346,7 +347,7 @@ export class MapImageLoader {
                 const y = (objectDef.sizeY * 4 - mapScene.subHeight) / 2;
                 mapScene.drawAt(
                     tileX * 4 + x,
-                    y + (Scene.MAP_SIZE - tileY - objectDef.sizeY) * 4
+                    y + (scene.sizeY - tileY - objectDef.sizeY) * 4
                 );
             }
         }

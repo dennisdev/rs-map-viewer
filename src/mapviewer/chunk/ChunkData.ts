@@ -1,3 +1,4 @@
+import { CollisionData } from "../../client/pathfinder/collision/CollisionMap";
 import { CacheInfo } from "../CacheInfo";
 import { NpcData } from "../npc/NpcData";
 import { AnimatedObjectData } from "../object/AnimatedObjectData";
@@ -33,8 +34,11 @@ export type ChunkData = {
 
     animatedObjects: AnimatedObjectData[];
     npcs: NpcData[];
+
+    sceneBorderRadius: number;
     tileRenderFlags: Uint8Array[][];
-    collisionFlags: Int32Array[];
+    collisionDatas: CollisionData[];
+
     loadNpcs: boolean;
     loadItems: boolean;
     maxPlane: number;

@@ -20,6 +20,8 @@
 
 #define FOG_CORNER_ROUNDING 8.0
 
+#define BORDER_RADIUS 5.0
+
 precision highp float;
 
 layout(std140, column_major) uniform;
@@ -65,7 +67,7 @@ out float v_fogAmount;
 #include "./includes/fog.glsl";
 
 float getHeightInterp(vec2 pos, uint plane) {
-    vec2 uv = (pos + vec2(0.5)) / vec2(72.0);
+    vec2 uv = (pos + vec2(BORDER_RADIUS + 0.5)) / vec2(74.0);
 
     return texture(u_heightMap, vec3(uv, plane)).r * 8.0;
 }

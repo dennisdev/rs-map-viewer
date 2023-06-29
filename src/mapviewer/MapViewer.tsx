@@ -53,7 +53,12 @@ import frameVertShader from "./shaders/frame.vert.glsl";
 import frameFxaaFragShader from "./shaders/frame-fxaa.frag.glsl";
 import frameFxaaVertShader from "./shaders/frame-fxaa.vert.glsl";
 import { Npc } from "./npc/Npc";
-import { Chunk, deleteChunk, loadChunk } from "./chunk/Chunk";
+import {
+    Chunk,
+    deleteChunk,
+    getTileRenderFlag,
+    loadChunk,
+} from "./chunk/Chunk";
 import { isIos, isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
 import {
     CacheInfo,
@@ -1080,7 +1085,7 @@ export class MapViewer {
             let renderPlane = npc.data.plane;
             if (
                 renderPlane < 3 &&
-                (chunk.tileRenderFlags[1][tileX][tileY] & 0x2) === 2
+                (getTileRenderFlag(chunk, 1, tileX, tileY) & 0x2) === 2
             ) {
                 renderPlane = npc.data.plane + 1;
             }
@@ -1301,26 +1306,6 @@ export class MapViewer {
         // if (this.keys.get("f") && this.timer.ready()) {
         //     this.app.disable(PicoGL.RASTERIZER_DISCARD);
         // }
-
-        if (this.keys.get("p") && this.chunkDataLoader) {
-            for (let i = 0; i < 20; i++) {
-                this.chunkDataLoader.load(
-                    50,
-                    50,
-                    false,
-                    false,
-                    false,
-                    Scene.MAX_PLANE - 1
-                );
-
-                this.chunkDataLoader.regionLoader.regions.clear();
-                this.chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
-                this.chunkDataLoader.regionLoader.lightLevels.clear();
-
-                this.chunkDataLoader.objectModelLoader.modelDataCache.clear();
-                this.chunkDataLoader.objectModelLoader.modelCache.clear();
-            }
-        }
     }
 
     readPicked() {
@@ -1896,6 +1881,7 @@ export class MapViewer {
                 for (const npc of chunk.npcs) {
                     npc.updateServerMovement(
                         this.pathfinder,
+                        chunk.sceneBorderRadius,
                         chunk.collisionMaps
                     );
                 }

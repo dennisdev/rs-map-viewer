@@ -4,7 +4,6 @@ import { LandscapeLoadMode, Scene } from "../../client/scene/Scene";
 import { ObjectModelLoader } from "../../client/fs/loader/model/ObjectModelLoader";
 import { ModelHashBuffer } from "../buffer/ModelHashBuffer";
 import {
-    addTerrain,
     createModelTextureData,
     DrawCommand,
     RenderBuffer,
@@ -20,38 +19,36 @@ import { createNpcDataArray } from "../npc/NpcData";
 import { ChunkData } from "./ChunkData";
 import { groupModels } from "./SceneModel";
 import { getSceneObjects } from "../object/SceneObjects";
-import { createNpcSpawnGroups, NpcSpawnGroup } from "../npc/NpcSpawnGroup";
-import {
-    AnimatedObjectGroup,
-    createAnimatedObjectGroups,
-} from "../object/AnimatedObjectGroup";
+import { createNpcSpawnGroups } from "../npc/NpcSpawnGroup";
+import { createAnimatedObjectGroups } from "../object/AnimatedObjectGroup";
 import { addModelGroup, createModelGroups } from "./ModelGroup";
 import { createItemModelArray, ItemSpawn } from "../item/ItemSpawn";
 import { MapImageLoader } from "../../client/scene/MapImageLoader";
 
-function loadHeightMapTextureData(
-    regionLoader: RegionLoader,
-    regionX: number,
-    regionY: number
-): Float32Array {
-    const heightMapTextureData = new Float32Array(Scene.MAX_PLANE * 72 * 72);
-
-    const baseX = regionX * 64;
-    const baseY = regionY * 64;
+function loadHeightMapTextureData(region: Scene): Float32Array {
+    const heightMapTextureData = new Float32Array(
+        Scene.MAX_PLANE * region.sizeX * region.sizeY
+    );
 
     let dataIndex = 0;
-    for (let plane = 0; plane < Scene.MAX_PLANE; plane++) {
-        for (let y = 0; y < 72; y++) {
-            for (let x = 0; x < 72; x++) {
+    for (let plane = 0; plane < region.planes; plane++) {
+        for (let y = 0; y < region.sizeY; y++) {
+            for (let x = 0; x < region.sizeX; x++) {
                 heightMapTextureData[dataIndex++] =
-                    (-regionLoader.getHeight(baseX + x, baseY + y, plane) / 8) |
-                    0;
+                    (-region.tileHeights[plane][x][y] / 8) | 0;
             }
         }
     }
 
     return heightMapTextureData;
 }
+
+type ChunkConfig = {
+    maxPlane: number;
+    loadNpcs: boolean;
+    loadItems: boolean;
+    minimizeDrawCalls: boolean;
+};
 
 export class ChunkDataLoader {
     cacheInfo: CacheInfo;
@@ -97,130 +94,93 @@ export class ChunkDataLoader {
     async load(
         regionX: number,
         regionY: number,
-        minimizeDrawCalls: boolean,
-        loadNpcs: boolean,
-        loadItems: boolean,
-        maxPlane: number
+        config: ChunkConfig
     ): Promise<ChunkData | undefined> {
         const region = this.regionLoader.getRegion(regionX, regionY);
         if (!region) {
             return undefined;
         }
 
+        region.addTileModels(this.regionLoader, this.textureLoader);
+        region.setTileMinPlanes();
+
+        region.applyLighting(-50, -10, -50);
+
         let npcSpawns: NpcSpawn[] = [];
-        if (loadNpcs && this.cacheInfo.game === "oldschool") {
+        if (config.loadNpcs && this.cacheInfo.game === "oldschool") {
             npcSpawns = this.npcSpawns.filter((npc) => {
                 const npcRegionX = (npc.x / 64) | 0;
                 const npcRegionY = (npc.y / 64) | 0;
                 return (
                     regionX === npcRegionX &&
                     regionY === npcRegionY &&
-                    npc.p <= maxPlane
+                    npc.p <= config.maxPlane
                 );
             });
         }
 
         let itemSpawns: ItemSpawn[] = [];
-        if (loadItems) {
+        if (config.loadItems) {
             itemSpawns = this.itemSpawns.filter((item) => {
                 const itemRegionX = (item.x / 64) | 0;
                 const itemRegionY = (item.y / 64) | 0;
                 return (
                     regionX === itemRegionX &&
                     regionY === itemRegionY &&
-                    item.plane <= maxPlane
+                    item.plane <= config.maxPlane
                 );
             });
         }
 
-        console.time("read landscape data");
-        const landscapeData = this.regionLoader.getLandscapeData(
-            regionX,
-            regionY
-        );
-        console.timeEnd("read landscape data");
-
-        if (landscapeData) {
-            console.time("load landscape");
-            region.decodeLandscape(
-                this.regionLoader,
-                this.objectModelLoader,
-                landscapeData
-            );
-            console.timeEnd("load landscape");
-        }
-
-        // Create scene tile models from map data
-        region.addTileModels(this.regionLoader, this.textureLoader);
-        region.setTileMinPlanes();
-
         const renderBuf = new RenderBuffer(100000);
 
-        const terrainVertexCount = addTerrain(
+        const terrainVertexCount = renderBuf.addTerrain(
             this.textureLoader,
-            renderBuf,
             region,
-            maxPlane
+            config.maxPlane
         );
 
-        let animatedObjectGroups: AnimatedObjectGroup[] = [];
-        let npcSpawnGroups: NpcSpawnGroup[] = [];
-        if (landscapeData) {
-            console.time("light scene");
-            region.applyLighting(this.regionLoader, -50, -10, -50);
-            console.timeEnd("light scene");
+        const occlusionMap = createOcclusionMap(region);
 
-            const occlusionMap = createOcclusionMap(
-                region.tileRenderFlags,
-                region.tileUnderlays,
-                region.tileOverlays
-            );
+        let { objectModels: sceneModels, animatedSceneObjects } =
+            getSceneObjects(region, occlusionMap, config.maxPlane);
 
-            const { objectModels: sceneModels, animatedSceneObjects } =
-                getSceneObjects(region, occlusionMap, maxPlane);
+        sceneModels.push(
+            ...createItemModelArray(this.itemModelLoader, region, itemSpawns)
+        );
 
-            sceneModels.push(
-                ...createItemModelArray(
-                    this.itemModelLoader,
-                    this.regionLoader,
-                    region,
-                    itemSpawns
-                )
-            );
+        const groupedModels = groupModels(this.modelHashBuf, sceneModels);
 
-            const groupedModels = groupModels(this.modelHashBuf, sceneModels);
+        const animatedObjectGroups = createAnimatedObjectGroups(
+            this.regionLoader,
+            this.objectModelLoader,
+            this.textureLoader,
+            renderBuf,
+            animatedSceneObjects
+        );
+        const npcSpawnGroups = createNpcSpawnGroups(
+            this.npcModelLoader,
+            this.textureLoader,
+            renderBuf,
+            npcSpawns
+        );
 
-            animatedObjectGroups = createAnimatedObjectGroups(
-                this.regionLoader,
-                this.objectModelLoader,
-                this.textureLoader,
-                renderBuf,
-                animatedSceneObjects
-            );
-            npcSpawnGroups = createNpcSpawnGroups(
-                this.npcModelLoader,
-                this.textureLoader,
-                renderBuf,
-                npcSpawns
-            );
+        const modelGroups = createModelGroups(
+            this.textureLoader,
+            groupedModels,
+            config.minimizeDrawCalls
+        );
 
-            const modelGroups = createModelGroups(
-                this.textureLoader,
-                groupedModels,
-                minimizeDrawCalls
-            );
+        // alpha last, planes low to high
+        modelGroups.sort(
+            (a, b) =>
+                (a.alpha ? 1 : 0) - (b.alpha ? 1 : 0) ||
+                (a.merge ? 0 : 1) - (b.merge ? 0 : 1) ||
+                a.plane - b.plane
+        );
 
-            // alpha last, planes low to high
-            modelGroups.sort(
-                (a, b) =>
-                    (a.alpha ? 1 : 0) - (b.alpha ? 1 : 0) ||
-                    (a.merge ? 0 : 1) - (b.merge ? 0 : 1) ||
-                    a.plane - b.plane
-            );
-
-            for (const modelGroup of modelGroups) {
-                addModelGroup(this.textureLoader, renderBuf, modelGroup);
-            }
+        for (const modelGroup of modelGroups) {
+            addModelGroup(this.textureLoader, renderBuf, modelGroup);
         }
 
         const triangles = renderBuf.drawCommands
@@ -292,11 +252,7 @@ export class ChunkDataLoader {
             drawCommandsInteractAlpha
         );
 
-        const heightMapTextureData = loadHeightMapTextureData(
-            this.regionLoader,
-            regionX,
-            regionY
-        );
+        const heightMapTextureData = loadHeightMapTextureData(region);
 
         const uniqTotalTriangles = drawCommands
             .map((cmd) => cmd.elements / 3)
@@ -373,41 +329,56 @@ export class ChunkDataLoader {
 
             npcs,
 
+            sceneBorderRadius: region.borderRadius,
             tileRenderFlags: region.tileRenderFlags,
-            collisionFlags: region.collisionMaps.map((map) => map.flags),
+            collisionDatas: region.collisionMaps,
 
-            loadNpcs,
-            loadItems,
-            maxPlane,
+            loadNpcs: config.loadNpcs,
+            loadItems: config.loadItems,
+            maxPlane: config.maxPlane,
             cacheInfo: this.cacheInfo,
         };
     }
 
-    private async loadMinimapBlob(region: Scene, plane: number): Promise<Blob> {
-        console.time("create minimap " + region.regionX + "," + region.regionY);
+    async loadMinimapBlob(region: Scene, plane: number): Promise<Blob> {
         // For bridges
-        for (let tileX = 0; tileX < Scene.MAP_SIZE; tileX++) {
-            for (let tileY = 0; tileY < Scene.MAP_SIZE; tileY++) {
+        for (let tileX = 0; tileX < region.sizeX; tileX++) {
+            for (let tileY = 0; tileY < region.sizeY; tileY++) {
                 if ((region.tileRenderFlags[1][tileX][tileY] & 0x2) === 2) {
                     region.setLinkBelow(tileX, tileY);
                 }
             }
         }
+
+        const regionPixelWidth = region.sizeX * 4;
+        const regionPixelHeight = region.sizeY * 4;
         const minimapPixels = this.mapImageLoader.createMinimapPixels(
             region,
             plane
         );
+
         // convert to rgba
         const minimapView = new DataView(minimapPixels.buffer);
         for (let i = 0; i < minimapPixels.length; i++) {
             minimapView.setUint32(i * 4, (minimapPixels[i] << 8) | 0xff);
         }
-        const minimapBlob = await pixelsToBlob(minimapPixels);
-        console.timeEnd(
-            "create minimap " + region.regionX + "," + region.regionY
+
+        const canvas = new OffscreenCanvas(256, 256);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+            throw new Error("Could not get canvas context");
+        }
+
+        const imageData = new ImageData(regionPixelWidth, regionPixelHeight);
+        imageData.data.set(new Uint8ClampedArray(minimapPixels.buffer));
+
+        ctx.putImageData(
+            imageData,
+            -region.borderRadius * 4,
+            -region.borderRadius * 4
         );
 
-        return minimapBlob;
+        return canvas.convertToBlob();
     }
 
     async loadMinimap(
@@ -415,27 +386,13 @@ export class ChunkDataLoader {
         regionY: number,
         plane: number
     ): Promise<Blob | undefined> {
-        const region = this.regionLoader.getRegion(regionX, regionY);
+        const region = this.regionLoader.getRegion(
+            regionX,
+            regionY,
+            LandscapeLoadMode.NO_MODELS
+        );
         if (!region) {
             return undefined;
-        }
-
-        console.time("read landscape data");
-        const landscapeData = this.regionLoader.getLandscapeData(
-            regionX,
-            regionY
-        );
-        console.timeEnd("read landscape data");
-
-        if (landscapeData) {
-            console.time("load landscape");
-            region.decodeLandscape(
-                this.regionLoader,
-                this.objectModelLoader,
-                landscapeData,
-                LandscapeLoadMode.NO_MODELS
-            );
-            console.timeEnd("load landscape");
         }
 
         // Create scene tile models from map data
@@ -444,19 +401,4 @@ export class ChunkDataLoader {
 
         return this.loadMinimapBlob(region, plane);
     }
-}
-
-async function pixelsToBlob(pixels: Int32Array): Promise<Blob> {
-    const canvas = new OffscreenCanvas(256, 256);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-        throw new Error("Could not get canvas context");
-    }
-
-    const imgd = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    imgd.data.set(new Uint8ClampedArray(pixels.buffer));
-
-    ctx.putImageData(imgd, 0, 0);
-
-    return canvas.convertToBlob();
 }

@@ -100,6 +100,7 @@ async function init0(
     const modelLoader = new IndexModelLoader(modelIndex);
 
     const objectModelLoader = new ObjectModelLoader(
+        objectLoader,
         modelLoader,
         animationLoader,
         frameMapLoader
@@ -116,12 +117,12 @@ async function init0(
     const regionLoader = new RegionLoader(
         cache.info,
         mapIndex,
-        varpManager,
         underlayLoader,
         overlayLoader,
         objectLoader,
         objectModelLoader,
-        cache.xteas
+        cache.xteas,
+        varpManager
     );
 
     // console.time('load textures');
@@ -141,6 +142,7 @@ async function init0(
     }
 
     const mapImageLoader = new MapImageLoader(objectLoader, mapScenes);
+
     // console.timeEnd('load textures');
     // console.time('load textures sprites');
     // for (const texture of textureProvider.definitions.values()) {
@@ -170,10 +172,6 @@ async function init0(
 
 function clearCache(chunkDataLoader: ChunkDataLoader) {
     chunkDataLoader.regionLoader.regions.clear();
-    chunkDataLoader.regionLoader.blendedUnderlayColors.clear();
-    chunkDataLoader.regionLoader.objectLightOcclusionMap.clear();
-    chunkDataLoader.regionLoader.objectLightOcclusionMapLoaded.clear();
-    chunkDataLoader.regionLoader.lightLevels.clear();
 
     chunkDataLoader.objectModelLoader.modelDataCache.clear();
     chunkDataLoader.objectModelLoader.modelCache.clear();
@@ -205,14 +203,12 @@ expose({
         await hasherPromise;
 
         console.time(`load chunk ${regionX}_${regionY}`);
-        const chunkData = await chunkDataLoader.load(
-            regionX,
-            regionY,
-            minimizeDrawCalls,
-            loadNpcs,
+        const chunkData = await chunkDataLoader.load(regionX, regionY, {
             loadItems,
-            maxPlane
-        );
+            loadNpcs,
+            maxPlane,
+            minimizeDrawCalls,
+        });
         console.timeEnd(`load chunk ${regionX}_${regionY}`);
         console.log(
             "model caches: ",
@@ -231,6 +227,7 @@ expose({
                 chunkData.modelTextureDataInteract.buffer,
                 chunkData.modelTextureDataInteractAlpha.buffer,
                 chunkData.heightMapTextureData.buffer,
+                ...chunkData.collisionDatas.map((c) => c.flags.buffer),
             ];
             return Transfer(chunkData, transferables);
         }
@@ -249,11 +246,13 @@ expose({
         }
         const chunkDataLoader = await chunkDataLoaderPromise;
 
+        console.time("create minimap " + regionX + "," + regionY);
         const minimapBlob = await chunkDataLoader.loadMinimap(
             regionX,
             regionY,
             plane
         );
+        console.timeEnd("create minimap " + regionX + "," + regionY);
 
         clearCache(chunkDataLoader);
 

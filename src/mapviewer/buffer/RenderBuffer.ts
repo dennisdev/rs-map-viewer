@@ -56,91 +56,228 @@ export class RenderBuffer {
     indexByteOffset(): number {
         return this.indices.length * 4;
     }
-}
 
-export function addTerrainTile(
-    textureLoader: TextureLoader,
-    renderBuf: RenderBuffer,
-    tile: SceneTile
-) {
-    const tileModel = tile.tileModel;
-    if (!tileModel) {
-        return;
-    }
-    for (const face of tileModel.faces) {
-        for (const vertex of face.vertices) {
-            const textureIndex = textureLoader.getTextureIndex(
-                vertex.textureId
-            );
+    addTerrainTile(
+        textureLoader: TextureLoader,
+        tile: SceneTile,
+        offsetX: number,
+        offsetY: number
+    ): void {
+        const tileModel = tile.tileModel;
+        if (!tileModel) {
+            return;
+        }
+        for (const face of tileModel.faces) {
+            for (const vertex of face.vertices) {
+                const textureIndex = textureLoader.getTextureIndex(
+                    vertex.textureId
+                );
 
-            const index = renderBuf.vertexBuf.addVertex(
-                vertex.x,
-                0,
-                vertex.z,
-                vertex.hsl,
-                0xff,
-                vertex.u,
-                vertex.v,
-                textureIndex,
-                0
-            );
+                const index = this.vertexBuf.addVertex(
+                    vertex.x + offsetX,
+                    0,
+                    vertex.z + offsetY,
+                    vertex.hsl,
+                    0xff,
+                    vertex.u,
+                    vertex.v,
+                    textureIndex,
+                    0
+                );
 
-            renderBuf.indices.push(index);
+                this.indices.push(index);
+            }
         }
     }
-}
 
-export function addTerrain(
-    textureLoader: TextureLoader,
-    renderBuf: RenderBuffer,
-    region: Scene,
-    maxPlane: number
-): number {
-    console.time("terrain");
+    addTerrain(
+        textureLoader: TextureLoader,
+        region: Scene,
+        maxPlane: number
+    ): number {
+        console.time("terrain");
 
-    const terrainStartVertexCount = renderBuf.vertexCount();
+        const startX = region.borderRadius;
+        const startY = region.borderRadius;
+        const endX = region.borderRadius + Scene.MAP_SIZE;
+        const endY = region.borderRadius + Scene.MAP_SIZE;
 
-    for (let plane = 0; plane < region.planes; plane++) {
-        const indexByteOffset = renderBuf.indexByteOffset();
-        for (let x = 0; x < region.sizeX; x++) {
-            for (let y = 0; y < region.sizeY; y++) {
-                const tile = region.tiles[plane][x][y];
-                if (!tile || tile.minPlane > maxPlane) {
-                    continue;
+        const sceneOffset = -region.borderRadius * 128;
+
+        const terrainStartVertexCount = this.vertexCount();
+        for (let plane = 0; plane < region.planes; plane++) {
+            const indexByteOffset = this.indexByteOffset();
+            for (let x = startX; x < endX; x++) {
+                for (let y = startY; y < endY; y++) {
+                    const tile = region.tiles[plane][x][y];
+                    if (!tile || tile.minPlane > maxPlane) {
+                        continue;
+                    }
+                    this.addTerrainTile(
+                        textureLoader,
+                        tile,
+                        sceneOffset,
+                        sceneOffset
+                    );
                 }
-                addTerrainTile(textureLoader, renderBuf, tile);
+            }
+
+            const planeVertexCount =
+                (this.indexByteOffset() - indexByteOffset) / 4;
+
+            if (planeVertexCount > 0) {
+                const command: DrawCommand = {
+                    offset: indexByteOffset,
+                    elements: planeVertexCount,
+                    datas: [
+                        {
+                            sceneX: 0,
+                            sceneY: 0,
+                            heightOffset: 0,
+                            plane,
+                            contourGround: ContourGroundType.VERTEX,
+                            priority: 0,
+                            interactType: InteractType.NONE,
+                            interactId: 0xffff,
+                        },
+                    ],
+                };
+
+                this.drawCommands.push(command);
+                this.drawCommandsInteract.push(command);
             }
         }
 
-        const planeVertexCount =
-            (renderBuf.indexByteOffset() - indexByteOffset) / 4;
+        console.timeEnd("terrain");
 
-        if (planeVertexCount > 0) {
-            const command: DrawCommand = {
-                offset: indexByteOffset,
-                elements: planeVertexCount,
-                datas: [
-                    {
-                        sceneX: 0,
-                        sceneY: 0,
-                        heightOffset: 0,
-                        plane,
-                        contourGround: ContourGroundType.VERTEX,
-                        priority: 0,
-                        interactType: InteractType.NONE,
-                        interactId: 0xffff,
-                    },
-                ],
-            };
-
-            renderBuf.drawCommands.push(command);
-            renderBuf.drawCommandsInteract.push(command);
-        }
+        return this.vertexCount() - terrainStartVertexCount;
     }
 
-    console.timeEnd("terrain");
+    addModel(
+        model: Model,
+        faces: ModelFace[],
+        offset?: vec3,
+        reuseVertices: boolean = true
+    ): void {
+        const verticesX = model.verticesX;
+        let verticesY = model.verticesY;
+        const verticesZ = model.verticesZ;
 
-    return renderBuf.vertexCount() - terrainStartVertexCount;
+        let sceneX = 0;
+        let sceneY = 0;
+        let sceneHeight = 0;
+        if (offset) {
+            sceneX = offset[0];
+            sceneHeight = offset[1];
+            sceneY = offset[2];
+            if (model.contourVerticesY) {
+                verticesY = model.contourVerticesY;
+            }
+        }
+
+        const facesA = model.indices1;
+        const facesB = model.indices2;
+        const facesC = model.indices3;
+
+        const modelTexCoords = computeTextureCoords(model);
+
+        for (const face of faces) {
+            const f = face.index;
+            const faceAlpha = face.alpha;
+            const priority = face.priority;
+            const textureId = face.textureId;
+
+            let hslA = model.faceColors1[f];
+            let hslB = model.faceColors2[f];
+            let hslC = model.faceColors3[f];
+
+            if (hslC === -1) {
+                hslC = hslB = hslA;
+            }
+
+            let u0: number = 0;
+            let v0: number = 0;
+            let u1: number = 0;
+            let v1: number = 0;
+            let u2: number = 0;
+            let v2: number = 0;
+
+            if (modelTexCoords) {
+                const texCoordIdx = f * 6;
+                u0 = modelTexCoords[texCoordIdx];
+                v0 = modelTexCoords[texCoordIdx + 1];
+                u1 = modelTexCoords[texCoordIdx + 2];
+                v1 = modelTexCoords[texCoordIdx + 3];
+                u2 = modelTexCoords[texCoordIdx + 4];
+                v2 = modelTexCoords[texCoordIdx + 5];
+
+                // emulate wrapS: PicoGL.CLAMP_TO_EDGE
+                u0 = clamp(u0, 0.00390625 * 3, 1 - 0.00390625 * 3);
+                u1 = clamp(u1, 0.00390625 * 3, 1 - 0.00390625 * 3);
+                u2 = clamp(u2, 0.00390625 * 3, 1 - 0.00390625 * 3);
+            }
+
+            // let rgbA = HSL_RGB_MAP[hslA];
+            // let rgbB = HSL_RGB_MAP[hslB];
+            // let rgbC = HSL_RGB_MAP[hslC];
+
+            // const SCALE = 128;
+            const fa = facesA[f];
+            const fb = facesB[f];
+            const fc = facesC[f];
+
+            const vxa = sceneX + verticesX[fa];
+            const vxb = sceneX + verticesX[fb];
+            const vxc = sceneX + verticesX[fc];
+
+            const vya = sceneHeight + verticesY[fa];
+            const vyb = sceneHeight + verticesY[fb];
+            const vyc = sceneHeight + verticesY[fc];
+
+            const vza = sceneY + verticesZ[fa];
+            const vzb = sceneY + verticesZ[fb];
+            const vzc = sceneY + verticesZ[fc];
+
+            const index0 = this.vertexBuf.addVertex(
+                vxa,
+                vya,
+                vza,
+                hslA,
+                faceAlpha,
+                u0,
+                v0,
+                textureId,
+                priority + 1,
+                reuseVertices
+            );
+            const index1 = this.vertexBuf.addVertex(
+                vxb,
+                vyb,
+                vzb,
+                hslB,
+                faceAlpha,
+                u1,
+                v1,
+                textureId,
+                priority + 1,
+                reuseVertices
+            );
+            const index2 = this.vertexBuf.addVertex(
+                vxc,
+                vyc,
+                vzc,
+                hslC,
+                faceAlpha,
+                u2,
+                v2,
+                textureId,
+                priority + 1,
+                reuseVertices
+            );
+
+            this.indices.push(index0, index1, index2);
+        }
+    }
 }
 
 export type ModelFace = {
@@ -222,133 +359,6 @@ export function getModelFaces(
     return faces;
 }
 
-export function addModel(
-    renderBuf: RenderBuffer,
-    model: Model,
-    faces: ModelFace[],
-    offset?: vec3,
-    reuseVertices: boolean = true
-) {
-    const verticesX = model.verticesX;
-    let verticesY = model.verticesY;
-    const verticesZ = model.verticesZ;
-
-    let sceneX = 0;
-    let sceneY = 0;
-    let sceneHeight = 0;
-    if (offset) {
-        sceneX = offset[0];
-        sceneHeight = offset[1];
-        sceneY = offset[2];
-        if (model.contourVerticesY) {
-            verticesY = model.contourVerticesY;
-        }
-    }
-
-    const facesA = model.indices1;
-    const facesB = model.indices2;
-    const facesC = model.indices3;
-
-    const modelTexCoords = computeTextureCoords(model);
-
-    for (const face of faces) {
-        const f = face.index;
-        const faceAlpha = face.alpha;
-        const priority = face.priority;
-        const textureId = face.textureId;
-
-        let hslA = model.faceColors1[f];
-        let hslB = model.faceColors2[f];
-        let hslC = model.faceColors3[f];
-
-        if (hslC === -1) {
-            hslC = hslB = hslA;
-        }
-
-        let u0: number = 0;
-        let v0: number = 0;
-        let u1: number = 0;
-        let v1: number = 0;
-        let u2: number = 0;
-        let v2: number = 0;
-
-        if (modelTexCoords) {
-            const texCoordIdx = f * 6;
-            u0 = modelTexCoords[texCoordIdx];
-            v0 = modelTexCoords[texCoordIdx + 1];
-            u1 = modelTexCoords[texCoordIdx + 2];
-            v1 = modelTexCoords[texCoordIdx + 3];
-            u2 = modelTexCoords[texCoordIdx + 4];
-            v2 = modelTexCoords[texCoordIdx + 5];
-
-            // emulate wrapS: PicoGL.CLAMP_TO_EDGE
-            u0 = clamp(u0, 0.00390625 * 3, 1 - 0.00390625 * 3);
-            u1 = clamp(u1, 0.00390625 * 3, 1 - 0.00390625 * 3);
-            u2 = clamp(u2, 0.00390625 * 3, 1 - 0.00390625 * 3);
-        }
-
-        // let rgbA = HSL_RGB_MAP[hslA];
-        // let rgbB = HSL_RGB_MAP[hslB];
-        // let rgbC = HSL_RGB_MAP[hslC];
-
-        // const SCALE = 128;
-        const fa = facesA[f];
-        const fb = facesB[f];
-        const fc = facesC[f];
-
-        const vxa = sceneX + verticesX[fa];
-        const vxb = sceneX + verticesX[fb];
-        const vxc = sceneX + verticesX[fc];
-
-        const vya = sceneHeight + verticesY[fa];
-        const vyb = sceneHeight + verticesY[fb];
-        const vyc = sceneHeight + verticesY[fc];
-
-        const vza = sceneY + verticesZ[fa];
-        const vzb = sceneY + verticesZ[fb];
-        const vzc = sceneY + verticesZ[fc];
-
-        const index0 = renderBuf.vertexBuf.addVertex(
-            vxa,
-            vya,
-            vza,
-            hslA,
-            faceAlpha,
-            u0,
-            v0,
-            textureId,
-            priority + 1,
-            reuseVertices
-        );
-        const index1 = renderBuf.vertexBuf.addVertex(
-            vxb,
-            vyb,
-            vzb,
-            hslB,
-            faceAlpha,
-            u1,
-            v1,
-            textureId,
-            priority + 1,
-            reuseVertices
-        );
-        const index2 = renderBuf.vertexBuf.addVertex(
-            vxc,
-            vyc,
-            vzc,
-            hslC,
-            faceAlpha,
-            u2,
-            v2,
-            textureId,
-            priority + 1,
-            reuseVertices
-        );
-
-        renderBuf.indices.push(index0, index1, index2);
-    }
-}
-
 export function addModelAnimFrame(
     textureLoader: TextureLoader,
     renderBuf: RenderBuffer,
@@ -367,7 +377,7 @@ export function addModelAnimFrame(
 
     const indexByteOffset = renderBuf.indexByteOffset();
     if (faces.length > 0) {
-        addModel(renderBuf, model, faces);
+        renderBuf.addModel(model, faces);
     }
     const modelVertexCount =
         (renderBuf.indexByteOffset() - indexByteOffset) / 4;

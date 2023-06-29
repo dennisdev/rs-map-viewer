@@ -1,16 +1,16 @@
 import { Scene } from "../../client/scene/Scene";
 
-export function createOcclusionMap(
-    renderFlags: Uint8Array[][],
-    underlayIds: Uint16Array[][],
-    overlayIds: Int16Array[][]
-): OcclusionMap {
+export function createOcclusionMap(scene: Scene): OcclusionMap {
     const occlusionMap = new OcclusionMap();
 
-    for (let x = 0; x < Scene.MAP_SIZE; x++) {
-        for (let y = 0; y < Scene.MAP_SIZE; y++) {
+    const renderFlags = scene.tileRenderFlags;
+    const underlayIds = scene.tileUnderlays;
+    const overlayIds = scene.tileOverlays;
+
+    for (let x = 0; x < scene.sizeX; x++) {
+        for (let y = 0; y < scene.sizeY; y++) {
             let occluded = false;
-            for (let plane = Scene.MAX_PLANE - 1; plane >= 0; plane--) {
+            for (let plane = scene.planes - 1; plane >= 0; plane--) {
                 occlusionMap.setOccluded(plane, x, y, occluded);
                 const underlayId = underlayIds[plane][x][y];
                 const overlayId = overlayIds[plane][x][y];

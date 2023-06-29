@@ -4,7 +4,6 @@ import {
     ContourGroundType,
     DrawData,
     RenderBuffer,
-    addModel,
     getModelFaces,
     isAlphaModelFace,
 } from "../buffer/RenderBuffer";
@@ -177,7 +176,7 @@ export function addModelGroup(
             if (sceneModel.heightOffset !== 0) {
                 offset[1] = -sceneModel.heightOffset;
             }
-            addModel(renderBuf, model, faces, offset);
+            renderBuf.addModel(model, faces, offset);
 
             const modelVertexCount =
                 (renderBuf.indexByteOffset() - modelIndexByteOffset) / 4;
@@ -207,7 +206,7 @@ export function addModelGroup(
                 ],
             });
         } else {
-            addModel(renderBuf, model, faces);
+            renderBuf.addModel(model, faces);
             break;
         }
     }

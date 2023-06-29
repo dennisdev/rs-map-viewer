@@ -1,4 +1,3 @@
-import { RegionLoader } from "../../client/RegionLoader";
 import { ItemModelLoader } from "../../client/fs/loader/model/ItemModelLoader";
 import { Model } from "../../client/model/Model";
 import { Scene } from "../../client/scene/Scene";
@@ -21,25 +20,24 @@ export async function fetchItemSpawns(): Promise<ItemSpawn[]> {
 
 export function createItemModelArray(
     itemModelLoader: ItemModelLoader,
-    regionLoader: RegionLoader,
     region: Scene,
     spawns: ItemSpawn[]
 ): SceneModel[] {
     return spawns
-        .map((spawn) =>
-            createItemModel(itemModelLoader, regionLoader, region, spawn)
-        )
+        .map((spawn) => createItemModel(itemModelLoader, region, spawn))
         .filter((model): model is SceneModel => !!model);
 }
 
 export function createItemModel(
     itemModelLoader: ItemModelLoader,
-    regionLoader: RegionLoader,
     region: Scene,
     spawn: ItemSpawn
 ): SceneModel | undefined {
-    const tileX = spawn.x % 64;
-    const tileY = spawn.y % 64;
+    const localX = spawn.x % 64;
+    const localY = spawn.y % 64;
+
+    const tileX = localX + region.borderRadius;
+    const tileY = localY + region.borderRadius;
 
     const model = itemModelLoader.getModel(spawn.id, spawn.count);
     if (!model) {
@@ -53,14 +51,7 @@ export function createItemModel(
         renderPlane = spawn.plane + 1;
     }
 
-    const baseX = region.regionX * 64;
-    const baseY = region.regionY * 64;
-
-    const sceneHeight = regionLoader.getHeightInterp(
-        baseX + tileX + 0.5,
-        baseY + tileY + 0.5,
-        renderPlane
-    );
+    const sceneHeight = region.getCenterHeight(renderPlane, tileX, tileY);
 
     let heightOffset = 0;
     const tile = region.tiles[renderPlane][tileX][tileY];
@@ -90,8 +81,8 @@ export function createItemModel(
         model,
         lowDetail: false,
         sceneHeight,
-        sceneX: tileX * 128 + 64,
-        sceneY: tileY * 128 + 64,
+        sceneX: localX * 128 + 64,
+        sceneY: localY * 128 + 64,
         heightOffset,
         plane: renderPlane,
         contourGround,

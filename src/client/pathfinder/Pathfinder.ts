@@ -51,46 +51,13 @@ export class Pathfinder {
         this.bufWriterIndex = 0;
     }
 
-    // setCollisionFlags(srcX: number, srcY: number, collisionMap: CollisionMap) {
-    //     const graphBaseX = srcX - (this.graphSize / 2);
-    //     const graphBaseY = srcY - (this.graphSize / 2);
-
-    //     const srcRegionX = srcX >> 6;
-    //     const srcRegionY = srcY >> 6;
-
-    //     const baseX = srcRegionX * 64;
-    //     const baseY = srcRegionY * 64;
-
-    //     for (let transmitRegionX = graphBaseX >> 6; transmitRegionX <= (graphBaseX + (this.graphSize - 1)) >> 6; transmitRegionX++) {
-    //         for (let transmitRegionY = graphBaseY >> 6; transmitRegionY <= (graphBaseY + (this.graphSize - 1)) >> 6; transmitRegionY++) {
-    //             const startX = Math.max(graphBaseX, transmitRegionX << 6);
-    //             const startY = Math.max(graphBaseY, transmitRegionY << 6);
-    //             const endX = Math.min(graphBaseX + this.graphSize, (transmitRegionX << 6) + 64);
-    //             const endY = Math.min(graphBaseY + this.graphSize, (transmitRegionY << 6) + 64);
-    //             if (srcRegionX !== transmitRegionX || srcRegionY !== transmitRegionY) {
-    //                 for (let fillX = startX; fillX < endX; fillX++) {
-    //                     for (let fillY = startY; fillY < endY; fillY++) {
-    //                         this.flags[fillX - graphBaseX][fillY - graphBaseY] = -1;
-    //                     }
-    //                 }
-    //             } else {
-    //                 // console.log('hmm', startX, startY, endX, endY);
-    //                 for (let fillX = startX; fillX < endX; fillX++) {
-    //                     for (let fillY = startY; fillY < endY; fillY++) {
-    //                         this.flags[fillX - graphBaseX][fillY - graphBaseY] = collisionMap.getFlag(fillX & 0x3F, fillY & 0x3F);
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     setCollisionFlags(
         srcX: number,
         srcY: number,
         centerX: number,
         centerY: number,
         radius: number,
+        borderRadius: number,
         collisionMap: CollisionMap
     ) {
         const graphBaseX = srcX - this.graphSize / 2;
@@ -111,18 +78,37 @@ export class Pathfinder {
                 const y = fillY & 0x3f;
                 // invert floor flags if spawned on nomove
                 if (
-                    collisionMap.hasFlag(centerX, centerY, CollisionFlag.FLOOR)
+                    collisionMap.hasFlag(
+                        centerX + borderRadius,
+                        centerY + borderRadius,
+                        CollisionFlag.FLOOR
+                    )
                 ) {
-                    if (collisionMap.hasFlag(x, y, CollisionFlag.FLOOR)) {
+                    if (
+                        collisionMap.hasFlag(
+                            x + borderRadius,
+                            y + borderRadius,
+                            CollisionFlag.FLOOR
+                        )
+                    ) {
                         this.flags[fillX - graphBaseX][fillY - graphBaseY] =
-                            collisionMap.getFlag(x, y) & ~CollisionFlag.FLOOR;
+                            collisionMap.getFlag(
+                                x + borderRadius,
+                                y + borderRadius
+                            ) & ~CollisionFlag.FLOOR;
                     } else {
                         this.flags[fillX - graphBaseX][fillY - graphBaseY] =
-                            collisionMap.getFlag(x, y) | CollisionFlag.FLOOR;
+                            collisionMap.getFlag(
+                                x + borderRadius,
+                                y + borderRadius
+                            ) | CollisionFlag.FLOOR;
                     }
                 } else {
                     this.flags[fillX - graphBaseX][fillY - graphBaseY] =
-                        collisionMap.getFlag(x, y);
+                        collisionMap.getFlag(
+                            x + borderRadius,
+                            y + borderRadius
+                        );
                 }
             }
         }

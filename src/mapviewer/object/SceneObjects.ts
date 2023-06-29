@@ -2,7 +2,7 @@ import { ObjectDefinition } from "../../client/fs/definition/ObjectDefinition";
 import { Model } from "../../client/model/Model";
 import { DynamicObject } from "../../client/scene/DynamicObject";
 import { Scene } from "../../client/scene/Scene";
-import { GameObject, SceneObject } from "../../client/scene/SceneObject";
+import { SceneObject } from "../../client/scene/SceneObject";
 import { ContourGroundType } from "../buffer/RenderBuffer";
 import { InteractType } from "../chunk/InteractType";
 import { OcclusionMap } from "../chunk/OcclusionMap";
@@ -125,14 +125,18 @@ export function getSceneObjects(
     maxPlane: number
 ): SceneObjects {
     const objectModels: SceneModel[] = [];
-
     const animatedObjects: AnimatedSceneObject[] = [];
 
-    const gameObjects: Set<GameObject> = new Set();
+    const startX = scene.borderRadius;
+    const startY = scene.borderRadius;
+    const endX = scene.borderRadius + Scene.MAP_SIZE;
+    const endY = scene.borderRadius + Scene.MAP_SIZE;
+
+    const sceneOffset = -scene.borderRadius * 128;
 
     for (let plane = 0; plane < scene.planes; plane++) {
-        for (let tileX = 0; tileX < scene.sizeX; tileX++) {
-            for (let tileY = 0; tileY < scene.sizeY; tileY++) {
+        for (let tileX = startX; tileX < endX; tileX++) {
+            for (let tileY = startY; tileY < endY; tileY++) {
                 const tile = scene.tiles[plane][tileX][tileY];
                 if (!tile || tile.minPlane > maxPlane) {
                     continue;
@@ -144,8 +148,8 @@ export function getSceneObjects(
                             createObjectModel(
                                 tile.floorDecoration.renderable,
                                 tile.floorDecoration,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 tileX,
                                 tileY,
                                 plane,
@@ -160,8 +164,8 @@ export function getSceneObjects(
                             createAnimatedSceneObject(
                                 tile.floorDecoration.renderable,
                                 tile.floorDecoration,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 plane,
                                 1
                             )
@@ -175,8 +179,8 @@ export function getSceneObjects(
                             createObjectModel(
                                 tile.wallObject.renderable0,
                                 tile.wallObject,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 tileX,
                                 tileY,
                                 plane,
@@ -191,8 +195,8 @@ export function getSceneObjects(
                             createAnimatedSceneObject(
                                 tile.wallObject.renderable0,
                                 tile.wallObject,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 plane,
                                 1
                             )
@@ -203,8 +207,8 @@ export function getSceneObjects(
                             createObjectModel(
                                 tile.wallObject.renderable1,
                                 tile.wallObject,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 tileX,
                                 tileY,
                                 plane,
@@ -219,8 +223,8 @@ export function getSceneObjects(
                             createAnimatedSceneObject(
                                 tile.wallObject.renderable1,
                                 tile.wallObject,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 plane,
                                 1
                             )
@@ -236,8 +240,8 @@ export function getSceneObjects(
                             createObjectModel(
                                 tile.wallDecoration.renderable0,
                                 tile.wallDecoration,
-                                offsetX,
-                                offsetY,
+                                offsetX + sceneOffset,
+                                offsetY + sceneOffset,
                                 tileX,
                                 tileY,
                                 plane,
@@ -252,8 +256,8 @@ export function getSceneObjects(
                             createAnimatedSceneObject(
                                 tile.wallDecoration.renderable0,
                                 tile.wallDecoration,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 plane,
                                 10
                             )
@@ -264,8 +268,8 @@ export function getSceneObjects(
                             createObjectModel(
                                 tile.wallDecoration.renderable1,
                                 tile.wallDecoration,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 tileX,
                                 tileY,
                                 plane,
@@ -280,8 +284,8 @@ export function getSceneObjects(
                             createAnimatedSceneObject(
                                 tile.wallDecoration.renderable1,
                                 tile.wallDecoration,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 plane,
                                 10
                             )
@@ -292,7 +296,10 @@ export function getSceneObjects(
                 for (const gameObject of tile.gameObjects) {
                     const renderable = gameObject.renderable;
 
-                    if (gameObjects.has(gameObject)) {
+                    if (
+                        gameObject.startX !== tileX ||
+                        gameObject.startY !== tileY
+                    ) {
                         continue;
                     }
 
@@ -301,8 +308,8 @@ export function getSceneObjects(
                             createObjectModel(
                                 renderable,
                                 gameObject,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 tileX,
                                 tileY,
                                 plane,
@@ -315,14 +322,13 @@ export function getSceneObjects(
                             createAnimatedSceneObject(
                                 renderable,
                                 gameObject,
-                                0,
-                                0,
+                                sceneOffset,
+                                sceneOffset,
                                 plane,
                                 1
                             )
                         );
                     }
-                    gameObjects.add(gameObject);
                 }
             }
         }

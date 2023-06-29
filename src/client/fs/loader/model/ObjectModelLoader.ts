@@ -6,6 +6,7 @@ import { ModelLoader } from "./ModelLoader";
 import { Model } from "../../../model/Model";
 import { ModelData } from "../../../model/ModelData";
 import { ObjectType } from "../../../scene/ObjectType";
+import { ObjectLoader } from "../ObjectLoader";
 
 export type ContourGroundInfo = {
     heightMap: Int32Array[];
@@ -17,21 +18,22 @@ export type ContourGroundInfo = {
 export class ObjectModelLoader {
     static mergeObjectModelsCache: ModelData[] = new Array(4);
 
+    objectLoader: ObjectLoader;
     modelLoader: ModelLoader;
 
     animationLoader: AnimationLoader;
-
     animationFrameMapLoader: AnimationFrameMapLoader;
 
     modelDataCache: Map<number, ModelData>;
-
     modelCache: Map<number, Model | ModelData>;
 
     constructor(
+        objectLoader: ObjectLoader,
         modelLoader: ModelLoader,
         animationLoader: AnimationLoader,
         animationFrameMapLoader: AnimationFrameMapLoader
     ) {
+        this.objectLoader = objectLoader;
         this.modelLoader = modelLoader;
         this.animationLoader = animationLoader;
         this.animationFrameMapLoader = animationFrameMapLoader;

@@ -26,6 +26,7 @@ export type Chunk = {
 
     minimapBlob: Blob;
 
+    sceneBorderRadius: number;
     tileRenderFlags: Uint8Array[][];
     collisionMaps: CollisionMap[];
 
@@ -105,6 +106,8 @@ export function loadChunk(
 
     const regionPos = vec2.fromValues(regionX, regionY);
 
+    const borderRadius = chunkData.sceneBorderRadius;
+
     const interleavedBuffer = app.createInterleavedBuffer(
         12,
         chunkData.vertices
@@ -146,8 +149,8 @@ export function loadChunk(
 
     const heightMapTexture = app.createTextureArray(
         chunkData.heightMapTextureData,
-        72,
-        72,
+        Scene.MAP_SIZE + borderRadius * 2,
+        Scene.MAP_SIZE + borderRadius * 2,
         Scene.MAX_PLANE,
         {
             internalFormat: PicoGL.R32F,
@@ -274,9 +277,7 @@ export function loadChunk(
             .drawRanges(...chunkData.drawRangesNpc);
     }
 
-    const collisionMaps = chunkData.collisionFlags.map(
-        (flags) => new CollisionMap(Scene.MAP_SIZE, Scene.MAP_SIZE, flags)
-    );
+    const collisionMaps = chunkData.collisionDatas.map(CollisionMap.fromData);
 
     for (const npc of npcs) {
         const collisionMap = collisionMaps[npc.data.plane];
@@ -288,7 +289,11 @@ export function loadChunk(
 
         for (let flagX = currentX; flagX < currentX + size; flagX++) {
             for (let flagY = currentY; flagY < currentY + size; flagY++) {
-                collisionMap.flag(flagX, flagY, 0x1000000);
+                collisionMap.flag(
+                    flagX + borderRadius,
+                    flagY + borderRadius,
+                    0x1000000
+                );
             }
         }
     }
@@ -299,6 +304,7 @@ export function loadChunk(
 
         minimapBlob: chunkData.minimapBlob,
 
+        sceneBorderRadius: borderRadius,
         tileRenderFlags: chunkData.tileRenderFlags,
         collisionMaps,
 
@@ -344,6 +350,17 @@ export function loadChunk(
         timeLoaded: time,
         frameLoaded: frame,
     };
+}
+
+export function getTileRenderFlag(
+    chunk: Chunk,
+    plane: number,
+    tileX: number,
+    tileY: number
+) {
+    return chunk.tileRenderFlags[plane][tileX + chunk.sceneBorderRadius][
+        tileY + chunk.sceneBorderRadius
+    ];
 }
 
 export function deleteChunk(chunk: Chunk) {
