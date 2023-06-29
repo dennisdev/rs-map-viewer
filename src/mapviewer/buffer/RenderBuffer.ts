@@ -345,16 +345,14 @@ export function getModelFaces(
         });
     }
 
-    // console.log('faces', faces);
-
     // sort on priority, has alpha, texture id, face index
-    faces.sort(
-        (a, b) =>
-            a.priority - b.priority ||
-            (a.alpha < 0xff ? 1 : 0) - (b.alpha < 0xff ? 1 : 0) ||
-            a.textureId - b.textureId ||
-            b.index - a.index
-    );
+    // faces.sort(
+    //     (a, b) =>
+    //         a.priority - b.priority ||
+    //         (a.alpha < 0xff ? 1 : 0) - (b.alpha < 0xff ? 1 : 0) ||
+    //         a.textureId - b.textureId ||
+    //         b.index - a.index
+    // );
 
     return faces;
 }

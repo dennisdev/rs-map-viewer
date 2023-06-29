@@ -96,6 +96,7 @@ export class ChunkDataLoader {
         regionY: number,
         config: ChunkConfig
     ): Promise<ChunkData | undefined> {
+        // console.time(`load chunk x ${regionX}_${regionY}`);
         const region = this.regionLoader.getRegion(regionX, regionY);
         if (!region) {
             return undefined;
@@ -132,6 +133,8 @@ export class ChunkDataLoader {
             });
         }
 
+        // console.timeEnd(`load chunk x ${regionX}_${regionY}`);
+
         const renderBuf = new RenderBuffer(100000);
 
         const terrainVertexCount = renderBuf.addTerrain(
@@ -142,7 +145,7 @@ export class ChunkDataLoader {
 
         const occlusionMap = createOcclusionMap(region);
 
-        let { objectModels: sceneModels, animatedSceneObjects } =
+        const { objectModels: sceneModels, animatedSceneObjects } =
             getSceneObjects(region, occlusionMap, config.maxPlane);
 
         sceneModels.push(
@@ -150,20 +153,6 @@ export class ChunkDataLoader {
         );
 
         const groupedModels = groupModels(this.modelHashBuf, sceneModels);
-
-        const animatedObjectGroups = createAnimatedObjectGroups(
-            this.regionLoader,
-            this.objectModelLoader,
-            this.textureLoader,
-            renderBuf,
-            animatedSceneObjects
-        );
-        const npcSpawnGroups = createNpcSpawnGroups(
-            this.npcModelLoader,
-            this.textureLoader,
-            renderBuf,
-            npcSpawns
-        );
 
         const modelGroups = createModelGroups(
             this.textureLoader,
@@ -182,6 +171,23 @@ export class ChunkDataLoader {
         for (const modelGroup of modelGroups) {
             addModelGroup(this.textureLoader, renderBuf, modelGroup);
         }
+
+        const animatedObjectGroups = createAnimatedObjectGroups(
+            this.regionLoader,
+            this.objectModelLoader,
+            this.textureLoader,
+            renderBuf,
+            animatedSceneObjects
+        );
+
+        console.time(`load npc groups ${regionX}_${regionY}`);
+        const npcSpawnGroups = createNpcSpawnGroups(
+            this.npcModelLoader,
+            this.textureLoader,
+            renderBuf,
+            npcSpawns
+        );
+        console.timeEnd(`load npc groups ${regionX}_${regionY}`);
 
         const triangles = renderBuf.drawCommands
             .map((cmd) => (cmd.elements / 3) * cmd.datas.length)
