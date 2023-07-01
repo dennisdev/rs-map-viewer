@@ -49,7 +49,12 @@ canvas {
 }
 
 .flex {
+    display: flex;
     flex: 1;
+}
+
+.align-right {
+    justify-content: right;
 }
 
 .rs-border {

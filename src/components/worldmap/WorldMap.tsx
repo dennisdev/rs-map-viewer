@@ -228,14 +228,17 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
             </div>
             <div className="worldmap-footer rs-border rs-background">
                 <span className="flex"></span>
-                <div
-                    className="worldmap-zoom-button worldmap-zoom-out"
-                    onClick={zoomOut}
-                ></div>
-                <div
-                    className="worldmap-zoom-button worldmap-zoom-in"
-                    onClick={zoomIn}
-                ></div>
+
+                <span className="flex align-right">
+                    <div
+                        className="worldmap-zoom-button worldmap-zoom-out"
+                        onClick={zoomOut}
+                    ></div>
+                    <div
+                        className="worldmap-zoom-button worldmap-zoom-in"
+                        onClick={zoomIn}
+                    ></div>
+                </span>
             </div>
         </div>
     );

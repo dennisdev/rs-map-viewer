@@ -5,20 +5,27 @@
     right: 0;
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.3);
+    z-index: 1337; /* above controls */
 }
 
 .worldmap-modal {
     position: absolute;
-    inset: 60px 20px 60px 20px;
+    inset: 20px;
     background-color: black;
     overflow: auto;
     -webkit-overflow-scrolling: "touch";
     outline: none;
 }
 
-@media screen and (min-width: 480px) {
+@media screen and (min-width: 480px) and (min-height: 300px) {
     .worldmap-modal {
         inset: 80px;
+    }
+}
+
+@media screen and (max-height: 300px) {
+    .worldmap-modal {
+        inset: 20px;
     }
 }
 
