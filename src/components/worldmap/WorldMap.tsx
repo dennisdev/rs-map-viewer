@@ -10,10 +10,9 @@ interface Position {
 }
 
 export interface WorldMapProps {
-    getPosition: () => Position;
-
     onDoubleClick: (x: number, y: number) => void;
 
+    getPosition: () => Position;
     loadMapImageUrl: (regionX: number, regionY: number) => string | undefined;
 }
 
@@ -34,8 +33,8 @@ export function WorldMap(props: WorldMapProps) {
     const halfTileSize = tileSize / 2;
     const imageSize = 64 * tileSize;
 
-    const cameraX = pos.x;
-    const cameraY = pos.y;
+    const cameraX = pos.x | 0;
+    const cameraY = pos.y | 0;
 
     const regionX = pos.x >> 6;
     const regionY = pos.y >> 6;
@@ -54,7 +53,7 @@ export function WorldMap(props: WorldMapProps) {
         const deltaX = (event.offsetX - halfWidth) / tileSize + 0.5;
         const deltaY = (halfHeight - event.offsetY) / tileSize + 0.5;
 
-        props.onDoubleClick(pos.x + deltaX, pos.y + deltaY);
+        props.onDoubleClick(cameraX + deltaX, cameraY + deltaY);
     };
 
     function startDragging(startX: number, startY: number) {
@@ -82,8 +81,8 @@ export function WorldMap(props: WorldMapProps) {
         setStartX(x);
         setStartY(y);
         setPos({
-            x: pos.x + deltaX,
-            y: pos.y + deltaY,
+            x: cameraX + deltaX,
+            y: cameraY + deltaY,
         });
     };
 
@@ -118,6 +117,7 @@ export function WorldMap(props: WorldMapProps) {
     useEventListener("touchmove", onTouchMove, dragRef);
     useEventListener("mouseup", stopDragging, dragRef);
     useEventListener("touchend", stopDragging, dragRef);
+    useEventListener("mouseleave", stopDragging, dragRef);
     useEventListener("wheel", onMouseWheel, dragRef);
 
     const renderStartX = -Math.ceil(x / imageSize) - 1;

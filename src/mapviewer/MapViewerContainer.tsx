@@ -37,7 +37,6 @@ export function MapViewerContainer({
         undefined
     );
     const [hudHidden, setHudHidden] = useState<boolean>(isWallpaperEngine);
-    const [minimapImages, setMinimapImages] = useState<JSX.Element[]>([]);
     const [isWorldMapOpen, setWorldMapOpen] = useState<boolean>(false);
 
     function openWorldMap() {
@@ -82,55 +81,10 @@ export function MapViewerContainer({
 
         const callback = (time: number) => {
             if (!mapViewer.hudHidden) {
-                const cameraX = mapViewer.camera.getPosX();
-                const cameraY = mapViewer.camera.getPosZ();
-
-                const cameraRegionX = mapViewer.camera.getRegionX();
-                const cameraRegionY = mapViewer.camera.getRegionY();
-
-                const offsetX = (-128 + (cameraX % 64) * 4) | 0;
-                const offsetY = (-128 + (cameraY % 64) * 4) | 0;
-
-                const images: JSX.Element[] = [];
-
-                for (let rx = 0; rx < 3; rx++) {
-                    for (let ry = 0; ry < 3; ry++) {
-                        const regionX = cameraRegionX - 1 + rx;
-                        const regionY = cameraRegionY - 1 + ry;
-
-                        const regionId = RegionLoader.getRegionId(
-                            regionX,
-                            regionY
-                        );
-
-                        const minimapUrl = mapViewer.getMinimapUrl(
-                            regionX,
-                            regionY
-                        );
-
-                        const url = minimapUrl
-                            ? minimapUrl
-                            : "/minimap-black.png";
-
-                        const x = rx * 255 - offsetX;
-                        const y = 255 * 2 - ry * 255 + offsetY;
-
-                        images.push(
-                            <MinimapImage
-                                key={regionId}
-                                src={url}
-                                left={x}
-                                top={y}
-                            />
-                        );
-                    }
-                }
-
                 setFps(mapViewer.fps);
                 setCompassDegrees(
                     (mapViewer.camera.yaw & 2047) * RS_TO_DEGREES
                 );
-                setMinimapImages(images);
             }
 
             window.requestAnimationFrame(callback);
@@ -158,8 +112,8 @@ export function MapViewerContainer({
         const cameraY = mapViewer.camera.getPosZ();
 
         return {
-            x: cameraX | 0,
-            y: cameraY | 0,
+            x: cameraX,
+            y: cameraY,
         };
     }
 
@@ -189,17 +143,16 @@ export function MapViewerContainer({
             {!hudHidden && (
                 <span>
                     <div className="hud left-top">
-                        {minimapImages && (
-                            <MinimapContainer
-                                yawDegrees={compassDegrees}
-                                onCompassClick={() => {
-                                    mapViewer.camera.setYaw(0);
-                                }}
-                                onWorldMapClick={openWorldMap}
-                            >
-                                {minimapImages}
-                            </MinimapContainer>
-                        )}
+                        <MinimapContainer
+                            yawDegrees={compassDegrees}
+                            onCompassClick={() => {
+                                mapViewer.camera.setYaw(0);
+                            }}
+                            onWorldMapClick={openWorldMap}
+                            getPosition={getMapPosition}
+                            loadMapImageUrl={loadMapImageUrl}
+                        />
+
                         <div className="fps-counter content-text">
                             {fps.toFixed(1)}
                         </div>
@@ -207,8 +160,8 @@ export function MapViewerContainer({
                     <WorldMapModal
                         isOpen={isWorldMapOpen}
                         onRequestClose={closeWorldMap}
-                        getPosition={getMapPosition}
                         onDoubleClick={onMapClicked}
+                        getPosition={getMapPosition}
                         loadMapImageUrl={loadMapImageUrl}
                     />
                 </span>
