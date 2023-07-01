@@ -313,6 +313,12 @@ export const MapViewerControls = memo(function MapViewerControls({
                         mapViewer.tooltips = v;
                     },
                 },
+                "Debug Id": {
+                    value: mapViewer.debugId,
+                    onChange: (v) => {
+                        mapViewer.debugId = v;
+                    },
+                },
             },
             { collapsed: true }
         ),

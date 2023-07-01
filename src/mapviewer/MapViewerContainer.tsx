@@ -70,8 +70,8 @@ export function MapViewerContainer({
                 };
             });
         };
-        mapViewer.onMenuOpened = (x, y, options, tooltip) => {
-            setMenuProps({ x, y, options, tooltip });
+        mapViewer.onMenuOpened = (x, y, options, tooltip, debugId) => {
+            setMenuProps({ x, y, options, tooltip, debugId });
         };
         mapViewer.onMenuClosed = () => {
             setMenuProps(undefined);

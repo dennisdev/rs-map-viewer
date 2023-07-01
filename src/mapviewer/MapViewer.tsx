@@ -184,7 +184,8 @@ export class MapViewer {
         x: number,
         y: number,
         options: MenuOption[],
-        tooltip: boolean
+        tooltip: boolean,
+        debugId: boolean
     ) => void;
     onMenuClosed?: () => void;
 
@@ -224,6 +225,7 @@ export class MapViewer {
     maxPlane: number = Scene.MAX_PLANE - 1;
 
     tooltips: boolean = true;
+    debugId: boolean = false;
 
     cullBackFace: boolean = true;
     lastCullBackFace: boolean = true;
@@ -1294,7 +1296,7 @@ export class MapViewer {
                 }
                 const objectId = def.id;
                 const objectName = def.name;
-                if (objectName !== "null") {
+                if (objectName !== "null" || this.debugId) {
                     const target = {
                         name: objectName,
                         type: InteractType.OBJECT,
@@ -1441,7 +1443,13 @@ export class MapViewer {
         });
 
         if (this.onMenuOpened) {
-            this.onMenuOpened(pickedX, pickedY, menuOptions, tooltip);
+            this.onMenuOpened(
+                pickedX,
+                pickedY,
+                menuOptions,
+                tooltip,
+                this.debugId
+            );
             this.menuOpen = !tooltip;
             this.menuX = pickedX;
             this.menuY = pickedY;

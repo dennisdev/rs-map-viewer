@@ -31,6 +31,7 @@ export interface OsrsMenuProps {
     y: number;
     options: MenuOption[];
     tooltip: boolean;
+    debugId: boolean;
 }
 
 export function OsrsMenu({
@@ -38,6 +39,7 @@ export function OsrsMenu({
     y,
     options,
     tooltip,
+    debugId,
 }: OsrsMenuProps): JSX.Element {
     const [realX, setX] = useState(x);
     const [realY, setY] = useState(y);
@@ -98,6 +100,11 @@ export function OsrsMenu({
                         {" (Level-"}
                         {option.level}
                         {")"}
+                    </span>
+                )}
+                {debugId && option.id !== -1 && (
+                    <span className="target-id">
+                        {" (Id-" + option.id + ")"}
                     </span>
                 )}
             </div>
