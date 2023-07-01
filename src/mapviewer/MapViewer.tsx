@@ -1,5 +1,5 @@
 import Denque from "denque";
-import { mat4, vec2, vec3, vec4 } from "gl-matrix";
+import { vec2, vec3, vec4 } from "gl-matrix";
 import {
     DrawCall,
     Framebuffer,
@@ -12,18 +12,11 @@ import {
     VertexArray,
     VertexBuffer,
 } from "picogl";
-import { useEffect, useState } from "react";
-import { Joystick } from "react-joystick-component";
-import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
-import { URLSearchParamsInit, useSearchParams } from "react-router-dom";
+import { URLSearchParamsInit } from "react-router-dom";
 import { RegionLoader } from "../client/RegionLoader";
 import { VarpManager } from "../client/VarpManager";
 import { ConfigType } from "../client/fs/ConfigType";
-import {
-    DownloadProgress,
-    MemoryFileSystem,
-    loadFromStore,
-} from "../client/fs/FileSystem";
+import { MemoryFileSystem, loadFromStore } from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
 import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
 import {
@@ -36,14 +29,10 @@ import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
 import { Pathfinder } from "../client/pathfinder/Pathfinder";
 import { Scene } from "../client/scene/Scene";
 import { clamp } from "../client/util/MathUtil";
-import WebGLCanvas from "../components/Canvas";
-import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
-import { MenuOption, OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
+import { MenuOption } from "../components/OsrsMenu";
 import { readPixelsAsync } from "./util/AsyncReadUtil";
 import { FrustumIntersection } from "./util/FrustumIntersection";
-import "./MapViewer.css";
-import { fetchNpcSpawns, NpcSpawn } from "./npc/NpcSpawn";
-import { ChunkDataLoader } from "./chunk/ChunkDataLoader";
+import { NpcSpawn } from "./npc/NpcSpawn";
 import { ChunkLoaderWorkerPool } from "./chunk/ChunkLoaderWorkerPool";
 import mainFragShader from "./shaders/main.frag.glsl";
 import mainVertShader from "./shaders/main.vert.glsl";
@@ -59,17 +48,8 @@ import {
     getTileRenderFlag,
     loadChunk,
 } from "./chunk/Chunk";
-import { isIos, isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
-import {
-    CacheInfo,
-    deleteOldCaches,
-    fetchCacheList,
-    getLatestCache,
-    loadCache,
-    LoadedCache,
-} from "./CacheInfo";
-import { MapViewerControls } from "./MapViewerControls";
-import WebFont from "webfontloader";
+import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
+import { CacheInfo, LoadedCache } from "./CacheInfo";
 import {
     CachedObjectLoader,
     ObjectLoader,
@@ -79,12 +59,8 @@ import { InteractType } from "./chunk/InteractType";
 import { CachedItemLoader, ItemLoader } from "../client/fs/loader/ItemLoader";
 import { ChunkData } from "./chunk/ChunkData";
 import { DrawRange } from "./chunk/DrawRange";
-import { ItemSpawn, fetchItemSpawns } from "./item/ItemSpawn";
-import { MinimapContainer } from "../components/minimap/MinimapContainer";
-import { MinimapImage } from "../components/minimap/MinimapImage";
-import { WorldMapModal } from "../components/worldmap/WorldMapModal";
+import { ItemSpawn } from "./item/ItemSpawn";
 import { Camera, ProjectionType } from "./Camera";
-import { RS_TO_DEGREES, RS_TO_RADIANS } from "./MathConstants";
 import { InputManager, getAxisDeadzone } from "./InputManager";
 
 function prependShader(shader: string, multiDraw: boolean): string {
@@ -1983,359 +1959,3 @@ export class MapViewer {
         this.inputManager.onFrameEnd();
     };
 }
-
-function formatBytes(bytes: number, decimals: number = 2): string {
-    if (!+bytes) {
-        return "0 Bytes";
-    }
-
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-}
-
-interface MapViewerContainerProps {
-    mapViewer: MapViewer;
-    caches: CacheInfo[];
-}
-
-function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
-    const [inited, setInited] = useState<boolean>(
-        !!mapViewer.textureUniformBuffer
-    );
-    const [downloadProgress, setDownloadProgress] = useState<
-        DownloadProgress | undefined
-    >(undefined);
-    const [fps, setFps] = useState<number>(0);
-    const [compassDegrees, setCompassDegrees] = useState<number>(0);
-    const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
-        undefined
-    );
-    const [hudHidden, setHudHidden] = useState<boolean>(isWallpaperEngine);
-    const [minimapImages, setMinimapImages] = useState<JSX.Element[]>([]);
-    const [isWorldMapOpen, setWorldMapOpen] = useState<boolean>(false);
-
-    function openWorldMap() {
-        setWorldMapOpen(true);
-    }
-
-    function closeWorldMap() {
-        setWorldMapOpen(false);
-        mapViewer.app.canvas.focus();
-    }
-
-    useEffect(() => {
-        mapViewer.onInit = () => {
-            setInited(true);
-        };
-        if (mapViewer.textureUniformBuffer) {
-            setInited(true);
-        }
-        mapViewer.onMouseMoved = (x, y) => {
-            setMenuProps((props) => {
-                if (!props) {
-                    return undefined;
-                }
-                if (!props.tooltip) {
-                    return props;
-                }
-                return {
-                    ...props,
-                    x,
-                    y,
-                };
-            });
-        };
-        mapViewer.onMenuOpened = (x, y, options, tooltip) => {
-            setMenuProps({ x, y, options, tooltip });
-        };
-        mapViewer.onMenuClosed = () => {
-            setMenuProps(undefined);
-        };
-        mapViewer.hudHidden = hudHidden;
-        mapViewer.setHudHidden = setHudHidden;
-
-        const callback = (time: number) => {
-            if (!mapViewer.hudHidden) {
-                const cameraX = mapViewer.camera.getPosX();
-                const cameraY = mapViewer.camera.getPosZ();
-
-                const cameraRegionX = mapViewer.camera.getRegionX();
-                const cameraRegionY = mapViewer.camera.getRegionY();
-
-                const offsetX = (-128 + (cameraX % 64) * 4) | 0;
-                const offsetY = (-128 + (cameraY % 64) * 4) | 0;
-
-                const images: JSX.Element[] = [];
-
-                for (let rx = 0; rx < 3; rx++) {
-                    for (let ry = 0; ry < 3; ry++) {
-                        const regionX = cameraRegionX - 1 + rx;
-                        const regionY = cameraRegionY - 1 + ry;
-
-                        const regionId = RegionLoader.getRegionId(
-                            regionX,
-                            regionY
-                        );
-
-                        const minimapUrl = mapViewer.getMinimapUrl(
-                            regionX,
-                            regionY
-                        );
-
-                        const url = minimapUrl
-                            ? minimapUrl
-                            : "/minimap-black.png";
-
-                        const x = rx * 255 - offsetX;
-                        const y = 255 * 2 - ry * 255 + offsetY;
-
-                        images.push(
-                            <MinimapImage
-                                key={regionId}
-                                src={url}
-                                left={x}
-                                top={y}
-                            />
-                        );
-                    }
-                }
-
-                setFps(mapViewer.fps);
-                setCompassDegrees(
-                    (mapViewer.camera.yaw & 2047) * RS_TO_DEGREES
-                );
-                setMinimapImages(images);
-            }
-
-            window.requestAnimationFrame(callback);
-        };
-        window.requestAnimationFrame(callback);
-    }, [mapViewer]);
-
-    let loadingBarOverlay: JSX.Element | undefined = undefined;
-    if (downloadProgress) {
-        const formattedCacheSize = formatBytes(downloadProgress.total);
-        const progress =
-            ((downloadProgress.current / downloadProgress.total) * 100) | 0;
-        loadingBarOverlay = (
-            <div className="overlay-container">
-                <OsrsLoadingBar
-                    text={`Downloading cache (${formattedCacheSize})`}
-                    progress={progress}
-                />
-            </div>
-        );
-    }
-
-    function getMapPosition() {
-        const cameraX = mapViewer.camera.getPosX();
-        const cameraY = mapViewer.camera.getPosZ();
-
-        return {
-            x: cameraX | 0,
-            y: cameraY | 0,
-        };
-    }
-
-    function onMapClicked(x: number, y: number) {
-        mapViewer.camera.pos[0] = x;
-        mapViewer.camera.pos[2] = y;
-        mapViewer.camera.updated = true;
-        closeWorldMap();
-    }
-
-    function loadMapImageUrl(regionX: number, regionY: number) {
-        return mapViewer.getMinimapUrl(regionX, regionY);
-    }
-
-    return (
-        <div>
-            {loadingBarOverlay}
-            {menuProps && <OsrsMenu {...menuProps} />}
-            {inited && (
-                <MapViewerControls
-                    mapViewer={mapViewer}
-                    caches={caches}
-                    setDownloadProgress={setDownloadProgress}
-                    hidden={hudHidden}
-                />
-            )}
-            {!hudHidden && (
-                <span>
-                    <div className="hud left-top">
-                        {minimapImages && (
-                            <MinimapContainer
-                                yawDegrees={compassDegrees}
-                                onCompassClick={() => {
-                                    mapViewer.camera.setYaw(0);
-                                }}
-                                onWorldMapClick={openWorldMap}
-                            >
-                                {minimapImages}
-                            </MinimapContainer>
-                        )}
-                        <div className="fps-counter content-text">
-                            {fps.toFixed(1)}
-                        </div>
-                    </div>
-                    <WorldMapModal
-                        isOpen={isWorldMapOpen}
-                        onRequestClose={closeWorldMap}
-                        getPosition={getMapPosition}
-                        onDoubleClick={onMapClicked}
-                        loadMapImageUrl={loadMapImageUrl}
-                    />
-                </span>
-            )}
-            {isTouchDevice && (
-                <div className="joystick-container left">
-                    <Joystick
-                        size={75}
-                        baseColor="#181C20"
-                        stickColor="#007BFF"
-                        stickSize={40}
-                        move={mapViewer.inputManager.onPositionJoystickMove}
-                        stop={mapViewer.inputManager.onPositionJoystickStop}
-                    ></Joystick>
-                </div>
-            )}
-            {isTouchDevice && (
-                <div className="joystick-container right">
-                    <Joystick
-                        size={75}
-                        baseColor="#181C20"
-                        stickColor="#007BFF"
-                        stickSize={40}
-                        move={mapViewer.inputManager.onCameraJoystickMove}
-                        stop={mapViewer.inputManager.onCameraJoystickStop}
-                    ></Joystick>
-                </div>
-            )}
-
-            <WebGLCanvas
-                init={mapViewer.init}
-                draw={mapViewer.render}
-            ></WebGLCanvas>
-        </div>
-    );
-}
-
-const MAX_POOL_SIZE = isWallpaperEngine ? 1 : 4;
-
-const poolSize = Math.min(navigator.hardwareConcurrency, MAX_POOL_SIZE);
-const pool = ChunkLoaderWorkerPool.init(poolSize);
-// console.log('start App', performance.now());
-
-const cachesPromise = fetchCacheList();
-
-function MapViewerApp() {
-    const [downloadProgress, setDownloadProgress] = useState<
-        DownloadProgress | undefined
-    >(undefined);
-    const [mapViewer, setMapViewer] = useState<MapViewer | undefined>(
-        undefined
-    );
-    const [caches, setCaches] = useState<CacheInfo[]>([]);
-    const [searchParams, setSearchParams] = useSearchParams();
-
-    // const test = new Test();
-
-    useEffect(() => {
-        // console.log('start fetch', performance.now());
-        console.time("first load");
-        const load = async () => {
-            const npcSpawnsPromise = fetchNpcSpawns();
-            const itemSpawnsPromise = fetchItemSpawns();
-
-            const cacheNameParam = searchParams.get("cache");
-            const caches = await cachesPromise;
-            deleteOldCaches(caches);
-            const latestCacheInfo = getLatestCache(caches);
-            if (!latestCacheInfo) {
-                console.error("Could not load the latest cache info");
-                return;
-            }
-
-            let cacheInfo: CacheInfo | undefined = undefined;
-            if (cacheNameParam) {
-                cacheInfo = caches.find(
-                    (cache) => cache.name === cacheNameParam
-                );
-            }
-            if (!cacheInfo) {
-                cacheInfo = latestCacheInfo;
-            }
-
-            const loadedCache = await loadCache(cacheInfo, setDownloadProgress);
-            setDownloadProgress(undefined);
-
-            console.time("load npc spawns");
-            const npcSpawns = await npcSpawnsPromise;
-            console.timeEnd("load npc spawns");
-
-            console.time("load item spawns");
-            const itemSpawns = await itemSpawnsPromise;
-            console.timeEnd("load item spawns");
-
-            console.log("item spawn count", itemSpawns.length);
-
-            const mapViewer = new MapViewer(
-                pool,
-                loadedCache,
-                latestCacheInfo,
-                npcSpawns,
-                itemSpawns
-            );
-            mapViewer.applySearchParams(searchParams);
-
-            setCaches(caches);
-            setMapViewer(mapViewer);
-        };
-
-        if (!isIos) {
-            load().catch(console.error);
-        }
-
-        WebFont.load({
-            custom: {
-                families: ["OSRS"],
-            },
-        });
-    }, []);
-
-    let content: JSX.Element | undefined = undefined;
-    if (isIos) {
-        content = (
-            <div className="center-content-container">
-                <div className="content-text">iOS is not supported.</div>
-            </div>
-        );
-    } else if (downloadProgress) {
-        const formattedCacheSize = formatBytes(downloadProgress.total);
-        const progress =
-            ((downloadProgress.current / downloadProgress.total) * 100) | 0;
-        content = (
-            <div className="center-content-container">
-                <OsrsLoadingBar
-                    text={`Downloading cache (${formattedCacheSize})`}
-                    progress={progress}
-                />
-            </div>
-        );
-    } else if (mapViewer) {
-        content = (
-            <MapViewerContainer
-                mapViewer={mapViewer}
-                caches={caches}
-            ></MapViewerContainer>
-        );
-    }
-    return <div className="App">{content}</div>;
-}
-
-export default MapViewerApp;
