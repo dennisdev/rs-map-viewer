@@ -14,9 +14,6 @@
     overflow: auto;
     -webkit-overflow-scrolling: "touch";
     outline: none;
-
-    border: 6px solid;
-    border-image: url(./interface-border.png) 6 / 6px / 0px repeat;
 }
 
 @media screen and (min-width: 480px) {

@@ -16,7 +16,7 @@ export function WorldMapModal(props: Props) {
     const { isOpen, onRequestClose } = props;
     return (
         <Modal
-            className="worldmap-modal"
+            className="worldmap-modal rs-border"
             overlayClassName="worldmap-modal-overlay"
             isOpen={isOpen}
             onRequestClose={onRequestClose}

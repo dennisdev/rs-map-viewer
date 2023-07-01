@@ -179,29 +179,42 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
         setIsDragging(false);
     };
 
-    const onMouseWheel = (event: WheelEvent) => {
+    const zoom = (delta: number) => {
         setTileSize((tileSize) => {
-            return clamp((tileSize - Math.sign(event.deltaY)) | 0, 0.5, 10);
+            return clamp((tileSize + delta) | 0, 0.5, 10);
         });
     };
 
+    const onMouseWheel = (event: WheelEvent) => {
+        zoom(-Math.sign(event.deltaY));
+    };
+
+    const zoomOut = () => {
+        zoom(-1);
+    };
+
+    const zoomIn = () => {
+        zoom(1);
+    };
+
     return (
-        <div className="worldmap" ref={ref}>
-            {images}
-            <div
-                className={`worldmap-drag ${isDragging ? "dragging" : ""}`}
-                onDoubleClick={onDoubleClick}
-                onMouseDown={onMouseDown}
-                onMouseMove={onMouseMove}
-                onMouseUp={stopDragging}
-                onTouchStart={onTouchStart}
-                onTouchMove={onTouchMove}
-                onTouchEnd={stopDragging}
-                onWheel={onMouseWheel}
-                onMouseLeave={stopDragging}
-                ref={dragRef}
-            ></div>
-            {/* <div
+        <div className="worldmap-container">
+            <div className="worldmap" ref={ref}>
+                {images}
+                <div
+                    className={`worldmap-drag ${isDragging ? "dragging" : ""}`}
+                    onDoubleClick={onDoubleClick}
+                    onMouseDown={onMouseDown}
+                    onMouseMove={onMouseMove}
+                    onMouseUp={stopDragging}
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={stopDragging}
+                    onWheel={onMouseWheel}
+                    onMouseLeave={stopDragging}
+                    ref={dragRef}
+                ></div>
+                {/* <div
                 style={{
                     position: "absolute",
                     left: halfWidth - 2,
@@ -212,6 +225,18 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
                     zIndex: 10,
                 }}
             ></div> */}
+            </div>
+            <div className="worldmap-footer rs-border rs-background">
+                <span className="flex"></span>
+                <div
+                    className="worldmap-zoom-button worldmap-zoom-out"
+                    onClick={zoomOut}
+                ></div>
+                <div
+                    className="worldmap-zoom-button worldmap-zoom-in"
+                    onClick={zoomIn}
+                ></div>
+            </div>
         </div>
     );
 });

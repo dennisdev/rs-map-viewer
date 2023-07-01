@@ -47,3 +47,16 @@ canvas {
     color: white;
     text-shadow: 1px 1px 0 black;
 }
+
+.flex {
+    flex: 1;
+}
+
+.rs-border {
+    border: 6px solid;
+    border-image: url(./interface-border.png) 6 / 6px / 0px repeat;
+}
+
+.rs-background {
+    background-image: url(./interface-bg.png);
+}
