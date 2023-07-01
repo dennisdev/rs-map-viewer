@@ -54,6 +54,8 @@ export class SceneTileModel {
     rotation: number;
 
     faces: SceneTileFace[] = [];
+    // This can be less than faces.length due to hidden faces
+    normalFaceCount: number;
 
     underlayRgb: number;
     overlayRgb: number;
@@ -222,6 +224,8 @@ export class SceneTileModel {
 
         const tileFaces = tileShapeFaces[shape];
         const faceCount = tileFaces.length / 4;
+
+        this.normalFaceCount = faceCount;
 
         let tileFaceIndex = 0;
 

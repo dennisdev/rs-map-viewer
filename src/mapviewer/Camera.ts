@@ -29,6 +29,7 @@ export class Camera {
     frustum = new FrustumIntersection();
 
     updated: boolean = false;
+    updatedLastFrame: boolean = false;
 
     constructor(x: number, y: number, z: number, pitch: number, yaw: number) {
         this.pos = vec3.fromValues(x, y, z);
@@ -129,6 +130,11 @@ export class Camera {
         this.frustum.setPlanes(this.viewProjMatrix);
     }
 
+    onFrameEnd() {
+        this.updatedLastFrame = this.updated;
+        this.updated = false;
+    }
+
     getPosX(): number {
         return this.pos[0];
     }
@@ -139,5 +145,13 @@ export class Camera {
 
     getPosZ(): number {
         return this.pos[2];
+    }
+
+    getRegionX(): number {
+        return this.getPosX() >> 6;
+    }
+
+    getRegionY(): number {
+        return this.getPosZ() >> 6;
     }
 }

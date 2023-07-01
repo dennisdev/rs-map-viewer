@@ -85,6 +85,7 @@ import { MinimapImage } from "../components/minimap/MinimapImage";
 import { WorldMapModal } from "../components/worldmap/WorldMapModal";
 import { Camera, ProjectionType } from "./Camera";
 import { RS_TO_DEGREES, RS_TO_RADIANS } from "./MathConstants";
+import { InputManager, getAxisDeadzone } from "./InputManager";
 
 function prependShader(shader: string, multiDraw: boolean): string {
     let header = "#version 300 es\n";
@@ -92,21 +93,6 @@ function prependShader(shader: string, multiDraw: boolean): string {
         header += "#define MULTI_DRAW 1\n";
     }
     return header + shader;
-}
-
-function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
-    var rect = container.getBoundingClientRect();
-    return [event.clientX - rect.left, event.clientY - rect.top];
-}
-
-function getAxisDeadzone(axis: number, zone: number): number {
-    if (Math.abs(axis) < zone) {
-        return 0;
-    } else if (axis < 0) {
-        return axis + zone;
-    } else {
-        return axis - zone;
-    }
 }
 
 function getRegionDistance(
@@ -161,13 +147,11 @@ export class MapViewer {
     animationLoader!: AnimationLoader;
     varpManager!: VarpManager;
 
-    pathfinder: Pathfinder = new Pathfinder();
+    inputManager: InputManager = new InputManager();
 
     app!: PicoApp;
 
     hasMultiDraw: boolean = false;
-
-    keys: Map<string, boolean> = new Map();
 
     timer!: Timer;
 
@@ -235,6 +219,9 @@ export class MapViewer {
 
     menuOpen: boolean = false;
 
+    menuX: number = -1;
+    menuY: number = -1;
+
     renderDistance: number = DEFAULT_RENDER_DISTANCE;
     renderDistanceUpdated: boolean = false;
 
@@ -265,49 +252,17 @@ export class MapViewer {
     cullBackFace: boolean = true;
     lastCullBackFace: boolean = true;
 
-    positionJoystickEvent?: IJoystickUpdateEvent;
-    cameraJoystickEvent?: IJoystickUpdateEvent;
-
-    gamepadIndex?: number;
-
-    currentMouseX: number = -1;
-    currentMouseY: number = -1;
-
-    startMouseX: number = -1;
-    startMouseY: number = -1;
-
-    deltaMouseX: number = 0;
-    deltaMouseY: number = 0;
-
-    startPitch: number = -1;
-    startYaw: number = -1;
-
-    pickX: number = -1;
-    pickY: number = -1;
-
-    menuX: number = -1;
-    menuY: number = -1;
-
+    // Interactions
     closestInteractions = new Map<number, number[]>();
-
     interactBuffer: Uint8Array = new Uint8Array(
         INTERACTION_SIZE * INTERACTION_SIZE * 4
     );
     interactRegionBuffer: Uint8Array = new Uint8Array(
         INTERACTION_SIZE * INTERACTION_SIZE * 4
     );
-
     hoveredRegionIds = new Set<number>();
 
-    chunkDataLoader?: ChunkDataLoader;
-
     cameraPosUni: vec2 = vec2.fromValues(0, 0);
-
-    lastCameraX: number = -1;
-    lastCameraY: number = -1;
-
-    lastCameraRegionX: number = -1;
-    lastCameraRegionY: number = -1;
 
     frustumIntersection: FrustumIntersection = new FrustumIntersection();
     chunkIntersectBox: number[][] = [
@@ -316,6 +271,8 @@ export class MapViewer {
     ];
 
     isVisiblePos: vec3 = [0, 0, 0];
+
+    pathfinder: Pathfinder = new Pathfinder();
 
     npcRenderCount: number = 0;
     npcRenderData: Uint16Array = new Uint16Array(16 * 4);
@@ -349,36 +306,7 @@ export class MapViewer {
             },
         };
 
-        window.addEventListener("gamepadconnected", (e) => {
-            console.log("gamepad connected", e.gamepad);
-            this.gamepadIndex = e.gamepad.index;
-        });
-        window.addEventListener("gamepaddisconnected", (e) => {
-            this.gamepadIndex = undefined;
-        });
-
         // console.log('create map viewer', performance.now());
-
-        this.init = this.init.bind(this);
-        this.onKeyDown = this.onKeyDown.bind(this);
-        this.onKeyUp = this.onKeyUp.bind(this);
-        this.onMouseMove = this.onMouseMove.bind(this);
-        this.onMouseDown = this.onMouseDown.bind(this);
-        this.onMouseUp = this.onMouseUp.bind(this);
-        this.onMouseLeave = this.onMouseLeave.bind(this);
-        this.onTouchStart = this.onTouchStart.bind(this);
-        this.onTouchMove = this.onTouchMove.bind(this);
-        this.onTouchEnd = this.onTouchEnd.bind(this);
-        this.onFocusOut = this.onFocusOut.bind(this);
-        this.onContextMenu = this.onContextMenu.bind(this);
-        this.onPositionJoystickMove = this.onPositionJoystickMove.bind(this);
-        this.onPositionJoystickStop = this.onPositionJoystickStop.bind(this);
-        this.onCameraJoystickMove = this.onCameraJoystickMove.bind(this);
-        this.onCameraJoystickStop = this.onCameraJoystickStop.bind(this);
-        this.closeMenu = this.closeMenu.bind(this);
-        this.onHoveredRegionBuffer = this.onHoveredRegionBuffer.bind(this);
-        this.checkInteractions = this.checkInteractions.bind(this);
-        this.render = this.render.bind(this);
     }
 
     initCache(cache: LoadedCache) {
@@ -444,46 +372,18 @@ export class MapViewer {
         this.renderRegionBounds.fill(0);
     }
 
-    init(gl: WebGL2RenderingContext) {
+    init = (gl: WebGL2RenderingContext) => {
         // console.log('init start', performance.now());
         if (!(gl.canvas instanceof HTMLCanvasElement)) {
             return;
         }
 
-        if (!isWallpaperEngine) {
-            gl.canvas.addEventListener("dblclick", () => {
-                if (
-                    !document.pointerLockElement &&
-                    gl.canvas instanceof HTMLCanvasElement
-                ) {
-                    gl.canvas.requestPointerLock();
+        this.inputManager.init(gl.canvas);
 
-                    if (this.onMenuClosed) {
-                        this.onMenuClosed();
-                        this.menuOpen = false;
-                    }
-                }
-            });
+        gl.canvas.focus();
 
-            gl.canvas.addEventListener("keydown", this.onKeyDown);
-            gl.canvas.addEventListener("keyup", this.onKeyUp);
-            gl.canvas.addEventListener("mousedown", this.onMouseDown);
-            gl.canvas.addEventListener("mouseup", this.onMouseUp);
-            gl.canvas.addEventListener("mouseleave", this.onMouseLeave);
-            gl.canvas.addEventListener("touchstart", this.onTouchStart);
-            gl.canvas.addEventListener("touchmove", this.onTouchMove);
-            gl.canvas.addEventListener("touchend", this.onTouchEnd);
-            gl.canvas.addEventListener("focusout", this.onFocusOut);
-            gl.canvas.addEventListener("contextmenu", this.onContextMenu);
-            gl.canvas.focus();
-        }
-        gl.canvas.addEventListener("mousemove", this.onMouseMove);
-
-        const cameraX = this.camera.getPosX();
-        const cameraY = this.camera.getPosZ();
-
-        const cameraRegionX = (cameraX / 64) | 0;
-        const cameraRegionY = (cameraY / 64) | 0;
+        const cameraRegionX = this.camera.getRegionX();
+        const cameraRegionY = this.camera.getRegionY();
 
         // queue a chunk as soon as possible so we don't have idling workers
         this.queueChunkLoad(cameraRegionX, cameraRegionY, true);
@@ -606,7 +506,7 @@ export class MapViewer {
         if (this.onInit) {
             this.onInit();
         }
-    }
+    };
 
     initTextures() {
         this.textureUniformBuffer = this.app.createUniformBuffer(
@@ -734,134 +634,6 @@ export class MapViewer {
         this.skyColor[0] = r / 255;
         this.skyColor[1] = g / 255;
         this.skyColor[2] = b / 255;
-    }
-
-    onKeyDown(event: KeyboardEvent) {
-        // console.log('down', event.key, event.shiftKey);
-        this.keys.set(event.key, true);
-        if (event.shiftKey) {
-            this.keys.set("Shift", true);
-        }
-        event.preventDefault();
-    }
-
-    onKeyUp(event: KeyboardEvent) {
-        console.log("up", event.key, event.shiftKey);
-        this.keys.set(event.key, false);
-        this.keys.set(event.key.toUpperCase(), false);
-        this.keys.set(event.key.toLowerCase(), false);
-        // if (event.shiftKey) {
-        //     this.keys.set('Shift', false);
-        // }
-        event.preventDefault();
-    }
-
-    onMouseMove(event: MouseEvent) {
-        const [x, y] = getMousePos(this.app.canvas, event);
-        this.currentMouseX = x;
-        this.currentMouseY = y;
-
-        if (document.pointerLockElement) {
-            this.deltaMouseX += event.movementX;
-            this.deltaMouseY += event.movementY;
-        }
-        if (
-            this.onMenuClosed &&
-            this.menuOpen &&
-            Math.max(Math.abs(this.menuX - x), Math.abs(this.menuY - y)) > 20
-        ) {
-            this.onMenuClosed();
-            this.menuOpen = false;
-        }
-        if (this.onMouseMoved) {
-            this.onMouseMoved(x, y);
-        }
-    }
-
-    onMouseDown(event: MouseEvent) {
-        if (event.button !== 0) {
-            return;
-        }
-        const [x, y] = getMousePos(this.app.canvas, event);
-        this.startMouseX = x;
-        this.startMouseY = y;
-        this.currentMouseX = x;
-        this.currentMouseY = y;
-        this.startPitch = this.camera.pitch;
-        this.startYaw = this.camera.yaw;
-    }
-
-    onTouchStart(event: TouchEvent) {
-        const [x, y] = getMousePos(this.app.canvas, event.touches[0]);
-        this.startMouseX = x;
-        this.startMouseY = y;
-        this.currentMouseX = x;
-        this.currentMouseY = y;
-        this.startPitch = this.camera.pitch;
-        this.startYaw = this.camera.yaw;
-    }
-
-    onTouchMove(event: TouchEvent) {
-        const [x, y] = getMousePos(this.app.canvas, event.touches[0]);
-        this.currentMouseX = x;
-        this.currentMouseY = y;
-        // console.log(this.currentMouseX, this.currentMouseY);
-    }
-
-    onTouchEnd(event: TouchEvent) {
-        this.resetMouseEvents();
-    }
-
-    onMouseUp(event: MouseEvent) {
-        this.resetMouseEvents();
-    }
-
-    onMouseLeave(event: MouseEvent) {
-        this.resetMouseEvents();
-        this.currentMouseX = -1;
-        this.currentMouseY = -1;
-    }
-
-    onFocusOut(event: FocusEvent) {
-        this.resetKeyEvents();
-        this.resetMouseEvents();
-    }
-
-    onContextMenu(event: MouseEvent) {
-        event.preventDefault();
-        this.pickX = event.x;
-        this.pickY = event.y;
-        console.log("clicked,", this.pickX, this.pickY, this.hoveredRegionIds);
-        if (this.tooltips) {
-            this.checkInteractions(this.pickX, this.pickY, false);
-        } else {
-            this.readPicked();
-        }
-    }
-
-    resetKeyEvents() {
-        this.keys.clear();
-    }
-
-    resetMouseEvents() {
-        this.startMouseX = -1;
-        this.startMouseY = -1;
-    }
-
-    onPositionJoystickMove(event: IJoystickUpdateEvent) {
-        this.positionJoystickEvent = event;
-    }
-
-    onPositionJoystickStop(event: IJoystickUpdateEvent) {
-        this.positionJoystickEvent = undefined;
-    }
-
-    onCameraJoystickMove(event: IJoystickUpdateEvent) {
-        this.cameraJoystickEvent = event;
-    }
-
-    onCameraJoystickStop(event: IJoystickUpdateEvent) {
-        this.cameraJoystickEvent = undefined;
     }
 
     isPositionVisible(pos: vec3): boolean {
@@ -1101,29 +873,83 @@ export class MapViewer {
 
     handleInput(time: number, deltaTime: number) {
         let cameraSpeedMult = 1.0;
-        if (this.keys.get("Shift")) {
+        if (this.inputManager.isShiftDown()) {
             cameraSpeedMult = 10.0;
         }
 
-        const deltaPitch = 64 * 3 * deltaTime;
+        const deltaPitch = 64 * 5 * deltaTime;
         const deltaYaw = 64 * 5 * deltaTime;
 
         // camera direction controls
-        if (this.keys.get("ArrowUp")) {
+        if (this.inputManager.isKeyDown("ArrowUp")) {
             this.camera.updatePitch(this.camera.pitch, deltaPitch);
         }
-        if (this.keys.get("ArrowDown")) {
+        if (this.inputManager.isKeyDown("ArrowDown")) {
             this.camera.updatePitch(this.camera.pitch, -deltaPitch);
         }
-        if (this.keys.get("ArrowRight")) {
+        if (this.inputManager.isKeyDown("ArrowRight")) {
             this.camera.updateYaw(this.camera.yaw, deltaYaw);
         }
-        if (this.keys.get("ArrowLeft")) {
+        if (this.inputManager.isKeyDown("ArrowLeft")) {
             this.camera.updateYaw(this.camera.yaw, -deltaYaw);
         }
 
+        // camera position controls
+        let deltaX = 0;
+        let deltaY = 0;
+        let deltaZ = 0;
+
+        const deltaPos = 16 * cameraSpeedMult * deltaTime;
+        const deltaHeight = 8 * cameraSpeedMult * deltaTime;
+
+        if (this.inputManager.isKeyDown("KeyW")) {
+            // Forward
+            deltaZ -= deltaPos;
+        }
+        if (this.inputManager.isKeyDown("KeyA")) {
+            // Left
+            deltaX += deltaPos;
+        }
+        if (this.inputManager.isKeyDown("KeyS")) {
+            // Back
+            deltaZ += deltaPos;
+        }
+        if (this.inputManager.isKeyDown("KeyD")) {
+            // Right
+            deltaX -= deltaPos;
+        }
+        if (
+            this.inputManager.isKeyDown("KeyE") ||
+            this.inputManager.isKeyDown("KeyR")
+        ) {
+            // Move up
+            deltaY -= deltaHeight;
+        }
+        if (
+            this.inputManager.isKeyDown("KeyQ") ||
+            this.inputManager.isKeyDown("KeyC") ||
+            this.inputManager.isKeyDown("KeyF")
+        ) {
+            // Move down
+            deltaY += deltaHeight;
+        }
+
+        if (deltaX !== 0 || deltaZ !== 0) {
+            this.camera.move(deltaX, 0, deltaZ, this.cameraMoveTowardsPitch);
+        }
+        if (deltaY !== 0) {
+            this.camera.move(0, deltaY, 0);
+        }
+
+        this.handleMouseInput();
+        this.handleJoystickInput(deltaTime);
+        this.handleControllerInput(deltaTime);
+
         // 200ms cooldown
-        if (this.keys.get("F1") && time - this.lastHudHidden > 0.2) {
+        if (
+            this.inputManager.isKeyDown("F1") &&
+            time - this.lastHudHidden > 0.2
+        ) {
             this.hudHidden = !this.hudHidden;
             this.lastHudHidden = time;
             if (this.setHudHidden) {
@@ -1131,10 +957,42 @@ export class MapViewer {
             }
         }
 
+        if (this.inputManager.isKeyDown("KeyT") && this.timer.ready()) {
+            const totalTriangles = Array.from(this.chunks.values())
+                .map((t) => t.triangleCount)
+                .reduce((a, b) => a + b, 0);
+
+            console.log(
+                this.timer.cpuTime,
+                this.timer.gpuTime,
+                this.chunks.size,
+                "triangles",
+                totalTriangles,
+                this.fps,
+                this.hoveredRegionIds
+            );
+            console.log(time);
+        }
+
+        // if (this.keys.get("r") && this.timer.ready()) {
+        //     this.app.enable(PicoGL.RASTERIZER_DISCARD);
+        // }
+        // if (this.keys.get("f") && this.timer.ready()) {
+        //     this.app.disable(PicoGL.RASTERIZER_DISCARD);
+        // }
+    }
+
+    handleJoystickInput(deltaTime: number) {
+        const deltaPitch = 64 * 5 * deltaTime;
+        const deltaYaw = 64 * 5 * deltaTime;
+
         // joystick controls
-        if (this.positionJoystickEvent) {
-            const moveX = this.positionJoystickEvent.x || 0;
-            const moveY = this.positionJoystickEvent.y || 0;
+        const positionJoystickEvent = this.inputManager.positionJoystickEvent;
+        const cameraJoystickEvent = this.inputManager.cameraJoystickEvent;
+
+        if (positionJoystickEvent) {
+            const moveX = positionJoystickEvent.x || 0;
+            const moveY = positionJoystickEvent.y || 0;
 
             this.camera.move(
                 moveX * 32 * -deltaTime,
@@ -1144,26 +1002,26 @@ export class MapViewer {
             );
         }
 
-        if (this.cameraJoystickEvent) {
-            const moveX = this.cameraJoystickEvent.x || 0;
-            const moveY = this.cameraJoystickEvent.y || 0;
+        if (cameraJoystickEvent) {
+            const moveX = cameraJoystickEvent.x || 0;
+            const moveY = cameraJoystickEvent.y || 0;
             this.camera.updatePitch(
                 this.camera.pitch,
                 deltaPitch * 1.5 * moveY
             );
             this.camera.updateYaw(this.camera.yaw, deltaYaw * 1.5 * moveX);
         }
+    }
+
+    handleControllerInput(deltaTime: number) {
+        const deltaPitch = 64 * 5 * deltaTime;
+        const deltaYaw = 64 * 5 * deltaTime;
 
         // controller
-        let gamepad: Gamepad | null = null;
-        if (this.gamepadIndex !== undefined) {
-            const gamepads = navigator.getGamepads();
-            if (gamepads) {
-                gamepad = gamepads[this.gamepadIndex];
-            }
-        }
+        const gamepad = this.inputManager.getGamepad();
 
         if (gamepad && gamepad.connected && gamepad.mapping === "standard") {
+            let cameraSpeedMult = 1;
             // X, R1
             if (gamepad.buttons[0].pressed || gamepad.buttons[5].pressed) {
                 cameraSpeedMult = 10;
@@ -1205,137 +1063,112 @@ export class MapViewer {
                 );
             }
         }
+    }
 
+    handleMouseInput() {
         // mouse/touch controls
-        if (document.pointerLockElement) {
-            this.camera.updatePitch(this.camera.pitch, this.deltaMouseY * -0.9);
-            this.camera.updateYaw(this.camera.yaw, this.deltaMouseX * 0.9);
+        const deltaMouseX = this.inputManager.getDeltaMouseX();
+        const deltaMouseY = this.inputManager.getDeltaMouseY();
 
-            this.deltaMouseX = 0;
-            this.deltaMouseY = 0;
-        } else if (this.startMouseX !== -1 && this.startMouseY !== -1) {
-            const deltaMouseX = this.startMouseX - this.currentMouseX;
-            const deltaMouseY = this.startMouseY - this.currentMouseY;
-
-            if (isTouchDevice) {
+        if (deltaMouseX !== 0 || deltaMouseY !== 0) {
+            if (this.inputManager.isTouch) {
                 this.camera.move(0, clamp(-deltaMouseY, -100, 100) * 0.004, 0);
             } else {
-                this.camera.updatePitch(this.startPitch, deltaMouseY * 0.9);
-                this.camera.updateYaw(this.startYaw, deltaMouseX * -0.9);
+                this.camera.updatePitch(this.camera.pitch, deltaMouseY * 0.9);
+                this.camera.updateYaw(this.camera.yaw, deltaMouseX * -0.9);
             }
         }
 
-        // camera position controls
-        if (this.keys.get("w") || this.keys.get("W")) {
-            // Forward
-            this.camera.move(
-                0,
-                0,
-                -16 * cameraSpeedMult * deltaTime,
-                this.cameraMoveTowardsPitch
-            );
-        }
-        if (this.keys.get("a") || this.keys.get("A")) {
-            // Left
-            this.camera.move(
-                16 * cameraSpeedMult * deltaTime,
-                0,
-                0,
-                this.cameraMoveTowardsPitch
-            );
-        }
-        if (this.keys.get("s") || this.keys.get("S")) {
-            // Back
-            this.camera.move(
-                0,
-                0,
-                16 * cameraSpeedMult * deltaTime,
-                this.cameraMoveTowardsPitch
-            );
-        }
-        if (this.keys.get("d") || this.keys.get("D")) {
-            // Right
-            this.camera.move(
-                -16 * cameraSpeedMult * deltaTime,
-                0,
-                0,
-                this.cameraMoveTowardsPitch
-            );
+        let closeMenu = false;
+        if (this.inputManager.isPointerLock()) {
+            closeMenu = true;
         }
         if (
-            this.keys.get("e") ||
-            this.keys.get("E") ||
-            this.keys.get("r") ||
-            this.keys.get("R")
+            this.inputManager.hasMovedMouse() &&
+            this.inputManager.isFocused()
         ) {
-            // Move up
-            this.camera.move(0, -8 * cameraSpeedMult * deltaTime, 0);
-        }
-        if (
-            this.keys.get("q") ||
-            this.keys.get("Q") ||
-            this.keys.get("c") ||
-            this.keys.get("C") ||
-            this.keys.get("f") ||
-            this.keys.get("F")
-        ) {
-            // Move down
-            this.camera.move(0, 8 * cameraSpeedMult * deltaTime, 0);
-        }
-
-        if (this.keys.get("t") && this.timer.ready()) {
-            const totalTriangles = Array.from(this.chunks.values())
-                .map((t) => t.triangleCount)
-                .reduce((a, b) => a + b, 0);
-
-            console.log(
-                this.timer.cpuTime,
-                this.timer.gpuTime,
-                this.chunks.size,
-                "triangles",
-                totalTriangles,
-                this.fps,
-                this.hoveredRegionIds
+            const mouseMenuDist = Math.max(
+                Math.abs(this.menuX - this.inputManager.mouseX),
+                Math.abs(this.menuY - this.inputManager.mouseY)
             );
-            console.log(time);
+            if (this.menuOpen && mouseMenuDist > 20) {
+                closeMenu = true;
+            }
+            if (this.onMouseMoved) {
+                this.onMouseMoved(
+                    this.inputManager.mouseX,
+                    this.inputManager.mouseY
+                );
+            }
+        }
+        if (closeMenu) {
+            this.closeMenu();
+        }
+        if (this.inputManager.pickX !== -1 && this.inputManager.pickY !== -1) {
+            if (this.tooltips) {
+                this.checkInteractions(
+                    this.inputManager.pickX,
+                    this.inputManager.pickY,
+                    false
+                );
+            } else {
+                this.readPicked();
+            }
         }
 
-        // if (this.keys.get("r") && this.timer.ready()) {
-        //     this.app.enable(PicoGL.RASTERIZER_DISCARD);
-        // }
-        // if (this.keys.get("f") && this.timer.ready()) {
-        //     this.app.disable(PicoGL.RASTERIZER_DISCARD);
-        // }
+        const tooltipsEnabled =
+            !this.inputManager.isPointerLock() && this.tooltips;
+
+        if (this.hasMultiDraw && !isTouchDevice && tooltipsEnabled) {
+            this.readHoveredRegion();
+        }
+        if (tooltipsEnabled) {
+            this.readHover();
+        }
+
+        if (
+            !this.menuOpen &&
+            tooltipsEnabled &&
+            this.inputManager.mouseX !== -1 &&
+            this.inputManager.mouseY !== -1
+        ) {
+            this.checkInteractions(
+                this.inputManager.mouseX,
+                this.inputManager.mouseY,
+                true
+            );
+        }
     }
 
     readPicked() {
         const gl = this.app.gl as WebGL2RenderingContext;
 
-        if (this.pickX !== -1 && this.pickY !== -1) {
+        const pickX = this.inputManager.pickX;
+        const pickY = this.inputManager.pickY;
+
+        if (pickX !== -1 && pickY !== -1) {
             this.app.readFramebuffer(this.frameBuffer);
 
             gl.readBuffer(gl.COLOR_ATTACHMENT0 + 1);
 
             readPixelsAsync(
                 gl,
-                this.pickX - INTERACTION_RADIUS,
-                gl.canvas.height - this.pickY - INTERACTION_RADIUS,
+                pickX - INTERACTION_RADIUS,
+                gl.canvas.height - pickY - INTERACTION_RADIUS,
                 INTERACTION_SIZE,
                 INTERACTION_SIZE,
                 gl.RGBA,
                 gl.UNSIGNED_BYTE,
                 this.interactBuffer
-            ).then(
-                this.checkInteractionsCallback(this.pickX, this.pickY, false)
-            );
-
-            this.pickX = -1;
-            this.pickY = -1;
+            ).then(this.checkInteractionsCallback(pickX, pickY, false));
         }
     }
 
     readHover() {
-        if (this.currentMouseX === -1 || this.currentMouseY === -1) {
+        const mouseX = this.inputManager.mouseX;
+        const mouseY = this.inputManager.mouseY;
+
+        if (mouseX === -1 || mouseY === -1) {
             return;
         }
 
@@ -1347,8 +1180,8 @@ export class MapViewer {
 
         readPixelsAsync(
             gl,
-            this.currentMouseX - INTERACTION_RADIUS,
-            gl.canvas.height - this.currentMouseY - INTERACTION_RADIUS,
+            mouseX - INTERACTION_RADIUS,
+            gl.canvas.height - mouseY - INTERACTION_RADIUS,
             INTERACTION_SIZE,
             INTERACTION_SIZE,
             gl.RGBA,
@@ -1358,7 +1191,10 @@ export class MapViewer {
     }
 
     readHoveredRegion() {
-        if (this.currentMouseX === -1 || this.currentMouseY === -1) {
+        const mouseX = this.inputManager.mouseX;
+        const mouseY = this.inputManager.mouseY;
+
+        if (mouseX === -1 || mouseY === -1) {
             return;
         }
 
@@ -1370,8 +1206,8 @@ export class MapViewer {
 
         readPixelsAsync(
             gl,
-            this.currentMouseX - INTERACTION_RADIUS,
-            gl.canvas.height - this.currentMouseY - INTERACTION_RADIUS,
+            mouseX - INTERACTION_RADIUS,
+            gl.canvas.height - mouseY - INTERACTION_RADIUS,
             INTERACTION_SIZE,
             INTERACTION_SIZE,
             gl.RGBA,
@@ -1380,7 +1216,7 @@ export class MapViewer {
         ).then(this.onHoveredRegionBuffer);
     }
 
-    onHoveredRegionBuffer(buf: ArrayBufferView) {
+    onHoveredRegionBuffer = (buf: ArrayBufferView) => {
         this.hoveredRegionIds.clear();
         for (let x = 0; x < INTERACTION_SIZE; x++) {
             for (let y = 0; y < INTERACTION_SIZE; y++) {
@@ -1396,15 +1232,18 @@ export class MapViewer {
                 }
             }
         }
-    }
+    };
 
-    closeMenu() {
+    closeMenu = () => {
+        // if (!this.menuOpen) {
+        //     return;
+        // }
         if (this.onMenuClosed) {
             this.onMenuClosed();
             this.menuOpen = false;
         }
         this.app.canvas.focus();
-    }
+    };
 
     checkInteractionsCallback(
         pickedX: number,
@@ -1415,7 +1254,11 @@ export class MapViewer {
             this.checkInteractions(pickedX, pickedY, tooltip);
     }
 
-    checkInteractions(pickedX: number, pickedY: number, tooltip: boolean) {
+    checkInteractions = (
+        pickedX: number,
+        pickedY: number,
+        tooltip: boolean
+    ) => {
         this.closestInteractions.clear();
 
         for (let x = 0; x < INTERACTION_SIZE; x++) {
@@ -1627,7 +1470,7 @@ export class MapViewer {
             this.menuX = pickedX;
             this.menuY = pickedY;
         }
-    }
+    };
 
     updateNpcDataTexture() {
         const newNpcDataTextureIndex =
@@ -1669,11 +1512,11 @@ export class MapViewer {
         }
     }
 
-    render(
+    render = (
         gl: WebGL2RenderingContext,
         time: DOMHighResTimeStamp,
         resized: boolean
-    ) {
+    ) => {
         time *= 0.001;
         const deltaTime = time - this.lastFrameTime;
 
@@ -1737,37 +1580,12 @@ export class MapViewer {
             this.updateCullFace();
         }
 
-        const lastCameraUpdated = this.camera.updated;
-        this.camera.updated = false;
-
         this.handleInput(time, deltaTime);
-
-        const tooltipsEnabled = !document.pointerLockElement && this.tooltips;
-
-        if (this.hasMultiDraw && !isTouchDevice && tooltipsEnabled) {
-            this.readHoveredRegion();
-        }
-        if (tooltipsEnabled) {
-            this.readHover();
-        }
-
-        if (
-            !this.menuOpen &&
-            tooltipsEnabled &&
-            this.currentMouseX !== -1 &&
-            this.currentMouseY !== -1
-        ) {
-            this.checkInteractions(
-                this.currentMouseX,
-                this.currentMouseY,
-                true
-            );
-        }
 
         if (this.camera.updated) {
             this.runCameraMoveCallback();
         }
-        if (lastCameraUpdated && !this.camera.updated) {
+        if (this.camera.updatedLastFrame && !this.camera.updated) {
             this.runCameraMoveEndCallback();
         }
 
@@ -1779,8 +1597,8 @@ export class MapViewer {
         this.cameraPosUni[0] = cameraX;
         this.cameraPosUni[1] = cameraY;
 
-        const cameraRegionX = (cameraX / 64) | 0;
-        const cameraRegionY = (cameraY / 64) | 0;
+        const cameraRegionX = this.camera.getRegionX();
+        const cameraRegionY = this.camera.getRegionY();
 
         this.sceneUniformBuffer
             .set(0, this.camera.viewProjMatrix as Float32Array)
@@ -2080,7 +1898,7 @@ export class MapViewer {
             this.frameDrawCall.draw();
         }
 
-        if (this.keys.get("h")) {
+        if (this.inputManager.isKeyDown("h")) {
             console.log(
                 "rendered chunks",
                 this.visibleChunkCount,
@@ -2161,11 +1979,9 @@ export class MapViewer {
 
         this.lastCullBackFace = this.cullBackFace;
 
-        this.lastCameraX = cameraX;
-        this.lastCameraY = cameraY;
-        this.lastCameraRegionX = cameraRegionX;
-        this.lastCameraRegionY = cameraRegionY;
-    }
+        this.camera.onFrameEnd();
+        this.inputManager.onFrameEnd();
+    };
 }
 
 function formatBytes(bytes: number, decimals: number = 2): string {
@@ -2248,8 +2064,8 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                 const cameraX = mapViewer.camera.getPosX();
                 const cameraY = mapViewer.camera.getPosZ();
 
-                const cameraRegionX = (cameraX / 64) | 0;
-                const cameraRegionY = (cameraY / 64) | 0;
+                const cameraRegionX = mapViewer.camera.getRegionX();
+                const cameraRegionY = mapViewer.camera.getRegionY();
 
                 const offsetX = (-128 + (cameraX % 64) * 4) | 0;
                 const offsetY = (-128 + (cameraY % 64) * 4) | 0;
@@ -2383,8 +2199,8 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                         baseColor="#181C20"
                         stickColor="#007BFF"
                         stickSize={40}
-                        move={mapViewer.onPositionJoystickMove}
-                        stop={mapViewer.onPositionJoystickStop}
+                        move={mapViewer.inputManager.onPositionJoystickMove}
+                        stop={mapViewer.inputManager.onPositionJoystickStop}
                     ></Joystick>
                 </div>
             )}
@@ -2395,8 +2211,8 @@ function MapViewerContainer({ mapViewer, caches }: MapViewerContainerProps) {
                         baseColor="#181C20"
                         stickColor="#007BFF"
                         stickSize={40}
-                        move={mapViewer.onCameraJoystickMove}
-                        stop={mapViewer.onCameraJoystickStop}
+                        move={mapViewer.inputManager.onCameraJoystickMove}
+                        stop={mapViewer.inputManager.onCameraJoystickStop}
                     ></Joystick>
                 </div>
             )}

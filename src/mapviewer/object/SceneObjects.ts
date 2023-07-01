@@ -1,6 +1,7 @@
 import { ObjectDefinition } from "../../client/fs/definition/ObjectDefinition";
 import { Model } from "../../client/model/Model";
 import { DynamicObject } from "../../client/scene/DynamicObject";
+import { ObjectType } from "../../client/scene/ObjectType";
 import { Scene } from "../../client/scene/Scene";
 import { SceneObject } from "../../client/scene/SceneObject";
 import { ContourGroundType } from "../buffer/RenderBuffer";
@@ -15,23 +16,30 @@ export type SceneObjects = {
 };
 
 function isLowDetail(
-    type: number,
+    type: ObjectType,
     def: ObjectDefinition,
     localX: number,
     localY: number,
     plane: number,
+    hasTileModel: boolean,
     occlusionMap: OcclusionMap
 ): boolean {
     if (
-        type === 22 &&
+        type === ObjectType.FLOOR_DECORATION &&
         def.int1 === 0 &&
         def.clipType !== 1 &&
-        !def.obstructsGround
+        !def.obstructsGround &&
+        hasTileModel
     ) {
         return true;
     }
+    const isWallDecoration =
+        type >= ObjectType.WALL_DECORATION_INSIDE &&
+        type <= ObjectType.WALL_DECORATION_DIAGONAL_DOUBLE;
     if (
-        (type === 10 || type === 11 || (type >= 4 && type <= 8)) &&
+        (type === ObjectType.OBJECT ||
+            type === ObjectType.OBJECT_DIAGIONAL ||
+            isWallDecoration) &&
         def.int1 === 1
     ) {
         return occlusionMap.isOccluded(plane, localX | 0, localY | 0);
@@ -48,6 +56,7 @@ export function createObjectModel(
     tileY: number,
     plane: number,
     priority: number,
+    hasTileModel: boolean,
     occlusionMap: OcclusionMap
 ): SceneModel {
     const def = sceneObject.def;
@@ -63,6 +72,7 @@ export function createObjectModel(
         tileX,
         tileY,
         plane,
+        hasTileModel,
         occlusionMap
     );
     // const lowDetail = false;
@@ -142,6 +152,11 @@ export function getSceneObjects(
                     continue;
                 }
 
+                const hasTileModel =
+                    !!tile.tileModel &&
+                    tile.tileModel.faces.length ===
+                        tile.tileModel.normalFaceCount;
+
                 if (tile.floorDecoration) {
                     if (tile.floorDecoration.renderable instanceof Model) {
                         objectModels.push(
@@ -154,6 +169,7 @@ export function getSceneObjects(
                                 tileY,
                                 plane,
                                 1,
+                                hasTileModel,
                                 occlusionMap
                             )
                         );
@@ -185,6 +201,7 @@ export function getSceneObjects(
                                 tileY,
                                 plane,
                                 1,
+                                hasTileModel,
                                 occlusionMap
                             )
                         );
@@ -213,6 +230,7 @@ export function getSceneObjects(
                                 tileY,
                                 plane,
                                 1,
+                                hasTileModel,
                                 occlusionMap
                             )
                         );
@@ -246,6 +264,7 @@ export function getSceneObjects(
                                 tileY,
                                 plane,
                                 10,
+                                hasTileModel,
                                 occlusionMap
                             )
                         );
@@ -274,6 +293,7 @@ export function getSceneObjects(
                                 tileY,
                                 plane,
                                 10,
+                                hasTileModel,
                                 occlusionMap
                             )
                         );
@@ -314,6 +334,7 @@ export function getSceneObjects(
                                 tileY,
                                 plane,
                                 1,
+                                hasTileModel,
                                 occlusionMap
                             )
                         );

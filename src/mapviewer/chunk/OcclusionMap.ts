@@ -1,7 +1,11 @@
 import { Scene } from "../../client/scene/Scene";
 
 export function createOcclusionMap(scene: Scene): OcclusionMap {
-    const occlusionMap = new OcclusionMap();
+    const occlusionMap = new OcclusionMap(
+        scene.planes,
+        scene.sizeX,
+        scene.sizeY
+    );
 
     const renderFlags = scene.tileRenderFlags;
     const underlayIds = scene.tileUnderlays;
@@ -29,12 +33,21 @@ export function createOcclusionMap(scene: Scene): OcclusionMap {
 }
 
 export class OcclusionMap {
-    flags: Uint8Array = new Uint8Array(
-        Scene.MAX_PLANE * Scene.MAP_SIZE * Scene.MAP_SIZE
-    );
+    planes: number;
+    sizeX: number;
+    sizeY: number;
+
+    flags: Uint8Array;
+
+    constructor(planes: number, sizeX: number, sizeY: number) {
+        this.planes = planes;
+        this.sizeX = sizeX;
+        this.sizeY = sizeY;
+        this.flags = new Uint8Array(planes * sizeX * sizeY);
+    }
 
     private getIndex(plane: number, x: number, y: number) {
-        return plane * Scene.MAP_SIZE * Scene.MAP_SIZE + y * Scene.MAP_SIZE + x;
+        return plane * this.sizeX * this.sizeY + y * this.sizeX + x;
     }
 
     isOccluded(plane: number, x: number, y: number): boolean {
