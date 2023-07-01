@@ -1,6 +1,14 @@
-import { useLayoutEffect, useRef, useState, RefObject } from "react";
+import {
+    memo,
+    useRef,
+    useState,
+    MouseEvent,
+    WheelEvent,
+    TouchEvent,
+    useLayoutEffect,
+} from "react";
 import "./WorldMap.css";
-import { useElementSize, useEventListener } from "usehooks-ts";
+import { useElementSize } from "usehooks-ts";
 import { RegionLoader } from "../../client/RegionLoader";
 import { clamp } from "../../client/util/MathUtil";
 
@@ -16,7 +24,7 @@ export interface WorldMapProps {
     loadMapImageUrl: (regionX: number, regionY: number) => string | undefined;
 }
 
-export function WorldMap(props: WorldMapProps) {
+export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     const { getPosition, loadMapImageUrl } = props;
 
     const [ref, dimensions] = useElementSize();
@@ -29,29 +37,84 @@ export function WorldMap(props: WorldMapProps) {
     const [pos, setPos] = useState(getPosition);
     const [tileSize, setTileSize] = useState(3);
 
-    // const tileSize = 3;
-    const halfTileSize = tileSize / 2;
-    const imageSize = 64 * tileSize;
+    const [images, setImages] = useState<JSX.Element[]>([]);
+
+    const requestRef = useRef<number | undefined>();
 
     const cameraX = pos.x | 0;
     const cameraY = pos.y | 0;
 
-    const regionX = pos.x >> 6;
-    const regionY = pos.y >> 6;
-
-    // console.log(dimensions)
-
     const halfWidth = (dimensions.width / 2) | 0;
     const halfHeight = (dimensions.height / 2) | 0;
 
-    const x = halfWidth - (cameraX % 64) * tileSize - halfTileSize;
-    const y = halfHeight - (cameraY % 64) * tileSize - halfTileSize;
+    const animate = (time: DOMHighResTimeStamp) => {
+        // console.log("animate world map", time, tileSize, pos);
+
+        // const tileSize = 3;
+        const halfTileSize = tileSize / 2;
+        const imageSize = 64 * tileSize;
+
+        const regionX = pos.x >> 6;
+        const regionY = pos.y >> 6;
+
+        // console.log(dimensions)
+
+        const x = halfWidth - (cameraX % 64) * tileSize - halfTileSize;
+        const y = halfHeight - (cameraY % 64) * tileSize - halfTileSize;
+
+        const renderStartX = -Math.ceil(x / imageSize) - 1;
+        const renderStartY = -Math.ceil(y / imageSize) - 1;
+
+        const renderEndX = Math.ceil((dimensions.width - x) / imageSize) + 1;
+        const renderEndY = Math.ceil((dimensions.height - y) / imageSize) + 1;
+
+        const images: JSX.Element[] = [];
+
+        for (let rx = renderStartX; rx < renderEndX; rx++) {
+            for (let ry = renderStartY; ry < renderEndY; ry++) {
+                const imageRegionX = regionX + rx;
+                const imageRegionY = regionY + ry;
+                const regionId = RegionLoader.getRegionId(
+                    imageRegionX,
+                    imageRegionY
+                );
+                const mapUrl = loadMapImageUrl(imageRegionX, imageRegionY);
+                if (mapUrl) {
+                    images.push(
+                        <img
+                            key={regionId}
+                            className={`worldmap-image ${imageRegionX}_${imageRegionY}`}
+                            src={mapUrl}
+                            style={{
+                                left: x + rx * imageSize,
+                                bottom: y + ry * imageSize,
+                                width: imageSize,
+                                height: imageSize,
+                            }}
+                        />
+                    );
+                }
+            }
+        }
+
+        setImages(images);
+
+        requestRef.current = requestAnimationFrame(animate);
+    };
+
+    useLayoutEffect(() => {
+        requestRef.current = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(requestRef.current!);
+    }, [dimensions, pos, tileSize]);
 
     const onDoubleClick = (event: MouseEvent) => {
         setIsDragging(false);
 
-        const deltaX = (event.offsetX - halfWidth) / tileSize + 0.5;
-        const deltaY = (halfHeight - event.offsetY) / tileSize + 0.5;
+        const offsetX = event.nativeEvent.offsetX;
+        const offsetY = event.nativeEvent.offsetY;
+
+        const deltaX = (offsetX - halfWidth) / tileSize + 0.5;
+        const deltaY = (halfHeight - offsetY) / tileSize + 0.5;
 
         props.onDoubleClick(cameraX + deltaX, cameraY + deltaY);
     };
@@ -63,7 +126,11 @@ export function WorldMap(props: WorldMapProps) {
     }
 
     const onMouseDown = (event: MouseEvent) => {
-        startDragging(event.x, event.y);
+        const rect = dragRef.current?.getBoundingClientRect();
+        const offsetX = rect?.left ?? 0;
+        const offsetY = rect?.top ?? 0;
+
+        startDragging(event.clientX - offsetX, event.clientY - offsetY);
     };
 
     const onTouchStart = (event: TouchEvent) => {
@@ -80,15 +147,21 @@ export function WorldMap(props: WorldMapProps) {
 
         setStartX(x);
         setStartY(y);
-        setPos({
-            x: cameraX + deltaX,
-            y: cameraY + deltaY,
+        setPos((pos) => {
+            return {
+                x: pos.x + deltaX,
+                y: pos.y + deltaY,
+            };
         });
     };
 
     const onMouseMove = (event: MouseEvent) => {
         if (isDragging) {
-            drag(event.x, event.y);
+            const rect = dragRef.current?.getBoundingClientRect();
+            const offsetX = rect?.left ?? 0;
+            const offsetY = rect?.top ?? 0;
+
+            drag(event.clientX - offsetX, event.clientY - offsetY);
         }
     };
 
@@ -107,59 +180,25 @@ export function WorldMap(props: WorldMapProps) {
     };
 
     const onMouseWheel = (event: WheelEvent) => {
-        setTileSize(clamp(tileSize - Math.sign(event.deltaY), 1, 8));
+        setTileSize((tileSize) => {
+            return clamp((tileSize - Math.sign(event.deltaY)) | 0, 0.5, 10);
+        });
     };
-
-    useEventListener("dblclick", onDoubleClick, dragRef);
-    useEventListener("mousedown", onMouseDown, dragRef);
-    useEventListener("touchstart", onTouchStart, dragRef);
-    useEventListener("mousemove", onMouseMove, dragRef);
-    useEventListener("touchmove", onTouchMove, dragRef);
-    useEventListener("mouseup", stopDragging, dragRef);
-    useEventListener("touchend", stopDragging, dragRef);
-    useEventListener("mouseleave", stopDragging, dragRef);
-    useEventListener("wheel", onMouseWheel, dragRef);
-
-    const renderStartX = -Math.ceil(x / imageSize) - 1;
-    const renderStartY = -Math.ceil(y / imageSize) - 1;
-
-    const renderEndX = Math.ceil((dimensions.width - x) / imageSize) + 1;
-    const renderEndY = Math.ceil((dimensions.height - y) / imageSize) + 1;
-
-    const images: JSX.Element[] = [];
-
-    for (let rx = renderStartX; rx < renderEndX; rx++) {
-        for (let ry = renderStartY; ry < renderEndY; ry++) {
-            const imageRegionX = regionX + rx;
-            const imageRegionY = regionY + ry;
-            const regionId = RegionLoader.getRegionId(
-                imageRegionX,
-                imageRegionY
-            );
-            const mapUrl = loadMapImageUrl(imageRegionX, imageRegionY);
-            if (mapUrl) {
-                images.push(
-                    <img
-                        key={regionId}
-                        className={`worldmap-image ${imageRegionX}_${imageRegionY}`}
-                        src={mapUrl}
-                        style={{
-                            left: x + rx * imageSize,
-                            bottom: y + ry * imageSize,
-                            width: imageSize,
-                            height: imageSize,
-                        }}
-                    />
-                );
-            }
-        }
-    }
 
     return (
         <div className="worldmap" ref={ref}>
             {images}
             <div
                 className={`worldmap-drag ${isDragging ? "dragging" : ""}`}
+                onDoubleClick={onDoubleClick}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={stopDragging}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={stopDragging}
+                onWheel={onMouseWheel}
+                onMouseLeave={stopDragging}
                 ref={dragRef}
             ></div>
             {/* <div
@@ -175,4 +214,4 @@ export function WorldMap(props: WorldMapProps) {
             ></div> */}
         </div>
     );
-}
+});
