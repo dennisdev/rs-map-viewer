@@ -219,13 +219,29 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     };
 
     const zoom = (delta: number) => {
-        setTileSize((tileSize) => {
-            return clamp((tileSize + delta) | 0, 0.5, 10);
-        });
+        const newSize = clamp((tileSize + delta) | 0, 0.5, 10);
+        setTileSize(newSize);
+        return newSize;
     };
 
     const onMouseWheel = (event: WheelEvent) => {
-        zoom(-Math.sign(event.deltaY));
+        const offsetX = event.nativeEvent.offsetX;
+        const offsetY = event.nativeEvent.offsetY;
+
+        const deltaX = (offsetX - halfWidth) / tileSize;
+        const deltaY = (halfHeight - offsetY) / tileSize;
+
+        const newSize = zoom(-Math.sign(event.deltaY));
+
+        const newDeltaX = (offsetX - halfWidth) / newSize;
+        const newDeltaY = (halfHeight - offsetY) / newSize;
+
+        setPos((pos) => {
+            return {
+                x: pos.x + deltaX - newDeltaX,
+                y: pos.y + deltaY - newDeltaY,
+            };
+        });
     };
 
     const zoomOut = () => {
