@@ -1,0 +1,82 @@
+.osrs-select-container {
+    min-width: 200px;
+    /* max-width: 140px; */
+    border: 1px solid;
+    border-color: #0e0e0c;
+}
+
+.osrs-select-control {
+    border: 1px solid !important;
+    border-color: #474745 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    min-height: 0 !important;
+    background-color: #3e3529 !important;
+}
+
+.osrs-select-value-container {
+    padding: 0 !important;
+    text-align: center !important;
+    font-size: 16px;
+    font-family: "OSRS Small" !important;
+    text-shadow: 1px 1px 0 black;
+    /* text-shadow: 1px 1px 0 black; */
+}
+
+.osrs-select-input {
+    margin: 0 !important;
+    /* padding-top: 1px !important; */
+    /* padding-bottom: 1px !important; */
+    text-align: center !important;
+    color: white !important;
+    /* min-width: 100% !important; */
+}
+
+.osrs-select-input input {
+    /* min-width: 100% !important; */
+    text-align: center !important;
+    text-shadow: 1px 1px 0 black;
+    /* grid-area: a !important; */
+}
+
+.osrs-select-single-value {
+    text-align: center !important;
+    color: #ff981f !important;
+}
+
+.osrs-select-placeholder {
+    text-align: center;
+    color: #9f9f9f !important;
+    /* text-shadow: 1px 1px 0 black; */
+}
+
+.osrs-select-menu {
+    border: 1px solid #474745;
+    outline: 1px solid #0e0e0c;
+    border-radius: 0 !important;
+    /* margin: 0 !important; */
+}
+
+.osrs-select-menu-list {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.osrs-select-option {
+    font-size: 16px;
+    font-family: "OSRS Small" !important;
+    text-shadow: 1px 1px 0 black;
+    color: #ff981f !important;
+    /* background-color: #3e3529; */
+}
+
+.osrs-select-option:hover {
+    background-color: #787169;
+}
+
+.osrs-select-no-options-message {
+    font-size: 16px;
+    font-family: "OSRS Small" !important;
+    text-shadow: 1px 1px 0 black;
+    color: #ff981f !important;
+}

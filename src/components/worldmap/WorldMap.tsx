@@ -2,6 +2,7 @@ import {
     memo,
     useRef,
     useState,
+    useCallback,
     MouseEvent,
     WheelEvent,
     TouchEvent,
@@ -11,6 +12,44 @@ import "./WorldMap.css";
 import { useElementSize } from "usehooks-ts";
 import { RegionLoader } from "../../client/RegionLoader";
 import { clamp } from "../../client/util/MathUtil";
+import { OsrsSelect } from "../select/OsrsSelect";
+import { SingleValue } from "react-select";
+import locationsImport from "./locations.json";
+
+interface Location {
+    name: string;
+    coords: number[];
+    size?: string;
+}
+
+function getTileSize(size?: string) {
+    switch (size) {
+        case "large":
+            return 2;
+        case "medium":
+            return 3;
+        default:
+            return 4;
+    }
+}
+
+interface LocationOption {
+    value: string;
+    label: string;
+}
+
+const locations: Location[] = locationsImport.locations;
+const locationsMap: Record<string, Location> = {};
+const locationOptions: LocationOption[] = [];
+
+for (const location of locations) {
+    const key = `${location.name} ${location.coords.join(",")}`;
+    locationsMap[key] = location;
+    locationOptions.push({
+        value: key,
+        label: location.name,
+    });
+}
 
 interface Position {
     x: number;
@@ -197,6 +236,20 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
         zoom(1);
     };
 
+    const onLocationSelected = useCallback(
+        (value: SingleValue<LocationOption>) => {
+            if (value) {
+                const location = locationsMap[value.value];
+                setPos({
+                    x: location.coords[0],
+                    y: location.coords[1],
+                });
+                setTileSize(getTileSize(location.size));
+            }
+        },
+        []
+    );
+
     return (
         <div className="worldmap-container">
             <div className="worldmap" ref={ref}>
@@ -227,9 +280,14 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
             ></div> */}
             </div>
             <div className="worldmap-footer rs-border rs-background">
-                <span className="flex"></span>
-
-                <span className="flex align-right">
+                <span className="flex hide-mobile"></span>
+                <div className="worldmap-location-select">
+                    <OsrsSelect
+                        options={locationOptions}
+                        onChange={onLocationSelected}
+                    ></OsrsSelect>
+                </div>
+                <span className="worldmap-zoom-buttons flex align-right">
                     <div
                         className="worldmap-zoom-button worldmap-zoom-out"
                         onClick={zoomOut}

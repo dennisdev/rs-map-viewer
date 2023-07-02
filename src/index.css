@@ -1,6 +1,10 @@
 @font-face {
-    font-family: "OSRS";
+    font-family: "OSRS Bold";
     src: url(./RuneScape-Chat-Bold-07.ttf);
+}
+@font-face {
+    font-family: "OSRS Small";
+    src: url(./RuneScape-Small.woff);
 }
 
 html,

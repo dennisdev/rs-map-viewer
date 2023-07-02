@@ -12,15 +12,12 @@ declare global {
     }
 }
 
-// declare module 'bz2' {
-//     function decompress(input: Uint8Array): Uint8Array;
-//     export = decompress;
-// }
-
-// declare module 'bz2';
-
-// declare module 'gzip-js';
-
-// interface Window {
-//     bzip2: Bzip2;
-// }
+declare module "react" {
+    function memo<T extends React.ComponentType<any>>(
+        c: T,
+        areEqual?: (
+            prev: Readonly<React.ComponentProps<T>>,
+            next: Readonly<React.ComponentProps<T>>
+        ) => boolean
+    ): T;
+}

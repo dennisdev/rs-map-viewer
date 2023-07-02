@@ -96,7 +96,7 @@ export function MapViewerApp() {
 
         WebFont.load({
             custom: {
-                families: ["OSRS"],
+                families: ["OSRS Bold", "OSRS Small"],
             },
         });
     }, []);
