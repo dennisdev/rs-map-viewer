@@ -56,6 +56,13 @@ interface Position {
     y: number;
 }
 
+const TILE_SIZES = [0.25, 0.5, 0.75, 1, 2, 3, 4, 5, 6, 8, 10, 12];
+
+const DEFAULT_TILE_SIZE = 3;
+
+const MAX_X = 100 * 64;
+const MAX_Y = 200 * 64;
+
 export interface WorldMapProps {
     onDoubleClick: (x: number, y: number) => void;
 
@@ -74,11 +81,15 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     const [startY, setStartY] = useState(0);
 
     const [pos, setPos] = useState(getPosition);
-    const [tileSize, setTileSize] = useState(3);
+    const [tileSizeIndex, setTileSizeIndex] = useState(
+        TILE_SIZES.indexOf(DEFAULT_TILE_SIZE)
+    );
 
     const [images, setImages] = useState<JSX.Element[]>([]);
 
     const requestRef = useRef<number | undefined>();
+
+    const tileSize = TILE_SIZES[tileSizeIndex];
 
     const cameraX = pos.x | 0;
     const cameraY = pos.y | 0;
@@ -87,16 +98,11 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     const halfHeight = (dimensions.height / 2) | 0;
 
     const animate = (time: DOMHighResTimeStamp) => {
-        // console.log("animate world map", time, tileSize, pos);
-
-        // const tileSize = 3;
         const halfTileSize = tileSize / 2;
         const imageSize = 64 * tileSize;
 
         const regionX = pos.x >> 6;
         const regionY = pos.y >> 6;
-
-        // console.log(dimensions)
 
         const x = halfWidth - (cameraX % 64) * tileSize - halfTileSize;
         const y = halfHeight - (cameraY % 64) * tileSize - halfTileSize;
@@ -188,8 +194,8 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
         setStartY(y);
         setPos((pos) => {
             return {
-                x: pos.x + deltaX,
-                y: pos.y + deltaY,
+                x: clamp(pos.x + deltaX, 0, MAX_X),
+                y: clamp(pos.y + deltaY, 0, MAX_Y),
             };
         });
     };
@@ -219,9 +225,9 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     };
 
     const zoom = (delta: number) => {
-        const newSize = clamp((tileSize + delta) | 0, 0.5, 10);
-        setTileSize(newSize);
-        return newSize;
+        const newIndex = clamp(tileSizeIndex + delta, 0, TILE_SIZES.length - 1);
+        setTileSizeIndex(newIndex);
+        return TILE_SIZES[newIndex];
     };
 
     const onMouseWheel = (event: WheelEvent) => {
@@ -238,8 +244,8 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
 
         setPos((pos) => {
             return {
-                x: pos.x + deltaX - newDeltaX,
-                y: pos.y + deltaY - newDeltaY,
+                x: clamp(pos.x + deltaX - newDeltaX, 0, MAX_X),
+                y: clamp(pos.y + deltaY - newDeltaY, 0, MAX_Y),
             };
         });
     };
@@ -260,16 +266,45 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
                     x: location.coords[0],
                     y: location.coords[1],
                 });
-                setTileSize(getTileSize(location.size));
+                setTileSizeIndex(
+                    TILE_SIZES.indexOf(getTileSize(location.size))
+                );
             }
         },
         []
     );
 
+    const borderWidth = MAX_X * tileSize;
+    const borderHeight = MAX_Y * tileSize;
+
+    const borderOffsetX = cameraX * tileSize;
+    const borderOffsetY = cameraY * tileSize;
+
     return (
         <div className="worldmap-container">
             <div className="worldmap" ref={ref}>
                 {images}
+                {/* <div className=""
+                style={{
+                    position: "absolute",
+                    left: halfWidth - 2,
+                    bottom: halfHeight - 2,
+                    width: 4,
+                    height: 4,
+                    backgroundColor: "cyan",
+                    // zIndex: 10,
+                }}
+            ></div> */}
+                <div
+                    className="worldmap-border"
+                    style={{
+                        position: "absolute",
+                        left: halfWidth - borderOffsetX,
+                        bottom: halfHeight - borderOffsetY,
+                        width: borderWidth,
+                        height: borderHeight,
+                    }}
+                ></div>
                 <div
                     className={`worldmap-drag ${isDragging ? "dragging" : ""}`}
                     onDoubleClick={onDoubleClick}
@@ -283,17 +318,6 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
                     onMouseLeave={stopDragging}
                     ref={dragRef}
                 ></div>
-                {/* <div
-                style={{
-                    position: "absolute",
-                    left: halfWidth - 2,
-                    bottom: halfHeight - 2,
-                    width: 4,
-                    height: 4,
-                    backgroundColor: "cyan",
-                    zIndex: 10,
-                }}
-            ></div> */}
             </div>
             <div className="worldmap-footer rs-border rs-background">
                 <span className="flex hide-mobile"></span>

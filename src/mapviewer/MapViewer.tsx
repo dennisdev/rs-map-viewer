@@ -740,7 +740,10 @@ export class MapViewer {
         }
     }
 
-    getMinimapUrl(regionX: number, regionY: number) {
+    getMinimapUrl(regionX: number, regionY: number): string | undefined {
+        if (regionX < 0 || regionX >= 100 || regionY < 0 || regionY >= 200) {
+            return undefined;
+        }
         this.queueMinimapLoad(regionX, regionY);
         const regionId = RegionLoader.getRegionId(regionX, regionY);
         return this.minimapUrls.get(regionId);
