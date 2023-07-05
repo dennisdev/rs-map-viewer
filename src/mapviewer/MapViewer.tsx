@@ -1,11 +1,11 @@
 import Denque from "denque";
 import { vec2, vec3, vec4 } from "gl-matrix";
-import {
+import PicoGL, {
     DrawCall,
     Framebuffer,
     App as PicoApp,
-    PicoGL,
     Program,
+    Renderbuffer,
     Texture,
     Timer,
     UniformBuffer,
@@ -41,6 +41,7 @@ import frameFragShader from "./shaders/frame.frag.glsl";
 import frameVertShader from "./shaders/frame.vert.glsl";
 import frameFxaaFragShader from "./shaders/frame-fxaa.frag.glsl";
 import frameFxaaVertShader from "./shaders/frame-fxaa.vert.glsl";
+import frameDepthFragShader from "./shaders/frame-depth.frag.glsl";
 import { Npc } from "./npc/Npc";
 import {
     Chunk,
@@ -135,12 +136,14 @@ export class MapViewer {
     programNpc?: Program;
     programFrame?: Program;
     programFrameFxaa?: Program;
+    programFrameDepth?: Program;
 
     frameBuffer!: Framebuffer;
 
     resolutionUni: vec2 = vec2.fromValues(0, 0);
     frameDrawCall!: DrawCall;
     frameFxaaDrawCall!: DrawCall;
+    frameDepthDrawCall?: DrawCall;
 
     quadPositions!: VertexBuffer;
     quadArray!: VertexArray;
@@ -166,8 +169,6 @@ export class MapViewer {
     fps: number = 0;
     fpsFrameCount: number = 0;
     fpsLastTime: number = 0;
-
-    fpsLimit: number = 0;
 
     lastFrameTime: number = 0;
     lastClientTick: number = 0;
@@ -213,22 +214,26 @@ export class MapViewer {
     visibleChunkCount: number = 0;
     visibleChunks: Chunk[] = [];
 
+    fpsLimit: number = 0;
+
+    loadNpcs: boolean = true;
+    loadItems: boolean = true;
+    maxPlane: number = Scene.MAX_PLANE - 1;
+
     skyColor: vec4 = vec4.fromValues(0, 0, 0, 1);
     fogDepth: number = 16;
     brightness: number = 1.0;
     colorBanding: number = 255;
 
     antiAliasing: AntiAliasType = AntiAliasType.NONE;
-
-    loadNpcs: boolean = true;
-    loadItems: boolean = true;
-    maxPlane: number = Scene.MAX_PLANE - 1;
-
-    tooltips: boolean = true;
-    debugId: boolean = false;
+    renderDepthMap: boolean = false;
+    depthMapFar: number = 128;
 
     cullBackFace: boolean = true;
-    lastCullBackFace: boolean = true;
+
+    // Misc
+    tooltips: boolean = true;
+    debugId: boolean = false;
 
     // Interactions
     closestInteractions = new Map<number, number[]>();
@@ -397,32 +402,6 @@ export class MapViewer {
 
         this.timer = app.createTimer();
 
-        const colorTarget = app.createTexture2D(app.width, app.height, {
-            internalFormat: PicoGL.RGBA8,
-        });
-        const interactTarget = app.createTexture2D(app.width, app.height, {
-            internalFormat: PicoGL.RGBA8,
-        });
-        const interactRegionTarget = app.createTexture2D(
-            app.width,
-            app.height,
-            {
-                internalFormat: PicoGL.RGBA8,
-            }
-        );
-        const depthTarget = app.createRenderbuffer(
-            app.width,
-            app.height,
-            PicoGL.DEPTH_COMPONENT24
-        );
-
-        this.frameBuffer = app
-            .createFramebuffer()
-            .colorTarget(0, colorTarget)
-            .colorTarget(1, interactTarget)
-            .colorTarget(2, interactRegionTarget)
-            .depthTarget(depthTarget);
-
         this.quadPositions = app.createVertexBuffer(
             PicoGL.FLOAT,
             2,
@@ -449,21 +428,28 @@ export class MapViewer {
             [
                 prependShader(frameFxaaVertShader, this.hasMultiDraw),
                 prependShader(frameFxaaFragShader, this.hasMultiDraw),
+            ],
+            [
+                prependShader(frameVertShader, this.hasMultiDraw),
+                prependShader(frameDepthFragShader, this.hasMultiDraw),
             ]
-        ).then(([program, programNpc, programFrame, programFrameFxaa]) => {
-            this.program = program;
-            this.programNpc = programNpc;
-            this.programFrame = programFrame;
-            this.programFrameFxaa = programFrameFxaa;
+        ).then(
+            ([
+                program,
+                programNpc,
+                programFrame,
+                programFrameFxaa,
+                programFrameDepth,
+            ]) => {
+                this.program = program;
+                this.programNpc = programNpc;
+                this.programFrame = programFrame;
+                this.programFrameFxaa = programFrameFxaa;
+                this.programFrameDepth = programFrameDepth;
 
-            this.frameDrawCall = app
-                .createDrawCall(this.programFrame, this.quadArray)
-                .texture("u_frame", this.frameBuffer.colorAttachments[0]);
-
-            this.frameFxaaDrawCall = app
-                .createDrawCall(this.programFrameFxaa, this.quadArray)
-                .texture("u_frame", this.frameBuffer.colorAttachments[0]);
-        });
+                this.initFrameBuffer(this.renderDepthMap);
+            }
+        );
 
         this.sceneUniformBuffer = app.createUniformBuffer([
             PicoGL.FLOAT_MAT4,
@@ -533,6 +519,69 @@ export class MapViewer {
         this.textureUniformBuffer.update();
 
         console.log("textures: ", textures.length);
+    }
+
+    initFrameBuffer(depthTexture: boolean) {
+        if (
+            !this.programFrame ||
+            !this.programFrameFxaa ||
+            !this.programFrameDepth
+        ) {
+            return;
+        }
+
+        if (this.frameBuffer) {
+            this.frameBuffer.delete();
+        }
+
+        const app = this.app;
+
+        const colorTarget = app.createTexture2D(app.width, app.height, {
+            internalFormat: PicoGL.RGBA8,
+        });
+        const interactTarget = app.createTexture2D(app.width, app.height, {
+            internalFormat: PicoGL.RGBA8,
+        });
+        const interactRegionTarget = app.createTexture2D(
+            app.width,
+            app.height,
+            {
+                internalFormat: PicoGL.RGBA8,
+            }
+        );
+        let depthTarget: Texture | Renderbuffer;
+        if (depthTexture) {
+            depthTarget = app.createTexture2D(app.width, app.height, {
+                internalFormat: PicoGL.DEPTH_COMPONENT24,
+            });
+
+            this.frameDepthDrawCall = app
+                .createDrawCall(this.programFrameDepth, this.quadArray)
+                .texture("u_depth", depthTarget);
+        } else {
+            depthTarget = app.createRenderbuffer(
+                app.width,
+                app.height,
+                PicoGL.DEPTH_COMPONENT24
+            );
+
+            this.frameDepthDrawCall = undefined;
+        }
+
+        this.frameBuffer = app
+            .createFramebuffer()
+            .colorTarget(0, colorTarget)
+            .colorTarget(1, interactTarget)
+            .colorTarget(2, interactRegionTarget)
+            .depthTarget(depthTarget);
+
+        this.frameDrawCall = app
+            .createDrawCall(this.programFrame, this.quadArray)
+            .texture("u_frame", this.frameBuffer.colorAttachments[0]);
+
+        this.frameFxaaDrawCall = app
+            .createDrawCall(this.programFrameFxaa, this.quadArray)
+            .texture("u_frame", this.frameBuffer.colorAttachments[0]);
     }
 
     getSearchParams(): URLSearchParamsInit {
@@ -612,6 +661,14 @@ export class MapViewer {
         this.skyColor[0] = r / 255;
         this.skyColor[1] = g / 255;
         this.skyColor[2] = b / 255;
+    }
+
+    setRenderDepthMap(value: boolean) {
+        if (this.renderDepthMap === value) {
+            return;
+        }
+        this.renderDepthMap = value;
+        this.initFrameBuffer(this.renderDepthMap);
     }
 
     isPositionVisible(pos: vec3): boolean {
@@ -1563,9 +1620,7 @@ export class MapViewer {
             return;
         }
 
-        if (this.lastCullBackFace !== this.cullBackFace) {
-            this.updateCullFace();
-        }
+        this.updateCullFace();
 
         this.handleInput(time, deltaTime);
 
@@ -1875,7 +1930,10 @@ export class MapViewer {
 
         this.app.defaultDrawFramebuffer().clear();
 
-        if (this.antiAliasing === AntiAliasType.FXAA) {
+        if (this.renderDepthMap && this.frameDepthDrawCall) {
+            this.frameDepthDrawCall.uniform("u_far", this.depthMapFar);
+            this.frameDepthDrawCall.draw();
+        } else if (this.antiAliasing === AntiAliasType.FXAA) {
             this.resolutionUni[0] = canvasWidth;
             this.resolutionUni[1] = canvasHeight;
 
@@ -1963,8 +2021,6 @@ export class MapViewer {
         this.renderRegionBounds[1] = renderStartY;
         this.renderRegionBounds[2] = renderEndX;
         this.renderRegionBounds[3] = renderEndY;
-
-        this.lastCullBackFace = this.cullBackFace;
 
         this.camera.onFrameEnd();
         this.inputManager.onFrameEnd();

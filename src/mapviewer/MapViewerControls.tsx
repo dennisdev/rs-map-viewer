@@ -296,6 +296,21 @@ export const MapViewerControls = memo(function MapViewerControls({
                         mapViewer.antiAliasing = v;
                     },
                 },
+                "Depth Map": {
+                    value: mapViewer.renderDepthMap,
+                    onChange: (v) => {
+                        mapViewer.setRenderDepthMap(v);
+                    },
+                },
+                "Depth Map Far": {
+                    value: mapViewer.depthMapFar,
+                    min: 64,
+                    max: 2048,
+                    step: 1,
+                    onChange: (v) => {
+                        mapViewer.depthMapFar = v;
+                    },
+                },
                 "Cull Back-faces": {
                     value: true,
                     onChange: (v) => {
