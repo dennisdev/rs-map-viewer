@@ -39,15 +39,6 @@ export function MapViewerContainer({
     const [hudHidden, setHudHidden] = useState<boolean>(isWallpaperEngine);
     const [isWorldMapOpen, setWorldMapOpen] = useState<boolean>(false);
 
-    function openWorldMap() {
-        setWorldMapOpen(true);
-    }
-
-    function closeWorldMap() {
-        setWorldMapOpen(false);
-        mapViewer.app.canvas.focus();
-    }
-
     useEffect(() => {
         mapViewer.onInit = () => {
             setInited(true);
@@ -92,19 +83,13 @@ export function MapViewerContainer({
         window.requestAnimationFrame(callback);
     }, [mapViewer]);
 
-    let loadingBarOverlay: JSX.Element | undefined = undefined;
-    if (downloadProgress) {
-        const formattedCacheSize = formatBytes(downloadProgress.total);
-        const progress =
-            ((downloadProgress.current / downloadProgress.total) * 100) | 0;
-        loadingBarOverlay = (
-            <div className="overlay-container">
-                <OsrsLoadingBar
-                    text={`Downloading cache (${formattedCacheSize})`}
-                    progress={progress}
-                />
-            </div>
-        );
+    function openWorldMap() {
+        setWorldMapOpen(true);
+    }
+
+    function closeWorldMap() {
+        setWorldMapOpen(false);
+        mapViewer.app.canvas.focus();
     }
 
     function getMapPosition() {
@@ -126,6 +111,21 @@ export function MapViewerContainer({
 
     function loadMapImageUrl(regionX: number, regionY: number) {
         return mapViewer.getMinimapUrl(regionX, regionY);
+    }
+
+    let loadingBarOverlay: JSX.Element | undefined = undefined;
+    if (downloadProgress) {
+        const formattedCacheSize = formatBytes(downloadProgress.total);
+        const progress =
+            ((downloadProgress.current / downloadProgress.total) * 100) | 0;
+        loadingBarOverlay = (
+            <div className="overlay-container">
+                <OsrsLoadingBar
+                    text={`Downloading cache (${formattedCacheSize})`}
+                    progress={progress}
+                />
+            </div>
+        );
     }
 
     return (
