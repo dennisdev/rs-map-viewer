@@ -713,13 +713,13 @@ export class MapViewer {
         const regionId = RegionLoader.getRegionId(regionX, regionY);
         if (
             this.loadingMinimapRegionIds.size <
-                this.chunkLoaderWorker.size * 2 &&
+                this.chunkLoaderWorker.size * 4 &&
             !this.loadingMinimapRegionIds.has(regionId) &&
             !this.loadingRegionIds.has(regionId) &&
             !this.minimapUrls.has(regionId) &&
             !this.invalidRegionIds.has(regionId)
         ) {
-            this.loadingRegionIds.add(regionId);
+            this.loadingMinimapRegionIds.add(regionId);
 
             const minimapData = await this.chunkLoaderWorker.pool.queue(
                 (worker) => worker.loadMinimap(regionX, regionY, 0)
@@ -736,7 +736,7 @@ export class MapViewer {
                 );
             }
 
-            this.loadingRegionIds.delete(regionId);
+            this.loadingMinimapRegionIds.delete(regionId);
         }
     }
 
