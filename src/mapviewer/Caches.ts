@@ -1,27 +1,15 @@
+import { CacheInfo } from "../client/fs/CacheInfo";
 import { fetchMemoryStore, ProgressListener } from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
 import { MemoryStore } from "../client/fs/MemoryStore";
 import { fetchXteas, Xteas } from "./util/Xteas";
-
-export type CacheInfo = {
-    name: string;
-    game: string;
-    revision: number;
-    timestamp: string;
-    size: number;
-};
 
 export async function fetchCacheList(): Promise<CacheInfo[]> {
     const resp = await fetch("/caches/caches.json");
     return resp.json();
 }
 
-export function getLatestCache(caches: CacheInfo[]): CacheInfo | undefined {
-    if (caches.length === 0) {
-        return undefined;
-    }
-
-    // sort new to old
+export function sortCachesNewToOld(caches: CacheInfo[]): void {
     caches.sort((a, b) => {
         const isOsrsA = a.game === "oldschool";
         const isOsrsB = b.game === "oldschool";
@@ -33,6 +21,14 @@ export function getLatestCache(caches: CacheInfo[]): CacheInfo | undefined {
             dateB - dateA
         );
     });
+}
+
+export function getLatestCache(caches: CacheInfo[]): CacheInfo | undefined {
+    if (caches.length === 0) {
+        return undefined;
+    }
+
+    sortCachesNewToOld(caches);
 
     return caches[0];
 }

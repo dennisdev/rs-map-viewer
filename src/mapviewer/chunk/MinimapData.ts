@@ -1,4 +1,4 @@
-import { CacheInfo } from "../CacheInfo";
+import { CacheInfo } from "../../client/fs/CacheInfo";
 
 export type MinimapData = {
     regionX: number;

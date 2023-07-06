@@ -1,5 +1,5 @@
-import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
+import { CacheInfo } from "../CacheInfo";
 import { Definition } from "./Definition";
 
 export class VarcIntDefinition extends Definition {

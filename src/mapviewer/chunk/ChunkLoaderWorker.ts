@@ -21,7 +21,7 @@ import { VarpManager } from "../../client/VarpManager";
 import { NpcModelLoader } from "../../client/fs/loader/model/NpcModelLoader";
 import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
 import { NpcSpawn } from "../npc/NpcSpawn";
-import { LoadedCache } from "../CacheInfo";
+import { LoadedCache } from "../Caches";
 import { ItemModelLoader } from "../../client/fs/loader/model/ItemModelLoader";
 import { CachedItemLoader } from "../../client/fs/loader/ItemLoader";
 import { ItemSpawn } from "../item/ItemSpawn";

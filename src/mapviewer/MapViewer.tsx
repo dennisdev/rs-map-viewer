@@ -50,7 +50,7 @@ import {
     loadChunk,
 } from "./chunk/Chunk";
 import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
-import { CacheInfo, LoadedCache } from "./CacheInfo";
+import { LoadedCache } from "./Caches";
 import {
     CachedObjectLoader,
     ObjectLoader,
@@ -63,6 +63,7 @@ import { DrawRange } from "./chunk/DrawRange";
 import { ItemSpawn } from "./item/ItemSpawn";
 import { Camera, ProjectionType } from "./Camera";
 import { InputManager, getAxisDeadzone } from "./InputManager";
+import { CacheInfo } from "../client/fs/CacheInfo";
 
 function prependShader(shader: string, multiDraw: boolean): string {
     let header = "#version 300 es\n";

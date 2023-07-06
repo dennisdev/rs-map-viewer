@@ -1,5 +1,5 @@
-import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { Archive } from "../Archive";
+import { CacheInfo } from "../CacheInfo";
 import { ItemDefinition } from "../definition/ItemDefinition";
 import {
     ArchiveDefinitionLoader,

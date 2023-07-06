@@ -1,5 +1,5 @@
+import { CacheInfo } from "../../client/fs/CacheInfo";
 import { CollisionData } from "../../client/pathfinder/collision/CollisionMap";
-import { CacheInfo } from "../CacheInfo";
 import { NpcData } from "../npc/NpcData";
 import { AnimatedObjectData } from "../object/AnimatedObjectData";
 import { DrawRange } from "./DrawRange";

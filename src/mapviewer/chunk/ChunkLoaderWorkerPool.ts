@@ -1,5 +1,5 @@
 import { spawn, Pool, Worker, ModuleThread } from "threads";
-import { LoadedCache } from "../CacheInfo";
+import { LoadedCache } from "../Caches";
 import { NpcSpawn } from "../npc/NpcSpawn";
 import { ChunkData } from "./ChunkData";
 import { ItemSpawn } from "../item/ItemSpawn";

@@ -1,6 +1,6 @@
-import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { VarpManager } from "../../VarpManager";
 import { ByteBuffer } from "../../util/ByteBuffer";
+import { CacheInfo } from "../CacheInfo";
 import { ObjectLoader } from "../loader/ObjectLoader";
 import { Definition, ParamsMap } from "./Definition";
 

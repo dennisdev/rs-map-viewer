@@ -1,5 +1,5 @@
-import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { ByteBuffer } from "../../util/ByteBuffer";
+import { CacheInfo } from "../CacheInfo";
 import { MemoryFileSystem } from "../FileSystem";
 import { IndexType } from "../IndexType";
 import { Definition } from "./Definition";

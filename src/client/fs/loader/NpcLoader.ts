@@ -1,5 +1,5 @@
-import { CacheInfo } from "../../../mapviewer/CacheInfo";
 import { Archive } from "../Archive";
+import { CacheInfo } from "../CacheInfo";
 import { NpcDefinition } from "../definition/NpcDefinition";
 import {
     ArchiveDefinitionLoader,

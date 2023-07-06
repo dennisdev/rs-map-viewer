@@ -3,7 +3,7 @@ import { IndexSync } from "../Index";
 import { StoreSync } from "../Store";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
 import { brightenRgb } from "../../util/ColorUtil";
-import { CacheInfo } from "../../../mapviewer/CacheInfo";
+import { CacheInfo } from "../CacheInfo";
 
 export class TextureLoader {
     textureIndex: IndexSync<StoreSync>;

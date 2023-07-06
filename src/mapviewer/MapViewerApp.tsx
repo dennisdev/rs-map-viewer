@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DownloadProgress } from "../client/fs/FileSystem";
 import {
-    CacheInfo,
     deleteOldCaches,
     fetchCacheList,
     getLatestCache,
     loadCache,
-} from "./CacheInfo";
+} from "./Caches";
 import { MapViewer } from "./MapViewer";
 import { fetchNpcSpawns } from "./npc/NpcSpawn";
 import { fetchItemSpawns } from "./item/ItemSpawn";
@@ -17,6 +16,7 @@ import WebFont from "webfontloader";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { formatBytes } from "./util/BytesUtil";
 import { MapViewerContainer } from "./MapViewerContainer";
+import { CacheInfo } from "../client/fs/CacheInfo";
 
 const MAX_POOL_SIZE = isWallpaperEngine ? 1 : 4;
 

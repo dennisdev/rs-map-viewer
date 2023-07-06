@@ -5,10 +5,11 @@ import { memo, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DownloadProgress } from "../client/fs/FileSystem";
 import { lerp, slerp } from "../client/util/MathUtil";
-import { CacheInfo, loadCache } from "./CacheInfo";
+import { loadCache } from "./Caches";
 import { AntiAliasType, CameraPosition, MapViewer } from "./MapViewer";
 import { isTouchDevice } from "./util/DeviceUtil";
 import { ProjectionType } from "./Camera";
+import { CacheInfo } from "../client/fs/CacheInfo";
 
 interface ColorRgb {
     r: number;

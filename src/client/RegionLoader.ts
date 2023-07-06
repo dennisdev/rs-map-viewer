@@ -1,4 +1,3 @@
-import { CacheInfo } from "../mapviewer/CacheInfo";
 import { ObjectDefinition } from "./fs/definition/ObjectDefinition";
 import { OverlayDefinition } from "./fs/definition/OverlayDefinition";
 import { UnderlayDefinition } from "./fs/definition/UnderlayDefinition";
@@ -10,6 +9,7 @@ import { StoreSync } from "./fs/Store";
 import { ObjectModelLoader } from "./fs/loader/model/ObjectModelLoader";
 import { VarpManager } from "./VarpManager";
 import { LandscapeLoadMode, Scene } from "./scene/Scene";
+import { CacheInfo } from "./fs/CacheInfo";
 
 export class RegionLoader {
     static readonly SCENE_BORDER_RADIUS = 5;

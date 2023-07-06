@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
 import { Joystick } from "react-joystick-component";
-import { RegionLoader } from "../client/RegionLoader";
 import { DownloadProgress } from "../client/fs/FileSystem";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
 import { MinimapContainer } from "../components/minimap/MinimapContainer";
-import { MinimapImage } from "../components/minimap/MinimapImage";
 import { WorldMapModal } from "../components/worldmap/WorldMapModal";
-import { CacheInfo } from "./CacheInfo";
 import { MapViewer } from "./MapViewer";
 import { MapViewerControls } from "./MapViewerControls";
 import { RS_TO_DEGREES } from "./MathConstants";
@@ -15,6 +12,7 @@ import { formatBytes } from "./util/BytesUtil";
 import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
 import WebGLCanvas from "../components/Canvas";
 import "./MapViewerContainer.css";
+import { CacheInfo } from "../client/fs/CacheInfo";
 
 interface MapViewerContainerProps {
     mapViewer: MapViewer;

@@ -11,7 +11,6 @@ import {
 import { createOcclusionMap } from "./OcclusionMap";
 import { NpcModelLoader } from "../../client/fs/loader/model/NpcModelLoader";
 import { NpcSpawn } from "../npc/NpcSpawn";
-import { CacheInfo } from "../CacheInfo";
 import { ItemModelLoader } from "../../client/fs/loader/model/ItemModelLoader";
 import { DrawRange, newDrawRange } from "./DrawRange";
 import { createAnimatedObjectDataArray } from "../object/AnimatedObjectData";
@@ -24,6 +23,7 @@ import { createAnimatedObjectGroups } from "../object/AnimatedObjectGroup";
 import { addModelGroup, createModelGroups } from "./ModelGroup";
 import { createItemModelArray, ItemSpawn } from "../item/ItemSpawn";
 import { MapImageLoader } from "../../client/scene/MapImageLoader";
+import { CacheInfo } from "../../client/fs/CacheInfo";
 
 function loadHeightMapTextureData(region: Scene): Float32Array {
     const heightMapTextureData = new Float32Array(
