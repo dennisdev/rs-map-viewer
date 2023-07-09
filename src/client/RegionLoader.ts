@@ -104,9 +104,9 @@ export class RegionLoader {
         if (archiveId === -1) {
             return undefined;
         }
-        const key = this.xteasMap.get(archiveId);
+        let key = this.xteasMap.get(archiveId);
         if (!key) {
-            return undefined;
+            key = [];
         }
         const file = this.mapIndex.getFile(archiveId, 0, key);
         return file && file.data;
@@ -171,7 +171,10 @@ export class RegionLoader {
                     const offsetX = rx * Scene.MAP_SIZE - region.startX;
                     const offsetY = ry * Scene.MAP_SIZE - region.startY;
 
-                    const landscapeData = this.getLandscapeData(rx, ry);
+                    let landscapeData: Int8Array | undefined;
+                    try {
+                        landscapeData = this.getLandscapeData(rx, ry);
+                    } catch (e) {}
                     if (landscapeData) {
                         region.decodeLandscape(
                             this,
