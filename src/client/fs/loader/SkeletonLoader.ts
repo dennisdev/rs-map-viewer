@@ -1,6 +1,6 @@
 import { Skeleton } from "../../model/animation/Skeleton";
 import { IndexSync } from "../Index";
-import { StoreSync } from "../Store";
+import { StoreSync } from "../store/Store";
 
 export class SkeletonLoader {
     skeletonIndex: IndexSync<StoreSync>;

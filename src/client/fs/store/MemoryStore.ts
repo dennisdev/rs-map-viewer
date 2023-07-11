@@ -1,28 +1,30 @@
-import { ByteBuffer } from "../util/ByteBuffer";
+import { ByteBuffer } from "../../util/ByteBuffer";
 import { Sector } from "./Sector";
 import { SectorCluster } from "./SectorCluster";
 import { StoreSync } from "./Store";
 
-export class MemoryStore extends StoreSync {
+export class BaseMemoryStore extends StoreSync {
     constructor(
         public readonly dataFile: ArrayBuffer,
-        public readonly indexFiles: (ArrayBuffer | undefined)[],
-        public readonly metaFile: ArrayBuffer
+        public readonly indexFiles: (ArrayBuffer | undefined)[]
     ) {
         super();
+    }
+
+    getIndexFile(indexId: number): ArrayBuffer | undefined {
+        if (indexId >= this.indexFiles.length) {
+            return undefined;
+        }
+        return this.indexFiles[indexId];
     }
 
     override read(indexId: number, archiveId: number): Int8Array {
         if (indexId < 0) {
             throw new Error("Index id cannot be lower than 0");
         }
-        if (indexId >= this.indexFiles.length && indexId !== 255) {
-            throw new Error(`Index ${indexId} not found`);
-        }
-        const indexFile =
-            indexId === 255 ? this.metaFile : this.indexFiles[indexId];
+        const indexFile = this.getIndexFile(indexId);
         if (!indexFile) {
-            throw new Error(`Index ${indexId} not loaded`);
+            throw new Error(`Index ${indexId} not found`);
         }
 
         const clusterPtr = archiveId * SectorCluster.SIZE;
@@ -104,5 +106,24 @@ export class MemoryStore extends StoreSync {
         }
 
         return data;
+    }
+}
+
+export class MemoryStore extends BaseMemoryStore {
+    static META_INDEX_ID = 255;
+
+    constructor(
+        dataFile: ArrayBuffer,
+        indexFiles: (ArrayBuffer | undefined)[],
+        public readonly metaFile: ArrayBuffer
+    ) {
+        super(dataFile, indexFiles);
+    }
+
+    override getIndexFile(indexId: number): ArrayBuffer | undefined {
+        if (indexId === MemoryStore.META_INDEX_ID) {
+            return this.metaFile;
+        }
+        return super.getIndexFile(indexId);
     }
 }

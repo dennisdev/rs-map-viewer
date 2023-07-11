@@ -1,7 +1,7 @@
 import { AnimationFrame } from "../../model/animation/AnimationFrame";
 import { AnimationFrameMap } from "../../model/animation/AnimationFrameMap";
 import { IndexSync } from "../Index";
-import { StoreSync } from "../Store";
+import { StoreSync } from "../store/Store";
 import { SkeletonLoader } from "./SkeletonLoader";
 
 export class AnimationFrameMapLoader {

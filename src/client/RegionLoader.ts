@@ -5,7 +5,7 @@ import { IndexSync } from "./fs/Index";
 import { ObjectLoader } from "./fs/loader/ObjectLoader";
 import { OverlayLoader } from "./fs/loader/OverlayLoader";
 import { UnderlayLoader } from "./fs/loader/UnderlayLoader";
-import { StoreSync } from "./fs/Store";
+import { StoreSync } from "./fs/store/Store";
 import { ObjectModelLoader } from "./fs/loader/model/ObjectModelLoader";
 import { VarpManager } from "./VarpManager";
 import { LandscapeLoadMode, Scene } from "./scene/Scene";

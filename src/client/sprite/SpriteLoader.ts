@@ -1,5 +1,5 @@
 import { IndexSync } from "../fs/Index";
-import { StoreSync } from "../fs/Store";
+import { StoreSync } from "../fs/store/Store";
 import { ByteBuffer } from "../util/ByteBuffer";
 import { IndexedSprite } from "./IndexedSprite";
 

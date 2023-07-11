@@ -1,8 +1,8 @@
-import { FileStore } from "./FileStore";
-import { SectorCluster } from "./SectorCluster";
+import { FileStore } from "./store/FileStore";
+import { SectorCluster } from "./store/SectorCluster";
 import { Index, IndexAsync, IndexSync, load, loadSync } from "./Index";
-import { Store, StoreAsync, StoreSync } from "./Store";
-import { MemoryStore } from "./MemoryStore";
+import { Store, StoreAsync, StoreSync } from "./store/Store";
+import { MemoryStore } from "./store/MemoryStore";
 import { IndexType } from "./IndexType";
 
 export class FileSystem<T, S extends Store<T>, I extends Index<T, S>> {

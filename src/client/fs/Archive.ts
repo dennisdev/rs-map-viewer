@@ -1,5 +1,5 @@
 import { ByteBuffer } from "../util/ByteBuffer";
-import { File } from "./File";
+import { ArchiveFile } from "./ArchiveFile";
 
 export class Archive {
     public static decode(
@@ -9,9 +9,9 @@ export class Archive {
         fileIds: Int32Array,
         buffer: ByteBuffer
     ): Archive {
-        const files: Map<number, File> = new Map();
+        const files: Map<number, ArchiveFile> = new Map();
         if (fileCount === 1) {
-            files.set(lastFileId, new File(lastFileId, id, buffer.data));
+            files.set(lastFileId, new ArchiveFile(lastFileId, id, buffer.data));
         } else {
             buffer.offset = buffer.length - 1;
             const chunks = buffer.readUnsignedByte();
@@ -47,7 +47,7 @@ export class Archive {
             for (let fileIdx = 0; fileIdx < fileCount; fileIdx++) {
                 const fileId = fileIds[fileIdx];
                 const data = fileData[fileIdx].data;
-                files.set(fileId, new File(fileId, id, data));
+                files.set(fileId, new ArchiveFile(fileId, id, data));
             }
         }
         return new Archive(id, lastFileId, fileCount, fileIds, files);
@@ -58,10 +58,10 @@ export class Archive {
         public readonly lastFileId: number,
         public readonly fileCount: number,
         private readonly _fileIds: Int32Array,
-        private readonly _files: Map<number, File>
+        private readonly _files: Map<number, ArchiveFile>
     ) {}
 
-    getFile(id: number): File | undefined {
+    getFile(id: number): ArchiveFile | undefined {
         return this._files.get(id);
     }
 
@@ -69,7 +69,7 @@ export class Archive {
         return this._fileIds;
     }
 
-    get files(): File[] {
+    get files(): ArchiveFile[] {
         return Array.from(this._files.values());
     }
 }

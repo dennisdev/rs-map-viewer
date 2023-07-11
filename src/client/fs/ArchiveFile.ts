@@ -1,6 +1,6 @@
 import { ByteBuffer } from "../util/ByteBuffer";
 
-export class File {
+export class ArchiveFile {
     constructor(
         public readonly id: number,
         public readonly archiveId: number,

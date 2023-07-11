@@ -1,11 +1,11 @@
 import { Container } from "./Container";
 import { ByteBuffer } from "../util/ByteBuffer";
-import { ReferenceTable, INVALID_TABLE } from "./ReferenceTable";
+import { ReferenceTable, INVALID_TABLE } from "./ref/ReferenceTable";
 import { Archive } from "./Archive";
-import { ArchiveReference } from "./ArchiveReference";
-import { FileReference } from "./FileReference";
-import { File } from "./File";
-import { Store, StoreAsync, StoreSync } from "./Store";
+import { ArchiveReference } from "./ref/ArchiveReference";
+import { ArchiveFileReference } from "./ref/ArchiveFileReference";
+import { ArchiveFile } from "./ArchiveFile";
+import { Store, StoreAsync, StoreSync } from "./store/Store";
 import { IndexType } from "./IndexType";
 
 export abstract class Index<T, S extends Store<T>> {
@@ -75,7 +75,7 @@ export abstract class Index<T, S extends Store<T>> {
         return this.getFileIds(archiveId).indexOf(fileId) >= 0;
     }
 
-    getFileReferences(archiveId: number): FileReference[] {
+    getFileReferences(archiveId: number): ArchiveFileReference[] {
         const archiveRef = this.getArchiveReference(archiveId);
         if (archiveRef) {
             return archiveRef.fileReferences;
@@ -87,7 +87,7 @@ export abstract class Index<T, S extends Store<T>> {
     getFileReference(
         archiveId: number,
         fileId: number
-    ): FileReference | undefined {
+    ): ArchiveFileReference | undefined {
         return this.getFileReferences(archiveId).find(
             (ref) => ref.id === fileId
         );
@@ -133,7 +133,7 @@ export class IndexAsync<S extends StoreAsync> extends Index<
         archiveId: number,
         fileId: number,
         key: number[] = []
-    ): Promise<File | undefined> {
+    ): Promise<ArchiveFile | undefined> {
         const archive = await this.getArchive(archiveId, key);
         return archive.getFile(fileId);
     }
@@ -160,7 +160,7 @@ export class IndexSync<S extends StoreSync> extends Index<Int8Array, S> {
         archiveId: number,
         fileId: number,
         key: number[] = []
-    ): File | undefined {
+    ): ArchiveFile | undefined {
         return this.getArchive(archiveId, key).getFile(fileId);
     }
 }

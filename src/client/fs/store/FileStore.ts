@@ -1,6 +1,6 @@
 import { SectorCluster } from "./SectorCluster";
 import { Sector } from "./Sector";
-import { ByteBuffer } from "../util/ByteBuffer";
+import { ByteBuffer } from "../../util/ByteBuffer";
 import { StoreAsync } from "./Store";
 
 export class FileStore extends StoreAsync {

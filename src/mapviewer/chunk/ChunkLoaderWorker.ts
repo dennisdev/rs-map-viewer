@@ -5,7 +5,7 @@ import { IndexType } from "../../client/fs/IndexType";
 import { CachedObjectLoader } from "../../client/fs/loader/ObjectLoader";
 import { CachedOverlayLoader } from "../../client/fs/loader/OverlayLoader";
 import { CachedUnderlayLoader } from "../../client/fs/loader/UnderlayLoader";
-import { MemoryStore } from "../../client/fs/MemoryStore";
+import { MemoryStore } from "../../client/fs/store/MemoryStore";
 import { RegionLoader } from "../../client/RegionLoader";
 import { TextureLoader } from "../../client/fs/loader/TextureLoader";
 import { Compression } from "../../client/util/Compression";

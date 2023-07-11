@@ -1,4 +1,4 @@
-import { ByteBuffer } from "../util/ByteBuffer";
+import { ByteBuffer } from "../../util/ByteBuffer";
 
 export class Sector {
     public static readonly HEADER_SIZE = 8;

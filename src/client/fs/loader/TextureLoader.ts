@@ -1,6 +1,6 @@
 import { TextureDefinition } from "../definition/TextureDefinition";
 import { IndexSync } from "../Index";
-import { StoreSync } from "../Store";
+import { StoreSync } from "../store/Store";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
 import { brightenRgb } from "../../util/ColorUtil";
 import { CacheInfo } from "../CacheInfo";

@@ -1,6 +1,6 @@
 import { ArchiveReference } from "./ArchiveReference";
-import { ByteBuffer } from "../util/ByteBuffer";
-import { Djb2 } from "../util/Djb2";
+import { ByteBuffer } from "../../util/ByteBuffer";
+import { Djb2 } from "../../util/Djb2";
 
 export class ReferenceTable {
     public static decode(buffer: ByteBuffer): ReferenceTable {

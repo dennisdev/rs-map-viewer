@@ -1,4 +1,4 @@
-import { FileReference } from "./FileReference";
+import { ArchiveFileReference } from "./ArchiveFileReference";
 
 export class ArchiveReference {
     constructor(
@@ -14,13 +14,13 @@ export class ArchiveReference {
         private readonly _fileNameHashes: Int32Array
     ) {}
 
-    getFileReference(id: number): FileReference | undefined {
+    getFileReference(id: number): ArchiveFileReference | undefined {
         const i = this._fileIdIndexMap.get(id);
         if (i === undefined) {
             return undefined;
         }
 
-        return new FileReference(
+        return new ArchiveFileReference(
             this._fileIds[i],
             id,
             this._fileNameHashes ? this._fileNameHashes[i] : 0
@@ -35,8 +35,8 @@ export class ArchiveReference {
         return this._fileIds;
     }
 
-    get fileReferences(): FileReference[] {
-        const refs = new Array<FileReference>(this._fileIds.length);
+    get fileReferences(): ArchiveFileReference[] {
+        const refs = new Array<ArchiveFileReference>(this._fileIds.length);
         for (let i = 0; i < this._fileIds.length; i++) {
             const ref = this.getFileReference(this._fileIds[i]);
             if (ref) {

@@ -1,6 +1,6 @@
 import { ModelData } from "../../../model/ModelData";
 import { IndexSync } from "../../Index";
-import { StoreSync } from "../../Store";
+import { StoreSync } from "../../store/Store";
 
 export interface ModelLoader {
     getModel(id: number): ModelData | undefined;

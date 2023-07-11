@@ -1,7 +1,7 @@
 import { CacheInfo } from "../client/fs/CacheInfo";
 import { fetchMemoryStore, ProgressListener } from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
-import { MemoryStore } from "../client/fs/MemoryStore";
+import { MemoryStore } from "../client/fs/store/MemoryStore";
 import { fetchXteas, Xteas } from "./util/Xteas";
 
 export async function fetchCacheList(): Promise<CacheInfo[]> {
