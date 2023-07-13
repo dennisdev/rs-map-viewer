@@ -78,6 +78,8 @@ export abstract class TextureLoader {
 }
 
 export class TextureDatLoader extends TextureLoader {
+    static ANIMATED_TEXTURE_IDS = new Set([17, 24, 34, 40]);
+
     textureArchive: Archive;
 
     textureSprites: IndexedSprite[];
@@ -105,10 +107,16 @@ export class TextureDatLoader extends TextureLoader {
     }
 
     override getAnimDirection(index: number): number {
+        if (TextureDatLoader.ANIMATED_TEXTURE_IDS.has(index)) {
+            return 1;
+        }
         return 0;
     }
 
     override getAnimSpeed(index: number): number {
+        if (TextureDatLoader.ANIMATED_TEXTURE_IDS.has(index)) {
+            return 1;
+        }
         return 0;
     }
 
