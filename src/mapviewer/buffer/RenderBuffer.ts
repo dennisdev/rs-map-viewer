@@ -292,7 +292,7 @@ export function isAlphaModelFace(
     face: ModelFace
 ): boolean {
     const textureId = textureLoader.getTextureId(face.textureId);
-    if (textureId !== undefined) {
+    if (textureId !== -1) {
         return textureLoader.hasAlpha(textureId);
     }
 
