@@ -327,10 +327,10 @@ export class Scene {
                         const underlay = regionLoader.getUnderlayDef(
                             underlayId - 1
                         );
-                        hues[yi] += underlay.hue;
+                        hues[yi] += underlay.getHueBlend();
                         sats[yi] += underlay.saturation;
                         light[yi] += underlay.lightness;
-                        mul[yi] += underlay.hueMultiplier;
+                        mul[yi] += underlay.getHueMultiplier();
                         num[yi]++;
                     }
                 }
@@ -341,10 +341,10 @@ export class Scene {
                         const underlay = regionLoader.getUnderlayDef(
                             underlayId - 1
                         );
-                        hues[yi] -= underlay.hue;
+                        hues[yi] -= underlay.getHueBlend();
                         sats[yi] -= underlay.saturation;
                         light[yi] -= underlay.lightness;
-                        mul[yi] -= underlay.hueMultiplier;
+                        mul[yi] -= underlay.getHueMultiplier();
                         num[yi]--;
                     }
                 }

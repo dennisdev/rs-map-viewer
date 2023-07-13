@@ -1,6 +1,6 @@
 import { VarpManager } from "../../VarpManager";
 import { ByteBuffer } from "../../util/ByteBuffer";
-import { CacheInfo } from "../CacheInfo";
+import { CacheInfo } from "../Types";
 import { ObjectLoader } from "../loader/ObjectLoader";
 import { Definition, ParamsMap } from "./Definition";
 
@@ -151,10 +151,10 @@ export class ObjectDefinition extends Definition {
                 }
             }
         } else if (opcode === 2) {
-            this.name = buffer.readString();
+            this.name = this.readString(buffer);
         } else if (opcode === 3) {
             // description
-            buffer.readString();
+            this.readString(buffer);
         } else if (opcode === 5) {
             const count = buffer.readUnsignedByte();
             if (count > 0) {
@@ -199,8 +199,8 @@ export class ObjectDefinition extends Definition {
             this.ambient = buffer.readByte();
         } else if (opcode === 39) {
             this.contrast = buffer.readByte() * 25;
-        } else if (opcode >= 30 && opcode < 35) {
-            this.actions[opcode - 30] = buffer.readString();
+        } else if (opcode >= 30 && opcode < 39) {
+            this.actions[opcode - 30] = this.readString(buffer);
             if (this.actions[opcode - 30].toLowerCase() === "hidden") {
                 delete this.actions[opcode - 30];
             }
@@ -223,7 +223,7 @@ export class ObjectDefinition extends Definition {
                 this.retextureTo[i] = buffer.readUnsignedShort();
             }
         } else if (opcode === 60) {
-            // old
+            const icon = buffer.readUnsignedShort();
         } else if (opcode === 61) {
             buffer.readUnsignedShort();
         } else if (opcode === 62) {
@@ -305,7 +305,10 @@ export class ObjectDefinition extends Definition {
             this.params = Definition.readParamsMap(buffer, this.params);
         } else {
             throw new Error(
-                "ObjectDefinition: Opcode " + opcode + " not implemented."
+                "ObjectDefinition: Opcode " +
+                    opcode +
+                    " not implemented. id: " +
+                    this.id
             );
         }
     }

@@ -64,7 +64,7 @@ async function downloadCaches(count) {
                 cache.environment === "live" &&
                 cache.language === "en" &&
                 cache.builds.length > 0 &&
-                cache.builds[0].major >= 377 &&
+                cache.builds[0].major >= 254 &&
                 cache.builds[0].major <= 471 &&
                 cache.timestamp
         )

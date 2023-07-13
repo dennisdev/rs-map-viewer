@@ -21,3 +21,12 @@ export enum ConfigType {
     DBROW = 38,
     DBTABLE = 39,
 }
+
+export enum ConfigTypeDat {
+    TITLE = 1,
+    CONFIGS = 2,
+    INTERFACES = 3,
+    MEDIA = 4,
+    VERSIONLIST = 5,
+    TEXTURES = 6,
+}

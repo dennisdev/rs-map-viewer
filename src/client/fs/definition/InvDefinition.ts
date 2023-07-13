@@ -1,5 +1,5 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
-import { CacheInfo } from "../CacheInfo";
+import { CacheInfo } from "../Types";
 import { Definition } from "./Definition";
 
 export class InvDefinition extends Definition {

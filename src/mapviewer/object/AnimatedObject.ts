@@ -1,4 +1,5 @@
 import { AnimationDefinition } from "../../client/fs/definition/AnimationDefinition";
+import { AnimationFrameLoader } from "../../client/fs/loader/AnimationFrameLoader";
 import { DrawRange } from "../chunk/DrawRange";
 
 export class AnimatedObject {
@@ -47,7 +48,7 @@ export class AnimatedObject {
         }
     }
 
-    update(cycle: number): number {
+    update(animationFrameLoader: AnimationFrameLoader, cycle: number): number {
         if (!this.animationDef) {
             return 0;
         }
@@ -57,8 +58,14 @@ export class AnimatedObject {
             elapsed = 100;
         }
 
-        while (elapsed > this.animationDef.frameLengths[this.frame]) {
-            elapsed -= this.animationDef.frameLengths[this.frame];
+        while (
+            elapsed >
+            this.animationDef.getFrameLength(animationFrameLoader, this.frame)
+        ) {
+            elapsed -= this.animationDef.getFrameLength(
+                animationFrameLoader,
+                this.frame
+            );
             this.frame++;
             if (this.frame >= this.animationDef.frameLengths.length) {
                 this.frame -= this.animationDef.frameStep;
@@ -76,6 +83,7 @@ export class AnimatedObject {
         }
 
         this.cycleStart = cycle - elapsed;
+
         return this.frame;
     }
 }

@@ -1,5 +1,5 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
-import { CacheInfo } from "../CacheInfo";
+import { CacheInfo, CacheType, getCacheType } from "../Types";
 
 export type ParamsMap = Map<number, number | string>;
 
@@ -32,6 +32,12 @@ export abstract class Definition {
     constructor(id: number, cacheInfo: CacheInfo) {
         this.id = id;
         this.cacheInfo = cacheInfo;
+    }
+
+    readString(buffer: ByteBuffer): string {
+        const stopValue =
+            getCacheType(this.cacheInfo) === CacheType.DAT ? 0xa : 0;
+        return buffer.readString(stopValue);
     }
 
     decode(buffer: ByteBuffer): void {

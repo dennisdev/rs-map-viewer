@@ -1,24 +1,25 @@
 import { ObjectDefinition } from "./fs/definition/ObjectDefinition";
-import { OverlayDefinition } from "./fs/definition/OverlayDefinition";
-import { UnderlayDefinition } from "./fs/definition/UnderlayDefinition";
-import { IndexSync } from "./fs/Index";
+import { OverlayDefinition } from "./fs/definition/floor/OverlayDefinition";
 import { ObjectLoader } from "./fs/loader/ObjectLoader";
-import { OverlayLoader } from "./fs/loader/OverlayLoader";
-import { UnderlayLoader } from "./fs/loader/UnderlayLoader";
-import { StoreSync } from "./fs/store/Store";
+import { FloorLoader, OverlayLoader } from "./fs/loader/OverlayLoader";
 import { ObjectModelLoader } from "./fs/loader/model/ObjectModelLoader";
 import { VarpManager } from "./VarpManager";
 import { LandscapeLoadMode, Scene } from "./scene/Scene";
-import { CacheInfo } from "./fs/CacheInfo";
+import { CacheInfo } from "./fs/Types";
+import { GenericIndex } from "./fs/Index";
+import { FloorDefinition } from "./fs/definition/floor/FloorDefinition";
+import { MapIndex } from "./MapIndex";
 
 export class RegionLoader {
     static readonly SCENE_BORDER_RADIUS = 5;
 
     cacheInfo: CacheInfo;
 
-    mapIndex: IndexSync<StoreSync>;
+    mapIndex: MapIndex;
 
-    underlayLoader: UnderlayLoader;
+    mapCacheIndex: GenericIndex;
+
+    underlayLoader: FloorLoader;
     overlayLoader: OverlayLoader;
 
     objectLoader: ObjectLoader;
@@ -34,26 +35,11 @@ export class RegionLoader {
         return (regionX << 8) | regionY;
     }
 
-    static getTerrainArchiveId(
-        mapIndex: IndexSync<StoreSync>,
-        regionX: number,
-        regionY: number
-    ): number {
-        return mapIndex.getArchiveId(`m${regionX}_${regionY}`);
-    }
-
-    static getLandscapeArchiveId(
-        mapIndex: IndexSync<StoreSync>,
-        regionX: number,
-        regionY: number
-    ): number {
-        return mapIndex.getArchiveId(`l${regionX}_${regionY}`);
-    }
-
     constructor(
         cacheInfo: CacheInfo,
-        mapIndex: IndexSync<StoreSync>,
-        underlayLoader: UnderlayLoader,
+        mapIndex: MapIndex,
+        mapCacheIndex: GenericIndex,
+        underlayLoader: FloorLoader,
         overlayLoader: OverlayLoader,
         objectLoader: ObjectLoader,
         objectModelLoader: ObjectModelLoader,
@@ -62,6 +48,7 @@ export class RegionLoader {
     ) {
         this.cacheInfo = cacheInfo;
         this.mapIndex = mapIndex;
+        this.mapCacheIndex = mapCacheIndex;
         this.underlayLoader = underlayLoader;
         this.overlayLoader = overlayLoader;
         this.objectLoader = objectLoader;
@@ -70,29 +57,13 @@ export class RegionLoader {
         this.varpManager = varpManager;
     }
 
-    getTerrainArchiveId(regionX: number, regionY: number): number {
-        return RegionLoader.getTerrainArchiveId(
-            this.mapIndex,
-            regionX,
-            regionY
-        );
-    }
-
-    getLandscapeArchiveId(regionX: number, regionY: number): number {
-        return RegionLoader.getLandscapeArchiveId(
-            this.mapIndex,
-            regionX,
-            regionY
-        );
-    }
-
     getTerrainData(regionX: number, regionY: number): Int8Array | undefined {
-        const archiveId = this.getTerrainArchiveId(regionX, regionY);
+        const archiveId = this.mapIndex.getTerrainArchiveId(regionX, regionY);
         if (archiveId === -1) {
             return undefined;
         }
         try {
-            const file = this.mapIndex.getFile(archiveId, 0);
+            const file = this.mapCacheIndex.getFile(archiveId, 0);
             return file && file.data;
         } catch (e) {
             return undefined;
@@ -100,15 +71,12 @@ export class RegionLoader {
     }
 
     getLandscapeData(regionX: number, regionY: number): Int8Array | undefined {
-        const archiveId = this.getLandscapeArchiveId(regionX, regionY);
+        const archiveId = this.mapIndex.getLandscapeArchiveId(regionX, regionY);
         if (archiveId === -1) {
             return undefined;
         }
-        let key = this.xteasMap.get(archiveId);
-        if (!key) {
-            key = [];
-        }
-        const file = this.mapIndex.getFile(archiveId, 0, key);
+        const key = this.xteasMap.get(archiveId);
+        const file = this.mapCacheIndex.getFile(archiveId, 0, key);
         return file && file.data;
     }
 
@@ -194,7 +162,7 @@ export class RegionLoader {
         return region;
     }
 
-    getUnderlayDef(id: number): UnderlayDefinition {
+    getUnderlayDef(id: number): FloorDefinition {
         return this.underlayLoader.getDefinition(id);
     }
 

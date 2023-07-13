@@ -124,6 +124,68 @@ export function packHsl(hue: number, saturation: number, lightness: number) {
     return ((saturation / 32) << 7) + ((hue / 4) << 10) + ((lightness / 2) | 0);
 }
 
+export function rgbToHsl(rgb: number): number {
+    const r = ((rgb >> 16) & 255) / 256.0;
+    const g = ((rgb >> 8) & 255) / 256.0;
+    const b = (rgb & 255) / 256.0;
+
+    let minRgb = r;
+    if (g < r) {
+        minRgb = g;
+    }
+    if (b < minRgb) {
+        minRgb = b;
+    }
+
+    let maxRgb = r;
+    if (g > r) {
+        maxRgb = g;
+    }
+    if (b > maxRgb) {
+        maxRgb = b;
+    }
+
+    let hueTemp = 0.0;
+    let sat = 0.0;
+    const light = (minRgb + maxRgb) / 2.0;
+    if (minRgb !== maxRgb) {
+        if (light < 0.5) {
+            sat = (maxRgb - minRgb) / (minRgb + maxRgb);
+        }
+
+        if (light >= 0.5) {
+            sat = (maxRgb - minRgb) / (2.0 - maxRgb - minRgb);
+        }
+
+        if (maxRgb === r) {
+            hueTemp = (g - b) / (maxRgb - minRgb);
+        } else if (maxRgb === g) {
+            hueTemp = 2.0 + (b - r) / (maxRgb - minRgb);
+        } else if (maxRgb === b) {
+            hueTemp = 4.0 + (r - g) / (maxRgb - minRgb);
+        }
+    }
+
+    hueTemp /= 6.0;
+
+    const hue = (hueTemp * 256.0) | 0;
+    let saturation = (sat * 256.0) | 0;
+    let lightness = (light * 256.0) | 0;
+    if (saturation < 0) {
+        saturation = 0;
+    } else if (saturation > 255) {
+        saturation = 255;
+    }
+
+    if (lightness < 0) {
+        lightness = 0;
+    } else if (lightness > 255) {
+        lightness = 255;
+    }
+
+    return packHsl(hue, saturation, lightness);
+}
+
 export function adjustUnderlayLight(hsl: number, light: number) {
     if (hsl === -1) {
         return 12345678;

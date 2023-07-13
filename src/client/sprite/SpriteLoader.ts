@@ -1,5 +1,5 @@
-import { IndexSync } from "../fs/Index";
-import { StoreSync } from "../fs/store/Store";
+import { Archive } from "../fs/Archive";
+import { GenericIndexDat2 } from "../fs/Index";
 import { ByteBuffer } from "../util/ByteBuffer";
 import { IndexedSprite } from "./IndexedSprite";
 
@@ -96,10 +96,7 @@ export class SpriteLoader {
         SpriteLoader.pixels = undefined;
     }
 
-    static loadFromIndex(
-        spriteIndex: IndexSync<StoreSync>,
-        id: number
-    ): boolean {
+    static loadFromIndex(spriteIndex: GenericIndexDat2, id: number): boolean {
         const file = spriteIndex.getFile(id, 0);
         if (file) {
             SpriteLoader.load(file.data);
@@ -108,8 +105,72 @@ export class SpriteLoader {
         return false;
     }
 
+    static loadIndexedSpriteDat(
+        archive: Archive,
+        name: string,
+        offset: number
+    ): IndexedSprite {
+        const dataFile = archive.getFileNamed(name + ".dat");
+        const indexFile = archive.getFileNamed("index.dat");
+        if (!dataFile) {
+            throw new Error(name + ".dat not found");
+        }
+        if (!indexFile) {
+            throw new Error("index.dat not found");
+        }
+
+        const dataBuffer = new ByteBuffer(dataFile.data);
+        const indexBuffer = new ByteBuffer(indexFile.data);
+
+        indexBuffer.offset = dataBuffer.readUnsignedShort();
+
+        const sprite = new IndexedSprite();
+
+        sprite.width = indexBuffer.readUnsignedShort();
+        sprite.height = indexBuffer.readUnsignedShort();
+
+        let paletteSize = indexBuffer.readUnsignedByte();
+
+        sprite.palette = new Int32Array(paletteSize);
+        for (let i = 0; i < paletteSize - 1; i++) {
+            sprite.palette[i + 1] = indexBuffer.readMedium();
+        }
+
+        for (let i = 0; i < offset; i++) {
+            indexBuffer.offset += 2;
+            dataBuffer.offset +=
+                indexBuffer.readUnsignedShort() *
+                indexBuffer.readUnsignedShort();
+            indexBuffer.offset++;
+        }
+
+        sprite.xOffset = indexBuffer.readUnsignedByte();
+        sprite.yOffset = indexBuffer.readUnsignedByte();
+        sprite.subWidth = indexBuffer.readUnsignedShort();
+        sprite.subHeight = indexBuffer.readUnsignedShort();
+
+        const pixelCount = sprite.subWidth * sprite.subHeight;
+        sprite.pixels = new Uint8Array(pixelCount);
+
+        const type = indexBuffer.readUnsignedByte();
+        if (type === 0) {
+            for (let i = 0; i < pixelCount; i++) {
+                sprite.pixels[i] = dataBuffer.readByte();
+            }
+        } else if (type === 1) {
+            for (let x = 0; x < sprite.subWidth; x++) {
+                for (let y = 0; y < sprite.subHeight; y++) {
+                    sprite.pixels[x + y * sprite.subWidth] =
+                        dataBuffer.readByte();
+                }
+            }
+        }
+
+        return sprite;
+    }
+
     static loadIntoIndexedSprite(
-        spriteIndex: IndexSync<StoreSync>,
+        spriteIndex: GenericIndexDat2,
         id: number
     ): IndexedSprite | undefined {
         if (
@@ -140,7 +201,7 @@ export class SpriteLoader {
     }
 
     static loadIntoIndexedSprites(
-        spriteIndex: IndexSync<StoreSync>,
+        spriteIndex: GenericIndexDat2,
         id: number
     ): IndexedSprite[] | undefined {
         if (

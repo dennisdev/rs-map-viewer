@@ -3,15 +3,15 @@ import { ModelLoader } from "./ModelLoader";
 import { Model } from "../../../model/Model";
 
 export class ItemModelLoader {
-    modelLoader: ModelLoader;
-
     itemLoader: ItemLoader;
+
+    modelLoader: ModelLoader;
 
     modelCache: Map<number, Model>;
 
-    constructor(modelLoader: ModelLoader, itemLoader: ItemLoader) {
-        this.modelLoader = modelLoader;
+    constructor(itemLoader: ItemLoader, modelLoader: ModelLoader) {
         this.itemLoader = itemLoader;
+        this.modelLoader = modelLoader;
         this.modelCache = new Map();
     }
 

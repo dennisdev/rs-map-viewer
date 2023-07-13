@@ -1,4 +1,4 @@
-import { CacheInfo } from "../../client/fs/CacheInfo";
+import { CacheInfo } from "../../client/fs/Types";
 import { CollisionData } from "../../client/pathfinder/collision/CollisionMap";
 import { NpcData } from "../npc/NpcData";
 import { AnimatedObjectData } from "../object/AnimatedObjectData";

@@ -134,7 +134,7 @@ export class ReferenceTable {
         public readonly archiveCount: number,
         public readonly lastArchiveId: number,
         private readonly _archiveIdIndexMap: Map<number, number>,
-        private readonly _archiveIds: Int32Array,
+        public readonly archiveIds: Int32Array,
         private readonly _archiveNameHashes: Int32Array,
         private readonly _archiveWhirlpools: Int8Array[],
         private readonly _archiveCrcs: DataView,
@@ -146,10 +146,10 @@ export class ReferenceTable {
         private readonly _archiveNameHashIdMap: Map<number, number> = new Map()
     ) {
         if (named) {
-            for (let i = 0; i < this._archiveIds.length; i++) {
+            for (let i = 0; i < this.archiveIds.length; i++) {
                 this._archiveNameHashIdMap.set(
                     this._archiveNameHashes[i],
-                    this._archiveIds[i]
+                    this.archiveIds[i]
                 );
             }
         }
@@ -192,14 +192,10 @@ export class ReferenceTable {
         );
     }
 
-    get archiveIds(): Int32Array {
-        return this._archiveIds;
-    }
-
     get archiveReferences(): ArchiveReference[] {
         const refs = new Array<ArchiveReference>(this.archiveIds.length);
-        for (let i = 0; i < this._archiveIds.length; i++) {
-            const ref = this.getArchiveReference(this._archiveIds[i]);
+        for (let i = 0; i < this.archiveIds.length; i++) {
+            const ref = this.getArchiveReference(this.archiveIds[i]);
             if (ref) {
                 refs[i] = ref;
             }

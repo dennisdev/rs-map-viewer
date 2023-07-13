@@ -206,13 +206,16 @@ export class MapImageLoader {
 
             if (objectDef.mapSceneId !== -1) {
                 const mapScene = this.mapScenes[objectDef.mapSceneId];
-
-                const x = ((objectDef.sizeX * 4 - mapScene.subWidth) / 2) | 0;
-                const y = ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
-                mapScene.drawAt(
-                    tileX * 4 + x,
-                    y + (scene.sizeY - tileY - objectDef.sizeY) * 4
-                );
+                if (mapScene) {
+                    const x =
+                        ((objectDef.sizeX * 4 - mapScene.subWidth) / 2) | 0;
+                    const y =
+                        ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
+                    mapScene.drawAt(
+                        tileX * 4 + x,
+                        y + (scene.sizeY - tileY - objectDef.sizeY) * 4
+                    );
+                }
             } else {
                 let rgb = wallRgb;
                 if (isEntityInteractive(wallObjectTag)) {
@@ -302,13 +305,16 @@ export class MapImageLoader {
 
             if (objectDef.mapSceneId !== -1) {
                 const mapScene = this.mapScenes[objectDef.mapSceneId];
-
-                const x = ((objectDef.sizeX * 4 - mapScene.subWidth) / 2) | 0;
-                const y = ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
-                mapScene.drawAt(
-                    tileX * 4 + x,
-                    (scene.sizeY - tileY - objectDef.sizeY) * 4 + y
-                );
+                if (mapScene) {
+                    const x =
+                        ((objectDef.sizeX * 4 - mapScene.subWidth) / 2) | 0;
+                    const y =
+                        ((objectDef.sizeY * 4 - mapScene.subHeight) / 2) | 0;
+                    mapScene.drawAt(
+                        tileX * 4 + x,
+                        (scene.sizeY - tileY - objectDef.sizeY) * 4 + y
+                    );
+                }
             } else if (type === ObjectType.WALL_DIAGONAL) {
                 let rgb = wallRgb;
                 if (isEntityInteractive(gameObjectTag)) {
@@ -342,13 +348,14 @@ export class MapImageLoader {
 
             if (objectDef.mapSceneId !== -1) {
                 const mapScene = this.mapScenes[objectDef.mapSceneId];
-
-                const x = (objectDef.sizeX * 4 - mapScene.subWidth) / 2;
-                const y = (objectDef.sizeY * 4 - mapScene.subHeight) / 2;
-                mapScene.drawAt(
-                    tileX * 4 + x,
-                    y + (scene.sizeY - tileY - objectDef.sizeY) * 4
-                );
+                if (mapScene) {
+                    const x = (objectDef.sizeX * 4 - mapScene.subWidth) / 2;
+                    const y = (objectDef.sizeY * 4 - mapScene.subHeight) / 2;
+                    mapScene.drawAt(
+                        tileX * 4 + x,
+                        y + (scene.sizeY - tileY - objectDef.sizeY) * 4
+                    );
+                }
             }
         }
     }

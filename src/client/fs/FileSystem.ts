@@ -1,120 +1,103 @@
 import { FileStore } from "./store/FileStore";
 import { SectorCluster } from "./store/SectorCluster";
-import { Index, IndexAsync, IndexSync, load, loadSync } from "./Index";
-import { Store, StoreAsync, StoreSync } from "./store/Store";
-import { MemoryStore } from "./store/MemoryStore";
+import { MemoryStoreDat, MemoryStoreDat2 } from "./store/MemoryStore";
 import { IndexType } from "./IndexType";
+import { ApiType, CacheType } from "./Types";
+import { BaseStore } from "./store/Store";
+import {
+    BaseIndex,
+    IndexDat,
+    IndexDat2,
+    IndexDat2Async,
+    IndexDatAsync,
+    loadDat,
+    loadDat2,
+    loadDat2Async,
+} from "./Index";
 
-export class FileSystem<T, S extends Store<T>, I extends Index<T, S>> {
-    protected readonly indexMap: Map<IndexType, I> = new Map();
+export class BaseFileSystem<
+    A extends ApiType,
+    T extends CacheType,
+    S extends BaseStore<A, T>,
+    I extends BaseIndex<A, T, S>
+> {
+    protected readonly indexMap: Map<number, I> = new Map();
 
-    constructor(public readonly store: S, indices: I[]) {
+    constructor(public readonly store: S, public readonly indices: I[]) {
         indices.forEach((index) => {
             this.indexMap.set(index.id, index);
         });
     }
 
-    indexExists(indexId: IndexType): boolean {
+    indexExists(indexId: number): boolean {
         return this.indexMap.has(indexId);
     }
 
-    getIndex(id: IndexType): I {
+    getIndex(id: number): I {
         const index = this.indexMap.get(id);
         if (!index) {
-            throw new Error("Failed to load " + IndexType[id] + " index");
+            throw new Error("Failed to load index: " + id);
         }
         return index;
     }
-
-    get indices(): I[] {
-        return Array.from(this.indexMap.values());
-    }
 }
 
-// export class FileSystemAsync<S extends StoreAsync, I extends IndexAsync<S>> extends FileSystem<Promise<Int8Array>, S, I> {
-//     constructor(
-//         store: S,
-//         indices: I[]
-//     ) {
-//         super(store, indices);
-//     }
-// }
+export type FileSystem<I> = I extends BaseIndex<infer A, infer T, infer S>
+    ? BaseFileSystem<A, T, S, I>
+    : never;
 
-// export class FileSystemSync<S extends StoreSync, I extends IndexSync<S>> extends FileSystem<Int8Array, S, I> {
-//     constructor(
-//         store: S,
-//         indices: I[]
-//     ) {
-//         super(store, indices);
-//     }
-// }
+export type FileSystemDat<S extends BaseStore<ApiType.SYNC, CacheType.DAT>> =
+    FileSystem<IndexDat<S>>;
+export type FileSystemDat2<S extends BaseStore<ApiType.SYNC, CacheType.DAT2>> =
+    FileSystem<IndexDat2<S>>;
 
-export type FileSystemAsync<S extends StoreAsync> = FileSystem<
-    Promise<Int8Array>,
-    S,
-    IndexAsync<S>
->;
+export type FileSystemDatAsync<
+    S extends BaseStore<ApiType.ASYNC, CacheType.DAT>
+> = FileSystem<IndexDatAsync<S>>;
+export type FileSystemDat2Async<
+    S extends BaseStore<ApiType.ASYNC, CacheType.DAT2>
+> = FileSystem<IndexDat2Async<S>>;
 
-export type FileSystemSync<S extends StoreSync> = FileSystem<
-    Int8Array,
-    S,
-    IndexSync<S>
->;
+export type FileFsDat2 = FileSystemDat2Async<FileStore>;
 
-export type FileFileSystem = FileSystemAsync<FileStore>;
+export type MemoryFsDat = FileSystemDat<MemoryStoreDat>;
+export type MemoryFsDat2 = FileSystemDat2<MemoryStoreDat2>;
 
-export type MemoryFileSystem = FileSystemSync<MemoryStore>;
+export async function openFromFiles(files: FileList): Promise<FileFsDat2> {
+    const filesArr: File[] = Array.from(files);
+    const dataFile = filesArr.find((file) => file.name.endsWith(".dat2"));
+    if (typeof dataFile === "undefined") {
+        throw new Error("main_file_cache.dat2 file not found");
+    }
+    const metaFile = filesArr.find((file) => file.name.endsWith(".idx255"));
+    if (typeof metaFile === "undefined") {
+        throw new Error("main_file_cache.idx255 file not found");
+    }
+    const indexCount = metaFile.size / SectorCluster.SIZE;
+    const indexFiles = new Array<{ id: number; file: File }>(indexCount);
 
-// TODO: turn into async function
-export function open(
-    files: FileList,
-    indicesToLoad?: number[]
-): Promise<FileFileSystem> {
-    return new Promise<FileFileSystem>((resolve, reject) => {
-        const filesArr: File[] = Array.from(files);
-        const dataFile = filesArr.find((file) => file.name.endsWith(".dat2"));
-        if (typeof dataFile === "undefined") {
-            reject("main_file_cache.dat2 file not found");
-            return;
-        }
-        const metaFile = filesArr.find((file) => file.name.endsWith(".idx255"));
-        if (typeof metaFile === "undefined") {
-            reject("main_file_cache.idx255 file not found");
-            return;
-        }
-        const indexCount = metaFile.size / SectorCluster.SIZE;
-        const indexFiles = new Array<{ id: number; file: File }>(indexCount);
-
-        for (let idx = 0; idx < indexCount; idx++) {
-            if (indicesToLoad && indicesToLoad.indexOf(idx) < 0) {
-                continue;
-            }
-            const indexFile = filesArr.find((file) =>
-                file.name.endsWith(".idx" + idx)
-            );
-            if (typeof indexFile === "undefined") {
-                reject(`main_file_cache.idx${idx} file not found`);
-                return;
-            }
-            indexFiles[idx] = {
-                id: idx,
-                file: indexFile,
-            };
-        }
-        const fileStore = new FileStore(
-            dataFile,
-            indexFiles.map((indexFile) => indexFile.file),
-            metaFile
+    for (let idx = 0; idx < indexCount; idx++) {
+        const indexFile = filesArr.find((file) =>
+            file.name.endsWith(".idx" + idx)
         );
-        const indexPromises = indexFiles.map((indexFile) =>
-            load(indexFile.id, fileStore)
-        );
-        Promise.all(indexPromises)
-            .then((indices) => {
-                resolve(new FileSystem(fileStore, indices));
-            })
-            .catch(reject);
-    });
+        if (typeof indexFile === "undefined") {
+            throw new Error(`main_file_cache.idx${idx} file not found`);
+        }
+        indexFiles[idx] = {
+            id: idx,
+            file: indexFile,
+        };
+    }
+    const fileStore = new FileStore(
+        dataFile,
+        indexFiles.map((indexFile) => indexFile.file),
+        metaFile
+    );
+    const indexPromises = indexFiles.map((indexFile) =>
+        loadDat2Async(indexFile.id, fileStore)
+    );
+    const indices = await Promise.all(indexPromises);
+    return new BaseFileSystem(fileStore, indices);
 }
 
 export type DownloadProgress = {
@@ -328,13 +311,42 @@ async function fetchCacheIndex(
     return { id, data };
 }
 
-export async function fetchMemoryStore(
+export async function fetchMemoryStoreDat(
+    baseUrl: string,
+    cacheName: string,
+    shared: boolean = false,
+    progressListener?: ProgressListener
+): Promise<MemoryStoreDat> {
+    console.time("fetch dat");
+    const cache = await caches.open(cacheName);
+    const [dataFile, ...indexFiles] = await Promise.all([
+        fetchCacheFile(
+            cache,
+            baseUrl + "main_file_cache.dat",
+            shared,
+            true,
+            progressListener
+        ),
+        fetchCacheIndex(cache, baseUrl, 0, shared, false),
+        fetchCacheIndex(cache, baseUrl, 1, shared, false),
+        fetchCacheIndex(cache, baseUrl, 2, shared, false),
+        fetchCacheIndex(cache, baseUrl, 3, shared, false),
+        fetchCacheIndex(cache, baseUrl, 4, shared, false),
+    ]);
+
+    console.timeEnd("fetch dat");
+
+    const indexFileDatas = indexFiles.map((file) => file.data);
+    return new MemoryStoreDat(dataFile, indexFileDatas);
+}
+
+export async function fetchMemoryStoreDat2(
     baseUrl: string,
     cacheName: string,
     indicesToLoad: IndexType[] = [],
     shared: boolean = false,
     progressListener?: ProgressListener
-): Promise<MemoryStore> {
+): Promise<MemoryStoreDat2> {
     console.time("fetch");
     const cache = await caches.open(cacheName);
     const [dataFile, metaFile] = await Promise.all([
@@ -369,7 +381,7 @@ export async function fetchMemoryStore(
     const indexFileDatas = allIndexIds
         .map((id) => indexFiles.find((file) => file.id === id))
         .map((file) => file && file.data);
-    return new MemoryStore(dataFile, indexFileDatas, metaFile);
+    return new MemoryStoreDat2(dataFile, indexFileDatas, metaFile);
 }
 
 export async function openFromUrl(
@@ -377,8 +389,8 @@ export async function openFromUrl(
     cacheName: string,
     indicesToLoad: IndexType[] = [],
     shared: boolean = false
-): Promise<MemoryFileSystem> {
-    const store = await fetchMemoryStore(
+): Promise<MemoryFsDat2> {
+    const store = await fetchMemoryStoreDat2(
         baseUrl,
         cacheName,
         indicesToLoad,
@@ -387,11 +399,25 @@ export async function openFromUrl(
     return loadFromStore(store);
 }
 
-export function loadFromStore(store: MemoryStore): MemoryFileSystem {
-    console.time("load fs");
+export function loadFromStore(store: MemoryStoreDat2): MemoryFsDat2 {
     const indices = store.indexFiles
-        .map((data, id) => data && loadSync(id, store))
-        .filter((index): index is IndexSync<MemoryStore> => !!index);
-    console.timeEnd("load fs");
-    return new FileSystem(store, indices);
+        .map((data, id) => data && loadDat2(id, store))
+        .filter((index): index is IndexDat2<MemoryStoreDat2> => !!index);
+    return new BaseFileSystem(store, indices);
+}
+
+function getIndexArchiveIds(indexData: ArrayBuffer): Int32Array {
+    const archiveCount = indexData.byteLength / SectorCluster.SIZE;
+    const archiveIds = new Int32Array(archiveCount);
+    for (let i = 0; i < archiveCount; i++) {
+        archiveIds[i] = i;
+    }
+    return archiveIds;
+}
+
+export function loadFromStoreDat(store: MemoryStoreDat): MemoryFsDat {
+    const indices = store.indexFiles
+        .map((data, id) => data && loadDat(id, store, getIndexArchiveIds(data)))
+        .filter((index): index is IndexDat<MemoryStoreDat> => !!index);
+    return new BaseFileSystem(store, indices);
 }

@@ -12,7 +12,7 @@ import { formatBytes } from "./util/BytesUtil";
 import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
 import WebGLCanvas from "../components/Canvas";
 import "./MapViewerContainer.css";
-import { CacheInfo } from "../client/fs/CacheInfo";
+import { CacheInfo } from "../client/fs/Types";
 
 interface MapViewerContainerProps {
     mapViewer: MapViewer;

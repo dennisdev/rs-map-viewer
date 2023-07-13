@@ -100,9 +100,9 @@ export class ByteBuffer {
         return i;
     }
 
-    readString(): string {
+    readString(endValue: number = 0): string {
         let str = "";
-        while (this.getByte(this.offset) !== 0) {
+        while (this.getByte(this.offset) !== endValue) {
             str += String.fromCharCode(this.readUnsignedByte());
         }
         this.readByte();

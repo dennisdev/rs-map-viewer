@@ -2,14 +2,15 @@ import { SectorCluster } from "./SectorCluster";
 import { Sector } from "./Sector";
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { StoreAsync } from "./Store";
+import { CacheType } from "../Types";
 
-export class FileStore extends StoreAsync {
+export class FileStore extends StoreAsync<CacheType.DAT2> {
     constructor(
         private readonly dataFile: File,
         private readonly indexFiles: File[],
         private readonly metaFile: File
     ) {
-        super();
+        super(CacheType.DAT2);
     }
 
     override read(indexId: number, archiveId: number): Promise<Int8Array> {

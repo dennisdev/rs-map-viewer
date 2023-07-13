@@ -1,28 +1,32 @@
 import { ModelData } from "../../../model/ModelData";
-import { IndexSync } from "../../Index";
-import { StoreSync } from "../../store/Store";
+import { GenericIndex } from "../../Index";
 
 export interface ModelLoader {
     getModel(id: number): ModelData | undefined;
 }
 
 export class IndexModelLoader implements ModelLoader {
-    modelIndex: IndexSync<StoreSync>;
+    modelIndex: GenericIndex;
 
-    constructor(modelIndex: IndexSync<StoreSync>) {
+    constructor(modelIndex: GenericIndex) {
         this.modelIndex = modelIndex;
     }
 
     getModel(id: number): ModelData | undefined {
-        const file = this.modelIndex.getFile(id, 0);
-        return file && ModelData.decode(file.data);
+        try {
+            const file = this.modelIndex.getFile(id, 0);
+            return file && ModelData.decode(file.data);
+        } catch (e) {
+            console.error("Failed loading model file", id, e);
+            return undefined;
+        }
     }
 }
 
 export class CachedModelLoader extends IndexModelLoader {
     cache: Map<number, ModelData>;
 
-    constructor(modelIndex: IndexSync<StoreSync>) {
+    constructor(modelIndex: GenericIndex) {
         super(modelIndex);
         this.cache = new Map();
     }

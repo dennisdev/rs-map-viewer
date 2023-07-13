@@ -1,7 +1,14 @@
-import { CacheInfo } from "../client/fs/CacheInfo";
-import { fetchMemoryStore, ProgressListener } from "../client/fs/FileSystem";
+import {
+    fetchMemoryStoreDat,
+    fetchMemoryStoreDat2,
+    ProgressListener,
+} from "../client/fs/FileSystem";
 import { IndexType } from "../client/fs/IndexType";
-import { MemoryStore } from "../client/fs/store/MemoryStore";
+import { CacheInfo, CacheType, getCacheType } from "../client/fs/Types";
+import {
+    MemoryStoreDat,
+    MemoryStoreDat2,
+} from "../client/fs/store/MemoryStore";
 import { fetchXteas, Xteas } from "./util/Xteas";
 
 export async function fetchCacheList(): Promise<CacheInfo[]> {
@@ -35,7 +42,7 @@ export function getLatestCache(caches: CacheInfo[]): CacheInfo | undefined {
 
 export type LoadedCache = {
     info: CacheInfo;
-    store: MemoryStore;
+    store: MemoryStoreDat | MemoryStoreDat2;
     xteas: Xteas;
 };
 
@@ -44,20 +51,41 @@ export async function loadCache(
     progressListener?: ProgressListener
 ): Promise<LoadedCache> {
     const cachePath = "/caches/" + info.name + "/";
-    const indices = [
-        IndexType.ANIMATIONS,
-        IndexType.SKELETONS,
-        IndexType.CONFIGS,
-        IndexType.MAPS,
-        IndexType.MODELS,
-        IndexType.SPRITES,
-        IndexType.TEXTURES,
-    ];
-    if (info.game === "oldschool" && info.revision >= 174) {
-        indices.push(IndexType.GRAPHIC_DEFAULTS);
+
+    const cacheType = getCacheType(info);
+
+    let storePromise: Promise<MemoryStoreDat | MemoryStoreDat2>;
+    if (cacheType === CacheType.DAT) {
+        storePromise = fetchMemoryStoreDat(
+            cachePath,
+            info.name,
+            true,
+            progressListener
+        );
+    } else {
+        const indices = [
+            IndexType.ANIMATIONS,
+            IndexType.SKELETONS,
+            IndexType.CONFIGS,
+            IndexType.MAPS,
+            IndexType.MODELS,
+            IndexType.SPRITES,
+            IndexType.TEXTURES,
+        ];
+        if (info.game === "oldschool" && info.revision >= 174) {
+            indices.push(IndexType.GRAPHIC_DEFAULTS);
+        }
+        storePromise = fetchMemoryStoreDat2(
+            cachePath,
+            info.name,
+            indices,
+            true,
+            progressListener
+        );
     }
+
     const [store, xteas] = await Promise.all([
-        fetchMemoryStore(cachePath, info.name, indices, true, progressListener),
+        storePromise,
         fetchXteas(cachePath + "keys.json"),
     ]);
 

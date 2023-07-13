@@ -1,24 +1,25 @@
 import { Skeleton } from "../../model/animation/Skeleton";
-import { IndexSync } from "../Index";
-import { StoreSync } from "../store/Store";
+import { GenericIndexDat2 } from "../Index";
 
 export class SkeletonLoader {
-    skeletonIndex: IndexSync<StoreSync>;
+    skeletonIndex: GenericIndexDat2;
 
-    constructor(skeletonIndex: IndexSync<StoreSync>) {
+    constructor(skeletonIndex: GenericIndexDat2) {
         this.skeletonIndex = skeletonIndex;
     }
 
     getSkeleton(id: number): Skeleton | undefined {
         const file = this.skeletonIndex.getFile(id, 0);
-        return file && new Skeleton(id, file.data);
+        return file && Skeleton.loadDat2(id, file.data);
     }
+
+    resetCache(): void {}
 }
 
 export class CachedSkeletonLoader extends SkeletonLoader {
     cache: Map<number, Skeleton>;
 
-    constructor(skeletonIndex: IndexSync<StoreSync>) {
+    constructor(skeletonIndex: GenericIndexDat2) {
         super(skeletonIndex);
         this.cache = new Map();
     }
@@ -32,5 +33,9 @@ export class CachedSkeletonLoader extends SkeletonLoader {
             }
         }
         return skeleton;
+    }
+
+    override resetCache(): void {
+        this.cache.clear();
     }
 }

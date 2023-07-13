@@ -103,6 +103,8 @@ export function createAnimatedObjectGroups(
             }
         }
 
+        // console.log(defTransform, frames)
+
         if (frames.length > 0) {
             groups.push({
                 animationId: animatedObject.animationId,

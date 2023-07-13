@@ -33,6 +33,11 @@ export function createItemModel(
     region: Scene,
     spawn: ItemSpawn
 ): SceneModel | undefined {
+    const def = itemModelLoader.itemLoader.getDefinition(spawn.id);
+    if (def.name === "null") {
+        return undefined;
+    }
+
     const localX = spawn.x % 64;
     const localY = spawn.y % 64;
 

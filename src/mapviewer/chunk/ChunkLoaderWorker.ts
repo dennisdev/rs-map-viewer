@@ -1,29 +1,52 @@
 import { expose, Transfer } from "threads/worker";
-import { ConfigType } from "../../client/fs/ConfigType";
-import { loadFromStore } from "../../client/fs/FileSystem";
-import { IndexType } from "../../client/fs/IndexType";
-import { CachedObjectLoader } from "../../client/fs/loader/ObjectLoader";
-import { CachedOverlayLoader } from "../../client/fs/loader/OverlayLoader";
-import { CachedUnderlayLoader } from "../../client/fs/loader/UnderlayLoader";
-import { MemoryStore } from "../../client/fs/store/MemoryStore";
+import { ConfigType, ConfigTypeDat } from "../../client/fs/ConfigType";
+import { loadFromStore, loadFromStoreDat } from "../../client/fs/FileSystem";
+import { IndexType, IndexTypeDat } from "../../client/fs/IndexType";
+import {
+    CachedObjectDat2Loader,
+    ObjectDatLoader,
+} from "../../client/fs/loader/ObjectLoader";
+import {
+    CachedOverlayDat2Loader,
+    FloorDatLoader,
+} from "../../client/fs/loader/OverlayLoader";
+import { CachedUnderlayDat2Loader } from "../../client/fs/loader/UnderlayLoader";
+import {
+    MemoryStoreDat,
+    MemoryStoreDat2,
+} from "../../client/fs/store/MemoryStore";
 import { RegionLoader } from "../../client/RegionLoader";
-import { TextureLoader } from "../../client/fs/loader/TextureLoader";
+import {
+    TextureDat2Loader,
+    TextureDatLoader,
+} from "../../client/fs/loader/TextureLoader";
 import { Compression } from "../../client/util/Compression";
 import { ChunkDataLoader } from "./ChunkDataLoader";
 import { IndexModelLoader } from "../../client/fs/loader/model/ModelLoader";
 import { Hasher } from "../util/Hasher";
-import { CachedAnimationLoader } from "../../client/fs/loader/AnimationLoader";
+import {
+    AnimationDatLoader,
+    CachedAnimationDat2Loader,
+} from "../../client/fs/loader/AnimationLoader";
 import { CachedSkeletonLoader } from "../../client/fs/loader/SkeletonLoader";
-import { CachedAnimationFrameMapLoader } from "../../client/fs/loader/AnimationFrameMapLoader";
 import { ObjectModelLoader } from "../../client/fs/loader/model/ObjectModelLoader";
-import { CachedVarbitLoader } from "../../client/fs/loader/VarbitLoader";
+import {
+    CachedVarbitDat2Loader,
+    VarbitDatLoader,
+} from "../../client/fs/loader/VarbitLoader";
 import { VarpManager } from "../../client/VarpManager";
 import { NpcModelLoader } from "../../client/fs/loader/model/NpcModelLoader";
-import { CachedNpcLoader } from "../../client/fs/loader/NpcLoader";
+import {
+    CachedNpcDat2Loader,
+    NpcDatLoader,
+} from "../../client/fs/loader/NpcLoader";
 import { NpcSpawn } from "../npc/NpcSpawn";
 import { LoadedCache } from "../Caches";
 import { ItemModelLoader } from "../../client/fs/loader/model/ItemModelLoader";
-import { CachedItemLoader } from "../../client/fs/loader/ItemLoader";
+import {
+    CachedItemDat2Loader,
+    ItemDatLoader,
+} from "../../client/fs/loader/ItemLoader";
 import { ItemSpawn } from "../item/ItemSpawn";
 import { MapImageLoader } from "../../client/scene/MapImageLoader";
 import { GraphicDefaults } from "../../client/fs/definition/GraphicDefaults";
@@ -31,26 +54,141 @@ import { SpriteLoader } from "../../client/sprite/SpriteLoader";
 import { TransferDescriptor } from "threads";
 import { ChunkData } from "./ChunkData";
 import { MinimapData } from "./MinimapData";
+import { MapIndexDat, MapIndexDat2 } from "../../client/MapIndex";
+import {
+    AnimationFrameDat2Loader,
+    AnimationFrameDatLoader,
+} from "../../client/fs/loader/AnimationFrameLoader";
+import { CacheType } from "../../client/fs/Types";
+import { IndexedSprite } from "../../client/sprite/IndexedSprite";
 
 let chunkDataLoaderPromise: Promise<ChunkDataLoader> | undefined;
 
 const wasmCompressionPromise = Compression.initWasm();
 const hasherPromise = Hasher.init();
 
-async function init0(
+function initChunkDataLoader(
     cache: LoadedCache,
     npcSpawns: NpcSpawn[],
     itemSpawns: ItemSpawn[]
-) {
-    await wasmCompressionPromise;
+): ChunkDataLoader {
+    if (cache.store instanceof MemoryStoreDat) {
+        return initChunkDataLoaderDat(
+            cache,
+            npcSpawns,
+            itemSpawns,
+            cache.store
+        );
+    } else {
+        return initChunkDataLoaderDat2(
+            cache,
+            npcSpawns,
+            itemSpawns,
+            cache.store
+        );
+    }
+}
 
-    // Create new store because it is a structured clone
-    const store = new MemoryStore(
-        cache.store.dataFile,
-        cache.store.indexFiles,
-        cache.store.metaFile
+function initChunkDataLoaderDat(
+    cache: LoadedCache,
+    npcSpawns: NpcSpawn[],
+    itemSpawns: ItemSpawn[],
+    store: MemoryStoreDat
+): ChunkDataLoader {
+    const fileSystem = loadFromStoreDat(store);
+
+    const configIndex = fileSystem.getIndex(IndexTypeDat.CONFIGS);
+    const modelIndex = fileSystem.getIndex(IndexTypeDat.MODELS);
+    const animIndex = fileSystem.getIndex(IndexTypeDat.ANIMATIONS);
+    const mapCacheIndex = fileSystem.getIndex(IndexTypeDat.MAPS);
+
+    const configArchive = configIndex.getArchive(ConfigTypeDat.CONFIGS);
+    const mediaArchive = configIndex.getArchive(ConfigTypeDat.MEDIA);
+    const versionListArchive = configIndex.getArchive(
+        ConfigTypeDat.VERSIONLIST
+    );
+    const textureArchive = configIndex.getArchive(ConfigTypeDat.TEXTURES);
+
+    const floorLoader = FloorDatLoader.load(configArchive, cache.info);
+
+    const objectLoader = ObjectDatLoader.load(configArchive, cache.info);
+    const npcLoader = NpcDatLoader.load(configArchive, cache.info);
+    const itemLoader = ItemDatLoader.load(configArchive, cache.info);
+
+    const animationLoader = AnimationDatLoader.load(configArchive, cache.info);
+    const varbitLoader = VarbitDatLoader.load(configArchive, cache.info);
+
+    const frameLoader = AnimationFrameDatLoader.load(animIndex);
+
+    const varpManager = new VarpManager(varbitLoader);
+
+    const modelLoader = new IndexModelLoader(modelIndex);
+
+    const objectModelLoader = new ObjectModelLoader(
+        objectLoader,
+        modelLoader,
+        animationLoader,
+        frameLoader
+    );
+    const npcModelLoader = new NpcModelLoader(
+        npcLoader,
+        modelLoader,
+        animationLoader,
+        frameLoader,
+        varpManager
+    );
+    const itemModelLoader = new ItemModelLoader(itemLoader, modelLoader);
+
+    const mapIndex = MapIndexDat.load(versionListArchive);
+    const regionLoader = new RegionLoader(
+        cache.info,
+        mapIndex,
+        mapCacheIndex,
+        floorLoader,
+        floorLoader,
+        objectLoader,
+        objectModelLoader,
+        cache.xteas,
+        varpManager
     );
 
+    const textureProvider = new TextureDatLoader(textureArchive);
+
+    // TODO: maybe there is a way to check how many mapscenes there are
+    const mapScenes = new Array<IndexedSprite>();
+    for (let i = 0; i < 100; i++) {
+        try {
+            mapScenes[i] = SpriteLoader.loadIndexedSpriteDat(
+                mediaArchive,
+                "mapscene",
+                i
+            );
+        } catch (e) {
+            break;
+        }
+    }
+    const mapImageLoader = new MapImageLoader(objectLoader, mapScenes);
+
+    console.log("init worker", performance.now());
+    return new ChunkDataLoader(
+        cache.info,
+        regionLoader,
+        objectModelLoader,
+        npcModelLoader,
+        itemModelLoader,
+        textureProvider,
+        mapImageLoader,
+        npcSpawns,
+        itemSpawns
+    );
+}
+
+function initChunkDataLoaderDat2(
+    cache: LoadedCache,
+    npcSpawns: NpcSpawn[],
+    itemSpawns: ItemSpawn[],
+    store: MemoryStoreDat2
+): ChunkDataLoader {
     const fileSystem = loadFromStore(store);
 
     const frameMapIndex = fileSystem.getIndex(IndexType.ANIMATIONS);
@@ -73,24 +211,27 @@ async function init0(
 
     const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
-    const underlayLoader = new CachedUnderlayLoader(
+    const underlayLoader = new CachedUnderlayDat2Loader(
         underlayArchive,
         cache.info
     );
-    const overlayLoader = new CachedOverlayLoader(overlayArchive, cache.info);
-    const objectLoader = new CachedObjectLoader(objectArchive, cache.info);
-    const npcLoader = new CachedNpcLoader(npcArchive, cache.info);
-    const itemLoader = new CachedItemLoader(itemArchive, cache.info);
+    const overlayLoader = new CachedOverlayDat2Loader(
+        overlayArchive,
+        cache.info
+    );
+    const objectLoader = new CachedObjectDat2Loader(objectArchive, cache.info);
+    const npcLoader = new CachedNpcDat2Loader(npcArchive, cache.info);
+    const itemLoader = new CachedItemDat2Loader(itemArchive, cache.info);
 
-    const animationLoader = new CachedAnimationLoader(
+    const animationLoader = new CachedAnimationDat2Loader(
         animationArchive,
         cache.info
     );
 
-    const varbitLoader = new CachedVarbitLoader(varbitArchive, cache.info);
+    const varbitLoader = new CachedVarbitDat2Loader(varbitArchive, cache.info);
 
     const skeletonLoader = new CachedSkeletonLoader(skeletonIndex);
-    const frameMapLoader = new CachedAnimationFrameMapLoader(
+    const frameLoader = new AnimationFrameDat2Loader(
         frameMapIndex,
         skeletonLoader
     );
@@ -103,19 +244,20 @@ async function init0(
         objectLoader,
         modelLoader,
         animationLoader,
-        frameMapLoader
+        frameLoader
     );
     const npcModelLoader = new NpcModelLoader(
-        varpManager,
+        npcLoader,
         modelLoader,
         animationLoader,
-        frameMapLoader,
-        npcLoader
+        frameLoader,
+        varpManager
     );
-    const itemModelLoader = new ItemModelLoader(modelLoader, itemLoader);
+    const itemModelLoader = new ItemModelLoader(itemLoader, modelLoader);
 
     const regionLoader = new RegionLoader(
         cache.info,
+        new MapIndexDat2(mapIndex),
         mapIndex,
         underlayLoader,
         overlayLoader,
@@ -126,7 +268,7 @@ async function init0(
     );
 
     // console.time('load textures');
-    const textureProvider = TextureLoader.load(
+    const textureProvider = TextureDat2Loader.load(
         textureIndex,
         spriteIndex,
         cache.info
@@ -143,13 +285,6 @@ async function init0(
 
     const mapImageLoader = new MapImageLoader(objectLoader, mapScenes);
 
-    // console.timeEnd('load textures');
-    // console.time('load textures sprites');
-    // for (const texture of textureProvider.definitions.values()) {
-    //     textureProvider.loadFromDef(texture, 1.0, 128);
-    // }
-    // console.timeEnd('load textures sprites');
-
     console.log("init worker", performance.now());
     return new ChunkDataLoader(
         cache.info,
@@ -162,6 +297,24 @@ async function init0(
         npcSpawns,
         itemSpawns
     );
+}
+
+async function init0(
+    cache: LoadedCache,
+    npcSpawns: NpcSpawn[],
+    itemSpawns: ItemSpawn[]
+): Promise<ChunkDataLoader> {
+    await wasmCompressionPromise;
+
+    if (cache.store.cacheType === CacheType.DAT) {
+        Object.setPrototypeOf(cache.store, MemoryStoreDat.prototype);
+    } else {
+        Object.setPrototypeOf(cache.store, MemoryStoreDat2.prototype);
+    }
+
+    const chunkDataLoader = initChunkDataLoader(cache, npcSpawns, itemSpawns);
+
+    return chunkDataLoader;
 }
 
 // console.log('start worker', performance.now());

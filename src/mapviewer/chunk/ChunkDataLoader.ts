@@ -23,7 +23,7 @@ import { createAnimatedObjectGroups } from "../object/AnimatedObjectGroup";
 import { addModelGroup, createModelGroups } from "./ModelGroup";
 import { createItemModelArray, ItemSpawn } from "../item/ItemSpawn";
 import { MapImageLoader } from "../../client/scene/MapImageLoader";
-import { CacheInfo } from "../../client/fs/CacheInfo";
+import { CacheInfo } from "../../client/fs/Types";
 
 function loadHeightMapTextureData(region: Scene): Float32Array {
     const heightMapTextureData = new Float32Array(

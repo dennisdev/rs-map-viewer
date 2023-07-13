@@ -1,5 +1,5 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
-import { CacheInfo } from "../CacheInfo";
+import { CacheInfo } from "../Types";
 import { Definition, ParamsMap } from "./Definition";
 
 export class ItemDefinition extends Definition {
@@ -157,10 +157,10 @@ export class ItemDefinition extends Definition {
         if (opcode === 1) {
             this.inventoryModel = buffer.readUnsignedShort();
         } else if (opcode === 2) {
-            this.name = buffer.readString();
+            this.name = this.readString(buffer);
         } else if (opcode === 3) {
             // desc
-            buffer.readString();
+            this.readString(buffer);
         } else if (opcode === 4) {
             this.zoom2d = buffer.readUnsignedShort();
         } else if (opcode === 5) {
@@ -178,7 +178,7 @@ export class ItemDefinition extends Definition {
                 this.offsetY2d -= 65536;
             }
         } else if (opcode === 9) {
-            this.op9 = buffer.readString();
+            this.op9 = this.readString(buffer);
         } else if (opcode === 10) {
             buffer.readUnsignedShort();
         } else if (opcode === 11) {
@@ -204,12 +204,12 @@ export class ItemDefinition extends Definition {
         } else if (opcode === 27) {
             this.op27 = buffer.readUnsignedByte();
         } else if (opcode >= 30 && opcode < 35) {
-            this.groundActions[opcode - 30] = buffer.readString();
+            this.groundActions[opcode - 30] = this.readString(buffer);
             if (this.groundActions[opcode - 30]?.toLowerCase() === "hidden") {
                 this.groundActions[opcode - 30] = null;
             }
         } else if (opcode >= 35 && opcode < 40) {
-            this.inventoryActions[opcode - 35] = buffer.readString();
+            this.inventoryActions[opcode - 35] = this.readString(buffer);
         } else if (opcode === 40) {
             const count = buffer.readUnsignedByte();
             this.recolorFrom = new Array(count);

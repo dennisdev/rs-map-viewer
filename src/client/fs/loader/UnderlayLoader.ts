@@ -1,19 +1,22 @@
 import { Archive } from "../Archive";
-import { CacheInfo } from "../CacheInfo";
-import { UnderlayDefinition } from "../definition/UnderlayDefinition";
+import { CacheInfo } from "../Types";
+import { UnderlayDefinition } from "../definition/floor/UnderlayDefinition";
 import {
     ArchiveDefinitionLoader,
-    CachedArchiveDefinitionLoader,
+    CachedDefinitionLoader,
+    DefinitionLoader,
 } from "./DefinitionLoader";
 
-export class UnderlayLoader extends ArchiveDefinitionLoader<UnderlayDefinition> {
+export type UnderlayLoader = DefinitionLoader<UnderlayDefinition>;
+
+export class UnderlayDat2Loader extends ArchiveDefinitionLoader<UnderlayDefinition> {
     constructor(archive: Archive, cacheInfo: CacheInfo) {
         super(archive, UnderlayDefinition, cacheInfo);
     }
 }
 
-export class CachedUnderlayLoader extends CachedArchiveDefinitionLoader<UnderlayDefinition> {
+export class CachedUnderlayDat2Loader extends CachedDefinitionLoader<UnderlayDefinition> {
     constructor(archive: Archive, cacheInfo: CacheInfo) {
-        super(archive, UnderlayDefinition, cacheInfo);
+        super(new UnderlayDat2Loader(archive, cacheInfo));
     }
 }

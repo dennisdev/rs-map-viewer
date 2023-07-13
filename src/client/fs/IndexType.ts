@@ -22,3 +22,11 @@ export enum IndexType {
     WORLDMAP_GROUND = 20,
     DBTABLEINDEX = 21,
 }
+
+export enum IndexTypeDat {
+    CONFIGS = 0,
+    MODELS = 1,
+    ANIMATIONS = 2,
+    SOUNDS = 3,
+    MAPS = 4,
+}

@@ -1,7 +1,7 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
-import { CacheInfo } from "../CacheInfo";
-import { MemoryFileSystem } from "../FileSystem";
+import { MemoryFsDat2 } from "../FileSystem";
 import { IndexType } from "../IndexType";
+import { CacheInfo } from "../Types";
 import { Definition } from "./Definition";
 
 const DEFAULT_ID = 3;
@@ -20,7 +20,7 @@ export class GraphicDefaults extends Definition {
     modIcons: number = -1;
 
     static load(
-        fileSystem: MemoryFileSystem,
+        fileSystem: MemoryFsDat2,
         cacheInfo: CacheInfo
     ): GraphicDefaults {
         if (fileSystem.indexExists(IndexType.GRAPHIC_DEFAULTS)) {

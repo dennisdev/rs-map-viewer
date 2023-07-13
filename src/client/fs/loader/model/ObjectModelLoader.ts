@@ -1,12 +1,12 @@
 import { AnimationDefinition } from "../../definition/AnimationDefinition";
 import { ObjectDefinition } from "../../definition/ObjectDefinition";
-import { AnimationFrameMapLoader } from "../AnimationFrameMapLoader";
 import { AnimationLoader } from "../AnimationLoader";
 import { ModelLoader } from "./ModelLoader";
 import { Model } from "../../../model/Model";
 import { ModelData } from "../../../model/ModelData";
 import { ObjectType } from "../../../scene/ObjectType";
 import { ObjectLoader } from "../ObjectLoader";
+import { AnimationFrameLoader } from "../AnimationFrameLoader";
 
 export type ContourGroundInfo = {
     heightMap: Int32Array[];
@@ -22,7 +22,7 @@ export class ObjectModelLoader {
     modelLoader: ModelLoader;
 
     animationLoader: AnimationLoader;
-    animationFrameMapLoader: AnimationFrameMapLoader;
+    animationFrameLoader: AnimationFrameLoader;
 
     modelDataCache: Map<number, ModelData>;
     modelCache: Map<number, Model | ModelData>;
@@ -31,12 +31,12 @@ export class ObjectModelLoader {
         objectLoader: ObjectLoader,
         modelLoader: ModelLoader,
         animationLoader: AnimationLoader,
-        animationFrameMapLoader: AnimationFrameMapLoader
+        animationFrameLoader: AnimationFrameLoader
     ) {
         this.objectLoader = objectLoader;
         this.modelLoader = modelLoader;
         this.animationLoader = animationLoader;
-        this.animationFrameMapLoader = animationFrameMapLoader;
+        this.animationFrameLoader = animationFrameLoader;
         this.modelDataCache = new Map();
         this.modelCache = new Map();
     }
@@ -56,6 +56,7 @@ export class ObjectModelLoader {
                 this.modelDataCache.set(key, model);
             }
         }
+
         return model;
     }
 
@@ -138,7 +139,7 @@ export class ObjectModelLoader {
             true,
             rotation === 0 && !hasResize && !hasOffset && !isDiagonalObject,
             !def.recolorFrom,
-            !def.retextureFrom
+            false
         );
 
         if (type === ObjectType.WALL_DECORATION_INSIDE && rotation > 3) {
@@ -186,11 +187,6 @@ export class ObjectModelLoader {
         rotation: number,
         contourGroundInfo?: ContourGroundInfo
     ): Model | ModelData | undefined {
-        // if (def.animationId !== -1) {
-        //     return this.getObjectModelAnimated(def, type, rotation);
-        //     // return undefined;
-        // }
-
         let key: number;
         if (def.objectTypes) {
             key = rotation + (type << 3) + (def.id << 10);
@@ -306,21 +302,13 @@ export class ObjectModelLoader {
         if (!anim.frameIds || anim.frameIds.length === 0) {
             return model;
         }
-        // frame = Math.round(Math.random() * (anim.frameIds.length - 1));
-        // if (anim.frameIds.length === 9) {
-        //     console.log(anim);
-        // }
-        frame = anim.frameIds[frame];
-        const animFrameMap = this.animationFrameMapLoader.getFrameMap(
-            frame >> 16
-        );
-        frame &= 0xffff;
 
-        if (animFrameMap) {
-            model = Model.copyAnimated(
-                model,
-                !animFrameMap.hasAlphaTransform(frame)
-            );
+        const animFrame = this.animationFrameLoader.getFrame(
+            anim.frameIds[frame]
+        );
+
+        if (animFrame) {
+            model = Model.copyAnimated(model, !animFrame.hasAlphaTransform);
 
             rotation &= 3;
             if (rotation === 1) {
@@ -333,7 +321,7 @@ export class ObjectModelLoader {
 
             // console.log('animate', !!model.vertexLabels)
 
-            model.animate(animFrameMap.frames[frame]);
+            model.animate(animFrame);
 
             if (rotation === 1) {
                 model.rotate90();

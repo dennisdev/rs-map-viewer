@@ -13,6 +13,13 @@ export class VarbitDefinition extends Definition {
             this.baseVar = buffer.readUnsignedShort();
             this.startBit = buffer.readUnsignedByte();
             this.endBit = buffer.readUnsignedByte();
+        } else {
+            throw new Error(
+                "VarbitDefinition: Opcode " +
+                    opcode +
+                    " not implemented. id: " +
+                    this.id
+            );
         }
     }
 }

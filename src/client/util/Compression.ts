@@ -8,10 +8,6 @@ const wasmGzipUrl = require("wasm-gzip/wasm_gzip_bg.wasm");
 
 const bzip2 = require("bzip2");
 
-const bzip2Header = new Uint8Array(
-    "BZh1".split("").map((char) => char.charCodeAt(0))
-);
-
 // declare const bz2: any;
 
 export enum CompressionType {
@@ -26,6 +22,10 @@ export class Compression {
     private static wasmBzip2: Bzip2;
 
     private static wasmPromise?: Promise<[boolean, Bzip2]>;
+
+    private static bzip2Header = new Uint8Array(
+        "BZh1".split("").map((char) => char.charCodeAt(0))
+    );
 
     public static initWasm() {
         if (Compression.wasmPromise) {
@@ -65,7 +65,7 @@ export class Compression {
     ): Int8Array {
         // console.log('bzip2', actualSize);
         const compressedBzip = new Uint8Array(compressed.length + 4);
-        compressedBzip.set(bzip2Header, 0);
+        compressedBzip.set(Compression.bzip2Header, 0);
         compressedBzip.set(compressed, 4);
         // if (actualSize > 100000 || true) {
         // return new Int8Array(window.bzip2.decompress(compressedBzip, actualSize, { small: false }));

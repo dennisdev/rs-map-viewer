@@ -1,18 +1,20 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
+import { CacheType } from "../Types";
 import { Sector } from "./Sector";
 import { SectorCluster } from "./SectorCluster";
-import { StoreSync } from "./Store";
+import { Store } from "./Store";
 
-export class BaseMemoryStore extends StoreSync {
+export abstract class BaseMemoryStore<T extends CacheType> extends Store<T> {
     constructor(
+        cacheType: T,
         public readonly dataFile: ArrayBuffer,
         public readonly indexFiles: (ArrayBuffer | undefined)[]
     ) {
-        super();
+        super(cacheType);
     }
 
     getIndexFile(indexId: number): ArrayBuffer | undefined {
-        if (indexId >= this.indexFiles.length) {
+        if (indexId < 0 || indexId >= this.indexFiles.length) {
             return undefined;
         }
         return this.indexFiles[indexId];
@@ -26,6 +28,8 @@ export class BaseMemoryStore extends StoreSync {
         if (!indexFile) {
             throw new Error(`Index ${indexId} not found`);
         }
+
+        const sectorIndexId = this.getSectorIndexId(indexId);
 
         const clusterPtr = archiveId * SectorCluster.SIZE;
         if (
@@ -77,9 +81,9 @@ export class BaseMemoryStore extends StoreSync {
             if (remaining > dataSize) {
                 data.set(sector.data, sectorCluster.size - remaining);
 
-                if (sector.indexId !== indexId) {
+                if (sector.indexId !== sectorIndexId) {
                     throw new Error(
-                        `Sector index id mismatch. expected: ${indexId} got: ${sector.indexId}`
+                        `Sector index id mismatch. expected: ${sectorIndexId} got: ${sector.indexId}`
                     );
                 }
 
@@ -109,7 +113,16 @@ export class BaseMemoryStore extends StoreSync {
     }
 }
 
-export class MemoryStore extends BaseMemoryStore {
+export class MemoryStoreDat extends BaseMemoryStore<CacheType.DAT> {
+    constructor(
+        dataFile: ArrayBuffer,
+        indexFiles: (ArrayBuffer | undefined)[]
+    ) {
+        super(CacheType.DAT, dataFile, indexFiles);
+    }
+}
+
+export class MemoryStoreDat2 extends BaseMemoryStore<CacheType.DAT2> {
     static META_INDEX_ID = 255;
 
     constructor(
@@ -117,11 +130,11 @@ export class MemoryStore extends BaseMemoryStore {
         indexFiles: (ArrayBuffer | undefined)[],
         public readonly metaFile: ArrayBuffer
     ) {
-        super(dataFile, indexFiles);
+        super(CacheType.DAT2, dataFile, indexFiles);
     }
 
     override getIndexFile(indexId: number): ArrayBuffer | undefined {
-        if (indexId === MemoryStore.META_INDEX_ID) {
+        if (indexId === MemoryStoreDat2.META_INDEX_ID) {
             return this.metaFile;
         }
         return super.getIndexFile(indexId);

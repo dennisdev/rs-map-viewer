@@ -1,5 +1,6 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
-import { CacheInfo } from "../CacheInfo";
+import { CacheInfo, CacheType, getCacheType } from "../Types";
+import { AnimationFrameLoader } from "../loader/AnimationFrameLoader";
 import { Definition } from "./Definition";
 
 export class AnimationDefinition extends Definition {
@@ -60,6 +61,31 @@ export class AnimationDefinition extends Definition {
         this.animMayaEnd = 0;
     }
 
+    getFrameLength(
+        animationFrameLoader: AnimationFrameLoader,
+        frame: number
+    ): number {
+        let frameLength = this.frameLengths[frame];
+
+        if (getCacheType(this.cacheInfo) === CacheType.DAT) {
+            if (frameLength === 0) {
+                const animFrame = animationFrameLoader.getFrame(
+                    this.frameIds[frame]
+                );
+                if (animFrame) {
+                    frameLength = this.frameLengths[frame] =
+                        animFrame.frameLength;
+                }
+            }
+
+            if (frameLength === 0) {
+                frameLength = 1;
+            }
+        }
+
+        return frameLength;
+    }
+
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
         if (opcode === 1) {
             let count = 0;
@@ -71,19 +97,29 @@ export class AnimationDefinition extends Definition {
             } else {
                 count = buffer.readUnsignedShort();
             }
+            this.frameIds = new Array(count);
             this.frameLengths = new Array(count);
 
-            for (let i = 0; i < count; i++) {
-                this.frameLengths[i] = buffer.readUnsignedShort();
-            }
-
-            this.frameIds = new Array(count);
-
-            for (let i = 0; i < count; i++) {
-                this.frameIds[i] = buffer.readUnsignedShort();
-            }
-            for (let i = 0; i < count; i++) {
-                this.frameIds[i] += buffer.readUnsignedShort() << 16;
+            if (
+                this.cacheInfo.game === "runescape" &&
+                this.cacheInfo.revision <= 377
+            ) {
+                for (let i = 0; i < count; i++) {
+                    this.frameIds[i] = buffer.readUnsignedShort();
+                    // used by widgets
+                    buffer.readUnsignedShort();
+                    this.frameLengths[i] = buffer.readUnsignedShort();
+                }
+            } else {
+                for (let i = 0; i < count; i++) {
+                    this.frameLengths[i] = buffer.readUnsignedShort();
+                }
+                for (let i = 0; i < count; i++) {
+                    this.frameIds[i] = buffer.readUnsignedShort();
+                }
+                for (let i = 0; i < count; i++) {
+                    this.frameIds[i] += buffer.readUnsignedShort() << 16;
+                }
             }
         } else if (opcode === 2) {
             this.frameStep = buffer.readUnsignedShort();
@@ -112,14 +148,21 @@ export class AnimationDefinition extends Definition {
         } else if (opcode === 11) {
             this.replyMode = buffer.readUnsignedByte();
         } else if (opcode === 12) {
-            const count = buffer.readUnsignedByte();
-            this.chatFrameIds = new Array(count);
+            if (
+                this.cacheInfo.game === "runescape" &&
+                this.cacheInfo.revision <= 377
+            ) {
+                buffer.readInt();
+            } else {
+                const count = buffer.readUnsignedByte();
+                this.chatFrameIds = new Array(count);
 
-            for (let i = 0; i < count; i++) {
-                this.chatFrameIds[i] = buffer.readUnsignedShort();
-            }
-            for (let i = 0; i < count; i++) {
-                this.chatFrameIds[i] += buffer.readUnsignedShort() << 16;
+                for (let i = 0; i < count; i++) {
+                    this.chatFrameIds[i] = buffer.readUnsignedShort();
+                }
+                for (let i = 0; i < count; i++) {
+                    this.chatFrameIds[i] += buffer.readUnsignedShort() << 16;
+                }
             }
         } else if (opcode === 13) {
             const count = buffer.readUnsignedByte();

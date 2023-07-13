@@ -3,13 +3,17 @@ import { Compression, CompressionType } from "../util/Compression";
 import { Xtea } from "../util/Xtea";
 
 export class Container {
-    public static decode(buffer: ByteBuffer, key: number[] = []): Container {
+    public static decode(buffer: ByteBuffer, key?: number[]): Container {
         if (buffer.remaining === 0) {
             throw new Error("Empty container");
         }
         const compression: CompressionType = buffer.readUnsignedByte();
         const size = buffer.readInt();
-        if (key.length) {
+        if (
+            key &&
+            key.length === 4 &&
+            (key[0] !== 0 || key[1] !== 0 || key[2] !== 0 || key[3] !== 0)
+        ) {
             Xtea.decrypt(buffer, buffer.offset, buffer.offset + 4 + size, key);
         }
         switch (compression) {
@@ -19,9 +23,9 @@ export class Container {
             case CompressionType.Gzip:
                 const actualSize = buffer.readInt() & 0xffffffff;
 
-                let data = buffer.readUnsignedBytes(size);
+                const data = buffer.readUnsignedBytes(size);
 
-                let decompressed;
+                let decompressed: Int8Array;
 
                 if (compression === CompressionType.Bzip2) {
                     decompressed = Compression.decompressBzip2(
@@ -45,10 +49,6 @@ export class Container {
 
     constructor(
         public readonly compression: CompressionType,
-        private readonly _data: Int8Array
+        public readonly data: Int8Array
     ) {}
-
-    get data(): Int8Array {
-        return this._data;
-    }
 }

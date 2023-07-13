@@ -9,7 +9,7 @@ import { loadCache } from "./Caches";
 import { AntiAliasType, CameraPosition, MapViewer } from "./MapViewer";
 import { isTouchDevice } from "./util/DeviceUtil";
 import { ProjectionType } from "./Camera";
-import { CacheInfo } from "../client/fs/CacheInfo";
+import { CacheInfo } from "../client/fs/Types";
 
 interface ColorRgb {
     r: number;

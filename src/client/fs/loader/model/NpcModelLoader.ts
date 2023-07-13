@@ -1,38 +1,37 @@
 import { AnimationDefinition } from "../../definition/AnimationDefinition";
 import { NpcDefinition } from "../../definition/NpcDefinition";
-import { AnimationFrameMapLoader } from "../AnimationFrameMapLoader";
 import { AnimationLoader } from "../AnimationLoader";
 import { ModelLoader } from "./ModelLoader";
 import { NpcLoader } from "../NpcLoader";
 import { Model } from "../../../model/Model";
 import { ModelData } from "../../../model/ModelData";
 import { VarpManager } from "../../../VarpManager";
+import { AnimationFrameLoader } from "../AnimationFrameLoader";
 
 export class NpcModelLoader {
-    varpManager: VarpManager;
+    npcLoader: NpcLoader;
 
     modelLoader: ModelLoader;
 
     animationLoader: AnimationLoader;
+    animationFrameLoader: AnimationFrameLoader;
 
-    animationFrameMapLoader: AnimationFrameMapLoader;
-
-    npcLoader: NpcLoader;
+    varpManager: VarpManager;
 
     modelCache: Map<number, Model>;
 
     constructor(
-        varpManager: VarpManager,
+        npcLoader: NpcLoader,
         modelLoader: ModelLoader,
         animationLoader: AnimationLoader,
-        animationFrameMapLoader: AnimationFrameMapLoader,
-        npcLoader: NpcLoader
+        animationFrameLoader: AnimationFrameLoader,
+        varpManager: VarpManager
     ) {
-        this.varpManager = varpManager;
+        this.npcLoader = npcLoader;
         this.modelLoader = modelLoader;
         this.animationLoader = animationLoader;
-        this.animationFrameMapLoader = animationFrameMapLoader;
-        this.npcLoader = npcLoader;
+        this.animationFrameLoader = animationFrameLoader;
+        this.varpManager = varpManager;
         this.modelCache = new Map();
     }
 
@@ -108,19 +107,14 @@ export class NpcModelLoader {
             return model;
         }
 
-        frame = anim.frameIds[frame];
-        const animFrameMap = this.animationFrameMapLoader.getFrameMap(
-            frame >> 16
+        const animFrame = this.animationFrameLoader.getFrame(
+            anim.frameIds[frame]
         );
-        frame &= 0xffff;
 
-        if (animFrameMap) {
-            model = Model.copyAnimated(
-                model,
-                !animFrameMap.hasAlphaTransform(frame)
-            );
+        if (animFrame) {
+            model = Model.copyAnimated(model, !animFrame.hasAlphaTransform);
 
-            model.animate(animFrameMap.frames[frame]);
+            model.animate(animFrame);
         }
 
         return model;

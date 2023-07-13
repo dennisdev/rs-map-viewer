@@ -15,17 +15,29 @@ import PicoGL, {
 import { URLSearchParamsInit } from "react-router-dom";
 import { RegionLoader } from "../client/RegionLoader";
 import { VarpManager } from "../client/VarpManager";
-import { ConfigType } from "../client/fs/ConfigType";
-import { MemoryFileSystem, loadFromStore } from "../client/fs/FileSystem";
-import { IndexType } from "../client/fs/IndexType";
+import { ConfigType, ConfigTypeDat } from "../client/fs/ConfigType";
+import { loadFromStore, loadFromStoreDat } from "../client/fs/FileSystem";
+import { IndexType, IndexTypeDat } from "../client/fs/IndexType";
 import { NpcDefinition } from "../client/fs/definition/NpcDefinition";
 import {
+    AnimationDatLoader,
     AnimationLoader,
-    CachedAnimationLoader,
+    CachedAnimationDat2Loader,
 } from "../client/fs/loader/AnimationLoader";
-import { CachedNpcLoader, NpcLoader } from "../client/fs/loader/NpcLoader";
-import { TextureLoader } from "../client/fs/loader/TextureLoader";
-import { CachedVarbitLoader } from "../client/fs/loader/VarbitLoader";
+import {
+    CachedNpcDat2Loader,
+    NpcDatLoader,
+    NpcLoader,
+} from "../client/fs/loader/NpcLoader";
+import {
+    TextureDat2Loader,
+    TextureDatLoader,
+    TextureLoader,
+} from "../client/fs/loader/TextureLoader";
+import {
+    CachedVarbitDat2Loader,
+    VarbitDatLoader,
+} from "../client/fs/loader/VarbitLoader";
 import { Pathfinder } from "../client/pathfinder/Pathfinder";
 import { Scene } from "../client/scene/Scene";
 import { clamp } from "../client/util/MathUtil";
@@ -52,18 +64,29 @@ import {
 import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
 import { LoadedCache } from "./Caches";
 import {
-    CachedObjectLoader,
+    CachedObjectDat2Loader,
+    ObjectDatLoader,
     ObjectLoader,
 } from "../client/fs/loader/ObjectLoader";
 import { ObjectDefinition } from "../client/fs/definition/ObjectDefinition";
 import { InteractType } from "./chunk/InteractType";
-import { CachedItemLoader, ItemLoader } from "../client/fs/loader/ItemLoader";
+import {
+    CachedItemDat2Loader,
+    ItemDatLoader,
+    ItemLoader,
+} from "../client/fs/loader/ItemLoader";
 import { ChunkData } from "./chunk/ChunkData";
 import { DrawRange } from "./chunk/DrawRange";
 import { ItemSpawn } from "./item/ItemSpawn";
 import { Camera, ProjectionType } from "./Camera";
 import { InputManager, getAxisDeadzone } from "./InputManager";
-import { CacheInfo } from "../client/fs/CacheInfo";
+import { CacheInfo } from "../client/fs/Types";
+import { MapIndex, MapIndexDat, MapIndexDat2 } from "../client/MapIndex";
+import { MemoryStoreDat2 } from "../client/fs/store/MemoryStore";
+import {
+    AnimationFrameDatLoader,
+    AnimationFrameLoader,
+} from "../client/fs/loader/AnimationFrameLoader";
 
 function prependShader(shader: string, multiDraw: boolean): string {
     let header = "#version 300 es\n";
@@ -117,12 +140,12 @@ export class MapViewer {
     npcSpawns: NpcSpawn[];
     itemSpawns: ItemSpawn[];
 
-    fileSystem!: MemoryFileSystem;
     textureProvider!: TextureLoader;
     objectLoader!: ObjectLoader;
     npcLoader!: NpcLoader;
     itemLoader!: ItemLoader;
     animationLoader!: AnimationLoader;
+    animationFrameLoader!: AnimationFrameLoader;
     varpManager!: VarpManager;
 
     inputManager: InputManager = new InputManager();
@@ -266,7 +289,6 @@ export class MapViewer {
 
     constructor(
         chunkLoaderWorker: ChunkLoaderWorkerPool,
-        loadedCache: LoadedCache,
         latestCacheInfo: CacheInfo,
         npcSpawns: NpcSpawn[],
         itemSpawns: ItemSpawn[]
@@ -275,8 +297,6 @@ export class MapViewer {
         this.latestCacheInfo = latestCacheInfo;
         this.npcSpawns = npcSpawns;
         this.itemSpawns = itemSpawns;
-
-        this.initCache(loadedCache);
 
         if (isWallpaperEngine && window.wallpaperFpsLimit) {
             this.fpsLimit = window.wallpaperFpsLimit;
@@ -298,46 +318,92 @@ export class MapViewer {
 
         this.chunkLoaderWorker.init(cache, this.npcSpawns, this.itemSpawns);
 
-        this.fileSystem = loadFromStore(cache.store);
+        let mapIndex: MapIndex;
+        if (cache.store instanceof MemoryStoreDat2) {
+            const fileSystem = loadFromStore(cache.store);
 
-        const configIndex = this.fileSystem.getIndex(IndexType.CONFIGS);
-        const mapIndex = this.fileSystem.getIndex(IndexType.MAPS);
-        const spriteIndex = this.fileSystem.getIndex(IndexType.SPRITES);
-        const textureIndex = this.fileSystem.getIndex(IndexType.TEXTURES);
+            const configIndex = fileSystem.getIndex(IndexType.CONFIGS);
+            const mapCacheIndex = fileSystem.getIndex(IndexType.MAPS);
+            const spriteIndex = fileSystem.getIndex(IndexType.SPRITES);
+            const textureIndex = fileSystem.getIndex(IndexType.TEXTURES);
 
-        const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
-        const npcArchive = configIndex.getArchive(ConfigType.NPC);
-        const itemArchive = configIndex.getArchive(ConfigType.ITEM);
-        const animationArchive = configIndex.getArchive(ConfigType.SEQUENCE);
-        const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
+            const objectArchive = configIndex.getArchive(ConfigType.OBJECT);
+            const npcArchive = configIndex.getArchive(ConfigType.NPC);
+            const itemArchive = configIndex.getArchive(ConfigType.ITEM);
+            const animationArchive = configIndex.getArchive(
+                ConfigType.SEQUENCE
+            );
+            const varbitArchive = configIndex.getArchive(ConfigType.VARBIT);
 
-        this.objectLoader = new CachedObjectLoader(objectArchive, cache.info);
-        this.npcLoader = new CachedNpcLoader(npcArchive, cache.info);
-        this.itemLoader = new CachedItemLoader(itemArchive, cache.info);
-        this.animationLoader = new CachedAnimationLoader(
-            animationArchive,
-            cache.info
-        );
-        const varbitLoader = new CachedVarbitLoader(varbitArchive, cache.info);
+            this.objectLoader = new CachedObjectDat2Loader(
+                objectArchive,
+                cache.info
+            );
+            this.npcLoader = new CachedNpcDat2Loader(npcArchive, cache.info);
+            this.itemLoader = new CachedItemDat2Loader(itemArchive, cache.info);
+            this.animationLoader = new CachedAnimationDat2Loader(
+                animationArchive,
+                cache.info
+            );
+            const varbitLoader = new CachedVarbitDat2Loader(
+                varbitArchive,
+                cache.info
+            );
 
-        this.varpManager = new VarpManager(varbitLoader);
+            this.varpManager = new VarpManager(varbitLoader);
 
-        this.invalidRegionIds.clear();
+            mapIndex = new MapIndexDat2(mapCacheIndex);
+
+            this.textureProvider = TextureDat2Loader.load(
+                textureIndex,
+                spriteIndex,
+                cache.info
+            );
+        } else {
+            const fileSystem = loadFromStoreDat(cache.store);
+
+            const configIndex = fileSystem.getIndex(IndexTypeDat.CONFIGS);
+            const animIndex = fileSystem.getIndex(IndexTypeDat.ANIMATIONS);
+
+            const configArchive = configIndex.getArchive(ConfigTypeDat.CONFIGS);
+            const versionListArchive = configIndex.getArchive(
+                ConfigTypeDat.VERSIONLIST
+            );
+            const textureArchive = configIndex.getArchive(
+                ConfigTypeDat.TEXTURES
+            );
+
+            this.objectLoader = ObjectDatLoader.load(configArchive, cache.info);
+            this.npcLoader = NpcDatLoader.load(configArchive, cache.info);
+            this.itemLoader = ItemDatLoader.load(configArchive, cache.info);
+
+            this.animationLoader = AnimationDatLoader.load(
+                configArchive,
+                cache.info
+            );
+            this.animationFrameLoader = AnimationFrameDatLoader.load(animIndex);
+            const varbitLoader = VarbitDatLoader.load(
+                configArchive,
+                cache.info
+            );
+
+            this.varpManager = new VarpManager(varbitLoader);
+
+            mapIndex = MapIndexDat.load(versionListArchive);
+
+            this.textureProvider = new TextureDatLoader(textureArchive);
+        }
+
         console.time("check invalid regions");
+        this.invalidRegionIds.clear();
         for (let x = 0; x < 100; x++) {
             for (let y = 0; y < 200; y++) {
-                if (RegionLoader.getTerrainArchiveId(mapIndex, x, y) === -1) {
+                if (mapIndex.getTerrainArchiveId(x, y) === -1) {
                     this.invalidRegionIds.add(RegionLoader.getRegionId(x, y));
                 }
             }
         }
         console.timeEnd("check invalid regions");
-
-        this.textureProvider = TextureLoader.load(
-            textureIndex,
-            spriteIndex,
-            cache.info
-        );
 
         if (this.app) {
             this.deleteChunks();
@@ -479,18 +545,20 @@ export class MapViewer {
         );
 
         console.time("load texture array");
-        const textureArrayImage = this.textureProvider.createTextureArrayImage(
+        const textureArrayImage = this.textureProvider.loadTextureArrayPixels(
             1.0,
             TEXTURE_SIZE,
             true
         );
         console.timeEnd("load texture array");
 
+        const textureCount = this.textureProvider.getTextureCount();
+
         this.textureArray = this.app.createTextureArray(
             new Uint8Array(textureArrayImage.buffer),
             TEXTURE_SIZE,
             TEXTURE_SIZE,
-            this.textureProvider.getTextureCount() + 1,
+            textureCount + 1,
             {
                 // wrapS: PicoGL.CLAMP_TO_EDGE,
                 maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,
@@ -504,14 +572,15 @@ export class MapViewer {
             vec2.fromValues(0.0, 1.0),
             vec2.fromValues(1.0, 0.0),
         ];
-        const textures = this.textureProvider.getDefinitions();
-        for (let i = 0; i < textures.length; i++) {
-            const texture = textures[i];
+
+        for (let i = 0; i < textureCount; i++) {
+            const animDirection = this.textureProvider.getAnimDirection(i);
+            const animSpeed = this.textureProvider.getAnimSpeed(i);
 
             const uv = vec2.mul(
                 vec2.create(),
-                textureAnimDirectionUvs[texture.animationDirection],
-                [texture.animationSpeed, texture.animationSpeed]
+                textureAnimDirectionUvs[animDirection],
+                [animSpeed, animSpeed]
             );
 
             this.textureUniformBuffer.set((i + 1) * 2, uv as Float32Array);
@@ -519,7 +588,7 @@ export class MapViewer {
 
         this.textureUniformBuffer.update();
 
-        console.log("textures: ", textures.length);
+        console.log("textures: ", textureCount);
     }
 
     initFrameBuffer(depthTexture: boolean) {
@@ -1735,7 +1804,7 @@ export class MapViewer {
 
             for (const object of chunk.animatedObjects) {
                 // advance frame
-                object.update(cycle);
+                object.update(this.animationFrameLoader, cycle);
             }
 
             for (let t = 0; t < ticksElapsed; t++) {

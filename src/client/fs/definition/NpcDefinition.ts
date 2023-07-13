@@ -1,7 +1,7 @@
 import { ByteBuffer } from "../../util/ByteBuffer";
 import { VarpManager } from "../../VarpManager";
-import { CacheInfo } from "../CacheInfo";
 import { NpcLoader } from "../loader/NpcLoader";
+import { CacheInfo } from "../Types";
 import { Definition, ParamsMap } from "./Definition";
 
 export class NpcDefinition extends Definition {
@@ -136,7 +136,10 @@ export class NpcDefinition extends Definition {
                 this.modelIds[i] = buffer.readUnsignedShort();
             }
         } else if (opcode === 2) {
-            this.name = buffer.readString();
+            this.name = this.readString(buffer);
+        } else if (opcode === 3) {
+            // desc
+            this.readString(buffer);
         } else if (opcode === 12) {
             this.size = buffer.readUnsignedByte();
         } else if (opcode === 13) {
@@ -155,7 +158,7 @@ export class NpcDefinition extends Definition {
         } else if (opcode === 18) {
             this.category = buffer.readUnsignedShort();
         } else if (opcode >= 30 && opcode < 35) {
-            this.actions[opcode - 30] = buffer.readString();
+            this.actions[opcode - 30] = this.readString(buffer);
             if (this.actions[opcode - 30].toLowerCase() === "hidden") {
                 delete this.actions[opcode - 30];
             }

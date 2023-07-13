@@ -16,7 +16,7 @@ import WebFont from "webfontloader";
 import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
 import { formatBytes } from "./util/BytesUtil";
 import { MapViewerContainer } from "./MapViewerContainer";
-import { CacheInfo } from "../client/fs/CacheInfo";
+import { CacheInfo } from "../client/fs/Types";
 
 const MAX_POOL_SIZE = isWallpaperEngine ? 1 : 4;
 
@@ -79,11 +79,11 @@ export function MapViewerApp() {
 
             const mapViewer = new MapViewer(
                 pool,
-                loadedCache,
                 latestCacheInfo,
                 npcSpawns,
                 itemSpawns
             );
+            mapViewer.initCache(loadedCache);
             mapViewer.applySearchParams(searchParams);
 
             setCaches(caches);
