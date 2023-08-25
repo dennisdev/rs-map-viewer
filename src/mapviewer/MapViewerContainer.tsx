@@ -1,123 +1,116 @@
-import { useEffect, useState } from "react";
-import { Joystick } from "react-joystick-component";
-import { DownloadProgress } from "../client/fs/FileSystem";
-import { OsrsLoadingBar } from "../components/OsrsLoadingBar";
-import { OsrsMenu, OsrsMenuProps } from "../components/OsrsMenu";
-import { MinimapContainer } from "../components/minimap/MinimapContainer";
-import { WorldMapModal } from "../components/worldmap/WorldMapModal";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { GlCanvas } from "../components/GlCanvas";
 import { MapViewer } from "./MapViewer";
 import { MapViewerControls } from "./MapViewerControls";
-import { RS_TO_DEGREES } from "./MathConstants";
-import { formatBytes } from "./util/BytesUtil";
-import { isTouchDevice, isWallpaperEngine } from "./util/DeviceUtil";
-import WebGLCanvas from "../components/Canvas";
+import { DownloadProgress } from "../rs/cache/CacheFiles";
+import { formatBytes } from "../util/BytesUtil";
+import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
 import "./MapViewerContainer.css";
-import { CacheInfo } from "../client/fs/Types";
+import { MinimapContainer } from "../components/rs/minimap/MinimapContainer";
+import { RS_TO_DEGREES } from "../rs/MathConstants";
+import { WorldMapModal } from "../components/rs/worldmap/WorldMapModal";
+import { OsrsMenu, OsrsMenuProps } from "../components/rs/menu/OsrsMenu";
+import { isTouchDevice } from "../util/DeviceUtil";
+import { Joystick } from "react-joystick-component";
 
 interface MapViewerContainerProps {
     mapViewer: MapViewer;
-    caches: CacheInfo[];
 }
 
-export function MapViewerContainer({
-    mapViewer,
-    caches,
-}: MapViewerContainerProps) {
-    const [inited, setInited] = useState<boolean>(
-        !!mapViewer.textureUniformBuffer
-    );
-    const [downloadProgress, setDownloadProgress] = useState<
-        DownloadProgress | undefined
-    >(undefined);
-    const [fps, setFps] = useState<number>(0);
-    const [compassDegrees, setCompassDegrees] = useState<number>(0);
-    const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(
-        undefined
-    );
-    const [hudHidden, setHudHidden] = useState<boolean>(isWallpaperEngine);
+export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.Element {
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const [downloadProgress, setDownloadProgress] = useState<DownloadProgress>();
+
+    const [hudVisible, setHudVisible] = useState(mapViewer.hudVisible);
+    const [fps, setFps] = useState(0);
+    const [compassDegrees, setCompassDegrees] = useState(mapViewer.camera.getYaw() * RS_TO_DEGREES);
     const [isWorldMapOpen, setWorldMapOpen] = useState<boolean>(false);
 
-    useEffect(() => {
-        mapViewer.onInit = () => {
-            setInited(true);
-        };
-        if (mapViewer.textureUniformBuffer) {
-            setInited(true);
+    const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(undefined);
+
+    const requestRef = useRef<number | undefined>();
+
+    const animate = (time: DOMHighResTimeStamp) => {
+        // Wait for 5 frames before updating search params
+        if (mapViewer.stats.frameCount - mapViewer.lastFrameSearchParamsUpdated === 5) {
+            setSearchParams(mapViewer.getSearchParams(), { replace: true });
+            console.log("Updated search params");
         }
-        mapViewer.onMouseMoved = (x, y) => {
-            setMenuProps((props) => {
-                if (!props) {
-                    return undefined;
-                }
-                if (!props.tooltip) {
-                    return props;
-                }
-                return {
-                    ...props,
-                    x,
-                    y,
-                };
+
+        setHudVisible(mapViewer.hudVisible);
+        if (mapViewer.hudVisible) {
+            setFps(Math.round(mapViewer.stats.frameTimeFps));
+            setCompassDegrees(mapViewer.camera.getYaw() * RS_TO_DEGREES);
+        }
+
+        if (mapViewer.menuEntries.length > 0 && mapViewer.menuX !== -1 && mapViewer.menuY !== -1) {
+            setMenuProps({
+                x: mapViewer.menuX,
+                y: mapViewer.menuY,
+                tooltip: !mapViewer.menuOpen,
+                entries: mapViewer.menuEntries,
+                debugId: mapViewer.debugId,
             });
-        };
-        mapViewer.onMenuOpened = (x, y, options, tooltip, debugId) => {
-            setMenuProps({ x, y, options, tooltip, debugId });
-        };
-        mapViewer.onMenuClosed = () => {
+        } else {
             setMenuProps(undefined);
-        };
-        mapViewer.hudHidden = hudHidden;
-        mapViewer.setHudHidden = setHudHidden;
+        }
 
-        const callback = (time: number) => {
-            if (!mapViewer.hudHidden) {
-                setFps(mapViewer.fps);
-                setCompassDegrees(
-                    (mapViewer.camera.yaw & 2047) * RS_TO_DEGREES
-                );
-            }
+        requestRef.current = requestAnimationFrame(animate);
+    };
 
-            window.requestAnimationFrame(callback);
-        };
-        window.requestAnimationFrame(callback);
+    useEffect(() => {
+        requestRef.current = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(requestRef.current!);
+    }, [searchParams]);
+
+    const resetCameraYaw = useCallback(() => {
+        mapViewer.camera.setYaw(0);
     }, [mapViewer]);
 
-    function openWorldMap() {
+    const openWorldMap = useCallback(() => {
         setWorldMapOpen(true);
-    }
+    }, []);
 
-    function closeWorldMap() {
+    const closeWorldMap = useCallback(() => {
         setWorldMapOpen(false);
-        mapViewer.app.canvas.focus();
-    }
+        mapViewer.app?.canvas.focus();
+    }, [mapViewer]);
 
-    function getMapPosition() {
-        const cameraX = mapViewer.camera.getPosX();
-        const cameraY = mapViewer.camera.getPosZ();
+    const onMapClicked = useCallback(
+        (x: number, y: number) => {
+            mapViewer.camera.pos[0] = x;
+            mapViewer.camera.pos[2] = y;
+            mapViewer.camera.updated = true;
+            closeWorldMap();
+        },
+        [mapViewer, closeWorldMap],
+    );
+
+    const getMapPosition = useCallback(() => {
+        const x = mapViewer.camera.getPosX();
+        const y = mapViewer.camera.getPosZ();
 
         return {
-            x: cameraX,
-            y: cameraY,
+            x,
+            y,
         };
-    }
+    }, [mapViewer]);
 
-    function onMapClicked(x: number, y: number) {
-        mapViewer.camera.pos[0] = x;
-        mapViewer.camera.pos[2] = y;
-        mapViewer.camera.updated = true;
-        closeWorldMap();
-    }
-
-    function loadMapImageUrl(regionX: number, regionY: number) {
-        return mapViewer.getMinimapUrl(regionX, regionY);
-    }
+    const loadMapImageUrl = useCallback(
+        (mapX: number, mapY: number) => {
+            return mapViewer.getMapImageUrl(mapX, mapY);
+        },
+        [mapViewer],
+    );
 
     let loadingBarOverlay: JSX.Element | undefined = undefined;
     if (downloadProgress) {
         const formattedCacheSize = formatBytes(downloadProgress.total);
-        const progress =
-            ((downloadProgress.current / downloadProgress.total) * 100) | 0;
+        const progress = ((downloadProgress.current / downloadProgress.total) * 100) | 0;
         loadingBarOverlay = (
-            <div className="overlay-container">
+            <div className="overlay-container max-height">
                 <OsrsLoadingBar
                     text={`Downloading cache (${formattedCacheSize})`}
                     progress={progress}
@@ -127,33 +120,30 @@ export function MapViewerContainer({
     }
 
     return (
-        <div>
+        <div className="max-height">
             {loadingBarOverlay}
+
             {menuProps && <OsrsMenu {...menuProps} />}
-            {inited && (
-                <MapViewerControls
-                    mapViewer={mapViewer}
-                    caches={caches}
-                    setDownloadProgress={setDownloadProgress}
-                    hidden={hudHidden}
-                />
-            )}
-            {!hudHidden && (
+
+            <MapViewerControls
+                mapViewer={mapViewer}
+                setDownloadProgress={setDownloadProgress}
+                hidden={!hudVisible}
+            />
+
+            {hudVisible && (
                 <span>
                     <div className="hud left-top">
                         <MinimapContainer
                             yawDegrees={compassDegrees}
-                            onCompassClick={() => {
-                                mapViewer.camera.setYaw(0);
-                            }}
+                            onCompassClick={resetCameraYaw}
                             onWorldMapClick={openWorldMap}
                             getPosition={getMapPosition}
                             loadMapImageUrl={loadMapImageUrl}
                         />
 
-                        <div className="fps-counter content-text">
-                            {fps.toFixed(1)}
-                        </div>
+                        <div className="fps-counter content-text">{fps}</div>
+                        <div className="fps-counter content-text">{mapViewer.debugText}</div>
                     </div>
                     <WorldMapModal
                         isOpen={isWorldMapOpen}
@@ -164,7 +154,8 @@ export function MapViewerContainer({
                     />
                 </span>
             )}
-            {isTouchDevice && (
+
+            {hudVisible && isTouchDevice && (
                 <div className="joystick-container left">
                     <Joystick
                         size={75}
@@ -176,7 +167,7 @@ export function MapViewerContainer({
                     ></Joystick>
                 </div>
             )}
-            {isTouchDevice && (
+            {hudVisible && isTouchDevice && (
                 <div className="joystick-container right">
                     <Joystick
                         size={75}
@@ -189,10 +180,11 @@ export function MapViewerContainer({
                 </div>
             )}
 
-            <WebGLCanvas
-                init={mapViewer.init}
-                draw={mapViewer.render}
-            ></WebGLCanvas>
+            <GlCanvas
+                onInit={mapViewer.initGl}
+                onRender={mapViewer.render}
+                onCleanup={mapViewer.cleanup}
+            ></GlCanvas>
         </div>
     );
 }

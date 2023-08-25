@@ -1,16 +1,23 @@
 import { mat4, vec3 } from "gl-matrix";
-import { FrustumIntersection } from "./util/FrustumIntersection";
-import { DEGREES_TO_RADIANS, RS_TO_RADIANS } from "./MathConstants";
-import { clamp } from "../client/util/MathUtil";
+import { Frustum } from "./Frustum";
+import { DEGREES_TO_RADIANS, RS_TO_RADIANS } from "../rs/MathConstants";
+import { clamp } from "../util/MathUtil";
+
+export interface CameraPosition {
+    position: vec3;
+    pitch: number;
+    yaw: number;
+}
 
 export enum ProjectionType {
     PERSPECTIVE,
     ORTHO,
 }
 
-const moveCameraRotOrigin: vec3 = [0, 0, 0];
-
 export class Camera {
+    static moveCameraRotOrigin: vec3 = vec3.create();
+    static deltaTemp: vec3 = vec3.create();
+
     pos: vec3;
 
     pitch: number;
@@ -26,9 +33,10 @@ export class Camera {
     viewMatrix: mat4 = mat4.create();
     viewProjMatrix: mat4 = mat4.create();
 
-    frustum = new FrustumIntersection();
+    frustum = new Frustum();
 
     updated: boolean = false;
+    updatedPosition: boolean = false;
     updatedLastFrame: boolean = false;
 
     constructor(x: number, y: number, z: number, pitch: number, yaw: number) {
@@ -37,38 +45,44 @@ export class Camera {
         this.yaw = yaw;
     }
 
-    move(
-        deltaX: number,
-        deltaY: number,
-        deltaZ: number,
-        rotatePitch: boolean = false
-    ): void {
-        const delta = vec3.fromValues(deltaX, deltaY, deltaZ);
-
-        if (rotatePitch) {
-            vec3.rotateX(
-                delta,
-                delta,
-                moveCameraRotOrigin,
-                -this.pitch * RS_TO_RADIANS
-            );
-        }
-        vec3.rotateY(
-            delta,
-            delta,
-            moveCameraRotOrigin,
-            (this.yaw - 1024) * RS_TO_RADIANS
-        );
-
-        vec3.add(this.pos, this.pos, delta);
+    setProjectionType(type: ProjectionType) {
+        this.projectionType = type;
         this.updated = true;
     }
 
+    move(deltaX: number, deltaY: number, deltaZ: number, rotatePitch: boolean = false): void {
+        Camera.deltaTemp[0] = deltaX;
+        Camera.deltaTemp[1] = deltaY;
+        Camera.deltaTemp[2] = deltaZ;
+
+        if (rotatePitch) {
+            vec3.rotateX(
+                Camera.deltaTemp,
+                Camera.deltaTemp,
+                Camera.moveCameraRotOrigin,
+                -this.pitch * RS_TO_RADIANS,
+            );
+        }
+        vec3.rotateY(
+            Camera.deltaTemp,
+            Camera.deltaTemp,
+            Camera.moveCameraRotOrigin,
+            (this.yaw - 1024) * RS_TO_RADIANS,
+        );
+
+        vec3.add(this.pos, this.pos, Camera.deltaTemp);
+        this.updated = true;
+        this.updatedPosition = true;
+    }
+
     updatePitch(pitch: number, deltaPitch: number): void {
-        const maxPitch =
-            this.projectionType === ProjectionType.PERSPECTIVE ? 512 : 0;
+        const maxPitch = this.projectionType === ProjectionType.PERSPECTIVE ? 512 : 0;
         this.pitch = clamp(pitch + deltaPitch, -512, maxPitch);
         this.updated = true;
+    }
+
+    getYaw(): number {
+        return this.yaw & 2047;
     }
 
     setYaw(yaw: number): void {
@@ -89,7 +103,7 @@ export class Camera {
                 this.fov * DEGREES_TO_RADIANS,
                 width / height,
                 0.1,
-                1024.0 * 4
+                1024.0 * 4,
             );
         } else {
             mat4.ortho(
@@ -98,8 +112,8 @@ export class Camera {
                 width / this.orthoZoom,
                 -height / this.orthoZoom,
                 height / this.orthoZoom,
-                -1024.0 * 8,
-                1024.0 * 8
+                -1024.0 * 4,
+                1024.0 * 4,
             );
         }
 
@@ -111,21 +125,13 @@ export class Camera {
 
         mat4.translate(this.cameraMatrix, this.cameraMatrix, this.pos);
         mat4.rotateY(this.cameraMatrix, this.cameraMatrix, yaw);
-        mat4.rotateZ(
-            this.cameraMatrix,
-            this.cameraMatrix,
-            180 * DEGREES_TO_RADIANS
-        ); // Roll
+        mat4.rotateZ(this.cameraMatrix, this.cameraMatrix, 180 * DEGREES_TO_RADIANS); // Roll
         mat4.rotateX(this.cameraMatrix, this.cameraMatrix, pitch);
 
         mat4.invert(this.viewMatrix, this.cameraMatrix);
 
         // Calculate view projection matrix
-        mat4.multiply(
-            this.viewProjMatrix,
-            this.projectionMatrix,
-            this.viewMatrix
-        );
+        mat4.multiply(this.viewProjMatrix, this.projectionMatrix, this.viewMatrix);
 
         this.frustum.setPlanes(this.viewProjMatrix);
     }
@@ -133,6 +139,7 @@ export class Camera {
     onFrameEnd() {
         this.updatedLastFrame = this.updated;
         this.updated = false;
+        this.updatedPosition = false;
     }
 
     getPosX(): number {
@@ -147,11 +154,11 @@ export class Camera {
         return this.pos[2];
     }
 
-    getRegionX(): number {
+    getMapX(): number {
         return this.getPosX() >> 6;
     }
 
-    getRegionY(): number {
+    getMapY(): number {
         return this.getPosZ() >> 6;
     }
 }

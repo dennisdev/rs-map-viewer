@@ -1,11 +1,7 @@
-const {
-    when,
-    whenDev,
-    addBeforeLoader,
-    loaderByName,
-} = require("@craco/craco");
+const { when, whenDev, addBeforeLoader, loaderByName } = require("@craco/craco");
 
 const ThreadsPlugin = require("threads-plugin");
+const JsonMinimizerPlugin = require("json-minimizer-webpack-plugin");
 
 const express = require("express");
 
@@ -26,11 +22,18 @@ module.exports = {
                 }
             }
 
+            webpackConfig.module.rules.push({
+                resourceQuery: /url/,
+                type: "asset/resource",
+            });
+
             // addBeforeLoader(webpackConfig, loaderByName('file-loader'), glslLoader);
 
             webpackConfig.resolve.fallback = {
                 fs: false,
             };
+
+            webpackConfig.optimization.minimizer.push(new JsonMinimizerPlugin());
 
             return webpackConfig;
         },
@@ -40,6 +43,18 @@ module.exports = {
         headers: {
             "Cross-Origin-Opener-Policy": "same-origin",
             "Cross-Origin-Embedder-Policy": "require-corp",
+        },
+        client: {
+            overlay: {
+                errors: true,
+                warnings: false,
+                runtimeErrors: (error) => {
+                    if (error instanceof DOMException && error.name === "AbortError") {
+                        return false;
+                    }
+                    return true;
+                },
+            },
         },
         setupMiddlewares: (middlewares, devServer) => {
             if (!devServer) {

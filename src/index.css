@@ -1,19 +1,20 @@
 @font-face {
     font-family: "OSRS Bold";
-    src: url(./RuneScape-Chat-Bold-07.ttf);
+    src: url(./media/RuneScape-Chat-Bold-07.ttf);
 }
 @font-face {
     font-family: "OSRS Small";
-    src: url(./RuneScape-Small.woff);
+    src: url(./media/RuneScape-Small.woff);
 }
 
 html,
 body {
     margin: 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-        "Helvetica Neue", sans-serif;
+    height: 100vh;
+
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+        "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
@@ -28,9 +29,9 @@ body {
                                   supported by Chrome, Edge, Opera and Firefox */
 }
 
-code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-        monospace;
+#root,
+.max-height {
+    height: 100%;
 }
 
 canvas {
@@ -38,11 +39,10 @@ canvas {
     border: none;
 }
 
-.center-content-container {
+.center-container {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
 }
 
 .content-text {
@@ -63,9 +63,9 @@ canvas {
 
 .rs-border {
     border: 6px solid;
-    border-image: url(./interface-border.png) 6 / 6px / 0px repeat;
+    border-image: url(./media/interface-border.png) 6 / 6px / 0px repeat;
 }
 
 .rs-background {
-    background-image: url(./interface-bg.png);
+    background-image: url(./media/interface-bg.png);
 }

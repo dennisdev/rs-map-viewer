@@ -1,6 +1,6 @@
 /// <reference types="react-scripts" />
 
-import Bzip2 from "@foxglove/wasm-bz2";
+import React from "react";
 
 declare global {
     interface Window {
@@ -17,7 +17,7 @@ declare module "react" {
         c: T,
         areEqual?: (
             prev: Readonly<React.ComponentProps<T>>,
-            next: Readonly<React.ComponentProps<T>>
-        ) => boolean
+            next: Readonly<React.ComponentProps<T>>,
+        ) => boolean,
     ): T;
 }

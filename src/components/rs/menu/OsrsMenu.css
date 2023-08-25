@@ -1,0 +1,78 @@
+.context-menu-container {
+    position: absolute;
+    top: 100px;
+    left: 100px;
+    font-family: "OSRS Bold", ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
+    display: flex;
+    white-space: nowrap;
+    border: 10px solid transparent;
+}
+
+.context-menu-container.tooltip {
+    pointer-events: none;
+    border: 0;
+}
+
+.context-menu {
+    cursor: default;
+    font-size: 16px;
+    font-smooth: never;
+    /* font-weight: normal; */
+    /* filter: opacity(100%); */
+    text-shadow: 1px 1px 0 black;
+    /* display: flex; */
+    border: solid #5d5447 1px;
+}
+
+.title {
+    padding-left: 2px;
+    padding-right: 6px;
+    color: #5d5447;
+    background-color: black;
+    border: solid black 1px;
+}
+
+.line {
+    width: 100%;
+    border-top: solid #5d5447 1px;
+}
+
+.options {
+    color: white;
+    background-color: #5d5447;
+    border: solid black 1px;
+}
+
+.tooltip .options {
+    background-color: #5d5447b2;
+}
+
+.option {
+    padding-left: 2px;
+    padding-right: 6px;
+    padding-bottom: 1px;
+}
+
+.option:hover .option-name {
+    color: #ffff00;
+}
+
+.object-name {
+    color: #00ffff;
+}
+
+.npc-name {
+    color: #ffff00;
+}
+
+.npc-level {
+    color: #c0ff00;
+}
+
+.item-name {
+    color: #ff9040;
+}
+
+.target-id {
+    color: #ff5d40;
+}

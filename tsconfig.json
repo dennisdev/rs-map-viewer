@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "types": ["offscreencanvas"],
     "lib": [
       "dom",
       "dom.iterable",
@@ -20,10 +19,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "paths": {
-      "fs": ["./node_modules/browserify-fs"]
-    }
+    "jsx": "react-jsx"
   },
   "include": [
     "src"

@@ -1,1 +1,1 @@
-# OSRS Map Viewer
+# RuneScape Map Viewer

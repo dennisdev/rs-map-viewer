@@ -1,10 +1,7 @@
 import { vec2 } from "gl-matrix";
 import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
 
-export function getMousePos(
-    container: HTMLElement,
-    event: MouseEvent | Touch
-): vec2 {
+export function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     const rect = container.getBoundingClientRect();
     return [event.clientX - rect.left, event.clientY - rect.top];
 }
@@ -20,7 +17,7 @@ export function getAxisDeadzone(axis: number, zone: number): number {
 }
 
 export class InputManager {
-    element!: HTMLElement;
+    element?: HTMLElement;
 
     keys: Map<string, boolean> = new Map();
 
@@ -46,16 +43,11 @@ export class InputManager {
 
     gamepadIndex?: number;
 
-    constructor() {
-        window.addEventListener("gamepadconnected", this.onGamepadConnected);
-        window.addEventListener(
-            "gamepaddisconnected",
-            this.onGamepadDisconnected
-        );
-    }
-
     init(element: HTMLElement) {
         this.element = element;
+
+        window.addEventListener("gamepadconnected", this.onGamepadConnected);
+        window.addEventListener("gamepaddisconnected", this.onGamepadDisconnected);
 
         element.addEventListener("dblclick", this.onDoubleClick);
 
@@ -76,12 +68,43 @@ export class InputManager {
         element.addEventListener("focusout", this.onFocusOut);
     }
 
+    cleanup() {
+        if (!this.element) {
+            return;
+        }
+
+        window.removeEventListener("gamepadconnected", this.onGamepadConnected);
+        window.removeEventListener("gamepaddisconnected", this.onGamepadDisconnected);
+
+        this.element.removeEventListener("dblclick", this.onDoubleClick);
+
+        this.element.removeEventListener("keydown", this.onKeyDown);
+        this.element.removeEventListener("keyup", this.onKeyUp);
+
+        this.element.removeEventListener("mousedown", this.onMouseDown);
+        this.element.removeEventListener("mousemove", this.onMouseMove);
+        this.element.removeEventListener("mouseup", this.onMouseUp);
+        this.element.removeEventListener("mouseleave", this.onMouseLeave);
+
+        this.element.removeEventListener("touchstart", this.onTouchStart);
+        this.element.removeEventListener("touchmove", this.onTouchMove);
+        this.element.removeEventListener("touchend", this.onTouchEnd);
+
+        this.element.removeEventListener("contextmenu", this.onContextMenu);
+
+        this.element.removeEventListener("focusout", this.onFocusOut);
+    }
+
     isShiftDown(): boolean {
         return this.isKeyDown("ShiftLeft") || this.isKeyDown("ShiftRight");
     }
 
     isKeyDown(key: string): boolean {
         return this.keys.has(key);
+    }
+
+    isKeyDownEvent(key: string): boolean {
+        return !!this.keys.get(key);
     }
 
     isDragging(): boolean {
@@ -97,13 +120,11 @@ export class InputManager {
     }
 
     hasMovedMouse(): boolean {
-        return (
-            this.lastMouseX !== this.mouseX || this.lastMouseY !== this.mouseY
-        );
+        return this.lastMouseX !== this.mouseX || this.lastMouseY !== this.mouseY;
     }
 
     getDeltaMouseX(): number {
-        if (this.deltaMouseX !== 0) {
+        if (this.isPointerLock()) {
             return this.deltaMouseX;
         }
         if (this.isDragging()) {
@@ -113,7 +134,7 @@ export class InputManager {
     }
 
     getDeltaMouseY(): number {
-        if (this.deltaMouseY !== 0) {
+        if (this.isPointerLock()) {
             return this.deltaMouseY;
         }
         if (this.isDragging()) {
@@ -142,7 +163,7 @@ export class InputManager {
     };
 
     private onDoubleClick = (event: MouseEvent) => {
-        if (!document.pointerLockElement) {
+        if (!document.pointerLockElement && this.element) {
             this.element.requestPointerLock();
         }
     };
@@ -158,7 +179,7 @@ export class InputManager {
     };
 
     private onMouseDown = (event: MouseEvent) => {
-        if (event.button !== 0) {
+        if (event.button !== 0 || !this.element) {
             return;
         }
         const [x, y] = getMousePos(this.element, event);
@@ -169,6 +190,9 @@ export class InputManager {
     };
 
     private onMouseMove = (event: MouseEvent) => {
+        if (!this.element) {
+            return;
+        }
         const [x, y] = getMousePos(this.element, event);
         this.mouseX = x;
         this.mouseY = y;
@@ -190,6 +214,9 @@ export class InputManager {
     };
 
     private onTouchStart = (event: TouchEvent) => {
+        if (!this.element) {
+            return;
+        }
         const [x, y] = getMousePos(this.element, event.touches[0]);
         this.dragX = x;
         this.dragY = y;
@@ -199,6 +226,9 @@ export class InputManager {
     };
 
     private onTouchMove = (event: TouchEvent) => {
+        if (!this.element) {
+            return;
+        }
         const [x, y] = getMousePos(this.element, event.touches[0]);
         this.mouseX = x;
         this.mouseY = y;
@@ -210,11 +240,13 @@ export class InputManager {
     };
 
     private onContextMenu = (event: MouseEvent) => {
+        if (!this.element) {
+            return;
+        }
         event.preventDefault();
         const [x, y] = getMousePos(this.element, event);
         this.pickX = x;
         this.pickY = y;
-        console.log("clicked2,", this.pickX, this.pickY);
     };
 
     onPositionJoystickMove = (event: IJoystickUpdateEvent) => {
@@ -234,6 +266,7 @@ export class InputManager {
     };
 
     private onFocusOut = () => {
+        console.log("Focus lost");
         this.keys.clear();
         this.resetMouse();
     };
@@ -246,6 +279,9 @@ export class InputManager {
     }
 
     onFrameEnd() {
+        for (const key of this.keys.keys()) {
+            this.keys.set(key, false);
+        }
         if (this.isDragging() && !this.isTouch) {
             this.dragX = this.mouseX;
             this.dragY = this.mouseY;

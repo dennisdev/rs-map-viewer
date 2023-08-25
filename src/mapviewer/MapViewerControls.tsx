@@ -1,15 +1,14 @@
-import { vec3 } from "gl-matrix";
+import { memo, useState, useEffect } from "react";
+import { MapViewer } from "./MapViewer";
 import { Leva, button, buttonGroup, folder, useControls } from "leva";
+import { CameraPosition, ProjectionType } from "./Camera";
 import { Schema } from "leva/dist/declarations/src/types";
-import { memo, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { DownloadProgress } from "../client/fs/FileSystem";
-import { lerp, slerp } from "../client/util/MathUtil";
-import { loadCache } from "./Caches";
-import { AntiAliasType, CameraPosition, MapViewer } from "./MapViewer";
-import { isTouchDevice } from "./util/DeviceUtil";
-import { ProjectionType } from "./Camera";
-import { CacheInfo } from "../client/fs/Types";
+import { loadCacheFiles } from "./Caches";
+import { DownloadProgress } from "../rs/cache/CacheFiles";
+import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
+import { vec3 } from "gl-matrix";
+import { lerp, slerp } from "../util/MathUtil";
+import { isTouchDevice } from "../util/DeviceUtil";
 
 interface ColorRgb {
     r: number;
@@ -19,38 +18,34 @@ interface ColorRgb {
 
 interface MapViewerControlsProps {
     mapViewer: MapViewer;
-    caches: CacheInfo[];
     setDownloadProgress: (progress: DownloadProgress | undefined) => void;
     hidden: boolean;
 }
 
 export const MapViewerControls = memo(function MapViewerControls({
     mapViewer,
-    caches,
     setDownloadProgress,
     hidden,
 }: MapViewerControlsProps) {
     const [projectionType, setProjectionType] = useState<ProjectionType>(
-        mapViewer.camera.projectionType
+        mapViewer.camera.projectionType,
     );
-    const [searchParams, setSearchParams] = useSearchParams();
 
     const positionControls = isTouchDevice
         ? "Left joystick, Drag up and down."
         : "WASD,\nR or E (up),\nF or C (down),\nUse SHIFT to go faster.";
     const directionControls = isTouchDevice
         ? "Right joystick."
-        : "Arrow Keys or Click and Drag.";
+        : "Arrow Keys or Click and Drag. Double click for pointerlock.";
 
-    const cameraControlsSchema: Schema = {
+    const controlsSchema: Schema = {
         Position: { value: positionControls, editable: false },
         Direction: { value: directionControls, editable: false },
     };
 
     const [animationDuration, setAnimationDuration] = useState(10);
-    const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(
-        () => []
-    );
+    const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(() => []);
+
     const addPoint = () => {
         setCameraPoints((pts) => [
             ...pts,
@@ -58,7 +53,7 @@ export const MapViewerControls = memo(function MapViewerControls({
                 position: vec3.fromValues(
                     mapViewer.camera.pos[0],
                     mapViewer.camera.pos[1],
-                    mapViewer.camera.pos[2]
+                    mapViewer.camera.pos[2],
                 ),
                 pitch: mapViewer.camera.pitch,
                 yaw: mapViewer.camera.yaw,
@@ -73,16 +68,13 @@ export const MapViewerControls = memo(function MapViewerControls({
                     const point = v;
                     acc["Point " + i] = buttonGroup({
                         Teleport: () => mapViewer.setCamera(point),
-                        Delete: () =>
-                            setCameraPoints((pts) =>
-                                pts.filter((_, j) => j !== i)
-                            ),
+                        Delete: () => setCameraPoints((pts) => pts.filter((_, j) => j !== i)),
                     });
                     return acc;
-                }, {})
-            )
+                }, {}),
+            ),
         );
-    }, [cameraPoints]);
+    }, [mapViewer, cameraPoints]);
 
     const [pointsControls, setPointControls] = useState(folder({}));
     const [isCameraRunning, setCameraRunning] = useState(false);
@@ -92,7 +84,6 @@ export const MapViewerControls = memo(function MapViewerControls({
             return;
         }
 
-        let start: number;
         const segmentCount = cameraPoints.length - 1;
         // Need at least 2 points to start
         if (segmentCount <= 0) {
@@ -100,12 +91,15 @@ export const MapViewerControls = memo(function MapViewerControls({
             return;
         }
 
-        const callback = (timestamp: number) => {
+        let animationId = -1;
+
+        let start: number;
+        const animate = (time: DOMHighResTimeStamp) => {
             if (!start) {
-                start = timestamp;
+                start = time;
             }
 
-            const elapsed = timestamp - start;
+            const elapsed = time - start;
             const overallProgress = elapsed / (animationDuration * 1000);
 
             const startIndex = Math.floor(overallProgress * segmentCount);
@@ -120,26 +114,30 @@ export const MapViewerControls = memo(function MapViewerControls({
                 mapViewer.setCamera(cameraPoints[cameraPoints.length - 1]);
                 return;
             }
-            const newPosition: { position: vec3; pitch: number; yaw: number } =
-                {
-                    position: vec3.fromValues(
-                        lerp(from.position[0], to.position[0], localProgress),
-                        lerp(from.position[1], to.position[1], localProgress),
-                        lerp(from.position[2], to.position[2], localProgress)
-                    ),
-                    pitch: lerp(from.pitch, to.pitch, localProgress),
-                    yaw: slerp(from.yaw, to.yaw, localProgress, 2048),
-                };
+            const newPosition: { position: vec3; pitch: number; yaw: number } = {
+                position: vec3.fromValues(
+                    lerp(from.position[0], to.position[0], localProgress),
+                    lerp(from.position[1], to.position[1], localProgress),
+                    lerp(from.position[2], to.position[2], localProgress),
+                ),
+                pitch: lerp(from.pitch, to.pitch, localProgress),
+                yaw: slerp(from.yaw, to.yaw, localProgress, 2048),
+            };
             mapViewer.setCamera(newPosition);
 
-            window.requestAnimationFrame(callback);
+            animationId = requestAnimationFrame(animate);
         };
 
-        window.requestAnimationFrame(callback);
-    }, [isCameraRunning]);
+        // Start animating
+        animationId = requestAnimationFrame(animate);
+
+        return () => {
+            cancelAnimationFrame(animationId);
+        };
+    }, [mapViewer, cameraPoints, animationDuration, isCameraRunning]);
 
     const generateControls = () => ({
-        "Camera Controls": folder(cameraControlsSchema, { collapsed: true }),
+        Controls: folder(controlsSchema, { collapsed: true }),
         Camera: folder(
             {
                 Projection: {
@@ -149,16 +147,13 @@ export const MapViewerControls = memo(function MapViewerControls({
                         Ortho: ProjectionType.ORTHO,
                     },
                     onChange: (v) => {
-                        mapViewer.camera.projectionType = v;
+                        mapViewer.camera.setProjectionType(v);
                         setProjectionType(v);
-                        setSearchParams(mapViewer.getSearchParams(), {
-                            replace: true,
-                        });
                     },
                 },
                 ...createCameraControls(mapViewer),
             },
-            { collapsed: true }
+            { collapsed: false },
         ),
         Distance: folder(
             {
@@ -169,57 +164,71 @@ export const MapViewerControls = memo(function MapViewerControls({
                     step: 16,
                     onChange: (v) => {
                         mapViewer.renderDistance = v;
-                        mapViewer.renderDistanceUpdated = true;
                     },
                 },
                 Unload: {
-                    value: mapViewer.regionUnloadDistance,
+                    value: mapViewer.unloadDistance,
                     min: 1,
                     max: 30,
                     step: 1,
                     onChange: (v) => {
-                        mapViewer.regionUnloadDistance = v;
+                        mapViewer.unloadDistance = v;
                     },
                 },
                 Lod: {
-                    value: mapViewer.regionLodDistance,
-                    min: 1,
+                    value: mapViewer.lodDistance,
+                    min: 0,
                     max: 30,
                     step: 1,
                     onChange: (v) => {
-                        mapViewer.regionLodDistance = v;
+                        mapViewer.lodDistance = v;
                     },
                 },
             },
-            { collapsed: false }
+            { collapsed: false },
         ),
         Cache: folder(
             {
                 Version: {
                     value: mapViewer.loadedCache.info.name,
-                    options: caches.map((cache) => cache.name),
+                    options: mapViewer.cacheList.caches.map((cache) => cache.name),
                     onChange: async (v) => {
-                        const cacheInfo = caches.find(
-                            (cache) => cache.name === v
+                        const cacheInfo = mapViewer.cacheList.caches.find(
+                            (cache) => cache.name === v,
                         );
-                        if (
-                            v !== mapViewer.loadedCache.info.name &&
-                            cacheInfo
-                        ) {
-                            const loadedCache = await loadCache(
-                                cacheInfo,
-                                setDownloadProgress
-                            );
+                        if (v !== mapViewer.loadedCache.info.name && cacheInfo) {
+                            const [loadedCache, npcSpawns] = await Promise.all([
+                                loadCacheFiles(cacheInfo, undefined, setDownloadProgress),
+                                fetchNpcSpawns(getNpcSpawnsUrl(cacheInfo)),
+                            ]);
+                            mapViewer.npcSpawns = npcSpawns;
                             mapViewer.initCache(loadedCache);
                             setDownloadProgress(undefined);
-                            setSearchParams(mapViewer.getSearchParams(), {
-                                replace: true,
-                            });
+                            // setSearchParams(mapViewer.getSearchParams(), {
+                            //     replace: true,
+                            // });
                         }
                     },
                 },
             },
-            { collapsed: true }
+            { collapsed: true },
+        ),
+        Entity: folder(
+            {
+                Items: {
+                    value: mapViewer.loadObjs,
+                    onChange: (v) => {
+                        mapViewer.setLoadObjs(v);
+                    },
+                },
+                Npcs: {
+                    value: mapViewer.loadNpcs,
+                    onChange: (v) => {
+                        mapViewer.setLoadNpcs(v);
+                    },
+                },
+            },
+            { collapsed: true },
         ),
         Render: folder(
             {
@@ -231,25 +240,13 @@ export const MapViewerControls = memo(function MapViewerControls({
                         mapViewer.fpsLimit = v;
                     },
                 },
-                Npcs: {
-                    value: mapViewer.loadNpcs,
-                    onChange: (v) => {
-                        mapViewer.setLoadNpcs(v);
-                    },
-                },
-                Items: {
-                    value: mapViewer.loadItems,
-                    onChange: (v) => {
-                        mapViewer.setLoadItems(v);
-                    },
-                },
-                "Max Plane": {
-                    value: mapViewer.maxPlane,
+                "Max Level": {
+                    value: mapViewer.maxLevel,
                     min: 0,
                     max: 3,
                     step: 1,
                     onChange: (v) => {
-                        mapViewer.setMaxPlane(v);
+                        mapViewer.setMaxLevel(v);
                     },
                 },
                 Sky: {
@@ -287,41 +284,33 @@ export const MapViewerControls = memo(function MapViewerControls({
                         mapViewer.colorBanding = 255 - v * 2;
                     },
                 },
-                "Anti-Aliasing": {
-                    value: mapViewer.antiAliasing,
-                    options: {
-                        None: AntiAliasType.NONE,
-                        FXAA: AntiAliasType.FXAA,
-                    },
-                    onChange: (v) => {
-                        mapViewer.antiAliasing = v;
-                    },
-                },
-                "Depth Map": {
-                    value: mapViewer.renderDepthMap,
-                    onChange: (v) => {
-                        mapViewer.setRenderDepthMap(v);
-                    },
-                },
-                "Depth Map Far": {
-                    value: mapViewer.depthMapFar,
-                    min: 64,
-                    max: 2048,
-                    step: 1,
-                    onChange: (v) => {
-                        mapViewer.depthMapFar = v;
-                    },
-                },
                 "Cull Back-faces": {
-                    value: true,
+                    value: mapViewer.cullBackFace,
                     onChange: (v) => {
                         mapViewer.cullBackFace = v;
                     },
                 },
+                "Anti-Aliasing": folder(
+                    {
+                        MSAA: {
+                            value: mapViewer.msaaEnabled,
+                            onChange: (v) => {
+                                mapViewer.setMsaa(v);
+                            },
+                        },
+                        FXAA: {
+                            value: mapViewer.fxaaEnabled,
+                            onChange: (v) => {
+                                mapViewer.setFxaa(v);
+                            },
+                        },
+                    },
+                    { collapsed: true },
+                ),
             },
-            { collapsed: true }
+            { collapsed: true },
         ),
-        Misc: folder(
+        Menu: folder(
             {
                 Tooltips: {
                     value: mapViewer.tooltips,
@@ -336,7 +325,7 @@ export const MapViewerControls = memo(function MapViewerControls({
                     },
                 },
             },
-            { collapsed: true }
+            { collapsed: true },
         ),
         Record: folder(
             {
@@ -350,27 +339,14 @@ export const MapViewerControls = memo(function MapViewerControls({
                 },
                 Points: pointsControls,
             },
-            { collapsed: true }
+            { collapsed: true },
         ),
     });
 
     useControls(generateControls, [projectionType, pointsControls]);
 
-    useEffect(() => {
-        mapViewer.onCameraMoveEnd = (pos, pitch, yaw) => {
-            if (!isCameraRunning) {
-                setSearchParams(mapViewer.getSearchParams(), { replace: true });
-            }
-        };
-    }, [mapViewer, isCameraRunning]);
-
     return (
-        <Leva
-            titleBar={{ filter: false }}
-            collapsed={true}
-            hideCopyButton={true}
-            hidden={hidden}
-        />
+        <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} hidden={hidden} />
     );
 });
 
@@ -396,7 +372,7 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 step: 1,
                 onChange: (v) => {
                     mapViewer.camera.orthoZoom = v;
-                    mapViewer.runCameraMoveEndCallback();
+                    // mapViewer.runCameraMoveEndCallback();
                 },
             },
         };

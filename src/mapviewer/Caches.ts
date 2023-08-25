@@ -1,109 +1,73 @@
-import {
-    fetchMemoryStoreDat,
-    fetchMemoryStoreDat2,
-    ProgressListener,
-} from "../client/fs/FileSystem";
-import { IndexType } from "../client/fs/IndexType";
-import { CacheInfo, CacheType, getCacheType } from "../client/fs/Types";
-import {
-    MemoryStoreDat,
-    MemoryStoreDat2,
-} from "../client/fs/store/MemoryStore";
-import { fetchXteas, Xteas } from "./util/Xteas";
+import { CacheFiles, ProgressListener } from "../rs/cache/CacheFiles";
+import { CacheInfo, getLatestCache } from "../rs/cache/CacheInfo";
+import { CacheType, detectCacheType } from "../rs/cache/CacheType";
 
-export async function fetchCacheList(): Promise<CacheInfo[]> {
-    const resp = await fetch("/caches/caches.json");
+const CACHE_PATH = "/caches/";
+
+export async function fetchCacheInfos(): Promise<CacheInfo[]> {
+    const resp = await fetch(CACHE_PATH + "caches.json");
     return resp.json();
 }
 
-export function sortCachesNewToOld(caches: CacheInfo[]): void {
-    caches.sort((a, b) => {
-        const isOsrsA = a.game === "oldschool";
-        const isOsrsB = b.game === "oldschool";
-        const dateA = Date.parse(a.timestamp);
-        const dateB = Date.parse(b.timestamp);
-        return (
-            (isOsrsB ? 1 : 0) - (isOsrsA ? 1 : 0) ||
-            b.revision - a.revision ||
-            dateB - dateA
-        );
-    });
-}
+export type CacheList = {
+    caches: CacheInfo[];
+    latest: CacheInfo;
+};
 
-export function getLatestCache(caches: CacheInfo[]): CacheInfo | undefined {
-    if (caches.length === 0) {
+export async function fetchCacheList(): Promise<CacheList | undefined> {
+    const caches = await fetchCacheInfos();
+    const latest = getLatestCache(caches);
+    if (!latest) {
         return undefined;
     }
-
-    sortCachesNewToOld(caches);
-
-    return caches[0];
+    return {
+        caches,
+        latest,
+    };
 }
 
 export type LoadedCache = {
     info: CacheInfo;
-    store: MemoryStoreDat | MemoryStoreDat2;
-    xteas: Xteas;
+    type: CacheType;
+    files: CacheFiles;
+    xteas: XteaMap;
 };
 
-export async function loadCache(
+export async function loadCacheFiles(
     info: CacheInfo,
-    progressListener?: ProgressListener
+    signal?: AbortSignal,
+    progressListener?: ProgressListener,
 ): Promise<LoadedCache> {
-    const cachePath = "/caches/" + info.name + "/";
+    const cachePath = CACHE_PATH + info.name + "/";
 
-    const cacheType = getCacheType(info);
+    const xteasPromise = fetchXteas(cachePath + "keys.json", signal);
 
-    let storePromise: Promise<MemoryStoreDat | MemoryStoreDat2>;
-    if (cacheType === CacheType.DAT) {
-        storePromise = fetchMemoryStoreDat(
-            cachePath,
-            info.name,
-            true,
-            progressListener
-        );
-    } else {
-        const indices = [
-            IndexType.ANIMATIONS,
-            IndexType.SKELETONS,
-            IndexType.CONFIGS,
-            IndexType.MAPS,
-            IndexType.MODELS,
-            IndexType.SPRITES,
-            IndexType.TEXTURES,
-        ];
-        if (info.game === "oldschool" && info.revision >= 174) {
-            indices.push(IndexType.GRAPHIC_DEFAULTS);
-        }
-        storePromise = fetchMemoryStoreDat2(
-            cachePath,
-            info.name,
-            indices,
-            true,
-            progressListener
-        );
-    }
+    const cacheType = detectCacheType(info);
+    const files = await CacheFiles.fetchFiles(
+        cacheType,
+        cachePath,
+        info.name,
+        true,
+        signal,
+        progressListener,
+    );
 
-    const [store, xteas] = await Promise.all([
-        storePromise,
-        fetchXteas(cachePath + "keys.json"),
-    ]);
+    const xteas = await xteasPromise;
 
     return {
         info,
-        store,
+        type: cacheType,
+        files,
         xteas,
     };
 }
 
-export async function deleteOldCaches(cacheInfos: CacheInfo[]) {
-    const cacheNames = new Set(cacheInfos.map((c) => c.name));
+export type XteaMap = Map<number, number[]>;
 
-    const cacheKeys = await caches.keys();
-
-    for (const key of cacheKeys) {
-        if (!cacheNames.has(key)) {
-            caches.delete(key);
-        }
-    }
+export async function fetchXteas(url: RequestInfo, signal?: AbortSignal): Promise<XteaMap> {
+    const resp = await fetch(url, {
+        signal,
+    });
+    const data: Record<string, number[]> = await resp.json();
+    return new Map(Object.keys(data).map((key) => [parseInt(key), data[key]]));
 }
