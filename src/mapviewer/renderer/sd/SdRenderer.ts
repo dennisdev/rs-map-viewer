@@ -362,9 +362,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         this.mapManager.init(mapFileIndex);
         this.mapsToLoad.clear();
         console.log("init cache", app);
-        // for (let i = 0; i < 10000; i++) {
-        //     this.objTypeLoader.load(i);
-        // }
+
         if (app) {
             this.initTextures(app, this.textureLoader);
         }
@@ -666,7 +664,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
 
             for (const loc of map.locsAnimated) {
                 const frameId = loc.frame;
-                const frame = loc.anim.frames[frameId];
+                const frame = loc.anim.frames[frameId | 0];
 
                 const index = loc.getDrawRangeIndex(false, isInteract, isLod);
                 if (index !== -1) {
@@ -743,7 +741,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             for (const loc of map.locsAnimated) {
                 if (loc.anim.framesAlpha) {
                     const frameId = loc.frame;
-                    const frame = loc.anim.framesAlpha[frameId];
+                    const frame = loc.anim.framesAlpha[frameId | 0];
 
                     const index = loc.getDrawRangeIndex(true, isInteract, isLod);
                     if (index !== -1) {

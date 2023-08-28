@@ -17,6 +17,7 @@ import { DatCacheLoaderFactory } from "./DatCacheLoaderFactory";
 import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { LegacyCacheLoaderFactory } from "./LegacyCacheLoaderFactory";
 import { BasTypeLoader } from "../../config/bastype/BasTypeLoader";
+import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
 
 export interface CacheLoaderFactory {
     getUnderlayTypeLoader(): FloorTypeLoader;
@@ -36,6 +37,7 @@ export interface CacheLoaderFactory {
 
     getModelLoader(): ModelLoader;
     getSeqFrameLoader(): SeqFrameLoader;
+    getSkeletalSeqLoader(): SkeletalSeqLoader | undefined;
 
     getMapFileIndex(): MapFileIndex;
     getMapIndex(): CacheIndex;

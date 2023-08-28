@@ -1,7 +1,7 @@
 import { CacheIndex } from "../../cache/CacheIndex";
 import { CacheInfo } from "../../cache/CacheInfo";
 import { Dat2SeqFrame, DatSeqFrame, SeqFrame } from "./SeqFrame";
-import { SeqFrameBaseLoader } from "./SeqFrameBaseLoader";
+import { SeqBaseLoader } from "./SeqBaseLoader";
 import { SeqFrameMap } from "./SeqFrameMap";
 
 export interface SeqFrameLoader {
@@ -15,11 +15,15 @@ export class DatSeqFrameLoader implements SeqFrameLoader {
         const frames: Map<number, SeqFrame> = new Map();
 
         for (let i = 0; i < frameMapIndex.getArchiveCount(); i++) {
-            const file = frameMapIndex.getFile(i, 0);
-            if (!file) {
-                continue;
+            try {
+                const file = frameMapIndex.getFile(i, 0);
+                if (!file) {
+                    continue;
+                }
+                DatSeqFrame.load(frames, file.data);
+            } catch (e) {
+                console.error("Failed loading frame map " + i, e);
             }
-            DatSeqFrame.load(frames, file.data);
         }
 
         return new DatSeqFrameLoader(frames);
@@ -39,8 +43,8 @@ export class Dat2SeqFrameLoader implements SeqFrameLoader {
 
     constructor(
         readonly cacheInfo: CacheInfo,
-        readonly frameMapIndex: CacheIndex,
-        readonly baseLoader: SeqFrameBaseLoader,
+        readonly animIndex: CacheIndex,
+        readonly baseLoader: SeqBaseLoader,
     ) {}
 
     // changed 610
@@ -50,7 +54,7 @@ export class Dat2SeqFrameLoader implements SeqFrameLoader {
 
         let frameMap = this.frameMaps.get(frameMapId);
         if (!frameMap) {
-            const archive = this.frameMapIndex.getArchive(frameMapId);
+            const archive = this.animIndex.getArchive(frameMapId);
 
             const frames: SeqFrame[] = new Array(archive.lastFileId);
 
@@ -67,5 +71,6 @@ export class Dat2SeqFrameLoader implements SeqFrameLoader {
 
     clearCache(): void {
         this.frameMaps.clear();
+        this.baseLoader.clearCache();
     }
 }

@@ -788,7 +788,7 @@ export class Rasterizer3D {
                 do {
                     pixels[offset++] = HSL_RGB_MAP[hslIndex >> 8];
                     hslIndex += grad;
-                    --loops;
+                    loops--;
                 } while (loops > 0);
             } else {
                 const srcAlpha = Rasterizer3D.rasterAlpha;
@@ -805,7 +805,7 @@ export class Rasterizer3D {
                         ((((src & 0xff00ff) * srcAlpha) >> 8) & 0xff00ff) +
                         (((srcAlpha * (src & 0xff00)) >> 8) & 0xff00) +
                         color;
-                    --loops;
+                    loops--;
                 } while (loops > 0);
             }
         }

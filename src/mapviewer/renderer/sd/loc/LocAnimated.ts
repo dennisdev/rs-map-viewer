@@ -30,8 +30,12 @@ export class LocAnimated {
         this.cycleStart = cycle - 1;
 
         if (randomStart && seqType.frameStep !== -1) {
-            this.frame = Math.floor(Math.random() * seqType.frameIds.length);
-            this.cycleStart -= Math.floor(Math.random() * seqType.frameLengths[this.frame]);
+            if (seqType.isSkeletalSeq()) {
+                this.frame = Math.floor(Math.random() * seqType.getSkeletalDuration());
+            } else {
+                this.frame = Math.floor(Math.random() * seqType.frameIds.length);
+                this.cycleStart -= Math.floor(Math.random() * seqType.frameLengths[this.frame]);
+            }
         }
     }
 
@@ -63,18 +67,32 @@ export class LocAnimated {
             elapsed = 100;
         }
 
-        while (elapsed > this.seqType.getFrameLength(seqFrameLoader, this.frame)) {
-            elapsed -= this.seqType.getFrameLength(seqFrameLoader, this.frame);
-            this.frame++;
-            if (this.frame >= this.seqType.frameLengths.length) {
-                this.frame -= this.seqType.frameStep;
-                if (this.frame < 0 || this.frame >= this.seqType.frameLengths.length) {
+        if (this.seqType.isSkeletalSeq()) {
+            const duration = this.seqType.getSkeletalDuration();
+            this.frame += elapsed;
+            elapsed = 0;
+            if (this.frame >= duration) {
+                this.frame = duration - this.seqType.frameStep;
+                if (this.frame < 0 || this.frame > duration) {
                     this.frame = 0;
-                    this.cycleStart = cycle - 1;
                     this.seqType = undefined;
                     return 0;
                 }
-                continue;
+            }
+        } else {
+            while (elapsed > this.seqType.getFrameLength(seqFrameLoader, this.frame)) {
+                elapsed -= this.seqType.getFrameLength(seqFrameLoader, this.frame);
+                this.frame++;
+                if (this.frame >= this.seqType.frameLengths.length) {
+                    this.frame -= this.seqType.frameStep;
+                    if (this.frame < 0 || this.frame >= this.seqType.frameLengths.length) {
+                        this.frame = 0;
+                        this.cycleStart = cycle - 1;
+                        this.seqType = undefined;
+                        return 0;
+                    }
+                    continue;
+                }
             }
         }
 

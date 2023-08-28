@@ -33,6 +33,10 @@ export abstract class CacheIndex<A extends ApiType = ApiType.SYNC> {
         return this.table.getArchiveId(name) ?? -1;
     }
 
+    getFileIds(archiveId: number): Int32Array | undefined {
+        return this.getArchiveReference(archiveId)?.fileIds;
+    }
+
     archiveExists(archiveId: number): boolean {
         return this.table.archiveExists(archiveId);
     }
@@ -155,7 +159,6 @@ export class CacheIndexDat2 extends CacheStoreIndexSync {
             const table = decodeTable(data);
             return new CacheIndexDat2(id, table, store);
         } catch (e) {
-            console.error(e);
             throw new Error("Failed to decode index: " + id);
         }
     }

@@ -32,7 +32,7 @@ import {
 import { Dat2MapIndex, MapFileIndex } from "../../map/MapFileIndex";
 import { TextureLoader } from "../../texture/TextureLoader";
 import { IndexModelLoader, ModelLoader } from "../../model/ModelLoader";
-import { IndexSeqFrameBaseLoader, SeqFrameBaseLoader } from "../../model/seq/SeqFrameBaseLoader";
+import { IndexSeqBaseLoader, SeqBaseLoader } from "../../model/seq/SeqBaseLoader";
 import { Dat2SeqFrameLoader, SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
 import { ApiType } from "../ApiType";
 import { CacheIndex } from "../CacheIndex";
@@ -54,6 +54,7 @@ import {
     BasTypeLoader,
     DummyBasTypeLoader,
 } from "../../config/bastype/BasTypeLoader";
+import { IndexSkeletalSeqLoader, SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
 
 export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
     constructor(
@@ -136,11 +137,14 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
     getBasTypeLoader(): BasTypeLoader {
         if (this.cacheInfo.game === "runescape" && this.cacheInfo.revision >= 530) {
             const configIndex = this.cacheSystem.getIndex(IndexType.DAT2.configs);
-            const basArchive = configIndex.getArchive(ConfigType.RS2.bas);
-            return new ArchiveBasTypeLoader(this.cacheInfo, basArchive);
-        } else {
-            return new DummyBasTypeLoader(this.cacheInfo);
+            try {
+                const basArchive = configIndex.getArchive(ConfigType.RS2.bas);
+                return new ArchiveBasTypeLoader(this.cacheInfo, basArchive);
+            } catch (e) {
+                console.error("Failed to load bastype archive", e);
+            }
         }
+        return new DummyBasTypeLoader(this.cacheInfo);
     }
 
     getTextureLoader(): TextureLoader {
@@ -178,14 +182,19 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
         return new IndexModelLoader(modelIndex);
     }
 
-    getSeqFrameBaseLoader(): SeqFrameBaseLoader {
+    getSeqBaseLoader(): SeqBaseLoader {
         const index = this.cacheSystem.getIndex(IndexType.DAT2.skeletons);
-        return new IndexSeqFrameBaseLoader(this.cacheInfo, index);
+        return new IndexSeqBaseLoader(this.cacheInfo, index);
     }
 
     getSeqFrameLoader(): SeqFrameLoader {
         const index = this.cacheSystem.getIndex(IndexType.DAT2.animations);
-        return new Dat2SeqFrameLoader(this.cacheInfo, index, this.getSeqFrameBaseLoader());
+        return new Dat2SeqFrameLoader(this.cacheInfo, index, this.getSeqBaseLoader());
+    }
+
+    getSkeletalSeqLoader(): SkeletalSeqLoader | undefined {
+        const index = this.cacheSystem.getIndex(IndexType.DAT2.animations);
+        return new IndexSkeletalSeqLoader(index, this.getSeqBaseLoader());
     }
 
     getMapFileIndex(): MapFileIndex {

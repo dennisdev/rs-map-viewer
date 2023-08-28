@@ -415,7 +415,6 @@ export class Scene {
 
         const tileX = x >> tileSizeShift;
         const tileY = z >> tileSizeShift;
-        console.error(heights[tileX][tileY]);
         if (tileX < 0 || tileY < 0 || tileX > this.sizeX - 1 || tileY > this.sizeY - 1) {
             return 0;
         }
@@ -539,7 +538,7 @@ export class Scene {
                 }
             }
 
-            --startX;
+            startX--;
             hideOccluded = false;
         }
     }

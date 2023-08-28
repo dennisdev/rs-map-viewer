@@ -290,10 +290,15 @@ function addLocAnimationFrames(
     locType: LocType,
 ): AnimationFrames | undefined {
     const seqType = locModelLoader.seqTypeLoader.load(entity.seqId);
-    if (!seqType.frameIds) {
-        return undefined;
+    let frameCount: number;
+    if (seqType.isSkeletalSeq()) {
+        frameCount = seqType.getSkeletalDuration();
+    } else {
+        if (!seqType.frameIds) {
+            return undefined;
+        }
+        frameCount = seqType.frameIds.length;
     }
-    const frameCount = seqType.frameIds.length;
     if (frameCount === 0) {
         return undefined;
     }
@@ -447,10 +452,18 @@ function addNpcAnimationFrames(
     seqId: number,
 ): AnimationFrames | undefined {
     const seqType = npcModelLoader.seqTypeLoader.load(seqId);
-    if (!seqType || !seqType.frameIds) {
+    if (!seqType) {
         return undefined;
     }
-    const frameCount = seqType.frameIds.length;
+    let frameCount: number;
+    if (seqType.isSkeletalSeq()) {
+        frameCount = seqType.getSkeletalDuration();
+    } else {
+        if (!seqType.frameIds) {
+            return undefined;
+        }
+        frameCount = seqType.frameIds.length;
+    }
     if (frameCount === 0) {
         return undefined;
     }
@@ -616,7 +629,9 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
             } else {
                 npcSpawns = getMapNpcSpawns(state.npcSpawns, maxLevel, mapX, mapY);
                 npcSpawns = npcSpawns.filter((spawn) => {
-                    return !spawn.name || spawn.name === npcTypeLoader.load(spawn.id).name;
+                    return (
+                        spawn.name === undefined || spawn.name === npcTypeLoader.load(spawn.id).name
+                    );
                 });
             }
         }

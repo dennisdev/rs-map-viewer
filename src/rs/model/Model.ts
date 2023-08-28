@@ -2,13 +2,22 @@ import { COSINE, SINE } from "../MathConstants";
 import { Entity } from "../scene/entity/Entity";
 import { ModelData } from "./ModelData";
 import { SeqFrame } from "./seq/SeqFrame";
-import { SeqFrameBase } from "./seq/SeqFrameBase";
+import { SeqBase } from "./seq/SeqBase";
 import { SeqTransformType } from "./seq/SeqTransformType";
+import { SkeletalSeq } from "./skeletal/SkeletalSeq";
+import { SkeletalBase } from "./skeletal/SkeletalBase";
+import { mat4, vec3 } from "gl-matrix";
+
+const scaleVector = vec3.create();
 
 export class Model extends Entity {
     static animateOriginX: number = 0;
     static animateOriginY: number = 0;
     static animateOriginZ: number = 0;
+
+    static sketetalTransformMatrix: mat4 = mat4.create();
+    static skeletalScalingMatrix: mat4 = mat4.create();
+    static skeletalBoneMatrix: mat4 = mat4.create();
 
     version: number = 0;
 
@@ -684,31 +693,16 @@ export class Model extends Entity {
         this.invalidateBounds();
     }
 
-    // hasAlpha(textureLoader: TextureLoader): boolean {
-    //     if (this.faceAlphas) {
-    //         return true;
-    //     }
-    //     if (this.faceTextures) {
-    //         for (let i = 0; i < this.faceCount; i++) {
-    //             const textureId = this.faceTextures[i];
-    //             if (textureId !== -1 && textureLoader.hasAlpha(textureId)) {
-    //                 return true;
-    //             }
-    //         }
-    //     }
-    //     return false;
-    // }
-
     getXZRadius(): number {
         this.calculateBoundsCylinder();
         return this.xzRadius;
     }
 
-    animate(frame: SeqFrame | undefined) {
+    animateOld(frame: SeqFrame | undefined) {
         if (this.vertexLabels && frame) {
             Model.resetAnimateOrigin();
 
-            const base = frame.frameBase;
+            const base = frame.base;
 
             for (let i = 0; i < frame.transformCount; i++) {
                 const group = frame.transformGroups[i];
@@ -725,12 +719,12 @@ export class Model extends Entity {
         }
     }
 
-    animate0(frame: SeqFrame, nextFrame: SeqFrame | undefined, op14: boolean): void {
+    animate(frame: SeqFrame, nextFrame: SeqFrame | undefined, op14: boolean): void {
         if (this.vertexLabels) {
             Model.resetAnimateOrigin();
 
-            const base = frame.frameBase;
-            if (base !== nextFrame?.frameBase) {
+            const base = frame.base;
+            if (base !== nextFrame?.base) {
                 nextFrame = undefined;
             }
 
@@ -740,7 +734,7 @@ export class Model extends Entity {
     }
 
     transformInterpolated(
-        frameBase: SeqFrameBase,
+        base: SeqBase,
         frame: SeqFrame,
         nextFrame: SeqFrame | undefined,
         animateLabels: boolean[] | undefined,
@@ -751,7 +745,7 @@ export class Model extends Entity {
         if (!nextFrame) {
             for (let i = 0; i < frame.transformCount; i++) {
                 const group = frame.transformGroups[i];
-                const type = frameBase.types[group];
+                const type = base.types[group];
                 if (
                     !animateLabels ||
                     animateLabels[group] === condition ||
@@ -761,23 +755,23 @@ export class Model extends Entity {
                     if (resetOriginGroup !== -1) {
                         this.transform(
                             SeqTransformType.ORIGIN,
-                            frameBase.labels[resetOriginGroup],
+                            base.labels[resetOriginGroup],
                             0,
                             0,
                             0,
                             op14,
-                            frameBase.masks[resetOriginGroup] & mask,
+                            base.masks[resetOriginGroup] & mask,
                         );
                     }
 
                     this.transform(
-                        frameBase.types[group],
-                        frameBase.labels[group],
+                        base.types[group],
+                        base.labels[group],
                         frame.transformX[i],
                         frame.transformY[i],
                         frame.transformZ[i],
                         op14,
-                        frameBase.masks[group] & mask,
+                        base.masks[group] & mask,
                     );
                 }
             }
@@ -794,7 +788,7 @@ export class Model extends Entity {
         mask: number = 0xffff,
     ): void {
         if (mask !== 0xffff) {
-            console.error("mask", mask);
+            console.error("animate mask", mask);
         } else {
             this.transform0(type, labels, tx, ty, tz, op14);
         }
@@ -971,6 +965,102 @@ export class Model extends Entity {
                     this.changedLight = true;
                 }
                 break;
+        }
+    }
+
+    animateSkeletal(skeletalSeq: SkeletalSeq, frame: number): void {
+        const skeletalBase = skeletalSeq.skeletalBase;
+        if (skeletalBase) {
+            skeletalBase.updateAnimMatrices(skeletalSeq, frame);
+            this.transformSkeletal(skeletalBase, skeletalSeq.poseId, frame);
+        }
+
+        if (skeletalSeq.hasAlphaTransform) {
+            this.transformSkeletalAlpha(skeletalSeq, frame);
+        }
+
+        this.invalidateBounds();
+    }
+
+    transformSkeletal(skeletalBase: SkeletalBase, poseId: number, frame: number): void {
+        if (!this.animMayaGroups) {
+            return;
+        }
+        for (let v = 0; v < this.verticesCount; v++) {
+            const group = this.animMayaGroups[v];
+            if (group && group.length !== 0) {
+                const scalings = this.animMayaScales[v];
+
+                Model.sketetalTransformMatrix.fill(0);
+                for (let i = 0; i < group.length; i++) {
+                    const boneId = group[i];
+                    const bone = skeletalBase.getBone(boneId);
+                    if (bone) {
+                        const scale = scalings[i] / 255;
+                        vec3.set(scaleVector, scale, scale, scale);
+                        mat4.fromScaling(Model.skeletalScalingMatrix, scaleVector);
+
+                        mat4.mul(
+                            Model.skeletalBoneMatrix,
+                            Model.skeletalScalingMatrix,
+                            bone.getFinalMatrix(poseId),
+                        );
+
+                        mat4.add(
+                            Model.sketetalTransformMatrix,
+                            Model.sketetalTransformMatrix,
+                            Model.skeletalBoneMatrix,
+                        );
+                    }
+                }
+
+                this.transformVertex(v, Model.sketetalTransformMatrix);
+            }
+        }
+    }
+
+    transformVertex(v: number, m: mat4): void {
+        const vx = this.verticesX[v];
+        const vy = -this.verticesY[v];
+        const vz = -this.verticesZ[v];
+        const scale = 1.0;
+        // TODO: maybe use gl-matrix function instead
+        this.verticesX[v] = Math.round(m[0] * vx + m[4] * vy + m[8] * vz + m[12] * scale);
+        this.verticesY[v] = -Math.round(m[1] * vx + m[5] * vy + m[9] * vz + m[13] * scale);
+        this.verticesZ[v] = -Math.round(m[2] * vx + m[6] * vy + m[10] * vz + m[14] * scale);
+    }
+
+    transformSkeletalAlpha(skeletalSeq: SkeletalSeq, frame: number): void {
+        const base = skeletalSeq.base;
+
+        for (let i = 0; i < base.count; i++) {
+            const type = base.types[i];
+            if (
+                type === SeqTransformType.ALPHA &&
+                skeletalSeq.curves &&
+                skeletalSeq.curves[i] &&
+                skeletalSeq.curves[i][0] &&
+                this.faceLabels &&
+                this.faceAlphas
+            ) {
+                const curve = skeletalSeq.curves[i][0];
+                const labels = base.labels[i];
+                for (const l of labels) {
+                    if (l < this.faceLabels.length) {
+                        for (const f of this.faceLabels[l]) {
+                            let newAlpha =
+                                (this.faceAlphas[f] & 0xff) + curve.getValue(frame) * 255;
+                            if (newAlpha < 0) {
+                                newAlpha = 0;
+                            } else if (newAlpha > 255) {
+                                newAlpha = 255;
+                            }
+
+                            this.faceAlphas[f] = newAlpha;
+                        }
+                    }
+                }
+            }
         }
     }
 

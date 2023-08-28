@@ -168908,5 +168908,96 @@
         "x": 1695,
         "y": 4573,
         "id": 7882
+    },
+    {
+        "level": 0,
+        "name": "The Whisperer",
+        "x": 2399,
+        "y": 6369,
+        "id": 12206
+    },
+    {
+        "level": 0,
+        "name": "The Whisperer",
+        "x": 2655,
+        "y": 6369,
+        "id": 12204
+    },
+    {
+        "level": 0,
+        "name": "The Leviathan",
+        "x": 2078,
+        "y": 6368,
+        "id": 12214
+    },
+    {
+        "level": 0,
+        "name": "Duke Sucellus",
+        "x": 3036,
+        "y": 6452,
+        "id": 12191
+    },
+    {
+        "level": 0,
+        "name": "Vardorvis",
+        "x": 1128,
+        "y": 3417,
+        "id": 12223
+    },
+    {
+        "level": 1,
+        "name": "Akkha",
+        "x": 3679,
+        "y": 5407,
+        "id": 11789
+    },
+    {
+        "level": 0,
+        "name": "Ba-Ba",
+        "x": 3812,
+        "y": 5407,
+        "id": 11778
+    },
+    {
+        "level": 0,
+        "name": "Zebak",
+        "x": 3914,
+        "y": 5404,
+        "id": 11732
+    },
+    {
+        "level": 0,
+        "name": "Kephri",
+        "x": 3549,
+        "y": 5406,
+        "id": 11719
+    },
+    {
+        "level": 0,
+        "name": "Elidinis' Warden",
+        "x": 3806,
+        "y": 5147,
+        "id": 11753
+    },
+    {
+        "level": 0,
+        "name": "Tumeken's Warden",
+        "x": 3934,
+        "y": 5152,
+        "id": 11756
+    },
+    {
+        "level": 0,
+        "name": "Phantom Muspah",
+        "x": 2844,
+        "y": 4255,
+        "id": 12079
+    },
+    {
+        "level": 0,
+        "name": "The Mimic",
+        "x": 2718,
+        "y": 4318,
+        "id": 8633
     }
 ]

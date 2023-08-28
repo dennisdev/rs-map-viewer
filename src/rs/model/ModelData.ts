@@ -283,7 +283,7 @@ export class ModelData extends Entity {
         let hasFaceSkins = false;
         let hasTextures = false;
         let hasTextureCoords = false;
-        let hasUnknown = false;
+        let hasMayaGroups = false;
 
         for (let i = 0; i < count; i++) {
             const model = models[i];
@@ -308,7 +308,7 @@ export class ModelData extends Entity {
                 hasFaceSkins ||= !!model.faceSkins;
                 hasTextures ||= !!model.faceTextures;
                 hasTextureCoords ||= !!model.textureCoords;
-                hasUnknown ||= !!model.animMayaGroups;
+                hasMayaGroups ||= !!model.animMayaGroups;
             }
         }
 
@@ -343,7 +343,7 @@ export class ModelData extends Entity {
             this.textureCoords = new Int8Array(this.faceCount);
         }
 
-        if (hasUnknown) {
+        if (hasMayaGroups) {
             this.animMayaGroups = new Array(this.verticesCount);
             this.animMayaScales = new Array(this.verticesCount);
         }
@@ -510,7 +510,7 @@ export class ModelData extends Entity {
         const var15 = buf1.readUnsignedByte();
         const var16 = buf1.readUnsignedByte();
         const var17 = buf1.readUnsignedByte();
-        const var18 = buf1.readUnsignedByte();
+        const hasMayaGroups = buf1.readUnsignedByte();
         const var19 = buf1.readUnsignedShort();
         const var20 = buf1.readUnsignedShort();
         const var21 = buf1.readUnsignedShort();
@@ -633,7 +633,7 @@ export class ModelData extends Entity {
             this.textureCoords = new Int8Array(faceCount);
         }
 
-        if (var18 === 1) {
+        if (hasMayaGroups === 1) {
             this.animMayaGroups = new Array(vertexCount);
             this.animMayaScales = new Array(vertexCount);
         }
@@ -682,7 +682,7 @@ export class ModelData extends Entity {
             }
         }
 
-        if (var18 === 1) {
+        if (hasMayaGroups === 1) {
             for (let i = 0; i < vertexCount; i++) {
                 const var54 = buf5.readUnsignedByte();
                 this.animMayaGroups[i] = new Int32Array(var54);
@@ -823,8 +823,8 @@ export class ModelData extends Entity {
         const var13 = buf1.readUnsignedByte();
         const var14 = buf1.readUnsignedByte();
         const var15 = buf1.readUnsignedByte();
-        const var16 = buf1.readUnsignedByte();
-        const var17 = buf1.readUnsignedByte();
+        const hasVertexSkins = buf1.readUnsignedByte();
+        const hasMayaGroups = buf1.readUnsignedByte();
         const var18 = buf1.readUnsignedShort();
         const var19 = buf1.readUnsignedShort();
         const var20 = buf1.readUnsignedShort();
@@ -883,7 +883,7 @@ export class ModelData extends Entity {
             this.texFaceC = new Int16Array(texTriangleCount);
         }
 
-        if (var16 === 1) {
+        if (hasVertexSkins === 1) {
             this.vertexSkins = new Int32Array(vertexCount);
         }
 
@@ -907,7 +907,7 @@ export class ModelData extends Entity {
             this.faceSkins = new Int32Array(faceCount);
         }
 
-        if (var17 === 1) {
+        if (hasMayaGroups === 1) {
             this.animMayaGroups = new Array(vertexCount);
             this.animMayaScales = new Array(vertexCount);
         }
@@ -945,12 +945,12 @@ export class ModelData extends Entity {
             lastVertX = this.verticesX[i];
             lastVertY = this.verticesY[i];
             lastVertZ = this.verticesZ[i];
-            if (var16 === 1 && this.vertexSkins) {
+            if (hasVertexSkins === 1 && this.vertexSkins) {
                 this.vertexSkins[i] = buf5.readUnsignedByte();
             }
         }
 
-        if (var17 === 1) {
+        if (hasMayaGroups === 1) {
             for (let i = 0; i < vertexCount; i++) {
                 const var41 = buf5.readUnsignedByte();
                 this.animMayaGroups[i] = new Int32Array(var41);

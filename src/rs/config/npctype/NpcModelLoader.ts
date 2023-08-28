@@ -2,6 +2,7 @@ import { Model } from "../../model/Model";
 import { ModelData } from "../../model/ModelData";
 import { ModelLoader } from "../../model/ModelLoader";
 import { SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
+import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
 import { TextureLoader } from "../../texture/TextureLoader";
 import { SeqType } from "../seqtype/SeqType";
 import { SeqTypeLoader } from "../seqtype/SeqTypeLoader";
@@ -18,6 +19,7 @@ export class NpcModelLoader {
         readonly textureLoader: TextureLoader,
         readonly seqTypeLoader: SeqTypeLoader,
         readonly seqFrameLoader: SeqFrameLoader,
+        readonly skeletalSeqLoader: SkeletalSeqLoader | undefined,
         readonly varManager: VarManager,
     ) {
         this.modelCache = new Map();
@@ -91,23 +93,30 @@ export class NpcModelLoader {
     }
 
     transformNpcModel(model: Model, seqType: SeqType, frame: number): Model {
-        if (seqType.isAnimMaya()) {
-            return Model.copyAnimated(model, true, true);
-        }
-        if (!seqType.frameIds || seqType.frameIds.length === 0) {
-            return Model.copyAnimated(model, true, true);
-        }
+        if (seqType.isSkeletalSeq()) {
+            const skeletalSeq = this.skeletalSeqLoader?.load(seqType.skeletalId);
+            if (!skeletalSeq) {
+                return Model.copyAnimated(model, true, true);
+            }
+            model = Model.copyAnimated(model, !skeletalSeq.hasAlphaTransform, true);
 
-        const seqFrame = this.seqFrameLoader.load(seqType.frameIds[frame]);
+            model.animateSkeletal(skeletalSeq, frame);
+        } else {
+            if (!seqType.frameIds || seqType.frameIds.length === 0) {
+                return Model.copyAnimated(model, true, true);
+            }
 
-        if (seqFrame) {
-            model = Model.copyAnimated(
-                model,
-                !seqFrame.hasAlphaTransform,
-                !seqFrame.hasColorTransform,
-            );
+            const seqFrame = this.seqFrameLoader.load(seqType.frameIds[frame]);
 
-            model.animate0(seqFrame, undefined, seqType.op14);
+            if (seqFrame) {
+                model = Model.copyAnimated(
+                    model,
+                    !seqFrame.hasAlphaTransform,
+                    !seqFrame.hasColorTransform,
+                );
+
+                model.animate(seqFrame, undefined, seqType.op14);
+            }
         }
 
         return model;

@@ -1,8 +1,9 @@
 import { CacheInfo } from "../../cache/CacheInfo";
 import { ByteBuffer } from "../../io/ByteBuffer";
 import { SeqTransformType } from "./SeqTransformType";
+import { SkeletalBase } from "../skeletal/SkeletalBase";
 
-export class SeqFrameBase {
+export class SeqBase {
     constructor(
         readonly id: number,
         readonly count: number,
@@ -10,11 +11,12 @@ export class SeqFrameBase {
         readonly transformActor: boolean[],
         readonly masks: Uint16Array,
         readonly labels: number[][],
+        readonly skeletalBase?: SkeletalBase,
     ) {}
 }
 
-export class DatSeqFrameBase {
-    static load(buf: ByteBuffer): SeqFrameBase {
+export class DatSeqBase {
+    static load(buf: ByteBuffer): SeqBase {
         const count = buf.readUnsignedByte();
         const types: SeqTransformType[] = new Array(count);
         const transformActor: boolean[] = new Array(count).fill(true);
@@ -33,12 +35,12 @@ export class DatSeqFrameBase {
             }
         }
 
-        return new SeqFrameBase(-1, count, types, transformActor, masks, labels);
+        return new SeqBase(-1, count, types, transformActor, masks, labels);
     }
 }
 
-export class Dat2SeqFrameBase {
-    static load(cacheInfo: CacheInfo, id: number, data: Int8Array): SeqFrameBase {
+export class Dat2SeqBase {
+    static load(cacheInfo: CacheInfo, id: number, data: Int8Array): SeqBase {
         const buf = new ByteBuffer(data);
         const count = buf.readUnsignedByte();
         const types: SeqTransformType[] = new Array(count);
@@ -79,10 +81,13 @@ export class Dat2SeqFrameBase {
             }
         }
 
+        let skeletalBase: SkeletalBase | undefined;
         if (buf.remaining > 0) {
-            // new animation system
-            // console.log('skeleton: ', id, 'has new anim')
+            const boneCount = buf.readUnsignedShort();
+            if (boneCount > 0) {
+                skeletalBase = new SkeletalBase(buf, boneCount);
+            }
         }
-        return new SeqFrameBase(id, count, types, transformActor, masks, labels);
+        return new SeqBase(id, count, types, transformActor, masks, labels, skeletalBase);
     }
 }

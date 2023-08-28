@@ -28,6 +28,7 @@ import { NpcModelLoader } from "../../rs/config/npctype/NpcModelLoader";
 import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
 import { BasTypeLoader } from "../../rs/config/bastype/BasTypeLoader";
 import { NpcTypeLoader } from "../../rs/config/npctype/NpcTypeLoader";
+import { SkeletalSeqLoader } from "../../rs/model/skeletal/SkeletalSeqLoader";
 
 registerSerializer(renderDataLoaderSerializer);
 
@@ -48,6 +49,7 @@ export type WorkerState = {
 
     textureLoader: TextureLoader;
     seqFrameLoader: SeqFrameLoader;
+    skeletalSeqLoader: SkeletalSeqLoader | undefined;
 
     locModelLoader: LocModelLoader;
     objModelLoader: ObjModelLoader;
@@ -90,6 +92,7 @@ async function initWorker(
 
     const seqTypeLoader = loaderFactory.getSeqTypeLoader();
     const seqFrameLoader = loaderFactory.getSeqFrameLoader();
+    const skeletalSeqLoader = loaderFactory.getSkeletalSeqLoader();
 
     const mapFileIndex = loaderFactory.getMapFileIndex();
     const mapIndex = loaderFactory.getMapIndex();
@@ -102,6 +105,7 @@ async function initWorker(
         textureLoader,
         seqTypeLoader,
         seqFrameLoader,
+        skeletalSeqLoader,
     );
 
     const objModelLoader = new ObjModelLoader(objTypeLoader, modelLoader, textureLoader);
@@ -112,6 +116,7 @@ async function initWorker(
         textureLoader,
         seqTypeLoader,
         seqFrameLoader,
+        skeletalSeqLoader,
         varManager,
     );
 
@@ -146,6 +151,7 @@ async function initWorker(
 
         textureLoader,
         seqFrameLoader,
+        skeletalSeqLoader,
 
         locModelLoader,
         objModelLoader,
@@ -159,6 +165,14 @@ async function initWorker(
         objSpawns,
         npcSpawns,
     };
+}
+
+function clearCache(workerState: WorkerState): void {
+    workerState.locModelLoader.clearCache();
+    workerState.objModelLoader.clearCache();
+    workerState.npcModelLoader.clearCache();
+    workerState.seqFrameLoader.clearCache();
+    workerState.skeletalSeqLoader?.clearCache();
 }
 
 const worker = {
@@ -183,10 +197,7 @@ const worker = {
 
         const { data, transferables } = await dataLoader.load(workerState, input);
 
-        workerState.locModelLoader.clearCache();
-        workerState.objModelLoader.clearCache();
-        workerState.npcModelLoader.clearCache();
-        workerState.seqFrameLoader.clearCache();
+        clearCache(workerState);
 
         if (!data) {
             return undefined;

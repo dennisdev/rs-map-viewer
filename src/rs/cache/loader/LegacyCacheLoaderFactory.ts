@@ -12,6 +12,7 @@ import { VarBitTypeLoader } from "../../config/vartype/bit/VarBitTypeLoader";
 import { MapFileIndex } from "../../map/MapFileIndex";
 import { ModelLoader } from "../../model/ModelLoader";
 import { SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
+import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
 import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { TextureLoader } from "../../texture/TextureLoader";
 import { ApiType } from "../ApiType";
@@ -89,6 +90,10 @@ export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
     }
 
     getSeqFrameLoader(): SeqFrameLoader {
+        throw new Error("Method not implemented.");
+    }
+
+    getSkeletalSeqLoader(): SkeletalSeqLoader | undefined {
         throw new Error("Method not implemented.");
     }
 

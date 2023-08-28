@@ -183,15 +183,6 @@ function isValid(info) {
         return false;
     }
     const validGroupPercentage = info.valid_groups / info.groups;
-    if (!(validGroupPercentage < 0.9) !== validGroupPercentage >= 0.9) {
-        console.log(
-            "Invalid group percentage:",
-            validGroupPercentage,
-            info,
-            info.groups,
-            info.valid_groups,
-        );
-    }
     return validGroupPercentage >= 0.9;
 }
 
@@ -254,9 +245,11 @@ function createCacheList() {
 
         const revision = cacheInfo.builds[0].major;
 
+        // Skip 311 for now, missing configs, no nice way to check atm
         if (
             !isValid(cacheInfo) ||
-            (cacheInfo.game === "runescape" && (revision < 234 || revision > 640))
+            (cacheInfo.game === "runescape" && (revision < 234 || revision > 640)) ||
+            revision === 311
         ) {
             continue;
         }

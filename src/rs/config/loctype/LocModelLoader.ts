@@ -8,6 +8,7 @@ import { SeqTypeLoader } from "../seqtype/SeqTypeLoader";
 import { LocModelType } from "./LocModelType";
 import { LocType } from "./LocType";
 import { LocTypeLoader } from "./LocTypeLoader";
+import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
 
 export type ContourGroundInfo = {
     type: number;
@@ -32,6 +33,7 @@ export class LocModelLoader {
         readonly textureLoader: TextureLoader,
         readonly seqTypeLoader: SeqTypeLoader,
         readonly seqFrameLoader: SeqFrameLoader,
+        readonly skeletalSeqLoader: SkeletalSeqLoader | undefined,
     ) {
         this.modelDataCache = new Map();
         this.entityCache = new Map();
@@ -59,7 +61,6 @@ export class LocModelLoader {
 
     getLocModelData(locType: LocType, type: LocModelType, rotation: number): ModelData | undefined {
         let model: ModelData | undefined;
-        const isDiagonal = type === LocModelType.NORMAL && rotation > 3;
         const isMirrored = locType.isRotated || (type === LocModelType.WALL_CORNER && rotation > 3);
         if (!locType.types) {
             if (type !== LocModelType.NORMAL) {
@@ -141,7 +142,7 @@ export class LocModelLoader {
         const copy = ModelData.copyFrom(
             model,
             true,
-            rotation === 0 && !hasResize && !hasOffset && !isDiagonal,
+            rotation === 0 && !hasResize && !hasOffset,
             !locType.recolorFrom,
             false,
         );
@@ -149,8 +150,6 @@ export class LocModelLoader {
         if (type === LocModelType.WALL_DECORATION_INSIDE && rotation > 3) {
             copy.rotate(256);
             copy.translate(45, 0, -45);
-        } else if (isDiagonal) {
-            copy.rotate(256);
         }
 
         rotation &= 3;
@@ -208,6 +207,11 @@ export class LocModelLoader {
             const modelData = this.getLocModelData(locType, type, rotation);
             if (!modelData) {
                 return undefined;
+            }
+
+            const isDiagonal = type === LocModelType.NORMAL && rotation > 3;
+            if (isDiagonal) {
+                modelData.rotate(256);
             }
 
             if (!locType.mergeNormals) {
@@ -288,6 +292,11 @@ export class LocModelLoader {
             model = this.transformModel(model, seqType, frame, rotation);
         }
 
+        const isDiagonal = type === LocModelType.NORMAL && rotation > 3;
+        if (isDiagonal) {
+            model.rotate(256);
+        }
+
         if (locType.contourGroundType !== 0 && contourGroundInfo) {
             model = model.contourGround(
                 contourGroundInfo.type,
@@ -304,21 +313,12 @@ export class LocModelLoader {
     }
 
     transformModel(model: Model, seqType: SeqType, frame: number, rotation: number): Model {
-        if (seqType.isAnimMaya()) {
-            return model;
-        }
-        if (!seqType.frameIds || seqType.frameIds.length === 0) {
-            return model;
-        }
-
-        const animFrame = this.seqFrameLoader.load(seqType.frameIds[frame]);
-
-        if (animFrame) {
-            model = Model.copyAnimated(
-                model,
-                !animFrame.hasAlphaTransform,
-                !animFrame.hasColorTransform,
-            );
+        if (seqType.isSkeletalSeq()) {
+            const skeletalSeq = this.skeletalSeqLoader?.load(seqType.skeletalId);
+            if (!skeletalSeq) {
+                return Model.copyAnimated(model, true, true);
+            }
+            model = Model.copyAnimated(model, !skeletalSeq.hasAlphaTransform, true);
 
             rotation &= 3;
             if (rotation === 1) {
@@ -329,9 +329,7 @@ export class LocModelLoader {
                 model.rotate90();
             }
 
-            // console.log('animate', !!model.vertexLabels)
-
-            model.animate0(animFrame, undefined, seqType.op14);
+            model.animateSkeletal(skeletalSeq, frame);
 
             if (rotation === 1) {
                 model.rotate90();
@@ -340,9 +338,44 @@ export class LocModelLoader {
             } else if (rotation === 3) {
                 model.rotate270();
             }
-        }
 
-        return model;
+            return model;
+        } else {
+            if (!seqType.frameIds || seqType.frameIds.length === 0) {
+                return model;
+            }
+
+            const seqFrame = this.seqFrameLoader.load(seqType.frameIds[frame]);
+
+            if (seqFrame) {
+                model = Model.copyAnimated(
+                    model,
+                    !seqFrame.hasAlphaTransform,
+                    !seqFrame.hasColorTransform,
+                );
+
+                rotation &= 3;
+                if (rotation === 1) {
+                    model.rotate270();
+                } else if (rotation === 2) {
+                    model.rotate180();
+                } else if (rotation === 3) {
+                    model.rotate90();
+                }
+
+                model.animate(seqFrame, undefined, seqType.op14);
+
+                if (rotation === 1) {
+                    model.rotate90();
+                } else if (rotation === 2) {
+                    model.rotate180();
+                } else if (rotation === 3) {
+                    model.rotate270();
+                }
+            }
+
+            return model;
+        }
     }
 
     clearCache() {

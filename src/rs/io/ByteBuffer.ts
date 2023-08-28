@@ -1,3 +1,5 @@
+import { FloatUtil } from "../../util/FloatUtil";
+
 export class ByteBuffer {
     _data: Int8Array;
 
@@ -56,6 +58,10 @@ export class ByteBuffer {
             (this.readUnsignedByte() << 8) |
             this.readUnsignedByte()
         );
+    }
+
+    readFloat(): number {
+        return FloatUtil.intBitsToFloat(this.readInt());
     }
 
     readBigSmart(): number {

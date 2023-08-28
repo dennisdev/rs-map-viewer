@@ -11,7 +11,7 @@ export class SeqType extends Type {
 
     frameStep: number;
 
-    interleaveLeave?: number[];
+    masks?: number[];
 
     stretches: boolean;
 
@@ -30,11 +30,11 @@ export class SeqType extends Type {
 
     replyMode: number;
 
-    animMayaId: number;
-    animMayaFrameSounds?: Map<number, number>;
-    animMayaStart: number;
-    animMayaEnd: number;
-    animMayaMasks?: boolean[];
+    skeletalId: number;
+    skeletalFrameSounds?: Map<number, number>;
+    skeletalStart: number;
+    skeletalEnd: number;
+    skeletalMasks?: boolean[];
 
     op14: boolean;
 
@@ -50,9 +50,9 @@ export class SeqType extends Type {
         this.precedenceAnimating = -1;
         this.priority = -1;
         this.replyMode = 2;
-        this.animMayaId = -1;
-        this.animMayaStart = 0;
-        this.animMayaEnd = 0;
+        this.skeletalId = -1;
+        this.skeletalStart = 0;
+        this.skeletalEnd = 0;
         this.op14 = false;
     }
 
@@ -108,11 +108,11 @@ export class SeqType extends Type {
             this.frameStep = buffer.readUnsignedShort();
         } else if (opcode === 3) {
             const count = buffer.readUnsignedByte();
-            this.interleaveLeave = new Array(count + 1);
+            this.masks = new Array(count + 1);
             for (let i = 0; i < count; i++) {
-                this.interleaveLeave[i] = buffer.readUnsignedByte();
+                this.masks[i] = buffer.readUnsignedByte();
             }
-            this.interleaveLeave[count] = 9999999;
+            this.masks[count] = 9999999;
         } else if (opcode === 4) {
             this.stretches = true;
         } else if (opcode === 5) {
@@ -167,27 +167,27 @@ export class SeqType extends Type {
             }
         } else if (opcode === 14) {
             if (this.cacheInfo.game === "oldschool") {
-                this.animMayaId = buffer.readInt();
+                this.skeletalId = buffer.readInt();
             } else {
                 this.op14 = true;
             }
         } else if (opcode === 15) {
             if (this.cacheInfo.game === "oldschool") {
                 const count = buffer.readUnsignedShort();
-                this.animMayaFrameSounds = new Map();
+                this.skeletalFrameSounds = new Map();
 
                 for (let i = 0; i < count; i++) {
                     const frame = buffer.readUnsignedShort();
                     const sound = buffer.readMedium();
-                    this.animMayaFrameSounds.set(frame, sound);
+                    this.skeletalFrameSounds.set(frame, sound);
                 }
             } else {
                 // interpolate = true;
             }
         } else if (opcode === 16) {
             if (this.cacheInfo.game === "oldschool") {
-                this.animMayaStart = buffer.readUnsignedShort();
-                this.animMayaEnd = buffer.readUnsignedShort();
+                this.skeletalStart = buffer.readUnsignedShort();
+                this.skeletalEnd = buffer.readUnsignedShort();
             } else {
                 // bool = true;
             }
@@ -195,10 +195,10 @@ export class SeqType extends Type {
             if (this.cacheInfo.game === "oldschool") {
                 const count = buffer.readUnsignedByte();
 
-                this.animMayaMasks = new Array(256).fill(false);
+                this.skeletalMasks = new Array(256).fill(false);
 
                 for (let i = 0; i < count; i++) {
-                    this.animMayaMasks[buffer.readUnsignedByte()] = true;
+                    this.skeletalMasks[buffer.readUnsignedByte()] = true;
                 }
             } else {
                 const v = buffer.readUnsignedByte();
@@ -217,7 +217,11 @@ export class SeqType extends Type {
         }
     }
 
-    isAnimMaya(): boolean {
-        return this.animMayaId >= 0;
+    isSkeletalSeq(): boolean {
+        return this.skeletalId >= 0;
+    }
+
+    getSkeletalDuration(): number {
+        return this.skeletalEnd - this.skeletalStart;
     }
 }

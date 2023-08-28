@@ -1,13 +1,15 @@
 export class FloatUtil {
+    static MAX_VALUE = 3.4028234663852886e38;
+
     static float: Float32Array = new Float32Array(1);
     static integer: Int32Array = new Int32Array(FloatUtil.float.buffer);
 
-    static floatToIntBits(n: number): number {
+    static floatBitsToInt(n: number): number {
         FloatUtil.float[0] = n;
         return FloatUtil.integer[0];
     }
 
-    static intToFloatBits(n: number): number {
+    static intBitsToFloat(n: number): number {
         FloatUtil.integer[0] = n;
         return FloatUtil.float[0];
     }

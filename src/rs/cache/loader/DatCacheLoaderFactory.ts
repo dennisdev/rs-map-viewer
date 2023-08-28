@@ -25,6 +25,7 @@ import { DatTextureLoader } from "../../texture/DatTextureLoader";
 import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
 import { BasTypeLoader, DummyBasTypeLoader } from "../../config/bastype/BasTypeLoader";
+import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
 
 export class DatCacheLoaderFactory implements CacheLoaderFactory {
     configIndex: CacheIndex;
@@ -99,6 +100,10 @@ export class DatCacheLoaderFactory implements CacheLoaderFactory {
     getSeqFrameLoader(): SeqFrameLoader {
         const seqFrameIndex = this.cacheSystem.getIndex(IndexType.DAT.animations);
         return DatSeqFrameLoader.load(seqFrameIndex);
+    }
+
+    getSkeletalSeqLoader(): SkeletalSeqLoader | undefined {
+        return undefined;
     }
 
     getMapFileIndex(): MapFileIndex {

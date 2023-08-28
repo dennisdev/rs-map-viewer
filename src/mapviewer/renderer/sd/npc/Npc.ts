@@ -76,32 +76,32 @@ export class Npc {
         let y = this.pathY[0];
         switch (dir) {
             case 0:
-                --x;
-                ++y;
+                x--;
+                y++;
                 break;
             case 1:
-                ++y;
+                y++;
                 break;
             case 2:
-                ++x;
-                ++y;
+                x++;
+                y++;
                 break;
             case 3:
-                --x;
+                x--;
                 break;
             case 4:
-                ++x;
+                x++;
                 break;
             case 5:
-                --x;
-                --y;
+                x--;
+                y--;
                 break;
             case 6:
-                --y;
+                y--;
                 break;
             case 7:
-                ++x;
-                --y;
+                x++;
+                y--;
                 break;
         }
 
@@ -258,7 +258,7 @@ export class Npc {
     updateMovementSeq(seqTypeLoader: SeqTypeLoader, seqFrameLoader: SeqFrameLoader) {
         if (this.movementSeqId !== -1) {
             const seqType = seqTypeLoader.load(this.movementSeqId);
-            if (!seqType.isAnimMaya() && seqType.frameIds) {
+            if (!seqType.isSkeletalSeq() && seqType.frameIds) {
                 this.movementFrameTick++;
                 if (
                     this.movementFrame < seqType.frameIds.length &&
@@ -293,6 +293,35 @@ export class Npc {
                         this.movementFrame = 0;
                     }
                 }
+            } else if (seqType.isSkeletalSeq()) {
+                this.movementFrame++;
+                const frameCount = seqType.getSkeletalDuration();
+                if (this.movementFrame >= frameCount) {
+                    if (seqType.frameStep > 0) {
+                        this.movementFrame -= seqType.frameStep;
+                        if (seqType.looping) {
+                            this.movementLoop++;
+                        }
+
+                        if (
+                            this.movementFrame < 0 ||
+                            this.movementFrame >= seqType.frameIds.length ||
+                            (seqType.looping && this.movementLoop >= seqType.maxLoops)
+                        ) {
+                            this.movementFrameTick = 0;
+                            this.movementFrame = 0;
+                            this.movementLoop = 0;
+                        } else {
+                            this.movementFrameTick = 0;
+                            this.movementFrame = 0;
+                        }
+                    } else {
+                        this.movementFrameTick = 0;
+                        this.movementFrame = 0;
+                    }
+                }
+            } else {
+                this.movementSeqId = -1;
             }
         }
     }

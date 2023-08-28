@@ -1,7 +1,7 @@
 import { CacheInfo } from "../../cache/CacheInfo";
 import { ByteBuffer } from "../../io/ByteBuffer";
-import { DatSeqFrameBase, SeqFrameBase } from "./SeqFrameBase";
-import { SeqFrameBaseLoader } from "./SeqFrameBaseLoader";
+import { DatSeqBase, SeqBase } from "./SeqBase";
+import { SeqBaseLoader } from "./SeqBaseLoader";
 import { SeqTransformType } from "./SeqTransformType";
 
 export class SeqFrame {
@@ -13,7 +13,7 @@ export class SeqFrame {
 
     constructor(
         readonly frameLength: number,
-        readonly frameBase: SeqFrameBase,
+        readonly base: SeqBase,
         readonly transformCount: number,
         readonly transformGroups: number[],
         readonly transformX: number[],
@@ -52,10 +52,10 @@ export class DatSeqFrame {
         frameLengthBuffer.offset = totalOffset;
         totalOffset += frameLengthOffset;
 
-        const frameBaseBuffer = new ByteBuffer(data);
-        frameBaseBuffer.offset = totalOffset;
+        const baseBuffer = new ByteBuffer(data);
+        baseBuffer.offset = totalOffset;
 
-        const frameBase = DatSeqFrameBase.load(frameBaseBuffer);
+        const base = DatSeqBase.load(baseBuffer);
 
         const frameCount = frameMapBuffer.readUnsignedShort();
         for (let f = 0; f < frameCount; f++) {
@@ -70,7 +70,7 @@ export class DatSeqFrame {
             let hasAlphaTransform = false;
 
             for (let i = 0; i < count; i++) {
-                const type = frameBase.types[i];
+                const type = base.types[i];
 
                 if (type === SeqTransformType.ORIGIN) {
                     resetOriginGroup = i;
@@ -143,7 +143,7 @@ export class DatSeqFrame {
                 frameId,
                 new SeqFrame(
                     frameLength,
-                    frameBase,
+                    base,
                     transformCount,
                     transformGroups,
                     transformX,
@@ -158,7 +158,7 @@ export class DatSeqFrame {
 }
 
 export class Dat2SeqFrame {
-    static load(cacheInfo: CacheInfo, baseLoader: SeqFrameBaseLoader, data: Int8Array): SeqFrame {
+    static load(cacheInfo: CacheInfo, baseLoader: SeqBaseLoader, data: Int8Array): SeqFrame {
         const buf = new ByteBuffer(data);
         const dataBuf = new ByteBuffer(data);
 
