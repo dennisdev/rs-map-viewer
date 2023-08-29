@@ -16,4 +16,5 @@ export interface TextureLoader {
     // getMoveV(id: number): number;
 
     getPixelsRgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array;
+    getPixelsArgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array;
 }

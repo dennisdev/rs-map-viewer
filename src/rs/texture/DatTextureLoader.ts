@@ -144,6 +144,10 @@ export class DatTextureLoader implements TextureLoader {
         return pixels;
     }
 
+    getPixelsArgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
+        return this.getPixelsRgb(id, size, flipH, brightness);
+    }
+
     loadTextureSprite(id: number): IndexedSprite {
         let sprite = this.textureSprites[id];
         if (!sprite) {

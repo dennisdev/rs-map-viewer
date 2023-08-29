@@ -208,6 +208,10 @@ export class SpriteTextureLoader implements TextureLoader {
 
         return pixels;
     }
+
+    getPixelsArgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
+        return this.getPixelsRgb(id, size, flipH, brightness);
+    }
 }
 
 class TextureDefinition {

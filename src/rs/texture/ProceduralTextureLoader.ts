@@ -111,11 +111,26 @@ export class ProceduralTextureLoader implements TextureLoader {
         return pixels;
     }
 
-    // getPixelsRgb(id: number, size: number, brightness: number): Int32Array {
-    //     const pixels = this.getPixelsRgb0(id, size, true, brightness);
+    getPixelsArgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
+        const def = this.definitions.get(id);
+        if (!def) {
+            throw new Error("Texture definition not found: " + id);
+        }
 
-    //     return pixels;
-    // }
+        // this.textureGenerator.debug = id === 69;
+        const pixels = def.proceduralTexture.getPixelsArgb(
+            this.textureGenerator,
+            size,
+            size,
+            flipH,
+            false,
+            brightness,
+        );
+
+        this.transparentTextureMap.set(id, this.textureGenerator.isTransparent);
+
+        return pixels;
+    }
 }
 
 class ProceduralTextureDefinition {

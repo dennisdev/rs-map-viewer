@@ -275,7 +275,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         for (let i = 0; i < textureCount; i++) {
             const textureId = textureIds[i];
             try {
-                const texturePixels = textureLoader.getPixelsRgb(
+                const texturePixels = textureLoader.getPixelsArgb(
                     textureId,
                     TEXTURE_SIZE,
                     true,

@@ -56,6 +56,7 @@ export class MapManager<T extends MapSquare> {
                 }
             }
         }
+        console.log("Invalid map count", this.invalidMapIds.size);
     }
 
     isMapVisible(camera: Camera, mapX: number, mapY: number): boolean {

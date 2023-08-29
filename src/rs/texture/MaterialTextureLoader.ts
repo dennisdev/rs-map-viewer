@@ -204,6 +204,26 @@ export class MaterialTextureLoader implements TextureLoader {
 
         return pixels;
     }
+
+    getPixelsArgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
+        const texture = this.getTexture(id);
+        if (!texture) {
+            throw new Error("Texture not found: " + id);
+        }
+
+        const pixels = texture.proceduralTexture.getPixelsArgb(
+            this.textureGenerator,
+            size,
+            size,
+            flipH,
+            texture.flipV,
+            brightness,
+        );
+
+        this.transparentTextureMap.set(id, this.textureGenerator.isTransparent);
+
+        return pixels;
+    }
 }
 
 class TextureMaterial {
