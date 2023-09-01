@@ -1,10 +1,22 @@
 import { Archive } from "../../../cache/Archive";
 import { CacheIndex } from "../../../cache/CacheIndex";
 import { CacheInfo } from "../../../cache/CacheInfo";
-import { ArchiveTypeLoader, DatTypeLoader, IndexTypeLoader, TypeLoader } from "../../TypeLoader";
+import {
+    ArchiveTypeLoader,
+    DatTypeLoader,
+    DummyTypeLoader,
+    IndexTypeLoader,
+    TypeLoader,
+} from "../../TypeLoader";
 import { VarBitType } from "./VarBitType";
 
 export type VarBitTypeLoader = TypeLoader<VarBitType>;
+
+export class DummyVarBitTypeLoader extends DummyTypeLoader<VarBitType> {
+    constructor(cacheInfo: CacheInfo) {
+        super(cacheInfo, VarBitType);
+    }
+}
 
 export class DatVarBitTypeLoader {
     static load(cacheInfo: CacheInfo, configArchive: Archive): VarBitTypeLoader {

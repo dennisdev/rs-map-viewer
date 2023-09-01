@@ -25,6 +25,10 @@ export abstract class CacheIndex<A extends ApiType = ApiType.SYNC> {
         return this.table.archiveCount;
     }
 
+    getLastArchiveId(): number {
+        return this.table.lastArchiveId;
+    }
+
     getArchiveReference(archiveId: number): ArchiveReference | undefined {
         return this.table.getArchiveReference(archiveId);
     }

@@ -8,7 +8,7 @@ import { LocTypeLoader } from "../../config/loctype/LocTypeLoader";
 import { NpcTypeLoader } from "../../config/npctype/NpcTypeLoader";
 import { ObjTypeLoader } from "../../config/objtype/ObjTypeLoader";
 import { SeqTypeLoader } from "../../config/seqtype/SeqTypeLoader";
-import { VarBitTypeLoader } from "../../config/vartype/bit/VarBitTypeLoader";
+import { DummyVarBitTypeLoader, VarBitTypeLoader } from "../../config/vartype/bit/VarBitTypeLoader";
 import { MapFileIndex } from "../../map/MapFileIndex";
 import { ModelLoader } from "../../model/ModelLoader";
 import { SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
@@ -54,11 +54,7 @@ export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
     }
 
     getVarBitTypeLoader(): VarBitTypeLoader {
-        return {
-            load: () => {
-                throw new Error("Method not implemented.");
-            },
-        };
+        return new DummyVarBitTypeLoader(this.cacheInfo);
     }
 
     getLocTypeLoader(): LocTypeLoader {

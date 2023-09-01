@@ -361,7 +361,18 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         const mapFileIndex = loaderFacory.getMapFileIndex();
         this.mapManager.init(mapFileIndex);
         this.mapsToLoad.clear();
-        console.log("init cache", app);
+        console.log(
+            "init cache",
+            app,
+            "loc count:",
+            this.locTypeLoader.getCount(),
+            "obj count:",
+            this.objTypeLoader.getCount(),
+            "npc count:",
+            this.npcTypeLoader.getCount(),
+            "seq count:",
+            this.seqTypeLoader.getCount(),
+        );
 
         if (app) {
             this.initTextures(app, this.textureLoader);

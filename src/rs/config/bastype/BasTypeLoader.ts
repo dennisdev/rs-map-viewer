@@ -1,15 +1,13 @@
 import { Archive } from "../../cache/Archive";
 import { CacheInfo } from "../../cache/CacheInfo";
-import { ArchiveTypeLoader, TypeLoader } from "../TypeLoader";
+import { ArchiveTypeLoader, DummyTypeLoader, TypeLoader } from "../TypeLoader";
 import { BasType } from "./BasType";
 
 export type BasTypeLoader = TypeLoader<BasType>;
 
-export class DummyBasTypeLoader implements BasTypeLoader {
-    constructor(readonly cacheInfo: CacheInfo) {}
-
-    load(id: number): BasType {
-        return new BasType(id, this.cacheInfo);
+export class DummyBasTypeLoader extends DummyTypeLoader<BasType> {
+    constructor(cacheInfo: CacheInfo) {
+        super(cacheInfo, BasType);
     }
 }
 

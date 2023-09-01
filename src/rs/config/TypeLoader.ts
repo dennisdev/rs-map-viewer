@@ -7,12 +7,33 @@ import { Type } from "./Type";
 
 export interface TypeLoader<T> {
     load(id: number): T;
+
+    getCount(): number;
+
+    clearCache(): void;
 }
 
 export type TypeConstructor<T extends Type> = new (id: number, cacheInfo: CacheInfo) => T;
 
+export class DummyTypeLoader<T extends Type> implements TypeLoader<T> {
+    constructor(
+        readonly cacheInfo: CacheInfo,
+        readonly typeConstructor: TypeConstructor<T>,
+    ) {}
+
+    load(id: number): T {
+        return new this.typeConstructor(id, this.cacheInfo);
+    }
+
+    getCount(): number {
+        return 0;
+    }
+
+    clearCache(): void {}
+}
+
 export abstract class BaseTypeLoader<T extends Type> implements TypeLoader<T> {
-    // TODO: don't cache by default and make clearable
+    // TODO: maybe don't cache by default
     cache: Map<number, T> = new Map();
 
     constructor(
@@ -40,6 +61,12 @@ export abstract class BaseTypeLoader<T extends Type> implements TypeLoader<T> {
         this.cache.set(id, type);
         return type;
     }
+
+    abstract getCount(): number;
+
+    clearCache(): void {
+        this.cache.clear();
+    }
 }
 
 export class ArchiveTypeLoader<T extends Type> extends BaseTypeLoader<T> {
@@ -54,9 +81,15 @@ export class ArchiveTypeLoader<T extends Type> extends BaseTypeLoader<T> {
     override getDataBuffer(id: number): ByteBuffer | undefined {
         return this.archive.getFile(id)?.getDataAsBuffer();
     }
+
+    override getCount(): number {
+        return this.archive.fileCount;
+    }
 }
 
 export class IndexTypeLoader<T extends Type> extends BaseTypeLoader<T> {
+    count: number;
+
     archives: Map<number, Archive> = new Map();
 
     constructor(
@@ -66,6 +99,10 @@ export class IndexTypeLoader<T extends Type> extends BaseTypeLoader<T> {
         readonly fileIdBits: number = 8,
     ) {
         super(typeConstructor, cacheInfo);
+        const filesPerArchive = 1 << fileIdBits;
+        this.count =
+            Math.max((index.getArchiveCount() - 1) * filesPerArchive, 0) +
+            index.getFileCount(index.getLastArchiveId());
     }
 
     override getDataBuffer(id: number): ByteBuffer | undefined {
@@ -78,6 +115,15 @@ export class IndexTypeLoader<T extends Type> extends BaseTypeLoader<T> {
             this.archives.set(archiveId, archive);
         }
         return archive.getFile(fileId)?.getDataAsBuffer();
+    }
+
+    override getCount(): number {
+        return this.count;
+    }
+
+    override clearCache(): void {
+        super.clearCache();
+        this.archives.clear();
     }
 }
 
@@ -110,6 +156,12 @@ export class DatTypeLoader<T extends Type> implements TypeLoader<T> {
     load(id: number): T {
         return this.types[id];
     }
+
+    getCount(): number {
+        return this.types.length;
+    }
+
+    clearCache(): void {}
 }
 
 export class IndexedDatTypeLoader<T extends Type> extends BaseTypeLoader<T> {
@@ -164,4 +216,10 @@ export class IndexedDatTypeLoader<T extends Type> extends BaseTypeLoader<T> {
         this.dataBuffer.offset = this.dataOffsets[id];
         return this.dataBuffer;
     }
+
+    getCount(): number {
+        return this.count;
+    }
+
+    clearCache(): void {}
 }
