@@ -26,3 +26,4 @@ $ yarn start
 -   [2004scape](https://github.com/2004scape/Server) - Npc spawns
 -   [2009scape](https://gitlab.com/2009scape/2009scape) - Npc spawns
 -   [RuneStar](https://github.com/RuneStar/fonts) - Fonts
+-   [Blurite](https://github.com/blurite/pathfinder) - Some pathfinding stuff
