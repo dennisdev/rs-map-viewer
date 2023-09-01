@@ -87,60 +87,6 @@ export class Curve {
             return this.values[t - this.startTick];
         }
     }
-    getCurveIndex2(t: number): number {
-        if (!this.points) {
-            return this.pointIndex;
-        }
-        if (
-            this.pointIndex >= 0 &&
-            this.points[this.pointIndex].x <= t &&
-            (!this.points[this.pointIndex].next || this.points[this.pointIndex].next!.x <= t)
-        ) {
-            return this.pointIndex;
-        }
-        if (t < this.startTick || t > this.endTick) {
-            return -1;
-        }
-
-        const pointCount = this.points.length;
-        let newCurveIndex = this.pointIndex;
-        if (pointCount > 0) {
-            let startPointIndex = 0;
-            let endPointIndex = pointCount - 1;
-
-            do {
-                // Middle point index
-                const pointIndex = (startPointIndex + endPointIndex) >> 1;
-                if (t < this.points[pointIndex].x) {
-                    if (t > this.points[pointIndex - 1].x) {
-                        newCurveIndex = pointIndex - 1;
-                        break;
-                    }
-
-                    endPointIndex = pointIndex - 1;
-                } else {
-                    if (t <= this.points[pointIndex].x) {
-                        newCurveIndex = pointIndex;
-                        break;
-                    }
-
-                    if (t < this.points[pointIndex + 1].x) {
-                        newCurveIndex = pointIndex;
-                        break;
-                    }
-
-                    startPointIndex = pointIndex + 1;
-                }
-            } while (startPointIndex <= endPointIndex);
-        }
-
-        if (this.pointIndex !== newCurveIndex) {
-            this.pointIndex = newCurveIndex;
-            this.pointIndexUpdated = true;
-        }
-
-        return this.pointIndex;
-    }
 
     getPointIndex(t: number): number {
         if (!this.points) {
@@ -149,7 +95,7 @@ export class Curve {
 
         if (
             this.pointIndex < 0 ||
-            !(this.points[this.pointIndex].x <= t) ||
+            this.points[this.pointIndex].x > t ||
             (this.points[this.pointIndex].next && this.points[this.pointIndex].next!.x <= t)
         ) {
             if (t >= this.startTick && t <= this.endTick) {
