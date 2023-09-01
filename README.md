@@ -19,6 +19,7 @@ $ yarn start
 ## Credits
 
 -   Jagex
+-   [RuneLite](https://github.com/runelite/runelite)
 -   [OpenRS2 Archive](https://archive.openrs2.org/) - Caches
 -   [RuneScape Archive](https://rs-archive.github.io/) - Caches
 -   [OSRS Wiki](https://oldschool.runescape.wiki/) - Item spawns
