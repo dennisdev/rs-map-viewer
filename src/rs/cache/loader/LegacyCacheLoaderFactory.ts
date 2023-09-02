@@ -7,6 +7,7 @@ import {
 import { LocTypeLoader } from "../../config/loctype/LocTypeLoader";
 import { NpcTypeLoader } from "../../config/npctype/NpcTypeLoader";
 import { ObjTypeLoader } from "../../config/objtype/ObjTypeLoader";
+import { QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 import { SeqTypeLoader } from "../../config/seqtype/SeqTypeLoader";
 import { DummyVarBitTypeLoader, VarBitTypeLoader } from "../../config/vartype/bit/VarBitTypeLoader";
 import { MapFileIndex } from "../../map/MapFileIndex";
@@ -75,6 +76,10 @@ export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
 
     getBasTypeLoader(): BasTypeLoader {
         return new DummyBasTypeLoader(this.cacheInfo);
+    }
+
+    getQuestTypeLoader(): QuestTypeLoader | undefined {
+        return undefined;
     }
 
     getTextureLoader(): TextureLoader {

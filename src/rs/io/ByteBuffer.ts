@@ -129,6 +129,13 @@ export class ByteBuffer {
         }
     }
 
+    readVerString(): string | undefined {
+        if (this.readByte() !== 0) {
+            return undefined;
+        }
+        return this.readString();
+    }
+
     getByte(offset: number): number {
         return this._data[offset];
     }

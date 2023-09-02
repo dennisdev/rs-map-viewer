@@ -11,7 +11,7 @@ export abstract class Renderer<T extends MapSquare> {
     abstract initCache(
         app: PicoApp | undefined,
         cacheSystem: CacheSystem,
-        loaderFacory: CacheLoaderFactory,
+        loaderFactory: CacheLoaderFactory,
     ): void;
 
     abstract render(

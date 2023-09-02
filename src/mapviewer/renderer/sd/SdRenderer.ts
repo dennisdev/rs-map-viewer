@@ -348,19 +348,26 @@ export class SdRenderer extends Renderer<SdMapSquare> {
     override initCache(
         app: PicoApp | undefined,
         cacheSystem: CacheSystem,
-        loaderFacory: CacheLoaderFactory,
+        loaderFactory: CacheLoaderFactory,
     ): void {
-        this.textureLoader = loaderFacory.getTextureLoader();
-        this.seqTypeLoader = loaderFacory.getSeqTypeLoader();
-        this.seqFrameLoader = loaderFacory.getSeqFrameLoader();
-        this.locTypeLoader = loaderFacory.getLocTypeLoader();
-        this.objTypeLoader = loaderFacory.getObjTypeLoader();
-        this.npcTypeLoader = loaderFacory.getNpcTypeLoader();
-        this.basTypeLoader = loaderFacory.getBasTypeLoader();
-        this.varManager = new VarManager(loaderFacory.getVarBitTypeLoader());
-        const mapFileIndex = loaderFacory.getMapFileIndex();
+        this.textureLoader = loaderFactory.getTextureLoader();
+        this.seqTypeLoader = loaderFactory.getSeqTypeLoader();
+        this.seqFrameLoader = loaderFactory.getSeqFrameLoader();
+        this.locTypeLoader = loaderFactory.getLocTypeLoader();
+        this.objTypeLoader = loaderFactory.getObjTypeLoader();
+        this.npcTypeLoader = loaderFactory.getNpcTypeLoader();
+        this.basTypeLoader = loaderFactory.getBasTypeLoader();
+
+        this.varManager = new VarManager(loaderFactory.getVarBitTypeLoader());
+        const questTypeLoader = loaderFactory.getQuestTypeLoader();
+        if (questTypeLoader) {
+            this.varManager.setQuestsCompleted(questTypeLoader);
+        }
+
+        const mapFileIndex = loaderFactory.getMapFileIndex();
         this.mapManager.init(mapFileIndex);
         this.mapsToLoad.clear();
+
         console.log(
             "init cache",
             app,

@@ -26,6 +26,7 @@ import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
 import { BasTypeLoader, DummyBasTypeLoader } from "../../config/bastype/BasTypeLoader";
 import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
+import { QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 
 export class DatCacheLoaderFactory implements CacheLoaderFactory {
     configIndex: CacheIndex;
@@ -81,6 +82,10 @@ export class DatCacheLoaderFactory implements CacheLoaderFactory {
 
     getBasTypeLoader(): BasTypeLoader {
         return new DummyBasTypeLoader(this.cacheInfo);
+    }
+
+    getQuestTypeLoader(): QuestTypeLoader | undefined {
+        return undefined;
     }
 
     getTextureLoader(): TextureLoader {

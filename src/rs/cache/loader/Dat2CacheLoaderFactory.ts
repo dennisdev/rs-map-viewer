@@ -55,6 +55,7 @@ import {
     DummyBasTypeLoader,
 } from "../../config/bastype/BasTypeLoader";
 import { IndexSkeletalSeqLoader, SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
+import { ArchiveQuestTypeLoader, QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 
 export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
     constructor(
@@ -145,6 +146,22 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
             }
         }
         return new DummyBasTypeLoader(this.cacheInfo);
+    }
+
+    getQuestTypeLoader(): QuestTypeLoader | undefined {
+        const configIndex = this.cacheSystem.getIndex(IndexType.DAT2.configs);
+        if (
+            this.cacheInfo.game === "runescape" &&
+            configIndex.archiveExists(ConfigType.RS2.quests)
+        ) {
+            try {
+                const questArchive = configIndex.getArchive(ConfigType.RS2.quests);
+                return new ArchiveQuestTypeLoader(this.cacheInfo, questArchive);
+            } catch (e) {
+                console.error("Failed to load questtype archive", e);
+            }
+        }
+        return undefined;
     }
 
     getTextureLoader(): TextureLoader {

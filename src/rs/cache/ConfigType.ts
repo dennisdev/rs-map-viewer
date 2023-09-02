@@ -21,6 +21,7 @@ export class ConfigType {
         seqs: 12,
         spotAnims: 13,
         varbits: 14,
+        varps: 16,
         varClient: 19,
         varClientString: 15,
         varPlayer: 16,
@@ -38,5 +39,6 @@ export class ConfigType {
     static readonly RS2 = {
         bas: 32,
         mapScenes: 34,
+        quests: 35,
     };
 }

@@ -98,6 +98,10 @@ async function initWorker(
     const mapIndex = loaderFactory.getMapIndex();
 
     const varManager = new VarManager(varBitTypeLoader);
+    const questTypeLoader = loaderFactory.getQuestTypeLoader();
+    if (questTypeLoader) {
+        varManager.setQuestsCompleted(questTypeLoader);
+    }
 
     const locModelLoader = new LocModelLoader(
         locTypeLoader,

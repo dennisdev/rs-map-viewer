@@ -18,6 +18,7 @@ import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { LegacyCacheLoaderFactory } from "./LegacyCacheLoaderFactory";
 import { BasTypeLoader } from "../../config/bastype/BasTypeLoader";
 import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
+import { QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 
 export interface CacheLoaderFactory {
     getUnderlayTypeLoader(): FloorTypeLoader;
@@ -32,6 +33,8 @@ export interface CacheLoaderFactory {
     getSeqTypeLoader(): SeqTypeLoader;
 
     getBasTypeLoader(): BasTypeLoader;
+
+    getQuestTypeLoader(): QuestTypeLoader | undefined;
 
     getTextureLoader(): TextureLoader;
 

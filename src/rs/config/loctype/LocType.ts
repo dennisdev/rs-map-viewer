@@ -504,6 +504,7 @@ export class LocType extends Type {
         if (transformId === -1) {
             return undefined;
         }
-        return loader.load(transformId);
+        const transformed = loader.load(transformId);
+        return transformed;
     }
 }
