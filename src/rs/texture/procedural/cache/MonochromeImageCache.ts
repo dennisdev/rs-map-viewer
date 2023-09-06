@@ -53,7 +53,7 @@ export class MonochromeImageCache {
             let slot = this.slots[req];
             if (slot === undefined) {
                 this.dirty = true;
-                if (this.usedSlots < this.slotCount) {
+                if (this.slotCount > this.usedSlots) {
                     slot = new MonochromeImageCacheSlot(req, this.usedSlots);
                     this.usedSlots++;
                 } else {
@@ -66,6 +66,13 @@ export class MonochromeImageCache {
                 this.slots[req] = slot;
             } else {
                 this.dirty = false;
+            }
+            // Remove the slot from the usage tracker and add it to the front
+            for (let i = 0; i < this.usageTracker.length; i++) {
+                if (this.usageTracker.peekAt(i) === slot) {
+                    this.usageTracker.removeOne(i);
+                    break;
+                }
             }
             this.usageTracker.unshift(slot);
             return this.images[slot.slotId];

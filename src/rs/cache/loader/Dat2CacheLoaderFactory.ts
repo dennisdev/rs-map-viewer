@@ -43,8 +43,8 @@ import { ConfigType } from "../ConfigType";
 import { IndexType } from "../IndexType";
 import { CacheLoaderFactory } from "./CacheLoaderFactory";
 import { SpriteTextureLoader } from "../../texture/SpriteTextureLoader";
+import { OldProceduralTextureLoader } from "../../texture/OldProceduralTextureLoader";
 import { ProceduralTextureLoader } from "../../texture/ProceduralTextureLoader";
-import { MaterialTextureLoader } from "../../texture/MaterialTextureLoader";
 import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { GraphicsDefaults } from "../../config/defaults/GraphicsDefaults";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
@@ -182,7 +182,7 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
 
             const materialIndex = this.cacheSystem.getIndex(IndexType.RS2.materials);
 
-            return MaterialTextureLoader.load(
+            return ProceduralTextureLoader.load(
                 hasAlphaMaterialField,
                 hasAlphaOperation,
                 materialIndex,
@@ -190,7 +190,7 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
                 spriteIndex,
             );
         } else {
-            return ProceduralTextureLoader.load(textureIndex, spriteIndex);
+            return OldProceduralTextureLoader.load(textureIndex, spriteIndex);
         }
     }
 

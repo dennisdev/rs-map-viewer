@@ -1,9 +1,15 @@
+import { nextIntJagex } from "../../../../util/MathUtil";
 import { ByteBuffer } from "../../../io/ByteBuffer";
 import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
 import JavaRandom from "java-random";
 
 export class VoronoiNoiseOperation extends TextureOperation {
+    static temp0: number = 0;
+    static temp1: number = 0;
+    static temp2: number = 0;
+    static temp3: number = 0;
+
     rngSeed: number = 0;
     field2: number = 2048;
     field3: number = 2;
@@ -11,14 +17,8 @@ export class VoronoiNoiseOperation extends TextureOperation {
     field5: number = 5;
     field6: number = 5;
 
-    anInt2701: number = 25;
-
-    table!: number[][];
-
-    anInt2705: number = 0;
-    anInt2706: number = 0;
-
-    anInt2710: number = 0;
+    permutations: Int8Array = new Int8Array(512);
+    randomNs: Int16Array = new Int16Array(512);
 
     constructor() {
         super(0, true);
@@ -51,28 +51,18 @@ export class VoronoiNoiseOperation extends TextureOperation {
     }
 
     override init() {
+        this.permutations = TextureGenerator.initPermutations(this.rngSeed);
+        this.initRandomNumbers();
+    }
+
+    initRandomNumbers(): void {
         const random = new JavaRandom(this.rngSeed);
-        this.anInt2701 = this.field5 * this.field6;
-        this.table = new Array(this.anInt2701);
-
-        const i = (4096 / this.field5) | 0;
-        this.anInt2706 = i >> 1;
-        const j = (4096 / this.field6) | 0;
-        this.anInt2705 = j >> 1;
-        const k = (this.anInt2706 * this.field2) >> 12;
-        const l = (this.anInt2705 * this.field2) >> 12;
-
-        for (let i1 = 0; i1 < this.field6; i1++) {
-            const j1 = i1 * i;
-            for (let k1 = 0; k1 < this.field5; k1++) {
-                const l1 = k1 + this.field5 * i1;
-                const i2 = (k * (random.nextInt(8192) - 4096)) >> 12;
-                const j2 = (l * (random.nextInt(8192) - 4096)) >> 12;
-                this.table[l1] = [i2 + k1 * i, j2 + j1];
+        this.randomNs = new Int16Array(512);
+        if (this.field2 > 0) {
+            for (let i = 0; i < 512; i++) {
+                this.randomNs[i] = nextIntJagex(random, this.field2);
             }
         }
-
-        this.anInt2710 = Math.max(this.field6, this.field5);
     }
 
     override getMonochromeOutput(textureGenerator: TextureGenerator, line: number): Int32Array {
@@ -81,149 +71,115 @@ export class VoronoiNoiseOperation extends TextureOperation {
         }
         const output = this.monochromeImageCache.get(line);
         if (this.monochromeImageCache.dirty) {
-            const verticalGradient = textureGenerator.verticalGradient[line];
+            const i_1_ = 2048 + this.field6 * textureGenerator.verticalGradient[line];
+            const i_2_ = i_1_ >> 12;
+            const i_3_ = i_2_ + 1;
+            for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
+                VoronoiNoiseOperation.temp0 = 2147483647;
+                VoronoiNoiseOperation.temp1 = 2147483647;
+                VoronoiNoiseOperation.temp2 = 2147483647;
+                VoronoiNoiseOperation.temp3 = 2147483647;
 
-            if (this.field3 === 2) {
-                for (let i = 0; i < textureGenerator.width; i++) {
-                    const horizontalGradient = textureGenerator.horizontalGradient[i];
-                    const blur = this.blur(2, verticalGradient, horizontalGradient);
-                    output[i] = blur[1] - blur[0];
+                const i_5_ = this.field5 * textureGenerator.horizontalGradient[pixel] + 2048;
+                const i_6_ = i_5_ >> 12;
+                const i_7_ = i_6_ + 1;
+                for (let i_8_ = i_2_ - 1; i_8_ <= i_3_; i_8_++) {
+                    const i_9_ =
+                        this.permutations[
+                            (i_8_ >= this.field6 ? i_8_ - this.field6 : i_8_) & 0xff
+                        ] & 0xff;
+                    for (let i_10_ = i_6_ - 1; i_10_ <= i_7_; i_10_++) {
+                        let i_11_ =
+                            (this.permutations[
+                                ((i_10_ >= this.field5 ? i_10_ - this.field5 : i_10_) + i_9_) & 0xff
+                            ] &
+                                0xff) *
+                            2;
+
+                        let i_12_ = i_5_ - (this.randomNs[i_11_++] + (i_10_ << 12));
+                        let i_13_ = i_1_ - (this.randomNs[i_11_] + (i_8_ << 12));
+                        let i_14_: number;
+                        switch (this.field4) {
+                            case 1:
+                                i_14_ = (i_12_ * i_12_ + i_13_ * i_13_) >> 12;
+                                break;
+                            case 2:
+                                i_14_ = (i_13_ < 0 ? -i_13_ : i_13_) + (i_12_ < 0 ? -i_12_ : i_12_);
+                                break;
+                            case 3:
+                                i_12_ = i_12_ < 0 ? -i_12_ : i_12_;
+                                i_13_ = i_13_ < 0 ? -i_13_ : i_13_;
+                                i_14_ = Math.max(i_12_, i_13_);
+                                break;
+                            case 4:
+                                i_12_ =
+                                    (Math.sqrt(Math.fround(i_12_ < 0 ? -i_12_ : i_12_) / 4096.0) *
+                                        4096.0) |
+                                    0;
+                                i_13_ =
+                                    (Math.sqrt(Math.fround(i_13_ < 0 ? -i_13_ : i_13_) / 4096.0) *
+                                        4096.0) |
+                                    0;
+                                i_14_ = i_13_ + i_12_;
+                                i_14_ = (i_14_ * i_14_) >> 12;
+                                break;
+
+                            case 5:
+                                i_12_ *= i_12_;
+                                i_13_ *= i_13_;
+                                i_14_ =
+                                    (Math.sqrt(
+                                        Math.sqrt(Math.fround((i_12_ + i_13_) / 1.6777216e7)),
+                                    ) *
+                                        4096.0) |
+                                    0;
+                                break;
+                            default:
+                                i_14_ =
+                                    (Math.sqrt(
+                                        Math.fround((i_13_ * i_13_ + i_12_ * i_12_) / 1.6777216e7),
+                                    ) *
+                                        4096.0) |
+                                    0;
+                                break;
+                        }
+
+                        if (i_14_ < VoronoiNoiseOperation.temp3) {
+                            VoronoiNoiseOperation.temp0 = VoronoiNoiseOperation.temp1;
+                            VoronoiNoiseOperation.temp1 = VoronoiNoiseOperation.temp2;
+                            VoronoiNoiseOperation.temp2 = VoronoiNoiseOperation.temp3;
+                            VoronoiNoiseOperation.temp3 = i_14_;
+                        } else if (i_14_ < VoronoiNoiseOperation.temp2) {
+                            VoronoiNoiseOperation.temp0 = VoronoiNoiseOperation.temp1;
+                            VoronoiNoiseOperation.temp1 = VoronoiNoiseOperation.temp2;
+                            VoronoiNoiseOperation.temp2 = i_14_;
+                        } else if (i_14_ < VoronoiNoiseOperation.temp1) {
+                            VoronoiNoiseOperation.temp0 = VoronoiNoiseOperation.temp1;
+                            VoronoiNoiseOperation.temp1 = i_14_;
+                        } else if (i_14_ < VoronoiNoiseOperation.temp0) {
+                            VoronoiNoiseOperation.temp0 = i_14_;
+                        }
+                    }
                 }
-            } else if (this.field3 === 1) {
-                for (let i = 0; i < textureGenerator.width; i++) {
-                    const horizontalGradient = textureGenerator.horizontalGradient[i];
-                    output[i] = this.blur(2, verticalGradient, horizontalGradient)[1];
-                }
-            } else {
-                for (let i = 0; i < textureGenerator.width; i++) {
-                    const horizontalGradient = textureGenerator.horizontalGradient[i];
-                    output[i] = this.blur(1, verticalGradient, horizontalGradient)[0];
+
+                switch (this.field3) {
+                    case 0:
+                        output[pixel] = VoronoiNoiseOperation.temp3;
+                        break;
+                    case 1:
+                        output[pixel] = VoronoiNoiseOperation.temp2;
+                        break;
+                    case 2:
+                        output[pixel] = VoronoiNoiseOperation.temp2 - VoronoiNoiseOperation.temp3;
+                        break;
+                    case 3:
+                        output[pixel] = VoronoiNoiseOperation.temp1;
+                        break;
+                    case 4:
+                        output[pixel] = VoronoiNoiseOperation.temp0;
+                        break;
                 }
             }
-        }
-        return output;
-    }
-
-    blur(count: number, verticalGradient: number, horizontalGradient: number): Int32Array {
-        const output = new Int32Array(count);
-        output.fill(0x7fffffff);
-
-        verticalGradient += this.anInt2705;
-        if (verticalGradient > 4096) {
-            verticalGradient -= 4096;
-        }
-        horizontalGradient += this.anInt2706;
-        if (horizontalGradient > 4096) {
-            horizontalGradient -= 4096;
-        }
-        let j = (horizontalGradient * this.field5) >> 12;
-        let k = (verticalGradient * this.field6) >> 12;
-        let tableIndex0 = -1;
-        let tableIndex1 = -1;
-        let k1 = 0x7fffffff;
-        let l1 = this.field5 > 2 ? 2 : this.field5 - 1;
-        let j1 = 0x7fffffff;
-        let i2 = this.field6 > 2 ? 2 : this.field6 - 1;
-
-        for (let j2 = -l1; j2 <= l1; j2++) {
-            for (let k2 = -i2; k2 <= i2; k2++) {
-                let i3 = j2 + j;
-                if (i3 < 0) {
-                    i3 += this.field5;
-                }
-                if (this.field5 <= i3) {
-                    i3 -= this.field5;
-                }
-                let k3 = k + k2;
-                if (k3 < 0) {
-                    k3 += this.field6;
-                }
-                if (this.field6 <= k3) {
-                    k3 -= this.field6;
-                }
-                const i4 = i3 + this.field5 * k3;
-                const i5 = this.table[i4][1];
-                const k4 = this.table[i4][0];
-                let k5 = verticalGradient - i5;
-                let j5 = horizontalGradient - k4;
-                if (k5 < 0) {
-                    k5 = -k5;
-                }
-                if (k5 > 2048) {
-                    k5 = 4096 - k5;
-                }
-                if (j5 < 0) {
-                    j5 = -j5;
-                }
-                if (j5 > 2048) {
-                    j5 = 4096 - j5;
-                }
-                const l5 = (k5 * k5 + j5 * j5) >> 12;
-                if (l5 >= j1) {
-                    if (
-                        (tableIndex1 === tableIndex0 && i4 !== tableIndex0) ||
-                        (l5 < k1 && tableIndex1 !== i4)
-                    ) {
-                        tableIndex0 = i4;
-                        k1 = l5;
-                    }
-                } else {
-                    if (tableIndex0 === -1) {
-                        k1 = l5;
-                        tableIndex0 = i4;
-                    } else {
-                        k1 = j1;
-                        tableIndex0 = tableIndex1;
-                    }
-                    j1 = l5;
-                    tableIndex1 = i4;
-                }
-            }
-        }
-
-        let l2 = horizontalGradient - this.table[tableIndex1][0];
-        if (l2 < 0) {
-            l2 = -l2;
-        }
-        if (l2 > 2048) {
-            l2 = 4096 - l2;
-        }
-        let j3 = verticalGradient - this.table[tableIndex1][1];
-        if (j3 < 0) {
-            j3 = -j3;
-        }
-        let l3 = horizontalGradient - this.table[tableIndex0][0];
-        let j4 = verticalGradient - this.table[tableIndex0][1];
-        if (j4 < 0) {
-            j4 = -j4;
-        }
-        if (l3 < 0) {
-            l3 = -l3;
-        }
-        if (j3 > 2048) {
-            j3 = 4096 - j3;
-        }
-        if (l3 > 2048) {
-            l3 = 4096 - l3;
-        }
-        if (j4 > 2048) {
-            j4 = 4096 - j4;
-        }
-        let l4 = this.field4;
-        if (l4 === 1) {
-            j1 = Math.sqrt(l2 * l2 + j3 * j3) | 0;
-            k1 = Math.sqrt(j4 * j4 + l3 * l3) | 0;
-        } else if (l4 === 2) {
-            j1 = Math.max(l2, j3);
-            k1 = Math.max(l3, j4);
-        } else {
-            k1 = l3 * l3 + j4 * j4;
-            j1 = l2 * l2 + j3 * j3;
-        }
-
-        output[0] = j1 * this.anInt2710;
-        if (count > 1) {
-            output[1] = k1 * this.anInt2710;
         }
         return output;
     }

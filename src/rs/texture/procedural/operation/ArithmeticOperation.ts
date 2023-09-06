@@ -60,7 +60,7 @@ export class ArithmeticOperation extends TextureOperation {
                         output[pixel] =
                             b < 2048
                                 ? (b * inputA[pixel]) / 2048
-                                : 4096 - ((4096 - inputA[pixel]) * (4096 - b)) / 2048;
+                                : 4096 - ((((4096 - inputA[pixel]) * (4096 - b)) / 2048) | 0);
                     }
                     break;
                 case 7:
@@ -175,15 +175,15 @@ export class ArithmeticOperation extends TextureOperation {
                         outputR[pixel] =
                             bR < 2048
                                 ? (bR * inputAR[pixel]) / 2048
-                                : 4096 - ((4096 - inputAR[pixel]) * (4096 - bR)) / 2048;
+                                : 4096 - ((((4096 - inputAR[pixel]) * (4096 - bR)) / 2048) | 0);
                         outputG[pixel] =
                             bG < 2048
                                 ? (bG * inputAG[pixel]) / 2048
-                                : 4096 - ((4096 - inputAG[pixel]) * (4096 - bG)) / 2048;
+                                : 4096 - ((((4096 - inputAG[pixel]) * (4096 - bG)) / 2048) | 0);
                         outputB[pixel] =
                             bB < 2048
                                 ? (bB * inputAB[pixel]) / 2048
-                                : 4096 - ((4096 - inputAB[pixel]) * (4096 - bB)) / 2048;
+                                : 4096 - ((((4096 - inputAB[pixel]) * (4096 - bB)) / 2048) | 0);
                     }
                     break;
                 case 7:
@@ -211,12 +211,12 @@ export class ArithmeticOperation extends TextureOperation {
                     break;
                 case 9:
                     for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
-                        const bR = inputBR[pixel];
-                        const bG = inputBG[pixel];
-                        const bB = inputBB[pixel];
                         const aR = inputAR[pixel];
                         const aG = inputAG[pixel];
                         const aB = inputAB[pixel];
+                        const bR = inputBR[pixel];
+                        const bG = inputBG[pixel];
+                        const bB = inputBB[pixel];
                         outputR[pixel] = Math.min(aR, bR);
                         outputG[pixel] = Math.min(aG, bG);
                         outputB[pixel] = Math.min(aB, bB);

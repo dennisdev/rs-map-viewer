@@ -54,13 +54,25 @@ export class Model extends Entity {
     priority: number;
 
     texTriangleCount: number;
+    textureRenderTypes!: Int8Array;
 
-    texTriangleX!: Int32Array;
-    texTriangleY!: Int32Array;
-    texTriangleZ!: Int32Array;
+    textureMappingP!: Int32Array;
+    textureMappingM!: Int32Array;
+    textureMappingN!: Int32Array;
+
+    textureScaleX!: Int32Array;
+    textureScaleY!: Int32Array;
+    textureScaleZ!: Int32Array;
+    textureRotation!: Int8Array;
+    textureDirection!: Int8Array;
+    textureSpeed!: Int32Array;
+
+    textureTransU!: Int32Array;
+    textureTransV!: Int32Array;
+
+    uvs?: Float32Array;
 
     vertexLabels!: Int32Array[];
-
     faceLabels!: Int32Array[];
 
     animMayaGroups!: Int32Array[];
@@ -234,9 +246,17 @@ export class Model extends Entity {
         }
 
         if (this.texTriangleCount > 0) {
-            this.texTriangleX = new Int32Array(this.texTriangleCount);
-            this.texTriangleY = new Int32Array(this.texTriangleCount);
-            this.texTriangleZ = new Int32Array(this.texTriangleCount);
+            this.textureMappingP = new Int32Array(this.texTriangleCount);
+            this.textureMappingM = new Int32Array(this.texTriangleCount);
+            this.textureMappingN = new Int32Array(this.texTriangleCount);
+            this.textureScaleX = new Int32Array(this.texTriangleCount);
+            this.textureScaleY = new Int32Array(this.texTriangleCount);
+            this.textureScaleZ = new Int32Array(this.texTriangleCount);
+            this.textureRotation = new Int8Array(this.texTriangleCount);
+            this.textureDirection = new Int8Array(this.texTriangleCount);
+            this.textureSpeed = new Int32Array(this.texTriangleCount);
+            this.textureTransU = new Int32Array(this.texTriangleCount);
+            this.textureTransV = new Int32Array(this.texTriangleCount);
         }
 
         this.verticesCount = 0;
@@ -288,12 +308,12 @@ export class Model extends Entity {
                 }
 
                 for (let v = 0; v < model.texTriangleCount; v++) {
-                    this.texTriangleX[this.texTriangleCount] =
-                        this.verticesCount + model.texTriangleX[v];
-                    this.texTriangleY[this.texTriangleCount] =
-                        this.verticesCount + model.texTriangleY[v];
-                    this.texTriangleZ[this.texTriangleCount] =
-                        this.verticesCount + model.texTriangleZ[v];
+                    this.textureMappingP[this.texTriangleCount] =
+                        this.verticesCount + model.textureMappingP[v];
+                    this.textureMappingM[this.texTriangleCount] =
+                        this.verticesCount + model.textureMappingM[v];
+                    this.textureMappingN[this.texTriangleCount] =
+                        this.verticesCount + model.textureMappingN[v];
                     this.texTriangleCount++;
                 }
 
@@ -489,9 +509,18 @@ export class Model extends Entity {
             model.textureCoords = this.textureCoords;
             model.faceTextures = this.faceTextures;
             model.priority = this.priority;
-            model.texTriangleX = this.texTriangleX;
-            model.texTriangleY = this.texTriangleY;
-            model.texTriangleZ = this.texTriangleZ;
+            model.textureMappingP = this.textureMappingP;
+            model.textureMappingM = this.textureMappingM;
+            model.textureMappingN = this.textureMappingN;
+            model.textureScaleX = this.textureScaleX;
+            model.textureScaleY = this.textureScaleY;
+            model.textureScaleZ = this.textureScaleZ;
+            model.textureRotation = this.textureRotation;
+            model.textureDirection = this.textureDirection;
+            model.textureSpeed = this.textureSpeed;
+            model.textureTransU = this.textureTransU;
+            model.textureTransV = this.textureTransV;
+            model.uvs = this.uvs;
             model.vertexLabels = this.vertexLabels;
             model.faceLabels = this.faceLabels;
             model.isClickable = this.isClickable;
@@ -582,6 +611,11 @@ export class Model extends Entity {
                 } else {
                     model.contourVerticesY[i] = this.verticesY[i];
                 }
+            }
+        } else if (type === 3) {
+            // TODO: implement contourGround type 3
+            for (let i = 0; i < model.usedVertexCount; i++) {
+                model.contourVerticesY[i] = this.verticesY[i];
             }
         } else if (type === 4) {
             const deltaY = this.maxY - this.minY;
@@ -788,7 +822,8 @@ export class Model extends Entity {
         mask: number = 0xffff,
     ): void {
         if (mask !== 0xffff) {
-            console.error("animate mask", mask);
+            // console.error("animate mask", mask);
+            // throw new Error("animate mask");
         } else {
             this.transform0(type, labels, tx, ty, tz, op14);
         }
@@ -1097,17 +1132,17 @@ export function computeTextureCoords(model: Model): Float32Array | undefined {
         return undefined;
     }
 
-    const vertexPositionsX = model.verticesX;
-    const vertexPositionsY = model.verticesY;
-    const vertexPositionsZ = model.verticesZ;
+    const verticesX = model.verticesX;
+    const verticesY = model.verticesY;
+    const verticesZ = model.verticesZ;
 
-    const trianglePointsX = model.indices1;
-    const trianglePointsY = model.indices2;
-    const trianglePointsZ = model.indices3;
+    const indices0 = model.indices1;
+    const indices1 = model.indices2;
+    const indices2 = model.indices3;
 
-    const texTriangleX = model.texTriangleX;
-    const texTriangleY = model.texTriangleY;
-    const texTriangleZ = model.texTriangleZ;
+    const textureMappingP = model.textureMappingP;
+    const textureMappingM = model.textureMappingM;
+    const textureMappingN = model.textureMappingN;
 
     const textureCoords = model.textureCoords;
 
@@ -1115,47 +1150,47 @@ export function computeTextureCoords(model: Model): Float32Array | undefined {
     const faceTextureUCoordinates: Float32Array = new Float32Array(faceCount * 6);
 
     for (let i = 0; i < faceCount; i++) {
-        const trianglePointX = trianglePointsX[i];
-        const trianglePointY = trianglePointsY[i];
-        const trianglePointZ = trianglePointsZ[i];
+        const index0 = indices0[i];
+        const index1 = indices1[i];
+        const index2 = indices2[i];
 
         const textureIdx = faceTextures[i];
 
         if (textureIdx !== -1) {
-            let triangleVertexIdx1: number;
-            let triangleVertexIdx2: number;
-            let triangleVertexIdx3: number;
+            let p: number;
+            let m: number;
+            let n: number;
 
             if (textureCoords && textureCoords[i] !== -1) {
                 const textureCoordinate = textureCoords[i] & 255;
-                triangleVertexIdx1 = texTriangleX[textureCoordinate];
-                triangleVertexIdx2 = texTriangleY[textureCoordinate];
-                triangleVertexIdx3 = texTriangleZ[textureCoordinate];
+                p = textureMappingP[textureCoordinate];
+                m = textureMappingM[textureCoordinate];
+                n = textureMappingN[textureCoordinate];
             } else {
-                triangleVertexIdx1 = trianglePointX;
-                triangleVertexIdx2 = trianglePointY;
-                triangleVertexIdx3 = trianglePointZ;
+                p = index0;
+                m = index1;
+                n = index2;
             }
 
-            const triangleX = vertexPositionsX[triangleVertexIdx1];
-            const triangleY = vertexPositionsY[triangleVertexIdx1];
-            const triangleZ = vertexPositionsZ[triangleVertexIdx1];
+            const vx = verticesX[p];
+            const vy = verticesY[p];
+            const vz = verticesZ[p];
 
-            const f_882_ = vertexPositionsX[triangleVertexIdx2] - triangleX;
-            const f_883_ = vertexPositionsY[triangleVertexIdx2] - triangleY;
-            const f_884_ = vertexPositionsZ[triangleVertexIdx2] - triangleZ;
-            const f_885_ = vertexPositionsX[triangleVertexIdx3] - triangleX;
-            const f_886_ = vertexPositionsY[triangleVertexIdx3] - triangleY;
-            const f_887_ = vertexPositionsZ[triangleVertexIdx3] - triangleZ;
-            const f_888_ = vertexPositionsX[trianglePointX] - triangleX;
-            const f_889_ = vertexPositionsY[trianglePointX] - triangleY;
-            const f_890_ = vertexPositionsZ[trianglePointX] - triangleZ;
-            const f_891_ = vertexPositionsX[trianglePointY] - triangleX;
-            const f_892_ = vertexPositionsY[trianglePointY] - triangleY;
-            const f_893_ = vertexPositionsZ[trianglePointY] - triangleZ;
-            const f_894_ = vertexPositionsX[trianglePointZ] - triangleX;
-            const f_895_ = vertexPositionsY[trianglePointZ] - triangleY;
-            const f_896_ = vertexPositionsZ[trianglePointZ] - triangleZ;
+            const f_882_ = verticesX[m] - vx;
+            const f_883_ = verticesY[m] - vy;
+            const f_884_ = verticesZ[m] - vz;
+            const f_885_ = verticesX[n] - vx;
+            const f_886_ = verticesY[n] - vy;
+            const f_887_ = verticesZ[n] - vz;
+            const f_888_ = verticesX[index0] - vx;
+            const f_889_ = verticesY[index0] - vy;
+            const f_890_ = verticesZ[index0] - vz;
+            const f_891_ = verticesX[index1] - vx;
+            const f_892_ = verticesY[index1] - vy;
+            const f_893_ = verticesZ[index1] - vz;
+            const f_894_ = verticesX[index2] - vx;
+            const f_895_ = verticesY[index2] - vy;
+            const f_896_ = verticesZ[index2] - vz;
 
             const f_897_ = f_883_ * f_887_ - f_884_ * f_886_;
             const f_898_ = f_884_ * f_885_ - f_882_ * f_887_;

@@ -2,6 +2,7 @@ import JavaRandom from "java-random";
 import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
 import { ByteBuffer } from "../../../io/ByteBuffer";
+import { nextIntJagex } from "../../../../util/MathUtil";
 
 export class LineNoiseOperation extends TextureOperation {
     seed = 0;
@@ -40,12 +41,12 @@ export class LineNoiseOperation extends TextureOperation {
             for (let i = 0; i < this.count; i++) {
                 let angle =
                     this.maxAngle > 0
-                        ? this.minAngle - midAngle + random.nextInt(this.maxAngle)
+                        ? this.minAngle - midAngle + nextIntJagex(random, this.maxAngle)
                         : this.minAngle;
                 angle = (angle >> 4) & 0xff;
 
-                let x0 = random.nextInt(textureGenerator.width);
-                let y0 = random.nextInt(textureGenerator.height);
+                let x0 = nextIntJagex(random, textureGenerator.width);
+                let y0 = nextIntJagex(random, textureGenerator.height);
                 let x1 = ((TextureGenerator.COSINE[angle] * this.length) >> 12) + x0;
                 let y1 = ((TextureGenerator.SINE[angle] * this.length) >> 12) + y0;
                 let deltaX = x1 - x0;
@@ -82,18 +83,18 @@ export class LineNoiseOperation extends TextureOperation {
                     }
                     let i4 = (-deltaX0 / 2) | 0;
                     const j4 = (2048 / deltaX0) | 0;
-                    const k4 = 1024 - (random.nextInt(4096) >> 2);
+                    const k4 = 1024 - (nextIntJagex(random, 4096) >> 2);
                     const byte0 = y1 <= y0 ? -1 : 1;
 
                     for (let x = x0; x < x1; x++) {
                         i4 += deltaY0;
                         const value = j4 * (x - x0) + (1024 + k4);
-                        const line = l2 & textureGenerator.lineMaxIdx;
+                        const line = l2 & textureGenerator.heightMask;
                         if (i4 > 0) {
                             l2 = byte0 + l2;
                             i4 = i4 - deltaX0;
                         }
-                        const pixel = x & textureGenerator.pixelMaxIdx;
+                        const pixel = x & textureGenerator.widthMask;
                         if (!flag) {
                             pixels[pixel][line] = value;
                         } else {

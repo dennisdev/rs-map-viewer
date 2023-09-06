@@ -2,6 +2,7 @@ import JavaRandom from "java-random";
 import { ByteBuffer } from "../../../io/ByteBuffer";
 import { TextureOperation } from "./TextureOperation";
 import { TextureGenerator } from "../TextureGenerator";
+import { nextIntJagex } from "../../../../util/MathUtil";
 
 export class BricksOperation extends TextureOperation {
     field0 = 4;
@@ -65,7 +66,7 @@ export class BricksOperation extends TextureOperation {
         for (let x = 0; x < this.seed; x++) {
             if (x > 0) {
                 let value = this.ratio1;
-                const randomValue = ((random.nextInt(4096) - 2048) * this.field3) >> 12;
+                const randomValue = ((nextIntJagex(random, 4096) - 2048) * this.field3) >> 12;
                 value += (randomValue * halfR1) >> 12;
                 this.table2[x] = value + this.table2[x - 1];
             }
@@ -73,11 +74,12 @@ export class BricksOperation extends TextureOperation {
             for (let y = 0; y < this.field0; y++) {
                 if (y > 0) {
                     let value = this.ratio0;
-                    const randomValue = ((random.nextInt(4096) - 2048) * this.field2) >> 12;
+                    const randomValue = ((nextIntJagex(random, 4096) - 2048) * this.field2) >> 12;
                     value += (randomValue * halfR0) >> 12;
                     this.table1[x][y] = this.table1[x][y - 1] + value;
                 }
-                this.table0[x][y] = this.field7 > 0 ? 4096 - random.nextInt(this.field7) : 4096;
+                this.table0[x][y] =
+                    this.field7 > 0 ? 4096 - nextIntJagex(random, this.field7) : 4096;
             }
 
             this.table1[x][this.field0] = 4096;

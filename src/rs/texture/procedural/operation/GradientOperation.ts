@@ -3,6 +3,8 @@ import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
 
 export class GradientOperation extends TextureOperation {
+    preset: number = 0;
+
     gradient?: Int32Array[];
 
     table: Int32Array = new Int32Array(257);
@@ -128,6 +130,7 @@ export class GradientOperation extends TextureOperation {
     }
 
     setGradientPreset(preset: number) {
+        this.preset = preset;
         switch (preset) {
             case 1:
                 this.gradient = new Array(2);

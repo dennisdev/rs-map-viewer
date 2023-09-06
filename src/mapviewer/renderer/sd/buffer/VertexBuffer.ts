@@ -26,6 +26,7 @@ export class VertexBuffer extends DataBuffer {
     ) {
         const isTextured = textureId !== -1;
         if (isTextured) {
+            // textureId = 119;
             // only light
             hsl &= 127;
             hsl |= textureId << 7;
@@ -37,11 +38,14 @@ export class VertexBuffer extends DataBuffer {
 
         priority &= 0xf;
 
-        const v0 = (xPos << 17) | (FloatUtil.packFloat6(u) << 11) | FloatUtil.packFloat11(v);
+        const uPacked = clamp(FloatUtil.packFloat11(u), 0, 0x7ff);
+        const vPacked = clamp(FloatUtil.packFloat11(v), 0, 0x7ff);
+
+        const v0 = (xPos << 17) | ((uPacked & 0x3f) << 11) | vPacked;
 
         const v1 = yPos | (hsl << 15) | (Number(isTextured) << 31);
 
-        const v2 = (zPos << 17) | (alpha << 4) | priority;
+        const v2 = (zPos << 17) | (alpha << 9) | (priority << 5) | (uPacked >> 6);
 
         if (reuseVertex) {
             const hash = v0 * v1 * v2;
@@ -57,9 +61,9 @@ export class VertexBuffer extends DataBuffer {
         this.ensureSize(1);
         const byteOffset = this.byteOffset();
 
-        this.view.setInt32(byteOffset, v0, true);
-        this.view.setInt32(byteOffset + 4, v1, true);
-        this.view.setInt32(byteOffset + 8, v2, true);
+        this.view.setUint32(byteOffset, v0, true);
+        this.view.setUint32(byteOffset + 4, v1, true);
+        this.view.setUint32(byteOffset + 8, v2, true);
 
         return this.offset++;
     }

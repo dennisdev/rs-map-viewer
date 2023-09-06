@@ -31,8 +31,8 @@ export class TrigWarpOperation extends TextureOperation {
                 const hyp = (inputB[pixel] * this.hypotenuseMultiplier) >> 12;
                 const cosine = (TextureGenerator.COSINE[angle] * hyp) >> 12;
                 const sine = (TextureGenerator.SINE[angle] * hyp) >> 12;
-                const nX = (pixel + (cosine >> 12)) & textureGenerator.pixelMaxIdx;
-                const nY = (line + (sine >> 12)) & textureGenerator.lineMaxIdx;
+                const nX = (pixel + (cosine >> 12)) & textureGenerator.widthMask;
+                const nY = (line + (sine >> 12)) & textureGenerator.heightMask;
                 const input = this.getMonochromeInput(textureGenerator, 0, nY);
                 output[pixel] = input[nX];
             }
@@ -52,12 +52,12 @@ export class TrigWarpOperation extends TextureOperation {
             const outputG = output[1];
             const outputB = output[2];
             for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
-                const angle = (inputA[pixel] >> 4) & 0xff;
+                const angle = ((inputA[pixel] * 255) >> 12) & 0xff;
                 const hyp = (inputB[pixel] * this.hypotenuseMultiplier) >> 12;
                 const cosine = (TextureGenerator.COSINE[angle] * hyp) >> 12;
                 const sine = (TextureGenerator.SINE[angle] * hyp) >> 12;
-                const nX = (pixel + (cosine >> 12)) & textureGenerator.pixelMaxIdx;
-                const nY = (line + (sine >> 12)) & textureGenerator.lineMaxIdx;
+                const nX = (pixel + (cosine >> 12)) & textureGenerator.widthMask;
+                const nY = (line + (sine >> 12)) & textureGenerator.heightMask;
                 const input = this.getColourInput(textureGenerator, 0, nY);
                 outputR[pixel] = input[0][nX];
                 outputG[pixel] = input[1][nX];

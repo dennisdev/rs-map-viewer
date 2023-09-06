@@ -384,7 +384,12 @@ export class SceneBuffer {
         const facesB = model.indices2;
         const facesC = model.indices3;
 
-        const modelTexCoords = computeTextureCoords(model);
+        // const modelTexCoords = computeTextureCoords(model);
+        const modelTexCoords = model.uvs;
+
+        if (model.faceTextures && !modelTexCoords) {
+            throw new Error("Model has face textures but no texture coordinates");
+        }
 
         for (const face of faces) {
             const index = face.index;
@@ -418,9 +423,9 @@ export class SceneBuffer {
                 v2 = modelTexCoords[texCoordIdx + 5];
 
                 // emulate wrapS: PicoGL.CLAMP_TO_EDGE
-                u0 = clamp(u0, 0.00390625 * 3, 1 - 0.00390625 * 3);
-                u1 = clamp(u1, 0.00390625 * 3, 1 - 0.00390625 * 3);
-                u2 = clamp(u2, 0.00390625 * 3, 1 - 0.00390625 * 3);
+                // u0 = clamp(u0, 0.00390625 * 3, 1 - 0.00390625 * 3);
+                // u1 = clamp(u1, 0.00390625 * 3, 1 - 0.00390625 * 3);
+                // u2 = clamp(u2, 0.00390625 * 3, 1 - 0.00390625 * 3);
             }
 
             const fa = facesA[index];
@@ -517,6 +522,9 @@ export function getModelFaces(model: Model): ModelFace[] {
         if (faceTransparencies && textureId === -1) {
             alpha = 0xff - (faceTransparencies[index] & 0xff);
         }
+        // if (faceTransparencies) {
+        //     alpha = 0xff - (faceTransparencies[index] & 0xff);
+        // }
 
         if (alpha === 0 || alpha === 0x1) {
             continue;

@@ -1,5 +1,6 @@
 import { CacheIndex } from "../cache/CacheIndex";
 import { ByteBuffer } from "../io/ByteBuffer";
+import { TextureCombineMode } from "./TextureCombineMode";
 import { TextureLoader } from "./TextureLoader";
 import { ProceduralTexture } from "./procedural/ProceduralTexture";
 import { TextureGenerator } from "./procedural/TextureGenerator";
@@ -7,37 +8,180 @@ import { TextureGenerator } from "./procedural/TextureGenerator";
 export class ProceduralTextureLoader implements TextureLoader {
     textureGenerator: TextureGenerator;
 
-    idIndexMap: Map<number, number> = new Map();
+    textures: Map<number, ProceduralTextureDefinition> = new Map();
 
     transparentTextureMap: Map<number, boolean> = new Map();
 
-    static load(textureIndex: CacheIndex, spriteIndex: CacheIndex): ProceduralTextureLoader {
-        const definitions = new Map<number, ProceduralTextureDefinition>();
-        const texturesArchive = textureIndex.getArchive(0);
-
-        const textureIds = Array.from(texturesArchive.fileIds);
-        for (let i = 0; i < textureIds.length; i++) {
-            const id = textureIds[i];
-            const file = texturesArchive.getFile(id);
-            if (file) {
-                const buffer = file.getDataAsBuffer();
-                const def = new ProceduralTextureDefinition(id, buffer);
-                definitions.set(id, def);
+    static load(
+        hasAlphaMaterialField: boolean,
+        hasAlphaOperation: boolean,
+        materialsIndex: CacheIndex,
+        textureIndex: CacheIndex,
+        spriteIndex: CacheIndex,
+    ): ProceduralTextureLoader {
+        const materialsFile = materialsIndex.getFile(0, 0);
+        if (!materialsFile) {
+            throw new Error("Materials file not found");
+        }
+        const buffer = materialsFile.getDataAsBuffer();
+        const count = buffer.readUnsignedShort();
+        const materials: (TextureMaterial | undefined)[] = new Array(count);
+        for (let i = 0; i < count; i++) {
+            // 1
+            const exists = buffer.readUnsignedByte() === 1;
+            if (exists) {
+                materials[i] = new TextureMaterial(i);
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.valid = buffer.readUnsignedByte() === 1;
+            }
+        }
+        if (hasAlphaMaterialField) {
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.alpha = buffer.readUnsignedByte() === 1;
+                }
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.small = buffer.readUnsignedByte() === 1;
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.disabled = buffer.readUnsignedByte() === 1;
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.brightness = buffer.readByte();
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.blanch = buffer.readByte();
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.shaderId = buffer.readByte();
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.shaderParam = buffer.readByte();
+            }
+        }
+        for (let i = 0; i < count; i++) {
+            const material = materials[i];
+            if (material) {
+                material.averageHsl = buffer.readUnsignedShort();
             }
         }
 
-        return new ProceduralTextureLoader(spriteIndex, textureIds, definitions);
+        if (buffer.remaining > 0) {
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.animU = buffer.readByte();
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.animV = buffer.readByte();
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    buffer.readByte();
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.flipV = buffer.readUnsignedByte() === 1;
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.mipmap = buffer.readByte();
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.repeatS = buffer.readUnsignedByte() === 1;
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.repeatT = buffer.readUnsignedByte() === 1;
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.floatTexture = buffer.readUnsignedByte() === 1;
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.combineMode = buffer.readUnsignedByte();
+                }
+            }
+        }
+
+        const textureIds = Array.from(textureIndex.getArchiveIds());
+
+        return new ProceduralTextureLoader(
+            hasAlphaOperation,
+            textureIndex,
+            spriteIndex,
+            textureIds,
+            materials,
+        );
     }
 
     constructor(
+        readonly hasAlphaOperation: boolean,
+        readonly textureIndex: CacheIndex,
         readonly spriteIndex: CacheIndex,
         readonly textureIds: number[],
-        readonly definitions: Map<number, ProceduralTextureDefinition>,
+        readonly materials: (TextureMaterial | undefined)[],
     ) {
         this.textureGenerator = new TextureGenerator(spriteIndex, this);
-        for (let i = 0; i < textureIds.length; i++) {
-            this.idIndexMap.set(textureIds[i], i);
+    }
+
+    getTexture(id: number): ProceduralTextureDefinition | undefined {
+        const cached = this.textures.get(id);
+        if (cached) {
+            return cached;
         }
+
+        const textureFile = this.textureIndex.getFileSmart(id);
+        if (!textureFile) {
+            return undefined;
+        }
+        const buffer = textureFile.getDataAsBuffer();
+        const texture = new ProceduralTextureDefinition(id, buffer, this.hasAlphaOperation);
+        this.textures.set(id, texture);
+        return texture;
     }
 
     getTextureIds(): number[] {
@@ -45,64 +189,58 @@ export class ProceduralTextureLoader implements TextureLoader {
     }
 
     getTextureIndex(id: number): number {
-        return this.idIndexMap.get(id) ?? -1;
-    }
-
-    isSmall(id: number): boolean {
-        return this.definitions.get(id)?.size === 64;
+        return id;
     }
 
     isSd(id: number): boolean {
-        return this.definitions.get(id)?.valid ?? false;
+        return this.materials[id]?.valid ?? false;
+    }
+
+    isSmall(id: number): boolean {
+        return this.materials[id]?.small ?? false;
     }
 
     isTransparent(id: number): boolean {
         if (!this.transparentTextureMap.has(id)) {
-            if (!this.definitions.has(id)) {
-                return false;
+            try {
+                if (!this.getTexture(id)) {
+                    return false;
+                }
+                this.getPixelsRgb(id, 128, false, 1.0);
+            } catch (e) {
+                console.error("Error loading texture", e);
+                this.transparentTextureMap.set(id, false);
             }
-            this.getPixelsRgb(id, 128, false, 1.0);
         }
         return this.transparentTextureMap.get(id) ?? false;
     }
 
     getAverageHsl(id: number): number {
-        return this.definitions.get(id)?.averageHsl ?? 0;
+        return this.materials[id]?.averageHsl ?? 0;
     }
 
     getAnimationUv(id: number): [number, number] {
-        const def = this.definitions.get(id);
-        if (!def) {
+        const texture = this.getTexture(id);
+        if (!texture) {
             return [0, 0];
         }
 
-        let u = 0;
-        let v = 0;
-        if (def.animDirU !== 0) {
-            u = def.animDirU === 1 ? 1 : -1;
-        }
-        if (def.animDirV !== 0) {
-            v = def.animDirV === 1 ? 1 : -1;
-        }
-
-        const speed = def.animSpeed;
-
-        return [u * speed, v * speed];
+        return [texture.animU, texture.animV];
     }
 
     getPixelsRgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
-        const def = this.definitions.get(id);
-        if (!def) {
-            throw new Error("Texture definition not found: " + id);
+        const texture = this.getTexture(id);
+        if (!texture) {
+            throw new Error("Texture not found: " + id);
         }
+        // this.textureGenerator.debug = id === 922 || id === 925 || id === 10;
 
-        // this.textureGenerator.debug = id === 69;
-        const pixels = def.proceduralTexture.getPixelsRgb(
+        const pixels = texture.proceduralTexture.getPixelsRgb(
             this.textureGenerator,
             size,
             size,
             flipH,
-            false,
+            texture.flipV,
             brightness,
         );
 
@@ -112,18 +250,19 @@ export class ProceduralTextureLoader implements TextureLoader {
     }
 
     getPixelsArgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
-        const def = this.definitions.get(id);
-        if (!def) {
-            throw new Error("Texture definition not found: " + id);
+        const texture = this.getTexture(id);
+        if (!texture) {
+            throw new Error("Texture not found: " + id);
         }
 
-        // this.textureGenerator.debug = id === 69;
-        const pixels = def.proceduralTexture.getPixelsArgb(
+        // this.textureGenerator.debug = id === 922 || id === 925 || id === 110;
+
+        const pixels = texture.proceduralTexture.getPixelsArgb(
             this.textureGenerator,
             size,
             size,
             flipH,
-            false,
+            texture.flipV,
             brightness,
         );
 
@@ -133,40 +272,63 @@ export class ProceduralTextureLoader implements TextureLoader {
     }
 }
 
+class TextureMaterial {
+    valid: boolean = false;
+    alpha: boolean = false;
+    small: boolean = false;
+    disabled: boolean = false;
+    brightness: number = 0;
+    blanch: number = 0;
+    shaderId: number = 0;
+    shaderParam: number = 0;
+    averageHsl: number = 0;
+
+    animU: number = 0;
+    animV: number = 0;
+
+    flipV: boolean = false;
+    mipmap: number = 0;
+    repeatS: boolean = false;
+    repeatT: boolean = false;
+    floatTexture: boolean = false;
+    combineMode: number = 0;
+
+    constructor(readonly id: number) {}
+}
+
 class ProceduralTextureDefinition {
     id: number;
-
     proceduralTexture: ProceduralTexture;
 
-    flag1: boolean;
-    valid: boolean;
+    bool1: boolean = false;
+    flipV: boolean = false;
 
-    size: number;
-    averageHsl: number;
-    unused: number;
-    animDirU: number;
-    animDirV: number;
-    animSpeed: number;
+    repeatS: boolean = false;
+    repeatT: boolean = false;
 
-    constructor(id: number, buffer: ByteBuffer) {
+    animU: number = 0;
+    animV: number = 0;
+
+    combineMode: TextureCombineMode;
+
+    constructor(id: number, buffer: ByteBuffer, hasAlphaOperation: boolean) {
         this.id = id;
-        // console.log("id", id);
-        this.proceduralTexture = new ProceduralTexture(buffer, false);
-        const flag = buffer.readUnsignedByte();
-        this.flag1 = (flag & 0x1) !== 0;
-        this.valid = (flag & 0x2) !== 0;
-        this.size = buffer.readUnsignedByte();
-        this.averageHsl = buffer.readUnsignedShort();
-        this.unused = buffer.readUnsignedByte();
-        if (this.unused === 0xff) {
-            this.unused = 256;
+        this.proceduralTexture = new ProceduralTexture(buffer, hasAlphaOperation);
+        this.bool1 = buffer.readUnsignedByte() === 1;
+        this.flipV = buffer.readUnsignedByte() === 1;
+        this.repeatS = buffer.readUnsignedByte() === 1;
+        this.repeatT = buffer.readUnsignedByte() === 1;
+        const combineMode = buffer.readUnsignedByte() & 0x3;
+        this.animU = buffer.readByte();
+        this.animV = buffer.readByte();
+        if (combineMode === 1) {
+            this.combineMode = TextureCombineMode.ADD;
+        } else if (combineMode === 2) {
+            this.combineMode = TextureCombineMode.SUBTRACT;
+        } else if (combineMode === 3) {
+            this.combineMode = TextureCombineMode.ADD_SIGNED;
+        } else {
+            this.combineMode = TextureCombineMode.MODULATE;
         }
-        const i_23_ = buffer.readUnsignedByte();
-        const i_24_ = buffer.readUnsignedByte();
-        this.animDirU = (i_23_ >> 6) & 0x3;
-        this.animDirV = (i_24_ >> 6) & 0x3;
-        this.animSpeed = (i_24_ & 0x3f) - 6;
-        buffer.readUnsignedByte();
-        buffer.readUnsignedByte();
     }
 }

@@ -1,5 +1,3 @@
-import JavaRandom from "java-random";
-
 import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
 import { ByteBuffer } from "../../../io/ByteBuffer";
@@ -12,6 +10,8 @@ export class PerlinNoiseOperation extends TextureOperation {
         [-1, -1],
     ];
 
+    static noise: Int32Array = new Int32Array(4096);
+
     field0 = true;
     field1 = 4;
     field2 = 1638;
@@ -19,10 +19,17 @@ export class PerlinNoiseOperation extends TextureOperation {
     field5 = 4;
     field6 = 4;
 
-    noiseInput0!: Int32Array;
-    noiseInput1!: Int32Array;
+    noiseInput0!: Int16Array;
+    noiseInput1!: Int16Array;
 
-    table = new Int32Array(512);
+    permutations = new Int8Array(512);
+
+    static initNoise(): void {
+        // correct
+        for (let i = 0; i < 4096; i++) {
+            PerlinNoiseOperation.noise[i] = PerlinNoiseOperation.calcNoise(i);
+        }
+    }
 
     static addInvert(x: number, y: number, invert: number[]): number {
         return x * invert[0] + y * invert[1];
@@ -33,6 +40,13 @@ export class PerlinNoiseOperation extends TextureOperation {
         const j = 6 * n - 61440;
         const k = 40960 + ((j * n) >> 12);
         return (k * i) >> 12;
+    }
+
+    static calcNoise(n: number) {
+        const i_9_ = (((n * n) >> 12) * n) >> 12;
+        const i_10_ = n * 6 - 61440;
+        const i_11_ = 40960 + ((n * i_10_) >> 12);
+        return (i_9_ * i_11_) >> 12;
     }
 
     static lerp(start: number, end: number, amount: number): number {
@@ -51,7 +65,7 @@ export class PerlinNoiseOperation extends TextureOperation {
         } else if (field === 2) {
             this.field2 = buffer.readSignedShort();
             if (this.field2 < 0) {
-                this.noiseInput0 = new Int32Array(this.field1);
+                this.noiseInput0 = new Int16Array(this.field1);
                 for (let i = 0; i < this.field1; i++) {
                     this.noiseInput0[i] = buffer.readSignedShort();
                 }
@@ -70,35 +84,33 @@ export class PerlinNoiseOperation extends TextureOperation {
     override init() {
         this.initTable();
         this.initNoiseInput();
+        for (let i = this.field1 - 1; i >= 1; i--) {
+            const v = this.noiseInput0[i];
+            if (v > 8 || v < -8) {
+                break;
+            }
+            this.field1--;
+        }
     }
 
     initTable() {
-        const random = new JavaRandom(this.seed);
-        this.table.fill(-1, 0, 255);
-
-        for (let i = 0; i < 255; i++) {
-            let k: number;
-            do {
-                k = random.nextInt(255);
-            } while (this.table[k] !== -1);
-            this.table[k + 255] = this.table[k] = i;
-        }
+        this.permutations = TextureGenerator.initPermutations(this.seed); // correct
     }
 
     initNoiseInput() {
         if (this.field2 <= 0) {
             if (this.noiseInput0 && this.noiseInput0.length === this.field1) {
-                this.noiseInput1 = new Int32Array(this.field1);
+                this.noiseInput1 = new Int16Array(this.field1);
                 for (let i = 0; i < this.field1; i++) {
-                    this.noiseInput1[i] = (4096 * Math.pow(2, i)) | 0;
+                    this.noiseInput1[i] = Math.pow(2, i);
                 }
             }
         } else {
-            this.noiseInput0 = new Int32Array(this.field1);
-            this.noiseInput1 = new Int32Array(this.field1);
+            this.noiseInput0 = new Int16Array(this.field1); // correct
+            this.noiseInput1 = new Int16Array(this.field1); // correct
             for (let i = 0; i < this.field1; i++) {
-                this.noiseInput0[i] = (Math.pow(this.field2 / 4096, i) * 4096) | 0;
-                this.noiseInput1[i] = (Math.pow(2, i) * 4096) | 0;
+                this.noiseInput0[i] = Math.pow(Math.fround(this.field2 / 4096), i) * 4096;
+                this.noiseInput1[i] = Math.pow(2, i);
             }
         }
     }
@@ -109,30 +121,183 @@ export class PerlinNoiseOperation extends TextureOperation {
         }
         const output = this.monochromeImageCache.get(line);
         if (this.monochromeImageCache.dirty) {
-            const horizonMult = this.field5 << 12;
-            const verticalMult = this.field6 << 12;
-            const vertGrad = this.field6 * textureGenerator.verticalGradient[line];
-            for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
-                let sum = 0;
-                const horizonGrad = this.field5 * textureGenerator.horizontalGradient[pixel];
-                for (let i = 0; i < this.field1; i++) {
-                    const l1 = this.noiseInput1[i];
-                    const i2 = this.noiseInput0[i];
-                    const j2 = this.noise(
-                        (horizonGrad * l1) >> 12,
-                        (vertGrad * l1) >> 12,
-                        (l1 * verticalMult) >> 12,
-                        (l1 * horizonMult) >> 12,
-                    );
-                    sum += (j2 * i2) >> 12;
-                }
-                if (this.field0) {
-                    sum = 2048 + (sum >> 1);
-                }
-                output[pixel] = sum;
-            }
+            this.noise0(textureGenerator, line, output);
         }
         return output;
+    }
+
+    noise0(textureGenerator: TextureGenerator, line: number, output: Int32Array): void {
+        const vGrad = this.field6 * textureGenerator.verticalGradient[line];
+        if (this.field1 === 1) {
+            const nin0 = this.noiseInput0[0];
+            const nin1 = this.noiseInput1[0] << 12;
+            const n1f5 = (nin1 * this.field5) >> 12;
+            const n1f6 = (nin1 * this.field6) >> 12;
+            let noiseIndex = (nin1 * vGrad) >> 12;
+            const permIndex0 = noiseIndex >> 12;
+            let permIndex1 = permIndex0 + 1;
+            if (n1f6 <= permIndex1) {
+                permIndex1 = 0;
+            }
+            noiseIndex &= 0xfff;
+            const noise = PerlinNoiseOperation.noise[noiseIndex];
+            const perm0 = this.permutations[permIndex0 & 0xff] & 0xff;
+            const perm1 = this.permutations[permIndex1 & 0xff] & 0xff;
+            if (this.field0) {
+                for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
+                    const hGrad = this.field5 * textureGenerator.horizontalGradient[pixel];
+                    let v = this.noise1(
+                        (nin1 * hGrad) >> 12,
+                        n1f5,
+                        perm0,
+                        perm1,
+                        noiseIndex,
+                        noise,
+                    );
+                    v = (nin0 * v) >> 12;
+                    output[pixel] = (v >> 1) + 2048;
+                }
+            } else {
+                for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
+                    const hGrad = this.field5 * textureGenerator.horizontalGradient[pixel];
+                    const v = this.noise1(
+                        (nin1 * hGrad) >> 12,
+                        n1f5,
+                        perm0,
+                        perm1,
+                        noiseIndex,
+                        noise,
+                    );
+                    output[pixel] = (v * nin0) >> 12;
+                }
+            }
+        } else {
+            let i_45_ = this.noiseInput0[0];
+            if (i_45_ > 8 || i_45_ < -8) {
+                const i_46_ = this.noiseInput1[0] << 12;
+                let i_47_ = (i_46_ * vGrad) >> 12;
+                const i_48_ = (i_46_ * this.field5) >> 12;
+                const i_49_ = (i_46_ * this.field6) >> 12;
+                const i_50_ = i_47_ >> 12;
+                let i_51_ = i_50_ + 1;
+                i_47_ &= 0xfff;
+                if (i_49_ <= i_51_) {
+                    i_51_ = 0;
+                }
+                const i_52_ = this.permutations[i_50_ & 0xff] & 0xff;
+                const i_53_ = PerlinNoiseOperation.noise[i_47_];
+                const i_54_ = this.permutations[i_51_ & 0xff] & 0xff;
+                for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
+                    const i_56_ = this.field5 * textureGenerator.horizontalGradient[pixel];
+                    const i_57_ = this.noise1(
+                        (i_56_ * i_46_) >> 12,
+                        i_48_,
+                        i_52_,
+                        i_54_,
+                        i_47_,
+                        i_53_,
+                    );
+                    output[pixel] = (i_45_ * i_57_) >> 12;
+                }
+            }
+
+            for (let i_58_ = 1; i_58_ < this.field1; i_58_++) {
+                i_45_ = this.noiseInput0[i_58_];
+                if (i_45_ > 8 || i_45_ < -8) {
+                    const i_59_ = this.noiseInput1[i_58_] << 12;
+                    const i_60_ = (this.field6 * i_59_) >> 12;
+                    const i_61_ = (this.field5 * i_59_) >> 12;
+                    let i_62_ = (vGrad * i_59_) >> 12;
+                    const i_63_ = i_62_ >> 12;
+                    let i_64_ = i_63_ + 1;
+                    i_62_ &= 0xfff;
+                    if (i_60_ <= i_64_) {
+                        i_64_ = 0;
+                    }
+                    const i_65_ = this.permutations[i_64_ & 0xff] & 0xff;
+                    const i_66_ = this.permutations[i_63_ & 0xff] & 0xff;
+                    const i_67_ = PerlinNoiseOperation.noise[i_62_];
+                    if (this.field0 && this.field1 - 1 === i_58_) {
+                        for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
+                            const i_69_ = textureGenerator.horizontalGradient[pixel] * this.field5;
+                            let i_70_ = this.noise1(
+                                (i_59_ * i_69_) >> 12,
+                                i_61_,
+                                i_66_,
+                                i_65_,
+                                i_62_,
+                                i_67_,
+                            );
+                            i_70_ = output[pixel] + ((i_70_ * i_45_) >> 12);
+                            output[pixel] = 2048 + (i_70_ >> 1);
+                        }
+                    } else {
+                        for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
+                            const i_72_ = textureGenerator.horizontalGradient[pixel] * this.field5;
+                            const i_73_ = this.noise1(
+                                (i_59_ * i_72_) >> 12,
+                                i_61_,
+                                i_66_,
+                                i_65_,
+                                i_62_,
+                                i_67_,
+                            );
+                            output[pixel] += (i_45_ * i_73_) >> 12;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    noise1(
+        hGrad: number,
+        vGrad: number,
+        perm0: number,
+        perm1: number,
+        noiseIndex: number,
+        noise: number,
+    ): number {
+        let i_8_ = hGrad >> 12;
+        let i_9_ = i_8_ + 1;
+        hGrad &= 0xfff;
+        if (i_9_ >= vGrad) {
+            i_9_ = 0;
+        }
+        i_8_ &= 0xff;
+        let i_10_ = noiseIndex - 4096;
+        let i_11_ = hGrad - 4096;
+        i_9_ &= 0xff;
+        let i_12_ = this.permutations[perm0 + i_8_] & 0x3;
+        let i_13_ = PerlinNoiseOperation.noise[hGrad];
+        let i_14_;
+        if (i_12_ > 1) {
+            i_14_ = i_12_ == 2 ? -noiseIndex + hGrad : -noiseIndex + -hGrad;
+        } else {
+            i_14_ = i_12_ == 0 ? noiseIndex + hGrad : -hGrad + noiseIndex;
+        }
+        i_12_ = this.permutations[perm0 + i_9_] & 0x3;
+        let i_15_: number;
+        if (i_12_ <= 1) {
+            i_15_ = i_12_ == 0 ? noiseIndex + i_11_ : noiseIndex - i_11_;
+        } else {
+            i_15_ = i_12_ == 2 ? i_11_ - noiseIndex : -i_11_ + -noiseIndex;
+        }
+        i_12_ = this.permutations[perm1 + i_8_] & 0x3;
+        const i_16_ = ((i_13_ * (i_15_ - i_14_)) >> 12) + i_14_;
+        if (i_12_ <= 1) {
+            i_14_ = i_12_ != 0 ? i_10_ - hGrad : hGrad + i_10_;
+        } else {
+            i_14_ = i_12_ != 2 ? -i_10_ + -hGrad : hGrad - i_10_;
+        }
+        i_12_ = this.permutations[i_9_ + perm1] & 0x3;
+        if (i_12_ <= 1) {
+            i_15_ = i_12_ == 0 ? i_11_ + i_10_ : i_10_ - i_11_;
+        } else {
+            i_15_ = i_12_ == 2 ? -i_10_ + i_11_ : -i_10_ + -i_11_;
+        }
+        const i_17_ = i_14_ + ((i_13_ * (i_15_ - i_14_)) >> 12);
+        return i_16_ + ((noise * (i_17_ - i_16_)) >> 12);
     }
 
     noise(x: number, y: number, verticalGradient: number, horizontalGradient: number): number {
@@ -155,11 +320,11 @@ export class PerlinNoiseOperation extends TextureOperation {
         if (j >= j1 >> 12) {
             j = 0;
         }
-        const i2 = this.table[this.table[l] + i] % 4;
-        const k1 = this.table[this.table[l] + k] % 4;
+        const i2 = this.permutations[this.permutations[l] + i] % 4;
+        const k1 = this.permutations[this.permutations[l] + k] % 4;
         j &= 0xff;
-        const j2 = this.table[this.table[j] + i] % 4;
-        const l1 = this.table[this.table[j] + k] % 4;
+        const j2 = this.permutations[this.permutations[j] + i] % 4;
+        const l1 = this.permutations[this.permutations[j] + k] % 4;
         const k2 = PerlinNoiseOperation.addInvert(x, y, PerlinNoiseOperation.invertTable[k1]);
         const l2 = PerlinNoiseOperation.addInvert(
             x - 4096,
@@ -183,3 +348,5 @@ export class PerlinNoiseOperation extends TextureOperation {
         return PerlinNoiseOperation.lerp(i4, j4, l3);
     }
 }
+
+PerlinNoiseOperation.initNoise();

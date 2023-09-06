@@ -5,6 +5,7 @@ import { Entity } from "../scene/entity/Entity";
 import { FaceNormal } from "./FaceNormal";
 import { Model } from "./Model";
 import { VertexNormal } from "./VertexNormal";
+import { computeTextureCoords } from "./TextureMapper";
 
 export class ModelData extends Entity {
     private static mergeModelNormalsCount: number = 0;
@@ -44,9 +45,19 @@ export class ModelData extends Entity {
     textureFaceCount!: number;
     textureRenderTypes!: Int8Array;
 
-    texFaceA!: Int16Array;
-    texFaceB!: Int16Array;
-    texFaceC!: Int16Array;
+    textureMappingP!: Int16Array;
+    textureMappingM!: Int16Array;
+    textureMappingN!: Int16Array;
+
+    textureScaleX!: Int32Array;
+    textureScaleY!: Int32Array;
+    textureScaleZ!: Int32Array;
+    textureRotation!: Int8Array;
+    textureDirection!: Int8Array;
+    textureSpeed!: Int32Array;
+
+    textureTransU!: Int32Array;
+    textureTransV!: Int32Array;
 
     vertexSkins?: Int32Array;
     faceSkins?: Int32Array;
@@ -351,9 +362,17 @@ export class ModelData extends Entity {
         this.faceColors = new Uint16Array(this.faceCount);
         if (this.textureFaceCount > 0) {
             this.textureRenderTypes = new Int8Array(this.textureFaceCount);
-            this.texFaceA = new Int16Array(this.textureFaceCount);
-            this.texFaceB = new Int16Array(this.textureFaceCount);
-            this.texFaceC = new Int16Array(this.textureFaceCount);
+            this.textureMappingP = new Int16Array(this.textureFaceCount);
+            this.textureMappingM = new Int16Array(this.textureFaceCount);
+            this.textureMappingN = new Int16Array(this.textureFaceCount);
+            this.textureScaleX = new Int32Array(this.textureFaceCount);
+            this.textureScaleY = new Int32Array(this.textureFaceCount);
+            this.textureScaleZ = new Int32Array(this.textureFaceCount);
+            this.textureRotation = new Int8Array(this.textureFaceCount);
+            this.textureDirection = new Int8Array(this.textureFaceCount);
+            this.textureSpeed = new Int32Array(this.textureFaceCount);
+            this.textureTransU = new Int32Array(this.textureFaceCount);
+            this.textureTransV = new Int32Array(this.textureFaceCount);
         }
 
         this.verticesCount = 0;
@@ -418,18 +437,34 @@ export class ModelData extends Entity {
                 const type = (this.textureRenderTypes[this.textureFaceCount] =
                     model.textureRenderTypes[f]);
                 if (type === 0) {
-                    this.texFaceA[this.textureFaceCount] = this.copyVertex(
+                    this.textureMappingP[this.textureFaceCount] = this.copyVertex(
                         model,
-                        model.texFaceA[f],
+                        model.textureMappingP[f],
                     );
-                    this.texFaceB[this.textureFaceCount] = this.copyVertex(
+                    this.textureMappingM[this.textureFaceCount] = this.copyVertex(
                         model,
-                        model.texFaceB[f],
+                        model.textureMappingM[f],
                     );
-                    this.texFaceC[this.textureFaceCount] = this.copyVertex(
+                    this.textureMappingN[this.textureFaceCount] = this.copyVertex(
                         model,
-                        model.texFaceC[f],
+                        model.textureMappingN[f],
                     );
+                }
+                if (type >= 1 && type <= 3) {
+                    this.textureMappingP[this.textureFaceCount] = model.textureMappingP[f];
+                    this.textureMappingM[this.textureFaceCount] = model.textureMappingM[f];
+                    this.textureMappingN[this.textureFaceCount] = model.textureMappingN[f];
+                    this.textureScaleX[this.textureFaceCount] = model.textureScaleX[f];
+                    this.textureScaleY[this.textureFaceCount] = model.textureScaleY[f];
+                    this.textureScaleZ[this.textureFaceCount] = model.textureScaleZ[f];
+                    this.textureRotation[this.textureFaceCount] = model.textureRotation[f];
+                    this.textureDirection[this.textureFaceCount] = model.textureDirection[f];
+                    this.textureSpeed[this.textureFaceCount] = model.textureSpeed[f];
+                }
+
+                if (type === 2) {
+                    this.textureTransU[this.textureFaceCount] = model.textureTransU[f];
+                    this.textureTransV[this.textureFaceCount] = model.textureTransV[f];
                 }
 
                 this.textureFaceCount++;
@@ -517,9 +552,9 @@ export class ModelData extends Entity {
         const var22 = buf1.readUnsignedShort();
         const var23 = buf1.readUnsignedShort();
         const var24 = buf1.readUnsignedShort();
-        let var25 = 0;
-        let var26 = 0;
-        let var27 = 0;
+        let simpleTextureFaceCount = 0;
+        let complexTextureFaceCount = 0;
+        let cubeTextureFaceCount = 0;
         if (texTriangleCount > 0) {
             this.textureRenderTypes = new Int8Array(texTriangleCount);
             buf1.offset = 0;
@@ -527,15 +562,15 @@ export class ModelData extends Entity {
             for (let i = 0; i < texTriangleCount; i++) {
                 const type = (this.textureRenderTypes[i] = buf1.readByte());
                 if (type === 0) {
-                    var25++;
+                    simpleTextureFaceCount++;
                 }
 
                 if (type >= 1 && type <= 3) {
-                    var26++;
+                    complexTextureFaceCount++;
                 }
 
                 if (type === 2) {
-                    var27++;
+                    cubeTextureFaceCount++;
                 }
             }
         }
@@ -583,17 +618,17 @@ export class ModelData extends Entity {
         const var42 = var28;
         var28 += var21;
         const var43 = var28;
-        var28 += var25 * 6;
+        var28 += simpleTextureFaceCount * 6;
         const var44 = var28;
-        var28 += var26 * 6;
+        var28 += complexTextureFaceCount * 6;
         const var45 = var28;
-        var28 += var26 * 6;
+        var28 += complexTextureFaceCount * 6;
         const var46 = var28;
-        var28 += var26 * 2;
+        var28 += complexTextureFaceCount * 2;
         const var47 = var28;
-        var28 += var26;
+        var28 += complexTextureFaceCount;
         const var48 = var28;
-        var28 += var26 * 2 + var27 * 2;
+        var28 += complexTextureFaceCount * 2 + cubeTextureFaceCount * 2;
         this.verticesCount = vertexCount;
         this.faceCount = faceCount;
         this.textureFaceCount = texTriangleCount;
@@ -640,9 +675,21 @@ export class ModelData extends Entity {
 
         this.faceColors = new Uint16Array(faceCount);
         if (texTriangleCount > 0) {
-            this.texFaceA = new Int16Array(texTriangleCount);
-            this.texFaceB = new Int16Array(texTriangleCount);
-            this.texFaceC = new Int16Array(texTriangleCount);
+            this.textureMappingP = new Int16Array(texTriangleCount);
+            this.textureMappingM = new Int16Array(texTriangleCount);
+            this.textureMappingN = new Int16Array(texTriangleCount);
+            if (complexTextureFaceCount > 0) {
+                this.textureScaleX = new Int32Array(complexTextureFaceCount);
+                this.textureScaleY = new Int32Array(complexTextureFaceCount);
+                this.textureScaleZ = new Int32Array(complexTextureFaceCount);
+                this.textureRotation = new Int8Array(complexTextureFaceCount);
+                this.textureDirection = new Int8Array(complexTextureFaceCount);
+                this.textureSpeed = new Int32Array(complexTextureFaceCount);
+            }
+            if (cubeTextureFaceCount > 0) {
+                this.textureTransU = new Int32Array(cubeTextureFaceCount);
+                this.textureTransV = new Int32Array(cubeTextureFaceCount);
+            }
         }
 
         buf1.offset = texTriangleCount;
@@ -789,9 +836,9 @@ export class ModelData extends Entity {
         for (let i = 0; i < texTriangleCount; i++) {
             const type = this.textureRenderTypes[i] & 255;
             if (type === 0) {
-                this.texFaceA[i] = buf1.readUnsignedShort();
-                this.texFaceB[i] = buf1.readUnsignedShort();
-                this.texFaceC[i] = buf1.readUnsignedShort();
+                this.textureMappingP[i] = buf1.readUnsignedShort();
+                this.textureMappingM[i] = buf1.readUnsignedShort();
+                this.textureMappingN[i] = buf1.readUnsignedShort();
             }
         }
 
@@ -878,9 +925,9 @@ export class ModelData extends Entity {
         this.indices3 = new Int32Array(faceCount);
         if (texTriangleCount > 0) {
             this.textureRenderTypes = new Int8Array(texTriangleCount);
-            this.texFaceA = new Int16Array(texTriangleCount);
-            this.texFaceB = new Int16Array(texTriangleCount);
-            this.texFaceC = new Int16Array(texTriangleCount);
+            this.textureMappingP = new Int16Array(texTriangleCount);
+            this.textureMappingM = new Int16Array(texTriangleCount);
+            this.textureMappingN = new Int16Array(texTriangleCount);
         }
 
         if (hasVertexSkins === 1) {
@@ -1059,9 +1106,9 @@ export class ModelData extends Entity {
 
         for (let i = 0; i < texTriangleCount; i++) {
             this.textureRenderTypes[i] = 0;
-            this.texFaceA[i] = buf1.readUnsignedShort();
-            this.texFaceB[i] = buf1.readUnsignedShort();
-            this.texFaceC[i] = buf1.readUnsignedShort();
+            this.textureMappingP[i] = buf1.readUnsignedShort();
+            this.textureMappingM[i] = buf1.readUnsignedShort();
+            this.textureMappingN[i] = buf1.readUnsignedShort();
         }
 
         if (this.textureCoords) {
@@ -1071,9 +1118,9 @@ export class ModelData extends Entity {
                 const coord = this.textureCoords[i] & 255;
                 if (coord !== 255) {
                     if (
-                        this.indices1[i] === (this.texFaceA[coord] & 0xffff) &&
-                        this.indices2[i] === (this.texFaceB[coord] & 0xffff) &&
-                        this.indices3[i] === (this.texFaceC[coord] & 0xffff)
+                        this.indices1[i] === (this.textureMappingP[coord] & 0xffff) &&
+                        this.indices2[i] === (this.textureMappingM[coord] & 0xffff) &&
+                        this.indices3[i] === (this.textureMappingN[coord] & 0xffff)
                     ) {
                         this.textureCoords[i] = -1;
                     } else {
@@ -1101,6 +1148,15 @@ export class ModelData extends Entity {
             this.verticesX[i] >>= n;
             this.verticesY[i] >>= n;
             this.verticesZ[i] >>= n;
+        }
+        if (this.textureFaceCount > 0 && this.textureScaleX) {
+            for (let i = 0; i < this.textureFaceCount; i++) {
+                this.textureScaleX[i] >>= n;
+                this.textureScaleY[i] >>= n;
+                if (this.textureRenderTypes[i] !== 1) {
+                    this.textureScaleZ[i] >>= n;
+                }
+            }
         }
     }
 
@@ -1218,11 +1274,11 @@ export class ModelData extends Entity {
         const texturesScalesOffset = offset;
         offset += complexTextureFaceCount * textureBytes;
         const texturesRotationOffset = offset;
-        offset += complexTextureFaceCount * 2;
+        offset += complexTextureFaceCount;
         const texturesDirectionOffset = offset;
         offset += complexTextureFaceCount;
         const texturesTranslationOffset = offset;
-        offset += complexTextureFaceCount * 2 + cubeTextureFaceCount * 2;
+        offset += complexTextureFaceCount + cubeTextureFaceCount * 2;
         const particleEffectsOffset = offset;
         this.verticesCount = vertexCount;
         this.faceCount = faceCount;
@@ -1265,9 +1321,21 @@ export class ModelData extends Entity {
 
         this.faceColors = new Uint16Array(faceCount);
         if (texFaceCount > 0) {
-            this.texFaceA = new Int16Array(texFaceCount);
-            this.texFaceB = new Int16Array(texFaceCount);
-            this.texFaceC = new Int16Array(texFaceCount);
+            this.textureMappingP = new Int16Array(texFaceCount);
+            this.textureMappingM = new Int16Array(texFaceCount);
+            this.textureMappingN = new Int16Array(texFaceCount);
+            if (complexTextureFaceCount > 0) {
+                this.textureScaleX = new Int32Array(complexTextureFaceCount);
+                this.textureScaleY = new Int32Array(complexTextureFaceCount);
+                this.textureScaleZ = new Int32Array(complexTextureFaceCount);
+                this.textureRotation = new Int8Array(complexTextureFaceCount);
+                this.textureDirection = new Int8Array(complexTextureFaceCount);
+                this.textureSpeed = new Int32Array(complexTextureFaceCount);
+            }
+            if (cubeTextureFaceCount > 0) {
+                this.textureTransU = new Int32Array(cubeTextureFaceCount);
+                this.textureTransV = new Int32Array(cubeTextureFaceCount);
+            }
         }
 
         buf1.offset = texFaceCount;
@@ -1337,8 +1405,12 @@ export class ModelData extends Entity {
                 this.faceTextures[i] = buf6.readUnsignedShort() - 1;
             }
 
-            if (this.textureCoords && this.faceTextures && this.faceTextures[i] !== -1) {
-                this.textureCoords[i] = buf7.readUnsignedByte() - 1;
+            if (this.textureCoords) {
+                if (this.faceTextures && this.faceTextures[i] !== -1) {
+                    this.textureCoords[i] = buf7.readUnsignedByte() - 1;
+                } else {
+                    this.textureCoords[i] = -1;
+                }
             }
         }
 
@@ -1418,14 +1490,7 @@ export class ModelData extends Entity {
         buf5.offset = texturesDirectionOffset;
         buf6.offset = texturesTranslationOffset;
 
-        for (let i = 0; i < texFaceCount; i++) {
-            const type = this.textureRenderTypes[i] & 0xff;
-            if (type === 0) {
-                this.texFaceA[i] = buf1.readUnsignedShort();
-                this.texFaceB[i] = buf1.readUnsignedShort();
-                this.texFaceC[i] = buf1.readUnsignedShort();
-            }
-        }
+        this.decodeTextureMapping(buf1, buf2, buf3, buf4, buf5, buf6);
 
         buf1.offset = offset;
 
@@ -1441,6 +1506,90 @@ export class ModelData extends Entity {
         //     buf1.readUnsignedShort();
         //     buf1.readInt();
         // }
+    }
+
+    decodeTextureMapping(
+        simpleBuffer: ByteBuffer,
+        complexBuffer: ByteBuffer,
+        scaleBuffer: ByteBuffer,
+        rotationBuffer: ByteBuffer,
+        directionBuffer: ByteBuffer,
+        translationBuffer: ByteBuffer,
+    ): void {
+        for (let i = 0; i < this.textureFaceCount; i++) {
+            const type = this.textureRenderTypes[i] & 0xff;
+            if (type === 0) {
+                this.textureMappingP[i] = simpleBuffer.readUnsignedShort();
+                this.textureMappingM[i] = simpleBuffer.readUnsignedShort();
+                this.textureMappingN[i] = simpleBuffer.readUnsignedShort();
+            }
+            if (type === 1) {
+                this.textureMappingP[i] = complexBuffer.readUnsignedShort();
+                this.textureMappingM[i] = complexBuffer.readUnsignedShort();
+                this.textureMappingN[i] = complexBuffer.readUnsignedShort();
+                if (this.version < 15) {
+                    this.textureScaleX[i] = scaleBuffer.readUnsignedShort();
+                    if (this.version >= 14) {
+                        this.textureScaleY[i] = scaleBuffer.readMedium();
+                    } else {
+                        this.textureScaleY[i] = scaleBuffer.readUnsignedShort();
+                    }
+                    this.textureScaleZ[i] = scaleBuffer.readUnsignedShort();
+                } else {
+                    this.textureScaleX[i] = scaleBuffer.readMedium();
+                    this.textureScaleY[i] = scaleBuffer.readMedium();
+                    this.textureScaleZ[i] = scaleBuffer.readMedium();
+                }
+                this.textureRotation[i] = rotationBuffer.readByte();
+                this.textureDirection[i] = directionBuffer.readByte();
+                this.textureSpeed[i] = translationBuffer.readByte();
+            }
+            if (type === 2) {
+                this.textureMappingP[i] = complexBuffer.readUnsignedShort();
+                this.textureMappingM[i] = complexBuffer.readUnsignedShort();
+                this.textureMappingN[i] = complexBuffer.readUnsignedShort();
+                if (this.version < 15) {
+                    this.textureScaleX[i] = scaleBuffer.readUnsignedShort();
+                    if (this.version >= 14) {
+                        this.textureScaleY[i] = scaleBuffer.readMedium();
+                    } else {
+                        this.textureScaleY[i] = scaleBuffer.readUnsignedShort();
+                    }
+                    this.textureScaleZ[i] = scaleBuffer.readUnsignedShort();
+                } else {
+                    this.textureScaleX[i] = scaleBuffer.readMedium();
+                    this.textureScaleY[i] = scaleBuffer.readMedium();
+                    this.textureScaleZ[i] = scaleBuffer.readMedium();
+                }
+                this.textureRotation[i] = rotationBuffer.readByte();
+                this.textureDirection[i] = directionBuffer.readByte();
+                this.textureSpeed[i] = translationBuffer.readByte();
+                this.textureTransU[i] = translationBuffer.readByte();
+                this.textureTransV[i] = translationBuffer.readByte();
+            }
+            if (type === 3) {
+                // same as 1, TODO: combine
+                this.textureMappingP[i] = complexBuffer.readUnsignedShort();
+                this.textureMappingM[i] = complexBuffer.readUnsignedShort();
+                this.textureMappingN[i] = complexBuffer.readUnsignedShort();
+                if (this.version < 15) {
+                    this.textureScaleX[i] = scaleBuffer.readUnsignedShort();
+                    if (this.version >= 14) {
+                        this.textureScaleY[i] = scaleBuffer.readMedium();
+                    } else {
+                        this.textureScaleY[i] = scaleBuffer.readUnsignedShort();
+                    }
+                    this.textureScaleZ[i] = scaleBuffer.readUnsignedShort();
+                } else {
+                    this.textureScaleX[i] = scaleBuffer.readMedium();
+                    this.textureScaleY[i] = scaleBuffer.readMedium();
+                    this.textureScaleZ[i] = scaleBuffer.readMedium();
+                }
+                this.textureRotation[i] = rotationBuffer.readByte();
+                this.textureDirection[i] = directionBuffer.readByte();
+                this.textureSpeed[i] = translationBuffer.readByte();
+            }
+        }
     }
 
     decodeOld(data: Int8Array): void {
@@ -1516,9 +1665,9 @@ export class ModelData extends Entity {
         this.indices3 = new Int32Array(faceCount);
         if (texTriangleCount > 0) {
             this.textureRenderTypes = new Int8Array(texTriangleCount);
-            this.texFaceA = new Int16Array(texTriangleCount);
-            this.texFaceB = new Int16Array(texTriangleCount);
-            this.texFaceC = new Int16Array(texTriangleCount);
+            this.textureMappingP = new Int16Array(texTriangleCount);
+            this.textureMappingM = new Int16Array(texTriangleCount);
+            this.textureMappingN = new Int16Array(texTriangleCount);
         }
 
         if (var16 === 1) {
@@ -1704,9 +1853,9 @@ export class ModelData extends Entity {
 
         for (let i = 0; i < texTriangleCount; i++) {
             this.textureRenderTypes[i] = 0;
-            this.texFaceA[i] = buf1.readUnsignedShort();
-            this.texFaceB[i] = buf1.readUnsignedShort();
-            this.texFaceC[i] = buf1.readUnsignedShort();
+            this.textureMappingP[i] = buf1.readUnsignedShort();
+            this.textureMappingM[i] = buf1.readUnsignedShort();
+            this.textureMappingN[i] = buf1.readUnsignedShort();
         }
 
         if (this.textureCoords) {
@@ -1716,9 +1865,9 @@ export class ModelData extends Entity {
                 const var44 = this.textureCoords[i] & 255;
                 if (var44 !== 255) {
                     if (
-                        this.indices1[i] === (this.texFaceA[var44] & 0xffff) &&
-                        this.indices2[i] === (this.texFaceB[var44] & 0xffff) &&
-                        this.indices3[i] === (this.texFaceC[var44] & 0xffff)
+                        this.indices1[i] === (this.textureMappingP[var44] & 0xffff) &&
+                        this.indices2[i] === (this.textureMappingM[var44] & 0xffff) &&
+                        this.indices3[i] === (this.textureMappingN[var44] & 0xffff)
                     ) {
                         this.textureCoords[i] = -1;
                     } else {
@@ -1811,9 +1960,17 @@ export class ModelData extends Entity {
         this.textureCoords = model.textureCoords;
         this.priority = model.priority;
         this.textureRenderTypes = model.textureRenderTypes;
-        this.texFaceA = model.texFaceA;
-        this.texFaceB = model.texFaceB;
-        this.texFaceC = model.texFaceC;
+        this.textureMappingP = model.textureMappingP;
+        this.textureMappingM = model.textureMappingM;
+        this.textureMappingN = model.textureMappingN;
+        this.textureScaleX = model.textureScaleX;
+        this.textureScaleY = model.textureScaleY;
+        this.textureScaleZ = model.textureScaleZ;
+        this.textureRotation = model.textureRotation;
+        this.textureDirection = model.textureDirection;
+        this.textureSpeed = model.textureSpeed;
+        this.textureTransU = model.textureTransU;
+        this.textureTransV = model.textureTransV;
         this.vertexSkins = model.vertexSkins;
         this.faceSkins = model.faceSkins;
         this.vertexLabels = model.vertexLabels;
@@ -1854,9 +2011,17 @@ export class ModelData extends Entity {
         model.faceTextures = this.faceTextures;
         model.priority = this.priority;
         model.textureRenderTypes = this.textureRenderTypes;
-        model.texFaceA = this.texFaceA;
-        model.texFaceB = this.texFaceB;
-        model.texFaceC = this.texFaceC;
+        model.textureMappingP = this.textureMappingP;
+        model.textureMappingM = this.textureMappingM;
+        model.textureMappingN = this.textureMappingN;
+        model.textureScaleX = this.textureScaleX;
+        model.textureScaleY = this.textureScaleY;
+        model.textureScaleZ = this.textureScaleZ;
+        model.textureRotation = this.textureRotation;
+        model.textureDirection = this.textureDirection;
+        model.textureSpeed = this.textureSpeed;
+        model.textureTransU = this.textureTransU;
+        model.textureTransV = this.textureTransV;
         model.vertexSkins = this.vertexSkins;
         model.faceSkins = this.faceSkins;
         model.vertexLabels = this.vertexLabels;
@@ -1938,9 +2103,17 @@ export class ModelData extends Entity {
         model.faceTextures = this.faceTextures;
         model.priority = this.priority;
         model.textureRenderTypes = this.textureRenderTypes;
-        model.texFaceA = this.texFaceA;
-        model.texFaceB = this.texFaceB;
-        model.texFaceC = this.texFaceC;
+        model.textureMappingP = this.textureMappingP;
+        model.textureMappingM = this.textureMappingM;
+        model.textureMappingN = this.textureMappingN;
+        model.textureScaleX = this.textureScaleX;
+        model.textureScaleY = this.textureScaleY;
+        model.textureScaleZ = this.textureScaleZ;
+        model.textureRotation = this.textureRotation;
+        model.textureDirection = this.textureDirection;
+        model.textureSpeed = this.textureSpeed;
+        model.textureTransU = this.textureTransU;
+        model.textureTransV = this.textureTransV;
         model.vertexSkins = this.vertexSkins;
         model.faceSkins = this.faceSkins;
         model.vertexLabels = this.vertexLabels;
@@ -2032,6 +2205,11 @@ export class ModelData extends Entity {
                     model.contourVerticesY[i] = this.verticesY[i];
                 }
             }
+        } else if (type === 3) {
+            // TODO: implement contourGround type 3
+            for (let i = 0; i < model.usedVertexCount; i++) {
+                model.contourVerticesY[i] = this.verticesY[i];
+            }
         } else if (type === 4) {
             const deltaY = this.maxY - this.minY;
             for (let i = 0; i < model.usedVertexCount; i++) {
@@ -2075,7 +2253,7 @@ export class ModelData extends Entity {
                     (sceneHeight - height);
 
                 // there is something wrong with this calculation, possibly something to do with scaling down
-                model.contourVerticesY[i] -= 13;
+                // model.contourVerticesY[i] -= 13;
                 // model.contourVerticesY[i] = this.verticesY[i];
             }
         }
@@ -2406,6 +2584,8 @@ export class ModelData extends Entity {
         model.faceColors2 = new Int32Array(this.faceCount);
         model.faceColors3 = new Int32Array(this.faceCount);
         model.faceColors = this.faceColors;
+
+        model.uvs = computeTextureCoords(textureLoader, this);
         if (this.faceTextures) {
             model.faceTextures = new Int16Array(this.faceCount);
             for (let i = 0; i < this.faceCount; i++) {
@@ -2420,35 +2600,35 @@ export class ModelData extends Entity {
             model.faceTextures = undefined;
         }
         if (this.textureFaceCount > 0 && this.textureCoords) {
-            const var9 = new Int32Array(this.textureFaceCount);
+            const textureCoords = new Int32Array(this.textureFaceCount);
 
             for (let i = 0; i < this.faceCount; i++) {
                 if (this.textureCoords[i] !== -1) {
-                    var9[this.textureCoords[i] & 0xff]++;
+                    textureCoords[this.textureCoords[i] & 0xff]++;
                 }
             }
 
             model.texTriangleCount = 0;
 
             for (let i = 0; i < this.textureFaceCount; i++) {
-                if (var9[i] > 0 && this.textureRenderTypes[i] === 0) {
+                if (textureCoords[i] > 0 && this.textureRenderTypes[i] === 0) {
                     model.texTriangleCount++;
                 }
             }
 
-            model.texTriangleX = new Int32Array(model.texTriangleCount);
-            model.texTriangleY = new Int32Array(model.texTriangleCount);
-            model.texTriangleZ = new Int32Array(model.texTriangleCount);
-            let var10 = 0;
+            model.textureMappingP = new Int32Array(model.texTriangleCount);
+            model.textureMappingM = new Int32Array(model.texTriangleCount);
+            model.textureMappingN = new Int32Array(model.texTriangleCount);
 
+            let mapIndex = 0;
             for (let i = 0; i < this.textureFaceCount; i++) {
-                if (var9[i] > 0 && this.textureRenderTypes[i] === 0) {
-                    model.texTriangleX[var10] = this.texFaceA[i] & 0xffff;
-                    model.texTriangleY[var10] = this.texFaceB[i] & 0xffff;
-                    model.texTriangleZ[var10] = this.texFaceC[i] & 0xffff;
-                    var9[i] = var10++;
+                if (textureCoords[i] > 0 && this.textureRenderTypes[i] === 0) {
+                    model.textureMappingP[mapIndex] = this.textureMappingP[i] & 0xffff;
+                    model.textureMappingM[mapIndex] = this.textureMappingM[i] & 0xffff;
+                    model.textureMappingN[mapIndex] = this.textureMappingN[i] & 0xffff;
+                    textureCoords[i] = mapIndex++;
                 } else {
-                    var9[i] = -1;
+                    textureCoords[i] = -1;
                 }
             }
 
@@ -2456,7 +2636,7 @@ export class ModelData extends Entity {
 
             for (let i = 0; i < this.faceCount; i++) {
                 if (this.textureCoords[i] !== -1) {
-                    model.textureCoords[i] = var9[this.textureCoords[i] & 0xff];
+                    model.textureCoords[i] = textureCoords[this.textureCoords[i] & 0xff];
                 } else {
                     model.textureCoords[i] = -1;
                 }
@@ -2614,6 +2794,14 @@ export class ModelData extends Entity {
         model.vertexLabels = this.vertexLabels;
         model.faceLabels = this.faceLabels;
         // model.faceTextures = this.faceTextures;
+        model.textureScaleX = this.textureScaleX;
+        model.textureScaleY = this.textureScaleY;
+        model.textureScaleZ = this.textureScaleZ;
+        model.textureRotation = this.textureRotation;
+        model.textureDirection = this.textureDirection;
+        model.textureSpeed = this.textureSpeed;
+        model.textureTransU = this.textureTransU;
+        model.textureTransV = this.textureTransV;
         model.animMayaGroups = this.animMayaGroups;
         model.animMayaScales = this.animMayaScales;
         return model;

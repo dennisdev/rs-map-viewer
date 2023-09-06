@@ -2,7 +2,7 @@ import { ByteBuffer } from "../../../io/ByteBuffer";
 import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
 
-export class Operation27 extends TextureOperation {
+export class SquareWaveformOperation extends TextureOperation {
     field0 = 10;
     field1 = 2048;
     field2 = 0;

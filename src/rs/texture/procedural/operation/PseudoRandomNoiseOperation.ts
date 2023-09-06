@@ -5,7 +5,7 @@ export class PseudoRandomNoiseOperation extends TextureOperation {
     static noise(x: number, y: number): number {
         let n = x + y * 57;
         n ^= n << 1;
-        return (4096 - ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 262144) | 0;
+        return 4096 - ((((1376312589 + (789221 + 15731 * (n * n)) * n) & 0x7fffffff) / 262144) | 0);
     }
 
     constructor() {

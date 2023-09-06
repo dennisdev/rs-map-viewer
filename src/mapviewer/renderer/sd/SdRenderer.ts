@@ -38,6 +38,7 @@ import { VarManager } from "../../../rs/config/vartype/VarManager";
 import { DrawRange, NULL_DRAW_RANGE } from "../DrawRange";
 import { BasTypeLoader } from "../../../rs/config/bastype/BasTypeLoader";
 import { isTouchDevice } from "../../../util/DeviceUtil";
+import { ProceduralTextureLoader } from "../../../rs/texture/ProceduralTextureLoader";
 
 const MAX_TEXTURES = 256;
 const BYTES_PER_VEC4 = 16;
@@ -256,6 +257,40 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         this.initTextureUniformBuffer(app, textureLoader, textureIds);
 
         console.log("init textures", textureIds, textureLoader.getTextureIds().length);
+
+        // this.debugTexture(textureLoader, 922);
+        // this.debugTexture(textureLoader, 925);
+        // this.debugTexture(textureLoader, 721);
+        if (
+            textureLoader instanceof ProceduralTextureLoader &&
+            textureLoader.getTextureIds().includes(922)
+        ) {
+            // console.log(textureLoader.materials.filter(mat => mat?.floatTexture))
+            // const textureId = 1;
+            // const texture = textureLoader.getTexture(textureId);
+            // if (texture) {
+            //     console.log("texture", texture, textureLoader.materials[textureId]);
+            // }
+            // for (const id of textureLoader.getTextureIds()) {
+            //     try {
+            //         const texture = textureLoader.getTexture(id);
+            //         if (!texture) {
+            //             continue;
+            //         }
+            //         const proceduralTexture = texture.proceduralTexture;
+            //         if (
+            //             proceduralTexture.operations.length < 8 && proceduralTexture.operations.find(op => op instanceof EmbossOperation) &&
+            //             proceduralTexture.textureDependencies.length === 0 &&
+            //             proceduralTexture.spriteDependencies.length === 0
+            //         ) {
+            //             console.log("small texture", id, proceduralTexture);
+            //         }
+            //     } catch (e) {
+            //         // console.error("Failed loading texture", id, e);
+            //         // break;
+            //     }
+            // }
+        }
     }
 
     initTextureArray(app: PicoApp, textureLoader: TextureLoader, textureIds: number[]): void {
@@ -297,6 +332,50 @@ export class SdRenderer extends Renderer<SdMapSquare> {
                 maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,
             },
         );
+    }
+
+    async debugTexture(textureLoader: TextureLoader, textureId: number): Promise<void> {
+        if (!(textureLoader instanceof ProceduralTextureLoader)) {
+            return;
+        }
+        try {
+            const size = textureLoader.isSmall(textureId) ? 64 : 128;
+
+            const proceduralTexture = textureLoader.getTexture(textureId)?.proceduralTexture;
+            if (proceduralTexture) {
+                // proceduralTexture.colourOperation = proceduralTexture.operations[3];
+            }
+
+            const texturePixels = textureLoader.getPixelsArgb(textureId, size, true, 0.7);
+
+            const canvas = new OffscreenCanvas(size, size);
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+                throw new Error("Could not get canvas context");
+            }
+
+            const imageData = new ImageData(size, size);
+            const data = imageData.data;
+
+            for (let i = 0; i < texturePixels.length; i++) {
+                const index = i * 4;
+                data[index] = (texturePixels[i] >> 16) & 0xff;
+                data[index + 1] = (texturePixels[i] >> 8) & 0xff;
+                data[index + 2] = texturePixels[i] & 0xff;
+                data[index + 3] = (texturePixels[i] >> 24) & 0xff;
+            }
+
+            imageData.data.set(data);
+
+            ctx.putImageData(imageData, 0, 0);
+
+            const blob = await canvas.convertToBlob();
+            const url = URL.createObjectURL(blob);
+            console.log("debug texture", textureId, url);
+            window.open(url, "_blank");
+        } catch (e) {
+            console.error("Failed loading texture", textureId, e);
+        }
     }
 
     initTextureUniformBuffer(
@@ -511,6 +590,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         this.renderOpaqueNpcPass(app, timeSec, npcDataTextureIndex, npcDataTexture);
 
         app.enable(PicoGL.BLEND);
+        // app.depthMask(false);
         this.renderTransparentPass(app, timeSec);
         this.renderTransparentNpcPass(app, timeSec, npcDataTextureIndex, npcDataTexture);
 

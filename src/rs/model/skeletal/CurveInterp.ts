@@ -298,7 +298,7 @@ function method8290(curve: Curve, t: number): number {
         method5023Output[3] = 0.0;
         method5023Output[4] = 0.0;
         const var4 = method5023(method5023Input, 3, 0.0, true, 1.0, true, method5023Output);
-        if (var4 == 1) {
+        if (var4 === 1) {
             v1 = method5023Output[0];
         } else {
             v1 = 0.0;

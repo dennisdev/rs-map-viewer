@@ -29,14 +29,14 @@ export class MirrorOperation extends TextureOperation {
             const input = this.getMonochromeInput(
                 textureGenerator,
                 0,
-                this.invertVertical ? textureGenerator.lineMaxIdx - line : line,
+                this.invertVertical ? textureGenerator.heightMask - line : line,
             );
             if (this.invertHorizontal) {
                 for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
-                    output[pixel] = input[textureGenerator.pixelMaxIdx - pixel];
+                    output[pixel] = input[textureGenerator.widthMask - pixel];
                 }
             } else {
-                output.set(input.subarray(textureGenerator.width));
+                output.set(input);
             }
         }
         return output;
@@ -51,7 +51,7 @@ export class MirrorOperation extends TextureOperation {
             const input = this.getColourInput(
                 textureGenerator,
                 0,
-                this.invertVertical ? textureGenerator.lineMaxIdx - line : line,
+                this.invertVertical ? textureGenerator.heightMask - line : line,
             );
             const inputR = input[0];
             const inputG = input[1];
@@ -61,9 +61,9 @@ export class MirrorOperation extends TextureOperation {
             const outputB = output[2];
             if (this.invertHorizontal) {
                 for (let pixel = 0; pixel < textureGenerator.width; pixel++) {
-                    outputR[pixel] = inputR[textureGenerator.pixelMaxIdx - pixel];
-                    outputG[pixel] = inputG[textureGenerator.pixelMaxIdx - pixel];
-                    outputB[pixel] = inputB[textureGenerator.pixelMaxIdx - pixel];
+                    outputR[pixel] = inputR[textureGenerator.widthMask - pixel];
+                    outputG[pixel] = inputG[textureGenerator.widthMask - pixel];
+                    outputB[pixel] = inputB[textureGenerator.widthMask - pixel];
                 }
             } else {
                 for (let pixel = 0; pixel < textureGenerator.width; pixel++) {

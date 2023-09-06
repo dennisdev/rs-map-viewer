@@ -50,9 +50,10 @@ export class CurveOperation extends TextureOperation {
 
     override init() {
         if (!this.markers) {
-            this.markers = new Array(2);
-            this.markers[0] = [0, 0];
-            this.markers[1] = [4096, 4096];
+            this.markers = [
+                [0, 0],
+                [4096, 4096],
+            ];
         }
         if (this.markers.length < 2) {
             throw new Error("Curve operation requires at least two markers");
@@ -110,7 +111,7 @@ export class CurveOperation extends TextureOperation {
                     const i_24_ = i_17_ - i_18_ - i_23_;
                     const i_25_ = i_19_ - i_17_;
                     const i_26_ = i_18_;
-                    const i_27_ = ((xSq * (interpIn * i_23_)) / 4096) | 0;
+                    const i_27_ = (xSq * ((interpIn * i_23_) >> 12)) >> 12;
                     const i_28_ = ((xSq * i_24_) / 4096) | 0;
                     const i_29_ = ((interpIn * i_25_) / 4096) | 0;
                     let out = i_29_ + i_27_ + i_28_ + i_26_;
@@ -123,7 +124,7 @@ export class CurveOperation extends TextureOperation {
                     this.table[index] = out;
                 }
                 break;
-            case 1: //COSINE INTERPOLATION
+            case 1: // COSINE INTERPOLATION
                 for (let index = 0; index < 257; index++) {
                     const indexTimes16 = index * 16;
                     let markIndex: number;
@@ -149,7 +150,7 @@ export class CurveOperation extends TextureOperation {
                     this.table[index] = out;
                 }
                 break;
-            case 0: //LINEAR INTERPOLATION
+            case 0: // LINEAR INTERPOLATION
                 for (let index = 0; index < 257; index++) {
                     const indexTimes16 = index * 16;
                     let markIndex: number;

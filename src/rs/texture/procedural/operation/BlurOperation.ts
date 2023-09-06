@@ -35,19 +35,19 @@ export class BlurOperation extends TextureOperation {
                 const input = this.getMonochromeInput(
                     textureGenerator,
                     0,
-                    pass & textureGenerator.lineMaxIdx,
+                    pass & textureGenerator.heightMask,
                 );
                 const passOut = new Int32Array(textureGenerator.width);
                 let sum = 0;
                 for (let pixel = -this.hExtent; pixel <= this.hExtent; pixel++) {
-                    sum += input[pixel & textureGenerator.pixelMaxIdx];
+                    sum += input[pixel & textureGenerator.widthMask];
                 }
                 let ptr = 0;
                 while (ptr < textureGenerator.width) {
                     passOut[ptr] = ((sum * invPixels) / 65536) | 0;
-                    sum -= input[(ptr - this.hExtent) & textureGenerator.pixelMaxIdx];
+                    sum -= input[(ptr - this.hExtent) & textureGenerator.widthMask];
                     ptr++;
-                    sum += input[(ptr + this.hExtent) & textureGenerator.pixelMaxIdx];
+                    sum += input[(ptr + this.hExtent) & textureGenerator.widthMask];
                 }
                 passes[this.vExtent - line + pass] = passOut;
             }
@@ -78,7 +78,7 @@ export class BlurOperation extends TextureOperation {
                 const input = this.getColourInput(
                     textureGenerator,
                     0,
-                    pass & textureGenerator.lineMaxIdx,
+                    pass & textureGenerator.heightMask,
                 );
                 const passOut = new Array<Int32Array>(3);
                 for (let i = 0; i < 3; i++) {
@@ -88,22 +88,22 @@ export class BlurOperation extends TextureOperation {
                 let sumG = 0;
                 let sumB = 0;
                 for (let pixel = -this.hExtent; pixel <= this.hExtent; pixel++) {
-                    sumR += input[0][pixel & textureGenerator.pixelMaxIdx];
-                    sumG += input[1][pixel & textureGenerator.pixelMaxIdx];
-                    sumB += input[2][pixel & textureGenerator.pixelMaxIdx];
+                    sumR += input[0][pixel & textureGenerator.widthMask];
+                    sumG += input[1][pixel & textureGenerator.widthMask];
+                    sumB += input[2][pixel & textureGenerator.widthMask];
                 }
                 let ptr = 0;
                 while (ptr < textureGenerator.width) {
                     passOut[0][ptr] = ((sumR * invPixels) / 65536) | 0;
                     passOut[1][ptr] = ((sumG * invPixels) / 65536) | 0;
                     passOut[2][ptr] = ((sumB * invPixels) / 65536) | 0;
-                    sumR -= input[0][(ptr - this.hExtent) & textureGenerator.pixelMaxIdx];
-                    sumG -= input[1][(ptr - this.hExtent) & textureGenerator.pixelMaxIdx];
-                    sumB -= input[2][(ptr - this.hExtent) & textureGenerator.pixelMaxIdx];
+                    sumR -= input[0][(ptr - this.hExtent) & textureGenerator.widthMask];
+                    sumG -= input[1][(ptr - this.hExtent) & textureGenerator.widthMask];
+                    sumB -= input[2][(ptr - this.hExtent) & textureGenerator.widthMask];
                     ptr++;
-                    sumR += input[0][(ptr + this.hExtent) & textureGenerator.pixelMaxIdx];
-                    sumG += input[1][(ptr + this.hExtent) & textureGenerator.pixelMaxIdx];
-                    sumB += input[2][(ptr + this.hExtent) & textureGenerator.pixelMaxIdx];
+                    sumR += input[0][(ptr + this.hExtent) & textureGenerator.widthMask];
+                    sumG += input[1][(ptr + this.hExtent) & textureGenerator.widthMask];
+                    sumB += input[2][(ptr + this.hExtent) & textureGenerator.widthMask];
                 }
                 passes[this.vExtent + pass - line] = passOut;
             }

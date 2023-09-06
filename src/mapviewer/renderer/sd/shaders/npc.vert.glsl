@@ -104,7 +104,7 @@ struct VertexData {
 
 VertexData decodeVertex(uint v0, uint v1, uint v2, float brightness) {
     float x = float(int((v0 >> 17u) & 0x7FFFu) - 0x4000);
-    float u = unpackFloat6((v0 >> 11u) & 0x3Fu);
+    float u = unpackFloat11(((v0 >> 11u) & 0x3Fu) | ((v2 & 0x1Fu) << 6u));
     float v = unpackFloat11(v0 & 0x7FFu);
 
     float y = -float(int((v1) & 0x7FFFu) - 0x4000);
@@ -113,8 +113,8 @@ VertexData decodeVertex(uint v0, uint v1, uint v2, float brightness) {
     float textureId = float((hsl >> 7) + 1) * isTextured;
 
     float z = float(int((v2 >> 17u) & 0x7FFFu) - 0x4000);
-    float alpha = float((v2 >> 4u) & 0xFFu) / 255.0;
-    uint priority = (v2 & 0xFu);
+    float alpha = float((v2 >> 9u) & 0xFFu) / 255.0;
+    uint priority = ((v2 >> 5u) & 0xFu);
 
     vec4 color = when_eq(textureId, 0.0) * vec4(hslToRgb(hsl, brightness), alpha)
         + when_neq(textureId, 0.0) * vec4(vec3(float(hsl & 0x7F) / 127.0), alpha);

@@ -27,8 +27,8 @@ export class TilingOperation extends TextureOperation {
         }
         const output = this.monochromeImageCache.get(line);
         if (this.monochromeImageCache.dirty) {
-            const tileW = textureGenerator.width / this.tileCountH;
-            const tileH = textureGenerator.height / this.tileCountV;
+            const tileW = (textureGenerator.width / this.tileCountH) | 0;
+            const tileH = (textureGenerator.height / this.tileCountV) | 0;
             let input: Int32Array;
             if (tileH <= 0) {
                 input = this.getMonochromeInput(textureGenerator, 0, 0);
@@ -58,8 +58,8 @@ export class TilingOperation extends TextureOperation {
         }
         const output = this.colourImageCache.get(line);
         if (this.colourImageCache.dirty) {
-            const tileW = textureGenerator.width / this.tileCountH;
-            const tileH = textureGenerator.height / this.tileCountV;
+            const tileW = (textureGenerator.width / this.tileCountH) | 0;
+            const tileH = (textureGenerator.height / this.tileCountV) | 0;
             let input: Int32Array[];
             if (tileH <= 0) {
                 input = this.getColourInput(textureGenerator, 0, 0);

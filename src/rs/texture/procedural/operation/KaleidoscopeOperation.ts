@@ -45,8 +45,8 @@ export class KaleidoscopeOperation extends TextureOperation {
             KaleidoscopeOperation.y0 = y;
             KaleidoscopeOperation.x0 = textureGenerator.width - x;
         }
-        KaleidoscopeOperation.x0 &= textureGenerator.pixelMaxIdx;
-        KaleidoscopeOperation.y0 &= textureGenerator.lineMaxIdx;
+        KaleidoscopeOperation.x0 &= textureGenerator.widthMask;
+        KaleidoscopeOperation.y0 &= textureGenerator.heightMask;
     }
 
     override getMonochromeOutput(textureGenerator: TextureGenerator, line: number): Int32Array {

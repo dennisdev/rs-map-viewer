@@ -16,7 +16,7 @@ import { LineNoiseOperation } from "./LineNoiseOperation";
 import { MirrorOperation } from "./MirrorOperation";
 import { MixerOperation } from "./MixerOperation";
 import { VoronoiNoiseOperation } from "./VoronoiNoiseOperation";
-import { Operation27 as SquareWaveformOperation } from "./SquareWaveformOperation";
+import { SquareWaveformOperation as SquareWaveformOperation } from "./SquareWaveformOperation";
 import { RangeOperation } from "./RangeOperation";
 import { EmbossOperation } from "./EmbossOperation";
 import { PerlinNoiseOperation } from "./PerlinNoiseOperation";
@@ -30,6 +30,7 @@ import { VerticalGradientOperation } from "./VerticalGradientOperation";
 import { WeaveOperation } from "./WeaveOperation";
 import { ColourStripOperation } from "./ColourStripOperation";
 import { KaleidoscopeOperation } from "./KaleidoscopeOperation";
+import { RasterizerOperation } from "./RasterizerOperation";
 
 export class TextureOperationFactory {
     static instantiate(id: number): TextureOperation {
@@ -82,6 +83,8 @@ export class TextureOperationFactory {
                 return new GrayScaleOperation();
             case 27:
                 return new SquareWaveformOperation();
+            case 29:
+                return new RasterizerOperation();
             case 30:
                 return new RangeOperation();
             case 32:

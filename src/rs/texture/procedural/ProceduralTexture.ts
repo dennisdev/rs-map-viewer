@@ -72,6 +72,9 @@ export class ProceduralTexture {
         flipV: boolean,
         brightness: number,
     ): Int32Array {
+        if (textureGenerator.debug) {
+            console.log("getPixelsRgb", this);
+        }
         for (const operation of this.operations) {
             operation.initCaches(textureGenerator, width, height);
         }
@@ -258,6 +261,10 @@ export class ProceduralTexture {
                     dstIdx += width - 1;
                 }
             }
+        }
+
+        if (textureGenerator.debug) {
+            console.log("getPixelsArgb", this);
         }
 
         for (const operation of this.operations) {
