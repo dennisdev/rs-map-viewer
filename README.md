@@ -27,3 +27,4 @@ $ yarn start
 -   [2009scape](https://gitlab.com/2009scape/2009scape) - Npc spawns
 -   [RuneStar](https://github.com/RuneStar/fonts) - Fonts
 -   [Blurite](https://github.com/blurite/pathfinder) - Some pathfinding stuff
+-   [RuneApps Model Viewer](https://github.com/skillbert/rsmv) - Some procedural texture stuff
