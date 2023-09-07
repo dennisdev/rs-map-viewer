@@ -568,7 +568,7 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
         const varManager = state.varManager;
 
         let textureIds = textureLoader.getTextureIds().filter((id) => textureLoader.isSd(id));
-        textureIds = textureIds.slice(0, 254);
+        textureIds = textureIds.slice(0, 2047);
         const textureIdIndexMap = new Map<number, number>();
         for (let i = 0; i < textureIds.length; i++) {
             textureIdIndexMap.set(textureIds[i], i);

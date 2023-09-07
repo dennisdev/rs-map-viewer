@@ -39,9 +39,9 @@ import { DrawRange, NULL_DRAW_RANGE } from "../DrawRange";
 import { BasTypeLoader } from "../../../rs/config/bastype/BasTypeLoader";
 import { isTouchDevice } from "../../../util/DeviceUtil";
 import { ProceduralTextureLoader } from "../../../rs/texture/ProceduralTextureLoader";
+import { createTextureArray } from "../../../picogl/PicoTexture";
 
-const MAX_TEXTURES = 256;
-const BYTES_PER_VEC4 = 16;
+const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
 
 const INTERACT_BUFFER_COUNT = 2;
@@ -82,7 +82,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
     varManager!: VarManager;
 
     textureArray?: Texture;
-    textureUniformBuffer?: UniformBuffer;
+    textureMaterials?: Texture;
 
     sceneUniformBuffer?: UniformBuffer;
 
@@ -251,46 +251,12 @@ export class SdRenderer extends Renderer<SdMapSquare> {
 
     initTextures(app: PicoApp, textureLoader: TextureLoader): void {
         let textureIds = textureLoader.getTextureIds().filter((id) => textureLoader.isSd(id));
-        textureIds = textureIds.slice(0, 254);
+        textureIds = textureIds.slice(0, MAX_TEXTURES - 1);
 
         this.initTextureArray(app, textureLoader, textureIds);
-        this.initTextureUniformBuffer(app, textureLoader, textureIds);
+        this.initMaterialsTexture(app, textureLoader, textureIds);
 
         console.log("init textures", textureIds, textureLoader.getTextureIds().length);
-
-        // this.debugTexture(textureLoader, 922);
-        // this.debugTexture(textureLoader, 925);
-        // this.debugTexture(textureLoader, 721);
-        if (
-            textureLoader instanceof ProceduralTextureLoader &&
-            textureLoader.getTextureIds().includes(922)
-        ) {
-            // console.log(textureLoader.materials.filter(mat => mat?.floatTexture))
-            // const textureId = 1;
-            // const texture = textureLoader.getTexture(textureId);
-            // if (texture) {
-            //     console.log("texture", texture, textureLoader.materials[textureId]);
-            // }
-            // for (const id of textureLoader.getTextureIds()) {
-            //     try {
-            //         const texture = textureLoader.getTexture(id);
-            //         if (!texture) {
-            //             continue;
-            //         }
-            //         const proceduralTexture = texture.proceduralTexture;
-            //         if (
-            //             proceduralTexture.operations.length < 8 && proceduralTexture.operations.find(op => op instanceof EmbossOperation) &&
-            //             proceduralTexture.textureDependencies.length === 0 &&
-            //             proceduralTexture.spriteDependencies.length === 0
-            //         ) {
-            //             console.log("small texture", id, proceduralTexture);
-            //         }
-            //     } catch (e) {
-            //         // console.error("Failed loading texture", id, e);
-            //         // break;
-            //     }
-            // }
-        }
     }
 
     initTextureArray(app: PicoApp, textureLoader: TextureLoader, textureIds: number[]): void {
@@ -322,7 +288,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             }
         }
 
-        this.textureArray = app.createTextureArray(
+        this.textureArray = createTextureArray(
+            app,
             new Uint8Array(pixels.buffer),
             TEXTURE_SIZE,
             TEXTURE_SIZE,
@@ -378,50 +345,34 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         }
     }
 
-    initTextureUniformBuffer(
-        app: PicoApp,
-        textureLoader: TextureLoader,
-        textureIds: number[],
-    ): void {
-        if (this.textureUniformBuffer) {
-            this.textureUniformBuffer.delete();
-            this.textureUniformBuffer = undefined;
+    initMaterialsTexture(app: PicoApp, textureLoader: TextureLoader, textureIds: number[]): void {
+        if (this.textureMaterials) {
+            this.textureMaterials.delete();
+            this.textureMaterials = undefined;
         }
 
-        // 2 bytes per texture, 8 textures per vec4
-        const vecCount = Math.ceil((MAX_TEXTURES * 2) / BYTES_PER_VEC4);
+        const textureCount = textureIds.length + 1;
 
-        this.textureUniformBuffer = app.createUniformBuffer(
-            new Array(vecCount).fill(PicoGL.UNSIGNED_INT_VEC4),
-        );
-
-        const textureUniformData = new Array<Int8Array>(vecCount);
-        for (let i = 0; i < vecCount; i++) {
-            textureUniformData[i] = new Int8Array(BYTES_PER_VEC4);
-        }
-
+        const data = new Int8Array(textureCount * 4);
         for (let i = 0; i < textureIds.length; i++) {
-            const textureId = textureIds[i];
-            const textureIndex = i + 1;
-
-            const index = Math.floor(textureIndex / 8);
-            const offset = (textureIndex % 8) * 2;
-
+            const id = textureIds[i];
             try {
-                const [u, v] = textureLoader.getAnimationUv(textureId);
+                const material = textureLoader.getMaterial(id);
 
-                const data = textureUniformData[index];
-                data[offset] = u;
-                data[offset + 1] = v;
+                const index = (i + 1) * 4;
+                data[index] = material.animU;
+                data[index + 1] = material.animV;
+                data[index + 2] = material.alphaCutOff * 255;
             } catch (e) {
-                console.error("Failed loading texture", textureId, e);
+                console.error("Failed loading texture", id, e);
             }
         }
 
-        for (let i = 0; i < vecCount; i++) {
-            this.textureUniformBuffer.set(i, new Int32Array(textureUniformData[i].buffer));
-        }
-        this.textureUniformBuffer.update();
+        this.textureMaterials = app.createTexture2D(data, textureCount, 1, {
+            minFilter: PicoGL.NEAREST,
+            magFilter: PicoGL.NEAREST,
+            internalFormat: PicoGL.RGBA8I,
+        });
     }
 
     override initCache(
@@ -640,7 +591,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             this.frameDrawCall.draw();
         }
 
-        if (this.textureArray && this.textureUniformBuffer) {
+        if (this.textureArray && this.textureMaterials) {
             const mapData = this.mapsToLoad.shift();
             if (mapData && this.isValidMapData(mapData)) {
                 this.loadMap(
@@ -649,7 +600,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
                     this.mainAlphaProgram,
                     this.npcProgram,
                     this.textureArray,
-                    this.textureUniformBuffer,
+                    this.textureMaterials,
                     this.sceneUniformBuffer,
                     mapData,
                     timeSec,
@@ -1227,8 +1178,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         const cameraJoystickEvent = inputManager.cameraJoystickEvent;
 
         if (positionJoystickEvent) {
-            const moveX = positionJoystickEvent.x || 0;
-            const moveY = positionJoystickEvent.y || 0;
+            const moveX = positionJoystickEvent.x ?? 0;
+            const moveY = positionJoystickEvent.y ?? 0;
 
             camera.move(
                 moveX * 32 * -deltaTimeSec,
@@ -1239,8 +1190,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         }
 
         if (cameraJoystickEvent) {
-            const moveX = cameraJoystickEvent.x || 0;
-            const moveY = cameraJoystickEvent.y || 0;
+            const moveX = cameraJoystickEvent.x ?? 0;
+            const moveY = cameraJoystickEvent.y ?? 0;
             camera.updatePitch(camera.pitch, deltaPitch * 1.5 * moveY);
             camera.updateYaw(camera.yaw, deltaYaw * 1.5 * moveX);
         }
@@ -1258,8 +1209,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         this.textureArray?.delete();
         this.textureArray = undefined;
 
-        this.textureUniformBuffer?.delete();
-        this.textureUniformBuffer = undefined;
+        this.textureMaterials?.delete();
+        this.textureMaterials = undefined;
 
         this.sceneUniformBuffer?.delete();
         this.sceneUniformBuffer = undefined;
@@ -1327,7 +1278,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         mainAlphaProgram: Program,
         npcProgram: Program,
         textureArray: Texture,
-        textureUniformBuf: UniformBuffer,
+        textureMaterials: Texture,
         sceneUniformBuffer: UniformBuffer,
         mapData: SdMapData,
         time: number,
@@ -1349,7 +1300,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
                 mainAlphaProgram,
                 npcProgram,
                 textureArray,
-                textureUniformBuf,
+                textureMaterials,
                 sceneUniformBuffer,
                 mapData,
                 time,

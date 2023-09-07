@@ -51,7 +51,7 @@ export class SdMapSquare {
         mainAlphaProgram: Program,
         npcProgram: Program,
         textureArray: Texture,
-        textureUniformBuf: UniformBuffer,
+        textureMaterials: Texture,
         sceneUniformBuffer: UniformBuffer,
         mapData: SdMapData,
         time: number,
@@ -129,12 +129,12 @@ export class SdMapSquare {
         ): DrawCallRange => {
             const drawCall = app
                 .createDrawCall(program, vertexArray)
-                .uniformBlock("TextureUniforms", textureUniformBuf)
                 .uniformBlock("SceneUniforms", sceneUniformBuffer)
                 .uniform("u_timeLoaded", time)
                 .uniform("u_mapPos", mapPos)
                 // .uniform("u_drawIdOffset", drawIdOffset)
                 .texture("u_textures", textureArray)
+                .texture("u_textureMaterials", textureMaterials)
                 .texture("u_heightMap", heightMapTexture)
                 // .texture("u_modelInfoTexture", modelInfoTexture)
                 .drawRanges(...drawRanges);

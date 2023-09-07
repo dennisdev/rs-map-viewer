@@ -23,7 +23,7 @@ uniform highp sampler2DArray u_textures;
 in vec4 v_color;
 in vec2 v_texCoord;
 flat in uint v_texId;
-flat in float v_texAnimated;
+flat in float v_alphaCutOff;
 in float v_fogAmount;
 flat in vec4 v_interactId;
 
@@ -35,7 +35,7 @@ void main() {
     fragColor = pow(textureColor, vec4(vec3(u_brightness), 1.0)) * 
         vec4(round(v_color.rgb * u_colorBanding) / u_colorBanding, v_color.a);
 #ifdef DISCARD_ALPHA
-    if ((v_texId == 0u && fragColor.a < 0.01) || (v_texAnimated < 0.5 && textureColor.a < 0.5) || (v_texAnimated > 0.5 && textureColor.a < 0.1)) {
+    if ((v_texId == 0u && fragColor.a < 0.01) || (textureColor.a < v_alphaCutOff)) {
         discard;
     }
 #endif

@@ -1,6 +1,7 @@
 import { CacheIndex } from "../cache/CacheIndex";
 import { ByteBuffer } from "../io/ByteBuffer";
 import { TextureLoader } from "./TextureLoader";
+import { TextureMaterial } from "./TextureMaterial";
 import { ProceduralTexture } from "./procedural/ProceduralTexture";
 import { TextureGenerator } from "./procedural/TextureGenerator";
 
@@ -88,6 +89,39 @@ export class OldProceduralTextureLoader implements TextureLoader {
         const speed = def.animSpeed;
 
         return [u * speed, v * speed];
+    }
+
+    getMaterial(id: number): TextureMaterial {
+        const def = this.definitions.get(id);
+        if (!def) {
+            return {
+                animU: 0,
+                animV: 0,
+                alphaCutOff: 0,
+            };
+        }
+
+        let u = 0;
+        let v = 0;
+        if (def.animDirU !== 0) {
+            u = def.animDirU === 1 ? 1 : -1;
+        }
+        if (def.animDirV !== 0) {
+            v = def.animDirV === 1 ? 1 : -1;
+        }
+
+        const speed = def.animSpeed;
+
+        let alphaCutOff = 0.5;
+        if (u !== 0 || v !== 0) {
+            alphaCutOff = 0.1;
+        }
+
+        return {
+            animU: u * speed,
+            animV: v * speed,
+            alphaCutOff,
+        };
     }
 
     getPixelsRgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {

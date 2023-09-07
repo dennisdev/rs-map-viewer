@@ -4,6 +4,7 @@ import { IndexedSprite } from "../sprite/IndexedSprite";
 import { SpriteLoader } from "../sprite/SpriteLoader";
 import { brightenRgb } from "../util/ColorUtil";
 import { TextureLoader } from "./TextureLoader";
+import { TextureMaterial } from "./TextureMaterial";
 
 export class SpriteTextureLoader implements TextureLoader {
     static ANIM_DIRECTION_UV = [
@@ -89,6 +90,36 @@ export class SpriteTextureLoader implements TextureLoader {
             this.getPixelsRgb(id, 128, false, 1.0);
         }
         return this.transparentTextureMap.get(id) ?? false;
+    }
+
+    getMaterial(id: number): TextureMaterial {
+        const def = this.definitions.get(id);
+        if (!def) {
+            return {
+                animU: 0,
+                animV: 0,
+                alphaCutOff: 0.1,
+            };
+        }
+
+        const direction = def.animationDirection;
+        const speed = def.animationSpeed;
+
+        const uv = SpriteTextureLoader.ANIM_DIRECTION_UV[direction];
+
+        const animU = uv[0] * speed;
+        const animV = uv[1] * speed;
+
+        let alphaCutOff = 0.5;
+        if (animU !== 0 || animV !== 0) {
+            alphaCutOff = 0.1;
+        }
+
+        return {
+            animU,
+            animV,
+            alphaCutOff,
+        };
     }
 
     loadTextureSprite(id: number): IndexedSprite {

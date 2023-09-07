@@ -2,6 +2,7 @@ import { CacheIndex } from "../cache/CacheIndex";
 import { ByteBuffer } from "../io/ByteBuffer";
 import { TextureCombineMode } from "./TextureCombineMode";
 import { TextureLoader } from "./TextureLoader";
+import { TextureMaterial } from "./TextureMaterial";
 import { ProceduralTexture } from "./procedural/ProceduralTexture";
 import { TextureGenerator } from "./procedural/TextureGenerator";
 
@@ -25,12 +26,12 @@ export class ProceduralTextureLoader implements TextureLoader {
         }
         const buffer = materialsFile.getDataAsBuffer();
         const count = buffer.readUnsignedShort();
-        const materials: (TextureMaterial | undefined)[] = new Array(count);
+        const materials: (ProcTextureMaterial | undefined)[] = new Array(count);
         for (let i = 0; i < count; i++) {
             // 1
             const exists = buffer.readUnsignedByte() === 1;
             if (exists) {
-                materials[i] = new TextureMaterial(i);
+                materials[i] = new ProcTextureMaterial(i);
             }
         }
         for (let i = 0; i < count; i++) {
@@ -145,6 +146,18 @@ export class ProceduralTextureLoader implements TextureLoader {
                     material.combineMode = buffer.readUnsignedByte();
                 }
             }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.shaderParam2 = buffer.readInt();
+                }
+            }
+            for (let i = 0; i < count; i++) {
+                const material = materials[i];
+                if (material) {
+                    material.alphaMode = buffer.readUnsignedByte();
+                }
+            }
         }
 
         const textureIds = Array.from(textureIndex.getArchiveIds());
@@ -163,7 +176,7 @@ export class ProceduralTextureLoader implements TextureLoader {
         readonly textureIndex: CacheIndex,
         readonly spriteIndex: CacheIndex,
         readonly textureIds: number[],
-        readonly materials: (TextureMaterial | undefined)[],
+        readonly materials: (ProcTextureMaterial | undefined)[],
     ) {
         this.textureGenerator = new TextureGenerator(spriteIndex, this);
     }
@@ -206,7 +219,7 @@ export class ProceduralTextureLoader implements TextureLoader {
                 if (!this.getTexture(id)) {
                     return false;
                 }
-                this.getPixelsRgb(id, 128, false, 1.0);
+                this.getPixelsArgb(id, 128, false, 1.0);
             } catch (e) {
                 console.error("Error loading texture", e);
                 this.transparentTextureMap.set(id, false);
@@ -226,6 +239,29 @@ export class ProceduralTextureLoader implements TextureLoader {
         }
 
         return [texture.animU, texture.animV];
+    }
+
+    getMaterial(id: number): TextureMaterial {
+        const texture = this.getTexture(id);
+        const material = this.materials[id];
+        if (!texture || !material) {
+            return {
+                animU: 0,
+                animV: 0,
+                alphaCutOff: 0.1,
+            };
+        }
+
+        let alphaCutOff = 0.9;
+        if (texture.animU !== 0 || texture.animV !== 0 || material.alphaMode === 2) {
+            alphaCutOff = 0.01;
+        }
+
+        return {
+            animU: texture.animU,
+            animV: texture.animV,
+            alphaCutOff,
+        };
     }
 
     getPixelsRgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
@@ -272,7 +308,7 @@ export class ProceduralTextureLoader implements TextureLoader {
     }
 }
 
-class TextureMaterial {
+class ProcTextureMaterial {
     valid: boolean = false;
     alpha: boolean = false;
     small: boolean = false;
@@ -292,6 +328,10 @@ class TextureMaterial {
     repeatT: boolean = false;
     floatTexture: boolean = false;
     combineMode: number = 0;
+
+    shaderParam2: number = 0;
+
+    alphaMode: number = 0;
 
     constructor(readonly id: number) {}
 }

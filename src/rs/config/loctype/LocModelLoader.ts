@@ -9,6 +9,10 @@ import { LocModelType } from "./LocModelType";
 import { LocType } from "./LocType";
 import { LocTypeLoader } from "./LocTypeLoader";
 import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
+import {
+    getModelFaces,
+    isModelFaceTransparent,
+} from "../../../mapviewer/renderer/sd/buffer/SceneBuffer";
 
 export type ContourGroundInfo = {
     type: number;
@@ -214,10 +218,6 @@ export class LocModelLoader {
                 modelData.rotate(256);
             }
 
-            // if (locType.id === 34014) {
-            //     console.error("grave", modelData);
-            // }
-
             if (!locType.mergeNormals) {
                 model = modelData.light(
                     this.textureLoader,
@@ -253,10 +253,6 @@ export class LocModelLoader {
                 contourGroundInfo.entityZ,
             );
         }
-
-        // if (locType.id === 34014) {
-        //     console.error("grave", model);
-        // }
 
         return model;
     }

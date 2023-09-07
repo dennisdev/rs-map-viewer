@@ -30,9 +30,7 @@ precision highp float;
 
 layout(std140, column_major) uniform;
 
-uniform TextureUniforms {
-    uvec4 textureData[32];
-};
+uniform highp isampler2D u_textureMaterials;
 
 // Per frame
 uniform SceneUniforms {
@@ -62,7 +60,7 @@ layout(location = 0) in uvec3 a_vertex;
 out vec4 v_color;
 out vec2 v_texCoord;
 flat out uint v_texId;
-flat out float v_texAnimated;
+flat out float v_alphaCutOff;
 out float v_fogAmount;
 flat out vec4 v_interactId;
 
@@ -75,17 +73,21 @@ int toSignedByte(uint byteValue) {
     return int(byteValue << 24) >> 24;
 }
 
-vec2 getTextureAnimation(uint textureId) {
-    uint index = textureId / 8u;
-    uint vecIndex = (textureId % 8u) / 2u;
-    uint intIndex = (textureId % 8u) % 2u;
+struct Material {
+    int animU;
+    int animV;
+    float alphaCutOff;
+};
 
-    uint intData = textureData[index][vecIndex];
+Material getMaterial(uint textureId) {
+    ivec4 data = texelFetch(u_textureMaterials, ivec2(textureId, 0), 0);
 
-    uint data = intData >> (intIndex * 16u) & 0xFFFFu;
-    int moveU = toSignedByte(data & 0xFFu);
-    int moveV = toSignedByte(data >> 8u);
-    return vec2(moveU, moveV);
+    Material material;
+    material.animU = data.r;
+    material.animV = data.g;
+    material.alphaCutOff = float(data.b & 0xFF) / 255.0;
+
+    return material;
 }
 
 float getHeightInterp(vec2 pos, uint plane) {
@@ -158,10 +160,12 @@ void main() {
     
     v_color = vertex.color;
 
-    vec2 textureAnimation = getTextureAnimation(vertex.textureId);
+    Material material = getMaterial(vertex.textureId);
+    vec2 textureAnimation = vec2(material.animU, material.animV);
+
     v_texCoord = vertex.texCoord + (u_currentTime / 0.02) * textureAnimation * TEXTURE_ANIM_UNIT;
     v_texId = vertex.textureId;
-    v_texAnimated = or(when_neq(textureAnimation.x, 0.0), when_neq(textureAnimation.y, 0.0));
+    v_alphaCutOff = material.alphaCutOff;
 
     NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_npcDataOffset);
 

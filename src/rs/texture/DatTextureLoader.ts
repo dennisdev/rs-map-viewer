@@ -3,6 +3,7 @@ import { IndexedSprite } from "../sprite/IndexedSprite";
 import { SpriteLoader } from "../sprite/SpriteLoader";
 import { brightenRgb, rgbToHsl } from "../util/ColorUtil";
 import { TextureLoader } from "./TextureLoader";
+import { TextureMaterial } from "./TextureMaterial";
 
 export class DatTextureLoader implements TextureLoader {
     static WATER_DROPLETS_TEXTURE_ID = 17;
@@ -93,6 +94,21 @@ export class DatTextureLoader implements TextureLoader {
             return [0, -1];
         }
         return [0, 0];
+    }
+
+    getMaterial(id: number): TextureMaterial {
+        let animV = 0;
+        let alphaCutOff = 0.5;
+        if (this.animatedTextureIds.has(id)) {
+            animV = -1;
+            alphaCutOff = 0.1;
+        }
+
+        return {
+            animU: 0,
+            animV,
+            alphaCutOff,
+        };
     }
 
     getPixelsRgb(id: number, size: number, flipH: boolean, brightness: number): Int32Array {
