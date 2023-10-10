@@ -21,17 +21,17 @@ function smoothedNoise1(x: number, y: number): number {
 }
 
 function interpolateNoise(x: number, y: number, freq: number): number {
-    const i_23_ = (x / freq) | 0;
-    const i_24_ = x & (freq - 1);
-    const i_25_ = (y / freq) | 0;
-    const i_26_ = y & (freq - 1);
-    const i_27_ = smoothedNoise1(i_23_, i_25_);
-    const i_28_ = smoothedNoise1(i_23_ + 1, i_25_);
-    const i_29_ = smoothedNoise1(i_23_, i_25_ + 1);
-    const i_30_ = smoothedNoise1(i_23_ + 1, i_25_ + 1);
-    const i_31_ = interpolate(i_27_, i_28_, i_24_, freq);
-    const i_32_ = interpolate(i_29_, i_30_, i_24_, freq);
-    return interpolate(i_31_, i_32_, i_26_, freq);
+    const intX = (x / freq) | 0;
+    const fracX = x & (freq - 1);
+    const intY = (y / freq) | 0;
+    const fracY = y & (freq - 1);
+    const v1 = smoothedNoise1(intX, intY);
+    const v2 = smoothedNoise1(intX + 1, intY);
+    const v3 = smoothedNoise1(intX, intY + 1);
+    const v4 = smoothedNoise1(intX + 1, intY + 1);
+    const i1 = interpolate(v1, v2, fracX, freq);
+    const i2 = interpolate(v3, v4, fracX, freq);
+    return interpolate(i1, i2, fracY, freq);
 }
 
 export function generateHeight(x: number, y: number) {
