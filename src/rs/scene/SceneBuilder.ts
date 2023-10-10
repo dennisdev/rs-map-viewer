@@ -163,7 +163,7 @@ export class SceneBuilder {
                         }
                     } else {
                         scene.tileHeights[level][tx][ty] =
-                            scene.tileHeights[level - 1][tx][ty] - 240;
+                            scene.tileHeights[level - 1][tx][ty] - Scene.UNITS_LEVEL_HEIGHT;
                     }
                 }
             }
@@ -293,9 +293,9 @@ export class SceneBuilder {
                     if (level === 0) {
                         const worldX = baseX + x + 932731;
                         const worldY = baseY + y + 556238;
-                        scene.tileHeights[level][x][y] = -generateHeight(worldX, worldY) * 8;
+                        scene.tileHeights[level][x][y] = -generateHeight(worldX, worldY) * Scene.UNITS_TILE_HEIGHT_BASIS;
                     } else {
-                        scene.tileHeights[level][x][y] = scene.tileHeights[level - 1][x][y] - 240;
+                        scene.tileHeights[level][x][y] = scene.tileHeights[level - 1][x][y] - Scene.UNITS_LEVEL_HEIGHT;
                     }
                     break;
                 }
@@ -307,10 +307,10 @@ export class SceneBuilder {
                     }
 
                     if (level === 0) {
-                        scene.tileHeights[0][x][y] = -height * 8;
+                        scene.tileHeights[0][x][y] = -height * Scene.UNITS_TILE_HEIGHT_BASIS;
                     } else {
                         scene.tileHeights[level][x][y] =
-                            scene.tileHeights[level - 1][x][y] - height * 8;
+                            scene.tileHeights[level - 1][x][y] - height * Scene.UNITS_TILE_HEIGHT_BASIS;
                     }
                     break;
                 }

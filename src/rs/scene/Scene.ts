@@ -14,6 +14,10 @@ export class Scene {
     static readonly MAX_LEVELS = 4;
     static readonly MAP_SQUARE_SIZE = 64;
 
+    static readonly UNITS_LEVEL_HEIGHT = 240;
+    static readonly UNITS_TILE_HEIGHT_BASIS = 8;
+
+
     // Tiles
     tiles: SceneTile[][][];
     collisionMaps: CollisionMap[];
