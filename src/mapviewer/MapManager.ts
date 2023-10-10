@@ -28,8 +28,8 @@ export class MapManager<T extends MapSquare> {
     static readonly MAX_MAP_Y = 200;
 
     static mapIntersectBox: number[][] = [
-        [0, (-240 * 10) / 128, 0],
-        [0, (240 * 3) / 128, 0],
+        [0, (-Scene.UNITS_LEVEL_HEIGHT * 10) / 128, 0],
+        [0, (Scene.UNITS_LEVEL_HEIGHT * 3) / 128, 0],
     ];
 
     invalidMapIds: Set<number> = new Set();
