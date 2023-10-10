@@ -326,37 +326,71 @@ export class Scene {
         }
     }
 
-    calculateTileLights(level: number): Int32Array[] {
+    calculateTileLights(level: number, ignoreTileLightOcclusion: boolean = false): Int32Array[] {
         const lights: Int32Array[] = new Array(this.sizeX);
         for (let i = 0; i < this.sizeX; i++) {
             lights[i] = new Int32Array(this.sizeY);
         }
 
-        // LIGHT_X * LIGHT_X + LIGHT_Y * LIGHT_Y + LIGHT_Z * LIGHT_Z
-        const lightMagnitude = Math.sqrt(5100.0) | 0;
-        const lightIntensity = (lightMagnitude * 768) >> 8;
+        const LIGHT_DIR_X = -50;
+        const LIGHT_DIR_Y = -10;
+        const LIGHT_DIR_Z = -50;
+        const LIGHT_INTENSITY_BASE = 96;
+        const LIGHT_INTENSITY_FACTOR = 768;
+        const HEIGHT_SCALE = 65536;
+
+        const lightMagnitude =
+            Math.sqrt(LIGHT_DIR_X * LIGHT_DIR_X + LIGHT_DIR_Y * LIGHT_DIR_Y + LIGHT_DIR_Z * LIGHT_DIR_Z) | 0;
+        const lightIntensity = (lightMagnitude * LIGHT_INTENSITY_FACTOR) >> 8;
 
         for (let x = 1; x < this.sizeX - 1; x++) {
             for (let y = 1; y < this.sizeY - 1; y++) {
+                // First we need to calculate the normals for each tile.
+                // This is typically by doing a cross product on the tangent vectors which can be derived from
+                // the differences in height between adjacent tiles.
+                // The code below seems to be calculating the normals directly by skipping the cross product.
+
                 const heightDeltaX =
                     this.tileHeights[level][x + 1][y] - this.tileHeights[level][x - 1][y];
                 const heightDeltaY =
                     this.tileHeights[level][x][y + 1] - this.tileHeights[level][x][y - 1];
-                const sqrtHeightDelta =
-                    Math.sqrt(heightDeltaY * heightDeltaY + heightDeltaX * heightDeltaX + 65536) |
-                    0;
-                const lightX = ((heightDeltaX << 8) / sqrtHeightDelta) | 0;
-                const lightY = (65536 / sqrtHeightDelta) | 0;
-                const lightZ = ((heightDeltaY << 8) / sqrtHeightDelta) | 0;
-                const sunLight =
-                    ((lightX * -50 + lightY * -10 + lightZ * -50) / lightIntensity + 96) | 0;
 
+                const tileNormalLength =
+                    Math.sqrt(heightDeltaY * heightDeltaY + heightDeltaX * heightDeltaX + HEIGHT_SCALE) |
+                    0;
+
+                const normalizedTileNormalX = ((heightDeltaX << 8) / tileNormalLength) | 0;
+                const normalizedTileNormalY = (HEIGHT_SCALE / tileNormalLength) | 0;
+                const normalizedTileNormalZ = ((heightDeltaY << 8) / tileNormalLength) | 0;
+
+                // Now we calculate the light contribution based on a simplified Phong model, specifically
+                // we ignore the material coefficients and there are no specular contributions.
+
+                // For reference, this is the standard Phong model:
+                //  I = Ia * Ka + Id * Kd * (N dot L)
+                //  I: Total intensity of light at a point on the surface.
+                //  Ia: Intensity of ambient light in the scene (constant and uniform).
+                //  Ka: Ambient reflection coefficient of the material.
+                //  Id: Intensity of the directional (diffuse) light source.
+                //  Kd: Diffuse reflection coefficient of the material.
+                //  N: Normalized surface normal vector at the point.
+                //  L: Normalized direction vector from the point to the light source.
+                //  (N dot L): Dot product between the surface normal vector and the light direction vector.
+
+                const dot = (normalizedTileNormalX * LIGHT_DIR_X + normalizedTileNormalY * LIGHT_DIR_Y +
+                    normalizedTileNormalZ * LIGHT_DIR_Z);
+                const sunLight = (dot / lightIntensity + LIGHT_INTENSITY_BASE) | 0;
+
+                // Now that we have the computed light contribution, take light occlusion from other objects
+                // into account. These tile light occlusions are computed dinamically based on walls, roofs
+                // and floors from neighbour tiles.
                 const lightOcclusion =
-                    (this.tileLightOcclusions[level][x - 1][y] >> 2) +
-                    (this.tileLightOcclusions[level][x][y - 1] >> 2) +
-                    (this.tileLightOcclusions[level][x + 1][y] >> 3) +
-                    (this.tileLightOcclusions[level][x][y + 1] >> 3) +
-                    (this.tileLightOcclusions[level][x][y] >> 1);
+                    ignoreTileLightOcclusion ? 0 :
+                        (this.tileLightOcclusions[level][x - 1][y] >> 2) +
+                        (this.tileLightOcclusions[level][x][y - 1] >> 2) +
+                        (this.tileLightOcclusions[level][x + 1][y] >> 3) +
+                        (this.tileLightOcclusions[level][x][y + 1] >> 3) +
+                        (this.tileLightOcclusions[level][x][y] >> 1);
 
                 lights[x][y] = sunLight - lightOcclusion;
             }
