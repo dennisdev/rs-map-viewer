@@ -18,9 +18,13 @@ export const BIT_MASKS = initBitMasks();
 export const SINE = new Int32Array(2048);
 export const COSINE = new Int32Array(2048);
 
+const CIRCULAR_ANGLE = 2048;
+const ANGULAR_RATIO = 360.0 / CIRCULAR_ANGLE;
+const ANGULAR_RATIO_RADIANS = ANGULAR_RATIO * DEGREES_TO_RADIANS;
+
 for (let i = 0; i < 2048; i++) {
-    SINE[i] = (65536.0 * Math.sin(i * 0.0030679615)) | 0;
-    COSINE[i] = (65536.0 * Math.cos(i * 0.0030679615)) | 0;
+    SINE[i] = (65536.0 * Math.sin(i * ANGULAR_RATIO_RADIANS)) | 0;
+    COSINE[i] = (65536.0 * Math.cos(i * ANGULAR_RATIO_RADIANS)) | 0;
 }
 
 export const SINE_LARGE = new Int32Array(16384);
