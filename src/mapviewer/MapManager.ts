@@ -153,6 +153,7 @@ export class MapManager<T extends MapSquare> {
         const cameraX = camera.getPosX();
         const cameraZ = camera.getPosZ();
 
+        // Calculate which map square id to start and end on based on camera location and render distance (in tiles).
         const mapStartX = Math.floor((cameraX - renderDistance) / Scene.MAP_SQUARE_SIZE);
         const mapStartY = Math.floor((cameraZ - renderDistance) / Scene.MAP_SQUARE_SIZE);
 
@@ -182,6 +183,9 @@ export class MapManager<T extends MapSquare> {
                 }
             }
 
+            // Calculate which map squares to unload based on the unload distance and remove them.
+            // Unload distance is the distance in number of map squares.
+
             for (const map of this.mapSquares.values()) {
                 const { mapX, mapY } = map;
                 if (
@@ -195,6 +199,7 @@ export class MapManager<T extends MapSquare> {
             }
         }
 
+        // Sort the maps to render based on a front to back distance.
         if (renderBoundsChanged || camera.updatedPosition) {
             this.renderDistMapIds.length = this.renderDistMapCount;
             // sort front to back
@@ -229,6 +234,7 @@ export class MapManager<T extends MapSquare> {
             this.visibleMaps.length -= 1;
         }
 
+        // Update the render bounds based on the map squares we are rendering.
         this.renderBounds[0] = mapStartX;
         this.renderBounds[1] = mapStartY;
         this.renderBounds[2] = mapEndX;
