@@ -163,6 +163,7 @@ export class CacheIndexDat2 extends CacheStoreIndexSync {
             const table = decodeTable(data);
             return new CacheIndexDat2(id, table, store);
         } catch (e) {
+            console.error(data, e);
             throw new Error("Failed to decode index: " + id);
         }
     }

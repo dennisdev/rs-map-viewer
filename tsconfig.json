@@ -1,4 +1,11 @@
 {
+  "ts-node": {
+    "esm": true,
+    "files": true,
+    "compilerOptions": {
+      "module": "nodenext",
+    }
+  },
   "compilerOptions": {
     "target": "ES2020",
     "lib": [
@@ -22,6 +29,6 @@
     "jsx": "react-jsx"
   },
   "include": [
-    "src"
+    "src", "scripts"
   ]
 }

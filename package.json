@@ -41,7 +41,8 @@
     "test": "craco test",
     "lint": "prettier --write \"./**/*.{js,ts,jsx,tsx,css,md}\"",
     "prepare": "husky install",
-    "download-caches": "node scripts/download-caches.js"
+    "download-caches": "node scripts/download-caches.js",
+    "export-textures": "npx ts-node scripts/cache/export-textures.ts"
   },
   "eslintConfig": {
     "extends": [
@@ -82,7 +83,9 @@
     "lint-staged": "^13.2.3",
     "path": "^0.12.7",
     "prettier": "^3.0.0",
+    "sharp": "^0.32.6",
     "threads-plugin": "^1.4.0",
+    "ts-node": "^10.9.1",
     "ts-shader-loader": "^2.0.2"
   }
 }

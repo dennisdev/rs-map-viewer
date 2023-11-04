@@ -33,6 +33,8 @@ module.exports = {
                 fs: false,
             };
 
+            webpackConfig.resolve.extensions = [".web.js", ...webpackConfig.resolve.extensions];
+
             webpackConfig.optimization.minimizer.push(new JsonMinimizerPlugin());
 
             return webpackConfig;
