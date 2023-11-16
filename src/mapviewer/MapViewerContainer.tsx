@@ -25,7 +25,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
 
     const [hudVisible, setHudVisible] = useState(mapViewer.hudVisible);
     const [fps, setFps] = useState(0);
-    const [compassDegrees, setCompassDegrees] = useState(mapViewer.camera.getYaw() * RS_TO_DEGREES);
+    const [cameraYaw, setCameraYaw] = useState(mapViewer.camera.getYaw());
     const [isWorldMapOpen, setWorldMapOpen] = useState<boolean>(false);
 
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(undefined);
@@ -42,7 +42,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
         setHudVisible(mapViewer.hudVisible);
         if (mapViewer.hudVisible) {
             setFps(Math.round(mapViewer.stats.frameTimeFps));
-            setCompassDegrees(mapViewer.camera.getYaw() * RS_TO_DEGREES);
+            setCameraYaw(mapViewer.camera.getYaw());
         }
 
         if (mapViewer.menuEntries.length > 0 && mapViewer.menuX !== -1 && mapViewer.menuY !== -1) {
@@ -135,7 +135,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
                 <span>
                     <div className="hud left-top">
                         <MinimapContainer
-                            yawDegrees={compassDegrees}
+                            yawDegrees={(2047 - cameraYaw) * RS_TO_DEGREES}
                             onCompassClick={resetCameraYaw}
                             onWorldMapClick={openWorldMap}
                             getPosition={getMapPosition}
