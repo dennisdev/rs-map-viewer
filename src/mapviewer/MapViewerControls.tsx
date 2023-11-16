@@ -33,6 +33,7 @@ export const MapViewerControls = memo(function MapViewerControls({
     );
 
     const [isExportingSprites, setExportingSprites] = useState(false);
+    const [isExportingTextures, setExportingTextures] = useState(false);
 
     const positionControls = isTouchDevice
         ? "Left joystick, Drag up and down."
@@ -374,12 +375,37 @@ export const MapViewerControls = memo(function MapViewerControls({
                     },
                     { disabled: isExportingSprites },
                 ),
+                "Export Textures": button(
+                    () => {
+                        if (isExportingTextures) {
+                            return;
+                        }
+                        setExportingTextures(true);
+                        mapViewer.workerPool
+                            .exportTextures()
+                            .then((zipBlob) => {
+                                FileSaver.saveAs(
+                                    zipBlob,
+                                    `textures_${mapViewer.loadedCache.info.name}.zip`,
+                                );
+                            })
+                            .finally(() => {
+                                setExportingTextures(false);
+                            });
+                    },
+                    { disabled: isExportingTextures },
+                ),
             },
             { collapsed: true },
         ),
     });
 
-    useControls(generateControls, [projectionType, pointsControls, isExportingSprites]);
+    useControls(generateControls, [
+        projectionType,
+        pointsControls,
+        isExportingSprites,
+        isExportingTextures,
+    ]);
 
     return (
         <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} hidden={hidden} />

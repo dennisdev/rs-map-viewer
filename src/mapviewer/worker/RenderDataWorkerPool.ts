@@ -66,6 +66,10 @@ export class RenderDataWorkerPool {
         return this.pool.queue((w) => w.exportSpritesToZip());
     }
 
+    exportTextures(): QueuedTask<RenderDataWorkerThread, Blob> {
+        return this.pool.queue((w) => w.exportTexturesToZip());
+    }
+
     terminate(): Promise<void> {
         return this.pool.terminate();
     }

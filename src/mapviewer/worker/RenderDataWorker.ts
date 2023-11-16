@@ -267,6 +267,48 @@ const worker = {
 
         return zip.generateAsync({ type: "blob" });
     },
+    async exportTexturesToZip(): Promise<Blob> {
+        const workerState = await workerStatePromise;
+        if (!workerState) {
+            throw new Error("Worker not initialized");
+        }
+
+        const zip = new JSZip();
+
+        const textureLoader = workerState.textureLoader;
+
+        const textureSize = 128;
+
+        for (const id of textureLoader.getTextureIds()) {
+            try {
+                const pixels = textureLoader.getPixelsArgb(id, textureSize, true, 1.0);
+
+                const canvas = new OffscreenCanvas(textureSize, textureSize);
+                const ctx = canvas.getContext("2d")!;
+
+                const imageData = ctx.createImageData(textureSize, textureSize);
+
+                const rgbaPixels = imageData.data;
+                for (let i = 0; i < pixels.length; i++) {
+                    rgbaPixels[i * 4 + 0] = (pixels[i] >> 16) & 0xff; // R
+                    rgbaPixels[i * 4 + 1] = (pixels[i] >> 8) & 0xff; // G
+                    rgbaPixels[i * 4 + 2] = pixels[i] & 0xff; // B
+                    rgbaPixels[i * 4 + 3] = (pixels[i] >> 24) & 0xff; // A
+                }
+
+                ctx.putImageData(imageData, 0, 0);
+
+                const dataUrl = await offscreenCanvasToPng(canvas);
+
+                const pngData = atob(dataUrl.split(",")[1]);
+                zip.file(id + ".png", pngData, { binary: true });
+            } catch (e) {
+                console.error("Failed to export texture", id, e);
+            }
+        }
+
+        return zip.generateAsync({ type: "blob" });
+    },
 };
 
 async function offscreenCanvasToPng(canvas: OffscreenCanvas): Promise<string> {
