@@ -147,6 +147,27 @@ export class IndexedSprite {
         return dst;
     }
 
+    getCanvas(): OffscreenCanvas {
+        const canvas = new OffscreenCanvas(this.width, this.height);
+
+        const ctx = canvas.getContext("2d")!;
+        const imageData = ctx.createImageData(this.width, this.height);
+
+        for (let i = 0; i < this.pixels.length; i++) {
+            const rgb = this.palette[this.pixels[i] & 0xff];
+            if (rgb !== 0) {
+                imageData.data[i * 4] = (rgb >> 16) & 0xff;
+                imageData.data[i * 4 + 1] = (rgb >> 8) & 0xff;
+                imageData.data[i * 4 + 2] = rgb & 0xff;
+                imageData.data[i * 4 + 3] = 255;
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        return canvas;
+    }
+
     drawAt(x: number, y: number): void {
         x += this.xOffset;
         y += this.yOffset;

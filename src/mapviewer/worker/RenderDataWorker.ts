@@ -29,6 +29,11 @@ import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
 import { BasTypeLoader } from "../../rs/config/bastype/BasTypeLoader";
 import { NpcTypeLoader } from "../../rs/config/npctype/NpcTypeLoader";
 import { SkeletalSeqLoader } from "../../rs/model/skeletal/SkeletalSeqLoader";
+import JSZip from "jszip";
+import { IndexType } from "../../rs/cache/IndexType";
+import { SpriteLoader } from "../../rs/sprite/SpriteLoader";
+import { IndexedSprite } from "../../rs/sprite/IndexedSprite";
+import { ConfigType } from "../../rs/cache/ConfigType";
 
 registerSerializer(renderDataLoaderSerializer);
 
@@ -244,7 +249,107 @@ const worker = {
             minimapBlob,
         };
     },
+    async exportSpritesToZip(): Promise<Blob> {
+        const workerState = await workerStatePromise;
+        if (!workerState) {
+            throw new Error("Worker not initialized");
+        }
+
+        const zip = new JSZip();
+
+        const cacheType = workerState.cache.type;
+
+        if (cacheType === "dat2") {
+            await exportSpritesToZip(workerState.cacheSystem, zip);
+        } else if (cacheType === "dat") {
+            await exportDatSpritesToZip(workerState.cacheSystem, zip);
+        }
+
+        return zip.generateAsync({ type: "blob" });
+    },
 };
+
+async function offscreenCanvasToPng(canvas: OffscreenCanvas): Promise<string> {
+    const blob = await canvas.convertToBlob({ type: "image/png" });
+
+    const reader = new FileReader();
+
+    const dataUrlPromise = new Promise<string>((resolve) => {
+        reader.onload = () => {
+            resolve(reader.result as string);
+        };
+    });
+
+    reader.readAsDataURL(blob);
+
+    return await dataUrlPromise;
+}
+
+async function addSpritesToZip(zip: JSZip, id: number, sprites: IndexedSprite[]) {
+    if (sprites.length > 1) {
+        zip = zip.folder(id.toString())!;
+    }
+    for (let i = 0; i < sprites.length; i++) {
+        const sprite = sprites[i];
+        sprite.normalize();
+
+        const canvas = sprite.getCanvas();
+        const dataUrl = await offscreenCanvasToPng(canvas);
+
+        let fileName = id + ".png";
+        if (sprites.length > 1) {
+            fileName = i + ".png";
+        }
+
+        const pngData = atob(dataUrl.split(",")[1]);
+        zip.file(fileName, pngData, { binary: true });
+    }
+}
+
+async function exportSpritesToZip(cacheSystem: CacheSystem, zip: JSZip): Promise<void> {
+    const spriteIndex = cacheSystem.getIndex(IndexType.DAT2.sprites);
+
+    const promises: Promise<any>[] = [];
+
+    for (const id of spriteIndex.getArchiveIds()) {
+        const sprites = SpriteLoader.loadIntoIndexedSprites(spriteIndex, id);
+        if (!sprites) {
+            continue;
+        }
+        promises.push(addSpritesToZip(zip, id, sprites));
+    }
+
+    await Promise.all(promises);
+}
+
+async function exportDatSpritesToZip(cacheSystem: CacheSystem, zip: JSZip): Promise<void> {
+    const configIndex = cacheSystem.getIndex(IndexType.DAT.configs);
+    const mediaArchive = configIndex.getArchive(ConfigType.DAT.media);
+
+    const indexDatId = mediaArchive.getFileId("index.dat");
+
+    const promises: Promise<any>[] = [];
+
+    for (let i = 0; i < mediaArchive.fileIds.length; i++) {
+        const fileId = mediaArchive.fileIds[i];
+        if (fileId === indexDatId) {
+            continue;
+        }
+
+        const sprites: IndexedSprite[] = [];
+        for (let i = 0; i < 256; i++) {
+            try {
+                const sprite = SpriteLoader.loadIndexedSpriteDatId(mediaArchive, fileId, i);
+                sprites.push(sprite);
+            } catch (e) {
+                break;
+            }
+        }
+        promises.push(addSpritesToZip(zip, fileId, sprites));
+    }
+
+    await Promise.all(promises);
+}
 
 export type RenderDataWorker = typeof worker;
 

@@ -100,10 +100,14 @@ export class SpriteLoader {
     }
 
     static loadIndexedSpriteDat(archive: Archive, name: string, offset: number): IndexedSprite {
-        const dataFile = archive.getFileNamed(name + ".dat");
+        return this.loadIndexedSpriteDatId(archive, archive.getFileId(name + ".dat"), offset);
+    }
+
+    static loadIndexedSpriteDatId(archive: Archive, id: number, offset: number): IndexedSprite {
+        const dataFile = archive.getFile(id);
         const indexFile = archive.getFileNamed("index.dat");
         if (!dataFile) {
-            throw new Error(name + ".dat not found");
+            throw new Error(id + " sprite not found");
         }
         if (!indexFile) {
             throw new Error("index.dat not found");

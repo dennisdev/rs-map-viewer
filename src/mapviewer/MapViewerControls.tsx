@@ -9,6 +9,7 @@ import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
 import { vec3 } from "gl-matrix";
 import { lerp, slerp } from "../util/MathUtil";
 import { isTouchDevice } from "../util/DeviceUtil";
+import FileSaver from "file-saver";
 
 interface ColorRgb {
     r: number;
@@ -30,6 +31,8 @@ export const MapViewerControls = memo(function MapViewerControls({
     const [projectionType, setProjectionType] = useState<ProjectionType>(
         mapViewer.camera.projectionType,
     );
+
+    const [isExportingSprites, setExportingSprites] = useState(false);
 
     const positionControls = isTouchDevice
         ? "Left joystick, Drag up and down."
@@ -341,9 +344,34 @@ export const MapViewerControls = memo(function MapViewerControls({
             },
             { collapsed: true },
         ),
+        Export: folder(
+            {
+                "Export Sprites": button(
+                    () => {
+                        if (isExportingSprites) {
+                            return;
+                        }
+                        setExportingSprites(true);
+                        mapViewer.workerPool
+                            .exportSprites()
+                            .then((zipBlob) => {
+                                FileSaver.saveAs(
+                                    zipBlob,
+                                    `sprites_${mapViewer.loadedCache.info.name}.zip`,
+                                );
+                            })
+                            .finally(() => {
+                                setExportingSprites(false);
+                            });
+                    },
+                    { disabled: isExportingSprites },
+                ),
+            },
+            { collapsed: true },
+        ),
     });
 
-    useControls(generateControls, [projectionType, pointsControls]);
+    useControls(generateControls, [projectionType, pointsControls, isExportingSprites]);
 
     return (
         <Leva titleBar={{ filter: false }} collapsed={true} hideCopyButton={true} hidden={hidden} />

@@ -62,6 +62,10 @@ export class RenderDataWorkerPool {
         return this.pool.queue((w) => w.loadMinimap(mapX, mapY, level));
     }
 
+    exportSprites(): QueuedTask<RenderDataWorkerThread, Blob> {
+        return this.pool.queue((w) => w.exportSpritesToZip());
+    }
+
     terminate(): Promise<void> {
         return this.pool.terminate();
     }
