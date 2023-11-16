@@ -140,7 +140,14 @@ export const MapViewerControls = memo(function MapViewerControls({
     }, [mapViewer, cameraPoints, animationDuration, isCameraRunning]);
 
     const generateControls = () => ({
-        Controls: folder(controlsSchema, { collapsed: true }),
+        Links: folder(
+            {
+                Github: button(() => {
+                    window.open("https://github.com/dennisdev/rs-map-viewer", "_blank");
+                }),
+            },
+            { collapsed: true },
+        ),
         Camera: folder(
             {
                 Projection: {
@@ -155,6 +162,7 @@ export const MapViewerControls = memo(function MapViewerControls({
                     },
                 },
                 ...createCameraControls(mapViewer),
+                Controls: folder(controlsSchema, { collapsed: true }),
             },
             { collapsed: false },
         ),
@@ -211,23 +219,6 @@ export const MapViewerControls = memo(function MapViewerControls({
                             //     replace: true,
                             // });
                         }
-                    },
-                },
-            },
-            { collapsed: true },
-        ),
-        Entity: folder(
-            {
-                Items: {
-                    value: mapViewer.loadObjs,
-                    onChange: (v) => {
-                        mapViewer.setLoadObjs(v);
-                    },
-                },
-                Npcs: {
-                    value: mapViewer.loadNpcs,
-                    onChange: (v) => {
-                        mapViewer.setLoadNpcs(v);
                     },
                 },
             },
@@ -305,6 +296,23 @@ export const MapViewerControls = memo(function MapViewerControls({
                             value: mapViewer.fxaaEnabled,
                             onChange: (v) => {
                                 mapViewer.setFxaa(v);
+                            },
+                        },
+                    },
+                    { collapsed: true },
+                ),
+                Entity: folder(
+                    {
+                        Items: {
+                            value: mapViewer.loadObjs,
+                            onChange: (v) => {
+                                mapViewer.setLoadObjs(v);
+                            },
+                        },
+                        Npcs: {
+                            value: mapViewer.loadNpcs,
+                            onChange: (v) => {
+                                mapViewer.setLoadNpcs(v);
                             },
                         },
                     },
