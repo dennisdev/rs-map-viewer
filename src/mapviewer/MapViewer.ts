@@ -21,6 +21,8 @@ import { isTouchDevice, isWallpaperEngine } from "../util/DeviceUtil";
 
 const DEFAULT_RENDER_DISTANCE = isWallpaperEngine ? 512 : 128;
 
+const CACHED_MAP_IMAGE_PREFIX = "/map-images/";
+
 export class MapViewer {
     inputManager: InputManager = new InputManager();
     camera: Camera = new Camera(3242, -26, 3202, -245, 1862);
@@ -87,6 +89,7 @@ export class MapViewer {
 
     constructor(
         readonly workerPool: RenderDataWorkerPool,
+        readonly mapImageCache: Cache,
         readonly cacheList: CacheList,
         readonly objSpawns: ObjSpawn[],
         public npcSpawns: NpcSpawn[],
@@ -95,6 +98,9 @@ export class MapViewer {
         console.log("MapViewer constructor");
         this.setRenderer(new SdRenderer(this));
         this.initCache(cache);
+        this.workerPool.loadCachedMapImages().then((mapImageUrls) => {
+            mapImageUrls.forEach((value, key) => this.mapImageUrls.set(key, value));
+        });
     }
 
     getSearchParams(): URLSearchParamsInit {
@@ -221,6 +227,10 @@ export class MapViewer {
         }
     };
 
+    static getCachedMapImageUrl(mapX: number, mapY: number): string {
+        return CACHED_MAP_IMAGE_PREFIX + `${mapX}_${mapY}.png`;
+    }
+
     async queueMinimapLoad(mapX: number, mapY: number) {
         const mapManager = this.renderer.mapManager;
         const mapId = getMapSquareId(mapX, mapY);
@@ -255,11 +265,23 @@ export class MapViewer {
         return this.mapImageUrls.get(mapId);
     }
 
-    setMapImageUrl(mapX: number, mapY: number, url: string): void {
+    setMapImageUrl(mapX: number, mapY: number, url: string, cache: boolean = true): void {
         const mapId = getMapSquareId(mapX, mapY);
         const old = this.mapImageUrls.get(mapId);
         if (old) {
             URL.revokeObjectURL(old);
+        }
+        if (cache) {
+            fetch(url).then((resp) => {
+                if (resp.ok) {
+                    const request = new Request(MapViewer.getCachedMapImageUrl(mapX, mapY), {
+                        headers: {
+                            "RS-Cache-Name": this.loadedCache.info.name,
+                        },
+                    });
+                    this.mapImageCache.put(request, resp);
+                }
+            });
         }
         this.mapImageUrls.set(mapId, url);
     }

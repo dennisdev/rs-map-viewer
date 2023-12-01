@@ -60,7 +60,16 @@ function MapViewerApp() {
                 fetchNpcSpawns(getNpcSpawnsUrl(cacheInfo)),
             ]);
 
-            const mapViewer = new MapViewer(workerPool, cacheList, objSpawns, npcSpawns, cache);
+            const mapImageCache = await caches.open("map-images");
+
+            const mapViewer = new MapViewer(
+                workerPool,
+                mapImageCache,
+                cacheList,
+                objSpawns,
+                npcSpawns,
+                cache,
+            );
             mapViewer.applySearchParams(searchParams);
             mapViewer.init();
             // mapViewer.initCache(cache);
