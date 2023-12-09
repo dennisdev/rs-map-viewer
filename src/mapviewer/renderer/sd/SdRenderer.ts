@@ -1268,7 +1268,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             mapData.cacheName === this.mapViewer.loadedCache.info.name &&
             mapData.maxLevel === this.mapViewer.maxLevel &&
             mapData.loadObjs === this.mapViewer.loadObjs &&
-            mapData.loadNpcs === this.mapViewer.loadNpcs
+            mapData.loadNpcs === this.mapViewer.loadNpcs &&
+            mapData.smoothTerrain === this.mapViewer.smoothTerrain
         );
     }
 
@@ -1320,6 +1321,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             maxLevel: this.mapViewer.maxLevel,
             loadObjs: this.mapViewer.loadObjs,
             loadNpcs: this.mapViewer.loadNpcs,
+            smoothTerrain: this.mapViewer.smoothTerrain,
             minimizeDrawCalls: !this.mapViewer.hasMultiDraw,
         });
 

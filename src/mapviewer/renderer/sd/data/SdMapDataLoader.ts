@@ -551,7 +551,15 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
 
     async load(
         state: WorkerState,
-        { mapX, mapY, maxLevel, loadObjs, loadNpcs, minimizeDrawCalls }: SdMapLoaderInput,
+        {
+            mapX,
+            mapY,
+            maxLevel,
+            loadObjs,
+            loadNpcs,
+            smoothTerrain,
+            minimizeDrawCalls,
+        }: SdMapLoaderInput,
     ): Promise<RenderDataResult<SdMapData | undefined>> {
         console.time(`load map ${mapX},${mapY}`);
         this.init();
@@ -574,14 +582,14 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
             textureIdIndexMap.set(textureIds[i], i);
         }
 
-        const borderSize = 5;
+        const borderSize = 6;
 
         const baseX = mapX * Scene.MAP_SQUARE_SIZE - borderSize;
         const baseY = mapY * Scene.MAP_SQUARE_SIZE - borderSize;
         const mapSize = Scene.MAP_SQUARE_SIZE + borderSize * 2;
 
         console.time(`build scene ${mapX},${mapY}`);
-        const scene = state.sceneBuilder.buildScene(baseX, baseY, mapSize, mapSize);
+        const scene = state.sceneBuilder.buildScene(baseX, baseY, mapSize, mapSize, smoothTerrain);
         console.timeEnd(`build scene ${mapX},${mapY}`);
 
         const sceneBuf = new SceneBuffer(textureLoader, textureIdIndexMap, 100000);
@@ -752,6 +760,8 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
                 maxLevel,
                 loadObjs,
                 loadNpcs,
+
+                smoothTerrain,
 
                 borderSize,
                 tileRenderFlags: scene.tileRenderFlags,

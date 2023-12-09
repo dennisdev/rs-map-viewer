@@ -279,6 +279,12 @@ export const MapViewerControls = memo(function MapViewerControls({
                         mapViewer.colorBanding = 255 - v * 2;
                     },
                 },
+                "Smooth Terrain": {
+                    value: mapViewer.smoothTerrain,
+                    onChange: (v) => {
+                        mapViewer.setSmoothTerrain(v);
+                    },
+                },
                 "Cull Back-faces": {
                     value: mapViewer.cullBackFace,
                     onChange: (v) => {

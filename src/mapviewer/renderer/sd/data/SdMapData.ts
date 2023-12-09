@@ -13,6 +13,8 @@ export type SdMapData = {
     loadObjs: boolean;
     loadNpcs: boolean;
 
+    smoothTerrain: boolean;
+
     borderSize: number;
 
     tileRenderFlags: Uint8Array[][];

@@ -118,6 +118,35 @@ export function packHsl(hue: number, saturation: number, lightness: number) {
     return ((saturation / 32) << 7) + ((hue / 4) << 10) + ((lightness / 2) | 0);
 }
 
+export function mixHsl(hslA: number, hslB: number): number {
+    if (hslA === INVALID_HSL_COLOR || hslB === INVALID_HSL_COLOR) {
+        return INVALID_HSL_COLOR;
+    }
+    if (hslA === -1) {
+        return hslB;
+    } else if (hslB === -1) {
+        return hslA;
+    } else {
+        let hue = (hslA >> 10) & 0x3f;
+        let saturation = (hslA >> 7) & 0x7;
+        let lightness = hslA & 0x7f;
+
+        let hueB = (hslB >> 10) & 0x3f;
+        let saturationB = (hslB >> 7) & 0x7;
+        let lightnessB = hslB & 0x7f;
+
+        hue += hueB;
+        saturation += saturationB;
+        lightness += lightnessB;
+
+        hue >>= 1;
+        saturation >>= 1;
+        lightness >>= 1;
+
+        return (hue << 10) + (saturation << 7) + lightness;
+    }
+}
+
 export function rgbToHsl(rgb: number): number {
     const r = ((rgb >> 16) & 255) / 256.0;
     const g = ((rgb >> 8) & 255) / 256.0;

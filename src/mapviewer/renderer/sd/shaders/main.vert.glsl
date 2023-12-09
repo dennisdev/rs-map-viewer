@@ -21,7 +21,7 @@
 
 #define FOG_CORNER_ROUNDING 8.0
 
-#define SCENE_BORDER_SIZE 5.0
+#define SCENE_BORDER_SIZE 6.0
 
 precision highp float;
 
@@ -89,7 +89,7 @@ Material getMaterial(uint textureId) {
 }
 
 float getHeightInterp(vec2 pos, uint plane) {
-    vec2 uv = (pos + vec2(SCENE_BORDER_SIZE + 0.5)) / vec2(74.0);
+    vec2 uv = (pos + vec2(SCENE_BORDER_SIZE + 0.5)) / vec2(64.0 + SCENE_BORDER_SIZE * 2.0);
 
     return texture(u_heightMap, vec3(uv, plane)).r * 8.0;
 }

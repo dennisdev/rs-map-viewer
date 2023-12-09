@@ -102,8 +102,8 @@ export class SceneBuilder {
         baseY: number,
         sizeX: number,
         sizeY: number,
+        smoothUnderlays: boolean = false,
         landscapeLoadType: LandscapeLoadType = LandscapeLoadType.MODELS,
-        light: boolean = true,
     ): Scene {
         const scene = new Scene(Scene.MAX_LEVELS, sizeX, sizeY);
 
@@ -159,10 +159,10 @@ export class SceneBuilder {
             }
         }
 
-        this.addTileModels(scene);
+        this.addTileModels(scene, smoothUnderlays);
         scene.setTileMinLevels();
 
-        if (light) {
+        if (landscapeLoadType === LandscapeLoadType.MODELS) {
             scene.light(this.locModelLoader.textureLoader, -50, -10, -50);
         }
 
@@ -1148,7 +1148,7 @@ export class SceneBuilder {
         return colors;
     }
 
-    addTileModels(scene: Scene): void {
+    addTileModels(scene: Scene, smoothUnderlays: boolean): void {
         const heights = scene.tileHeights;
         const underlayIds = scene.tileUnderlays;
         const overlayIds = scene.tileOverlays;
@@ -1179,14 +1179,29 @@ export class SceneBuilder {
                     const lightNe = lights[x + 1][y + 1];
                     const lightNw = lights[x][y + 1];
 
-                    let underlayHsl = -1;
+                    let underlayHslSw = -1;
+                    let underlayHslSe = -1;
+                    let underlayHslNe = -1;
+                    let underlayHslNw = -1;
                     if (underlayId !== -1) {
-                        underlayHsl = blendedColors[x][y];
+                        underlayHslSw = blendedColors[x][y];
+                        underlayHslSe = blendedColors[x + 1][y];
+                        underlayHslNe = blendedColors[x + 1][y + 1];
+                        underlayHslNw = blendedColors[x][y + 1];
+                        if (underlayHslSe === -1 || !smoothUnderlays) {
+                            underlayHslSe = underlayHslSw;
+                        }
+                        if (underlayHslNe === -1 || !smoothUnderlays) {
+                            underlayHslNe = underlayHslSw;
+                        }
+                        if (underlayHslNw === -1 || !smoothUnderlays) {
+                            underlayHslNw = underlayHslSw;
+                        }
                     }
 
                     let underlayRgb = 0;
-                    if (underlayHsl !== -1) {
-                        underlayRgb = HSL_RGB_MAP[adjustUnderlayLight(underlayHsl, 96)];
+                    if (underlayHslSw !== -1) {
+                        underlayRgb = HSL_RGB_MAP[adjustUnderlayLight(underlayHslSw, 96)];
                     }
 
                     let tileModel: SceneTileModel;
@@ -1205,7 +1220,10 @@ export class SceneBuilder {
                             lightSe,
                             lightNe,
                             lightNw,
-                            underlayHsl,
+                            underlayHslSw,
+                            underlayHslSe,
+                            underlayHslNe,
+                            underlayHslNw,
                             0,
                             0,
                             underlayRgb,
@@ -1268,7 +1286,10 @@ export class SceneBuilder {
                             lightSe,
                             lightNe,
                             lightNw,
-                            underlayHsl,
+                            underlayHslSw,
+                            underlayHslSe,
+                            underlayHslNe,
+                            underlayHslNw,
                             overlayHsl,
                             overlayMinimapHsl,
                             underlayRgb,

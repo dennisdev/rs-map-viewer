@@ -1,4 +1,10 @@
-import { INVALID_HSL_COLOR, adjustOverlayLight, adjustUnderlayLight } from "../util/ColorUtil";
+import {
+    INVALID_HSL_COLOR,
+    adjustOverlayLight,
+    adjustUnderlayLight,
+    mixHsl,
+    packHsl,
+} from "../util/ColorUtil";
 
 const TILE_SIZE = 128;
 const HALF_TILE_SIZE = TILE_SIZE / 2;
@@ -103,7 +109,10 @@ export class SceneTileModel {
         readonly lightSe: number,
         readonly lightNe: number,
         readonly lightNw: number,
-        readonly underlayHsl: number,
+        readonly blendUnderlayHslSw: number,
+        readonly blendUnderlayHslSe: number,
+        readonly blendUnderlayHslNe: number,
+        readonly blendUnderlayHslNw: number,
         readonly overlayHsl: number,
         readonly overlayMinimapHsl: number,
         readonly underlayRgb: number,
@@ -112,10 +121,27 @@ export class SceneTileModel {
         this.shape = shape;
         this.rotation = rotation;
 
-        const underlayHslSw = (this.underlayHslSw = adjustUnderlayLight(underlayHsl, lightSw));
-        const underlayHslSe = (this.underlayHslSe = adjustUnderlayLight(underlayHsl, lightSe));
-        const underlayHslNe = (this.underlayHslNe = adjustUnderlayLight(underlayHsl, lightNe));
-        const underlayHslNw = (this.underlayHslNw = adjustUnderlayLight(underlayHsl, lightNw));
+        const underlayHslSw = (this.underlayHslSw = adjustUnderlayLight(
+            blendUnderlayHslSw,
+            lightSw,
+        ));
+        const underlayHslSe = (this.underlayHslSe = adjustUnderlayLight(
+            blendUnderlayHslSe,
+            lightSe,
+        ));
+        const underlayHslNe = (this.underlayHslNe = adjustUnderlayLight(
+            blendUnderlayHslNe,
+            lightNe,
+        ));
+        const underlayHslNw = (this.underlayHslNw = adjustUnderlayLight(
+            blendUnderlayHslNw,
+            lightNw,
+        ));
+
+        const underlayMinimapHslSw = adjustUnderlayLight(blendUnderlayHslSw, lightSw);
+        const underlayMinimapHslSe = adjustUnderlayLight(blendUnderlayHslSw, lightSe);
+        const underlayMinimapHslNe = adjustUnderlayLight(blendUnderlayHslSw, lightNe);
+        const underlayMinimapHslNw = adjustUnderlayLight(blendUnderlayHslSw, lightNw);
 
         const overlayHslSw = (this.overlayHslSw = adjustOverlayLight(overlayHsl, lightSw));
         const overlayHslSe = (this.overlayHslSe = adjustOverlayLight(overlayHsl, lightSe));
@@ -148,8 +174,9 @@ export class SceneTileModel {
         this.vertexY = new Int32Array(vertexCount);
         this.vertexZ = new Int32Array(vertexCount);
         const underlayHsls = new Array<number>(vertexCount);
+        const underlayMinimapHsls = new Array<number>(vertexCount);
         const overlayHsls = new Array<number>(vertexCount);
-        const minimapHsls = new Array<number>(vertexCount);
+        const overlayMinimapHsls = new Array<number>(vertexCount);
         const tileX = x * TILE_SIZE;
         const tileY = y * TILE_SIZE;
 
@@ -171,6 +198,7 @@ export class SceneTileModel {
             let vertZ = 0;
             let vertY = 0;
             let vertUnderlayHsl = 0;
+            let vertUnderlayMinimapHsl = 0;
             let vertOverlayHsl = 0;
             let vertOverlayMinimapHsl = 0;
 
@@ -179,13 +207,15 @@ export class SceneTileModel {
                 vertZ = tileY;
                 vertY = heightSw;
                 vertUnderlayHsl = underlayHslSw;
+                vertUnderlayMinimapHsl = underlayMinimapHslSw;
                 vertOverlayHsl = overlayHslSw;
                 vertOverlayMinimapHsl = overlayMinimapHslSw;
             } else if (vertexIndex === 2) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY;
                 vertY = (heightSe + heightSw) >> 1;
-                vertUnderlayHsl = (underlayHslSe + underlayHslSw) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslSe, underlayHslSw);
+                vertUnderlayMinimapHsl = (underlayMinimapHslSe + underlayMinimapHslSw) >> 1;
                 vertOverlayHsl = (overlayHslSe + overlayHslSw) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslSe + overlayMinimapHslSw) >> 1;
             } else if (vertexIndex === 3) {
@@ -193,13 +223,15 @@ export class SceneTileModel {
                 vertZ = tileY;
                 vertY = heightSe;
                 vertUnderlayHsl = underlayHslSe;
+                vertUnderlayMinimapHsl = underlayMinimapHslSe;
                 vertOverlayHsl = overlayHslSe;
                 vertOverlayMinimapHsl = overlayMinimapHslSe;
             } else if (vertexIndex === 4) {
                 vertX = tileX + TILE_SIZE;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNe + heightSe) >> 1;
-                vertUnderlayHsl = (underlayHslSe + underlayHslNe) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslSe, underlayHslNe);
+                vertUnderlayMinimapHsl = (underlayMinimapHslSe + underlayMinimapHslNe) >> 1;
                 vertOverlayHsl = (overlayHslSe + overlayHslNe) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslSe + overlayMinimapHslNe) >> 1;
             } else if (vertexIndex === 5) {
@@ -207,13 +239,15 @@ export class SceneTileModel {
                 vertZ = tileY + TILE_SIZE;
                 vertY = heightNe;
                 vertUnderlayHsl = underlayHslNe;
+                vertUnderlayMinimapHsl = underlayMinimapHslNe;
                 vertOverlayHsl = overlayHslNe;
                 vertOverlayMinimapHsl = overlayMinimapHslNe;
             } else if (vertexIndex === 6) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY + TILE_SIZE;
                 vertY = (heightNe + heightNw) >> 1;
-                vertUnderlayHsl = (underlayHslNw + underlayHslNe) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslNw, underlayHslNe);
+                vertUnderlayMinimapHsl = (underlayMinimapHslNw + underlayMinimapHslNe) >> 1;
                 vertOverlayHsl = (overlayHslNw + overlayHslNe) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslNw + overlayMinimapHslNe) >> 1;
             } else if (vertexIndex === 7) {
@@ -221,41 +255,47 @@ export class SceneTileModel {
                 vertZ = tileY + TILE_SIZE;
                 vertY = heightNw;
                 vertUnderlayHsl = underlayHslNw;
+                vertUnderlayMinimapHsl = underlayMinimapHslNw;
                 vertOverlayHsl = overlayHslNw;
                 vertOverlayMinimapHsl = overlayMinimapHslNw;
             } else if (vertexIndex === 8) {
                 vertX = tileX;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNw + heightSw) >> 1;
-                vertUnderlayHsl = (underlayHslNw + underlayHslSw) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslNw, underlayHslSw);
+                vertUnderlayMinimapHsl = (underlayMinimapHslNw + underlayMinimapHslSw) >> 1;
                 vertOverlayHsl = (overlayHslNw + overlayHslSw) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslNw + overlayMinimapHslSw) >> 1;
             } else if (vertexIndex === 9) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY + QUARTER_TILE_SIZE;
                 vertY = (heightSe + heightSw) >> 1;
-                vertUnderlayHsl = (underlayHslSe + underlayHslSw) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslSe, underlayHslSw);
+                vertUnderlayMinimapHsl = (underlayMinimapHslSe + underlayMinimapHslSw) >> 1;
                 vertOverlayHsl = (overlayHslSe + overlayHslSw) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslSe + overlayMinimapHslSw) >> 1;
             } else if (vertexIndex === 10) {
                 vertX = tileX + THREE_QTR_TILE_SIZE;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNe + heightSe) >> 1;
-                vertUnderlayHsl = (underlayHslSe + underlayHslNe) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslSe, underlayHslNe);
+                vertUnderlayMinimapHsl = (underlayMinimapHslSe + underlayMinimapHslNe) >> 1;
                 vertOverlayHsl = (overlayHslSe + overlayHslNe) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslSe + overlayMinimapHslNe) >> 1;
             } else if (vertexIndex === 11) {
                 vertX = tileX + HALF_TILE_SIZE;
                 vertZ = tileY + THREE_QTR_TILE_SIZE;
                 vertY = (heightNe + heightNw) >> 1;
-                vertUnderlayHsl = (underlayHslNw + underlayHslNe) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslNw, underlayHslNe);
+                vertUnderlayMinimapHsl = (underlayMinimapHslNw + underlayMinimapHslNe) >> 1;
                 vertOverlayHsl = (overlayHslNw + overlayHslNe) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslNw + overlayMinimapHslNe) >> 1;
             } else if (vertexIndex === 12) {
                 vertX = tileX + QUARTER_TILE_SIZE;
                 vertZ = tileY + HALF_TILE_SIZE;
                 vertY = (heightNw + heightSw) >> 1;
-                vertUnderlayHsl = (underlayHslNw + underlayHslSw) >> 1;
+                vertUnderlayHsl = mixHsl(underlayHslNw, underlayHslSw);
+                vertUnderlayMinimapHsl = (underlayMinimapHslNw + underlayMinimapHslSw) >> 1;
                 vertOverlayHsl = (overlayHslNw + overlayHslSw) >> 1;
                 vertOverlayMinimapHsl = (overlayMinimapHslNw + overlayMinimapHslSw) >> 1;
             } else if (vertexIndex === 13) {
@@ -263,6 +303,7 @@ export class SceneTileModel {
                 vertZ = tileY + QUARTER_TILE_SIZE;
                 vertY = heightSw;
                 vertUnderlayHsl = underlayHslSw;
+                vertUnderlayMinimapHsl = underlayMinimapHslSw;
                 vertOverlayHsl = overlayHslSw;
                 vertOverlayMinimapHsl = overlayMinimapHslSw;
             } else if (vertexIndex === 14) {
@@ -270,6 +311,7 @@ export class SceneTileModel {
                 vertZ = tileY + QUARTER_TILE_SIZE;
                 vertY = heightSe;
                 vertUnderlayHsl = underlayHslSe;
+                vertUnderlayMinimapHsl = underlayMinimapHslSe;
                 vertOverlayHsl = overlayHslSe;
                 vertOverlayMinimapHsl = overlayMinimapHslSe;
             } else if (vertexIndex === 15) {
@@ -277,6 +319,7 @@ export class SceneTileModel {
                 vertZ = tileY + THREE_QTR_TILE_SIZE;
                 vertY = heightNe;
                 vertUnderlayHsl = underlayHslNe;
+                vertUnderlayMinimapHsl = underlayMinimapHslNe;
                 vertOverlayHsl = overlayHslNe;
                 vertOverlayMinimapHsl = overlayMinimapHslNe;
             } else {
@@ -284,6 +327,7 @@ export class SceneTileModel {
                 vertZ = tileY + THREE_QTR_TILE_SIZE;
                 vertY = heightNw;
                 vertUnderlayHsl = underlayHslNw;
+                vertUnderlayMinimapHsl = underlayMinimapHslNw;
                 vertOverlayHsl = overlayHslNw;
                 vertOverlayMinimapHsl = overlayMinimapHslNw;
             }
@@ -292,8 +336,9 @@ export class SceneTileModel {
             this.vertexY[i] = vertY;
             this.vertexZ[i] = vertZ;
             underlayHsls[i] = vertUnderlayHsl;
+            underlayMinimapHsls[i] = vertUnderlayMinimapHsl;
             overlayHsls[i] = vertOverlayHsl;
-            minimapHsls[i] = vertOverlayMinimapHsl;
+            overlayMinimapHsls[i] = vertOverlayMinimapHsl;
         }
 
         const tileFaces = tileShapeFaces[shape];
@@ -350,17 +395,20 @@ export class SceneTileModel {
                 hslA = overlayHsls[a];
                 hslB = overlayHsls[b];
                 hslC = overlayHsls[c];
-                minimapHslA = minimapHsls[a];
-                minimapHslB = minimapHsls[b];
-                minimapHslC = minimapHsls[c];
+                minimapHslA = overlayMinimapHsls[a];
+                minimapHslB = overlayMinimapHsls[b];
+                minimapHslC = overlayMinimapHsls[c];
                 faceTextureId = textureId;
                 if (this.faceTextures) {
                     this.faceTextures[i] = textureId;
                 }
             } else {
-                hslA = minimapHslA = underlayHsls[a];
-                hslB = minimapHslB = underlayHsls[b];
-                hslC = minimapHslC = underlayHsls[c];
+                hslA = underlayHsls[a];
+                hslB = underlayHsls[b];
+                hslC = underlayHsls[c];
+                minimapHslA = underlayMinimapHsls[a];
+                minimapHslB = underlayMinimapHsls[b];
+                minimapHslC = underlayMinimapHsls[c];
                 if (this.faceTextures) {
                     this.faceTextures[i] = -1;
                 }

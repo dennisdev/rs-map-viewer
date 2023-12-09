@@ -70,6 +70,8 @@ export class MapViewer {
     brightness: number = 1.0;
     colorBanding: number = 255;
 
+    smoothTerrain: boolean = false;
+
     cullBackFace: boolean = true;
 
     // Anti aliasing
@@ -298,6 +300,13 @@ export class MapViewer {
             this.renderer.clearMaps();
         }
         this.loadNpcs = load;
+    }
+
+    setSmoothTerrain(smooth: boolean) {
+        if (this.smoothTerrain !== smooth) {
+            this.renderer.clearMaps();
+        }
+        this.smoothTerrain = smooth;
     }
 
     setMaxLevel(level: number): void {
