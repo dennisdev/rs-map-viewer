@@ -9,4 +9,6 @@ export type SdMapLoaderInput = {
     smoothTerrain: boolean;
 
     minimizeDrawCalls: boolean;
+
+    loadedTextureIds: Set<number>;
 };

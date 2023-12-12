@@ -54,6 +54,17 @@ export class RenderDataWorkerPool {
         return this.pool.queue((w) => w.load(loader, input) as ObservablePromise<D>);
     }
 
+    queueLoadTexture(
+        id: number,
+        size: number,
+        flipH: boolean,
+        brightness: number,
+    ): QueuedTask<RenderDataWorkerThread, Int32Array> {
+        return this.pool.queue(
+            (w) => w.loadTexture(id, size, flipH, brightness) as ObservablePromise<Int32Array>,
+        );
+    }
+
     queueMinimap(
         mapX: number,
         mapY: number,

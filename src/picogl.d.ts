@@ -6,6 +6,10 @@ declare module "picogl" {
         numElements: number[];
     }
 
+    export interface Texture {
+        bind(unit: number): void;
+    }
+
     import PicoGL, {
         App,
         DrawCall,

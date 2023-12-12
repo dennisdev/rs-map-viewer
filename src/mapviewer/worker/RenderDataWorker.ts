@@ -222,6 +222,21 @@ const worker = {
         }
         return Transfer<D>(data, transferables);
     },
+    async loadTexture(
+        id: number,
+        size: number,
+        flipH: boolean,
+        brightness: number,
+    ): Promise<TransferDescriptor<Int32Array>> {
+        const workerState = await workerStatePromise;
+        if (!workerState) {
+            throw new Error("Worker not initialized");
+        }
+
+        const pixels = workerState.textureLoader.getPixelsArgb(id, size, flipH, brightness);
+
+        return Transfer(pixels, [pixels.buffer]);
+    },
     async loadMinimap(mapX: number, mapY: number, level: number): Promise<MinimapData | undefined> {
         const workerState = await workerStatePromise;
         if (!workerState) {

@@ -53,4 +53,6 @@ export type SdMapData = {
 
     locsAnimated: LocAnimatedData[];
     npcs: NpcData[];
+
+    loadedTextures: Map<number, Int32Array>;
 };

@@ -85,6 +85,9 @@ export class SdRenderer extends Renderer<SdMapSquare> {
     textureArray?: Texture;
     textureMaterials?: Texture;
 
+    textureIds: number[] = [];
+    loadedTextureIds: Set<number> = new Set();
+
     sceneUniformBuffer?: UniformBuffer;
 
     isNewTextureAnim: boolean = false;
@@ -265,11 +268,19 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         console.log("init textures", textureIds, textureLoader.getTextureIds().length);
     }
 
-    initTextureArray(app: PicoApp, textureLoader: TextureLoader, textureIds: number[]): void {
+    async initTextureArray(app: PicoApp, textureLoader: TextureLoader, textureIds: number[]) {
+        if (!(app.gl instanceof WebGL2RenderingContext)) {
+            return;
+        }
         if (this.textureArray) {
             this.textureArray.delete();
             this.textureArray = undefined;
         }
+        this.loadedTextureIds.clear();
+
+        this.textureIds = textureIds;
+
+        console.time("load textures");
 
         const pixelCount = TEXTURE_SIZE * TEXTURE_SIZE;
 
@@ -279,7 +290,14 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         // White texture
         pixels.fill(0xffffffff, 0, pixelCount);
 
-        for (let i = 0; i < textureCount; i++) {
+        const cacheInfo = this.mapViewer.loadedCache.info;
+
+        let maxPreloadTextures = textureCount;
+        if (cacheInfo.game === "runescape" && cacheInfo.revision >= 508) {
+            maxPreloadTextures = 64;
+        }
+
+        for (let i = 0; i < Math.min(textureCount, maxPreloadTextures); i++) {
             const textureId = textureIds[i];
             try {
                 const texturePixels = textureLoader.getPixelsArgb(
@@ -292,6 +310,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             } catch (e) {
                 console.error("Failed loading texture", textureId, e);
             }
+            this.loadedTextureIds.add(textureId);
         }
 
         this.textureArray = createTextureArray(
@@ -305,6 +324,41 @@ export class SdRenderer extends Renderer<SdMapSquare> {
                 maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,
             },
         );
+
+        console.timeEnd("load textures");
+    }
+
+    updateTextureArray(gl: WebGL2RenderingContext, textures: Map<number, Int32Array>): void {
+        if (!this.textureArray) {
+            throw new Error("Texture array is not initialized");
+        }
+        let updatedCount = 0;
+        for (const [id, pixels] of textures) {
+            if (this.loadedTextureIds.has(id)) {
+                continue;
+            }
+            const index = this.textureIds.indexOf(id) + 1;
+
+            this.textureArray.bind(0);
+            gl.texSubImage3D(
+                PicoGL.TEXTURE_2D_ARRAY,
+                0,
+                0,
+                0,
+                index,
+                TEXTURE_SIZE,
+                TEXTURE_SIZE,
+                1,
+                PicoGL.RGBA,
+                PicoGL.UNSIGNED_BYTE,
+                new Uint8Array(pixels.buffer),
+            );
+            this.loadedTextureIds.add(id);
+            updatedCount++;
+        }
+        if (updatedCount > 0) {
+            gl.generateMipmap(PicoGL.TEXTURE_2D_ARRAY);
+        }
     }
 
     async debugTexture(textureLoader: TextureLoader, textureId: number): Promise<void> {
@@ -1338,6 +1392,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
                 frameCount,
             ),
         );
+
+        this.updateTextureArray(app.gl as WebGL2RenderingContext, mapData.loadedTextures);
     }
 
     async queueMapLoad(mapX: number, mapY: number): Promise<void> {
@@ -1353,6 +1409,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             loadNpcs: this.mapViewer.loadNpcs,
             smoothTerrain: this.mapViewer.smoothTerrain,
             minimizeDrawCalls: !this.mapViewer.hasMultiDraw,
+            loadedTextureIds: this.loadedTextureIds,
         });
 
         if (mapData) {

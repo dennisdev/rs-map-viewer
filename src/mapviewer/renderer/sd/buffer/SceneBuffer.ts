@@ -65,6 +65,8 @@ export class SceneBuffer {
     drawCommandsInteractLod: DrawCommand[] = [];
     drawCommandsInteractLodAlpha: DrawCommand[] = [];
 
+    usedTextureIds = new Set<number>();
+
     constructor(
         readonly textureLoader: TextureLoader,
         readonly textureIdIndexMap: Map<number, number>,
@@ -89,6 +91,10 @@ export class SceneBuffer {
         for (const face of tileModel.faces) {
             for (const vertex of face.vertices) {
                 const textureIndex = this.textureIdIndexMap.get(vertex.textureId) ?? -1;
+
+                if (textureIndex !== -1) {
+                    this.usedTextureIds.add(vertex.textureId);
+                }
 
                 const index = this.vertexBuf.addVertex(
                     vertex.x + offsetX,
@@ -443,6 +449,10 @@ export class SceneBuffer {
             const vza = sceneZ + verticesZ[fa];
             const vzb = sceneZ + verticesZ[fb];
             const vzc = sceneZ + verticesZ[fc];
+
+            if (textureIndex !== -1) {
+                this.usedTextureIds.add(textureId);
+            }
 
             const index0 = this.vertexBuf.addVertex(
                 vxa,

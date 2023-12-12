@@ -559,6 +559,7 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
             loadNpcs,
             smoothTerrain,
             minimizeDrawCalls,
+            loadedTextureIds,
         }: SdMapLoaderInput,
     ): Promise<RenderDataResult<SdMapData | undefined>> {
         console.time(`load map ${mapX},${mapY}`);
@@ -723,11 +724,20 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
 
         const minimapBlob = await loadMinimapBlob(state.mapImageRenderer, scene, 0, borderSize);
 
+        const loadedTextures = new Map<number, Int32Array>();
+        for (const textureId of sceneBuf.usedTextureIds) {
+            if (!loadedTextureIds.has(textureId)) {
+                const pixels = textureLoader.getPixelsArgb(textureId, 128, true, 1.0);
+                loadedTextures.set(textureId, pixels);
+            }
+        }
+
         console.timeEnd(`load map ${mapX},${mapY}`);
 
         const transferables = [
             ...scene.tileRenderFlags.flat().map((buf) => buf.buffer),
             ...scene.collisionMaps.map((map) => map.flags.buffer),
+            ...Array.from(loadedTextures.values()).map((pixels) => pixels.buffer),
 
             vertices.buffer,
             indices.buffer,
@@ -748,7 +758,11 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
 
         const totalBytes = transferables.reduce((sum, buf) => sum + buf.byteLength, 0);
 
-        console.log(`total bytes: ${totalBytes} ${mapX},${mapY}`);
+        console.log(
+            `total bytes: ${totalBytes} ${mapX},${mapY}`,
+            sceneBuf.usedTextureIds,
+            loadedTextures.size,
+        );
 
         return {
             data: {
@@ -800,6 +814,8 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
 
                 locsAnimated,
                 npcs,
+
+                loadedTextures,
             },
             transferables,
         };
