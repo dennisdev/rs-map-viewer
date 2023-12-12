@@ -87,6 +87,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
 
     sceneUniformBuffer?: UniformBuffer;
 
+    isNewTextureAnim: boolean = false;
+
     cameraPosUni: vec2 = vec2.fromValues(0, 0);
     resolutionUni: vec2 = vec2.fromValues(0, 0);
 
@@ -160,6 +162,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             PicoGL.FLOAT,
             PicoGL.FLOAT,
             PicoGL.FLOAT,
+            PicoGL.FLOAT, // isNewTextureAnim
         ]);
 
         if (this.textureLoader) {
@@ -420,6 +423,10 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         this.mapManager.init(mapFileIndex);
         this.mapsToLoad.clear();
 
+        const cacheInfo = this.mapViewer.loadedCache.info;
+
+        this.isNewTextureAnim = cacheInfo.game === "runescape" && cacheInfo.revision >= 681;
+
         console.log(
             "init cache",
             app,
@@ -533,6 +540,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
             .set(7, timeSec as any)
             .set(8, this.mapViewer.brightness as any)
             .set(9, this.mapViewer.colorBanding as any)
+            .set(10, this.isNewTextureAnim as any)
             .update();
 
         const currInteractions = this.interactions[frameCount % this.interactions.length];

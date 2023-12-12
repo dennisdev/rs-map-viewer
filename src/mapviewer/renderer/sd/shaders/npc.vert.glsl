@@ -44,6 +44,7 @@ uniform SceneUniforms {
     float u_currentTime;
     float u_brightness;
     float u_colorBanding;
+    float u_isNewTextureAnim;
 };
 
 // Per map square
@@ -163,7 +164,11 @@ void main() {
     Material material = getMaterial(vertex.textureId);
     vec2 textureAnimation = vec2(material.animU, material.animV);
 
-    v_texCoord = vertex.texCoord + (u_currentTime / 0.02) * textureAnimation * TEXTURE_ANIM_UNIT;
+    if (u_isNewTextureAnim > 0.5) {
+        v_texCoord = vertex.texCoord + mod(mod(u_currentTime, 128.0) * textureAnimation / 64.0, 1.0);
+    } else {
+        v_texCoord = vertex.texCoord + (u_currentTime / 0.02) * textureAnimation * TEXTURE_ANIM_UNIT;
+    }
     v_texId = vertex.textureId;
     v_alphaCutOff = material.alphaCutOff;
 

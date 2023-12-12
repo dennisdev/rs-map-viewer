@@ -16,6 +16,7 @@ uniform SceneUniforms {
     float u_currentTime;
     float u_brightness;
     float u_colorBanding;
+    float u_isNewTextureAnim;
 };
 
 uniform highp sampler2DArray u_textures;
