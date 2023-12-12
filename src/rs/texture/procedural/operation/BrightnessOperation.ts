@@ -25,7 +25,7 @@ export class BrightnessOperation extends TextureOperation {
         } else if (field === 3) {
             this.redFactor = buffer.readUnsignedShort();
         } else if (field === 4) {
-            const rgb = buffer.readUnsignedMedium();
+            const rgb = buffer.readMedium();
             this.colorDelta[0] = (rgb & 0xff0000) << 4;
             this.colorDelta[1] = (rgb >> 4) & 0xff0;
             this.colorDelta[2] = (rgb >> 12) & 0x0;

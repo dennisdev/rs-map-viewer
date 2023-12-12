@@ -81,4 +81,14 @@ export class ColourImageCache {
             return this.images[slot.slotId];
         }
     }
+
+    getAll(): Int32Array[][] {
+        if (this.maxId !== this.slotCount) {
+            throw new Error("Can only retrieve a full image cache");
+        }
+        for (let slot = 0; slot < this.slotCount; slot++) {
+            this.slots[slot] = ColourImageCache.SLOT_USED;
+        }
+        return this.images;
+    }
 }

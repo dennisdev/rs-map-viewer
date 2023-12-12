@@ -40,6 +40,7 @@ import { BasTypeLoader } from "../../../rs/config/bastype/BasTypeLoader";
 import { isTouchDevice } from "../../../util/DeviceUtil";
 import { ProceduralTextureLoader } from "../../../rs/texture/ProceduralTextureLoader";
 import { createTextureArray } from "../../../picogl/PicoTexture";
+import { RasterizerOperation } from "../../../rs/texture/procedural/operation/RasterizerOperation";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -310,24 +311,24 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         try {
             const size = textureLoader.isSmall(textureId) ? 64 : 128;
 
-            const test = textureId === 805;
+            const test = textureId === 821;
 
             const proceduralTexture = textureLoader.getTexture(textureId)?.proceduralTexture;
             if (proceduralTexture) {
                 // proceduralTexture.colourOperation = proceduralTexture.operations[3];
                 // if (
                 //     proceduralTexture.operations.filter(
-                //         (op) => op instanceof IrregularBricksOperation,
+                //         (op) => op instanceof RasterizerOperation,
                 //     ).length
                 // ) {
-                //     if (proceduralTexture.operations.length < 15 || true) {
+                //     if (proceduralTexture.operations.length < 20) {
                 //         console.log(textureId, proceduralTexture);
                 //     }
                 // }
-                if (test) {
-                    console.log(proceduralTexture);
-                    // proceduralTexture.colourOperation = proceduralTexture.operations[13];
-                }
+                // if (test) {
+                //     console.log(proceduralTexture);
+                //     proceduralTexture.colourOperation = proceduralTexture.operations[3];
+                // }
             }
 
             if (!test) {
