@@ -110,11 +110,11 @@ Vertex decodeVertex(uint v0, uint v1, uint v2, float brightness) {
     float y = -float(int((v1) & 0x7FFFu) - 0x4000);
     int hsl = int((v1 >> 15u) & 0xFFFFu);
     float isTextured = float((v1 >> 31) & 0x1u);
-    float textureId = float((hsl >> 7) + 1) * isTextured;
+    float textureId = float(((hsl >> 7) | int(((v2 >> 5u) & 0x1u) << 9u)) + 1) * isTextured;
 
     float z = float(int((v2 >> 17u) & 0x7FFFu) - 0x4000);
     float alpha = float((v2 >> 9u) & 0xFFu) / 255.0;
-    uint priority = ((v2 >> 5u) & 0xFu);
+    uint priority = ((v2 >> 6u) & 0x7u);
 
     vec4 color = when_eq(textureId, 0.0) * vec4(hslToRgb(hsl, brightness), alpha)
         + when_neq(textureId, 0.0) * vec4(vec3(float(hsl & 0x7F) / 127.0), alpha);
@@ -144,10 +144,10 @@ ModelInfo decodeModelInfo(int offset) {
     info.tilePos = vec2(float(data.r & 0x3FFFu), float(data.g & 0x3FFFu)) / vec2(128.0);
     info.height = (data.b >> 6) * 8u;
     info.plane = data.r >> 14;
-    info.priority = data.b & 0xFu;
+    info.priority = data.b & 0x7u;
     info.contourGround = float((data.g >> 14) & 0x3u);
     info.interactType = (data.b >> 4) & 0x3u;
-    info.interactId = data.a;
+    info.interactId = data.a | (((data.b >> 3u) & 0x1u) << 16u);
 
     return info;
 }

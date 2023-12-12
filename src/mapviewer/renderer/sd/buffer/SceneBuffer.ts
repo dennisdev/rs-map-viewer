@@ -572,7 +572,10 @@ export function createModelInfoTextureData(drawCommands: DrawCommand[]): Uint16A
         textureData[offset++] = data.sceneX | (data.level << 14);
         textureData[offset++] = data.sceneZ | (contourGround << 14);
         textureData[offset++] =
-            (data.priority & 0xf) | (data.interactType << 4) | (Math.round(height / 8) << 6);
+            (data.priority & 0x7) |
+            ((data.interactId >> 16) << 3) |
+            (data.interactType << 4) |
+            (Math.round(height / 8) << 6);
         textureData[offset++] = data.interactId;
     });
 

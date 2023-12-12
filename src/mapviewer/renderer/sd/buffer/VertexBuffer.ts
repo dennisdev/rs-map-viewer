@@ -24,19 +24,22 @@ export class VertexBuffer extends DataBuffer {
         priority: number,
         reuseVertex: boolean = true,
     ) {
+        if (textureId >= 1024) {
+            textureId = -1;
+        }
         const isTextured = textureId !== -1;
         if (isTextured) {
             // textureId = 119;
             // only light
             hsl &= 127;
-            hsl |= textureId << 7;
+            hsl |= (textureId & 0x1ff) << 7;
         }
 
         const xPos = clamp(x + 0x4000, 0, 0x8000);
         const yPos = clamp(-y + 0x4000, 0, 0x8000);
         const zPos = clamp(z + 0x4000, 0, 0x8000);
 
-        priority &= 0xf;
+        priority &= 0x7;
 
         const uPacked = clamp(FloatUtil.packFloat11(u), 0, 0x7ff);
         const vPacked = clamp(FloatUtil.packFloat11(v), 0, 0x7ff);
@@ -45,7 +48,12 @@ export class VertexBuffer extends DataBuffer {
 
         const v1 = yPos | (hsl << 15) | (Number(isTextured) << 31);
 
-        const v2 = (zPos << 17) | (alpha << 9) | (priority << 5) | (uPacked >> 6);
+        const v2 =
+            (zPos << 17) |
+            (alpha << 9) |
+            (priority << 6) |
+            (((textureId >> 9) & 0x1) << 5) |
+            (uPacked >> 6);
 
         if (reuseVertex) {
             const hash = v0 * v1 * v2;

@@ -248,7 +248,7 @@ function createCacheList() {
         // Skip 311 for now, missing configs, no nice way to check atm
         if (
             !isValid(cacheInfo) ||
-            (cacheInfo.game === "runescape" && (revision < 234 || revision > 640)) ||
+            (cacheInfo.game === "runescape" && (revision < 234 || revision > 740)) ||
             revision === 311
         ) {
             continue;
