@@ -51,6 +51,10 @@ export class ByteBuffer {
         );
     }
 
+    readUnsignedMedium(): number {
+        return this.readMedium() & 0xffffff;
+    }
+
     readInt(): number {
         return (
             (this.readUnsignedByte() << 24) |

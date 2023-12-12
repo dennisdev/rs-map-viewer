@@ -31,6 +31,13 @@ import { WeaveOperation } from "./WeaveOperation";
 import { ColourStripOperation } from "./ColourStripOperation";
 import { KaleidoscopeOperation } from "./KaleidoscopeOperation";
 import { RasterizerOperation } from "./RasterizerOperation";
+import { HerringboneOperation } from "./HerringboneOperation";
+import { BinaryOperation } from "./BinaryOperation";
+import { BrightnessOperation } from "./BrightnessOperation";
+import { ColorEdgeDetectorOperation } from "./ColorEdgeDetectorOperation";
+import { MonochromeEdgeDetectorOperation } from "./MonochromeEdgeDetectorOperation";
+import { Operation37 } from "./Operation37";
+import { IrregularBricksOperation } from "./IrregularBricksOperation";
 
 export class TextureOperationFactory {
     static instantiate(id: number): TextureOperation {
@@ -67,6 +74,8 @@ export class TextureOperationFactory {
                 return new WeaveOperation();
             case 15:
                 return new VoronoiNoiseOperation();
+            case 16:
+                return new HerringboneOperation();
             case 17:
                 return new HslOperation();
             case 19:
@@ -81,18 +90,30 @@ export class TextureOperationFactory {
                 return new KaleidoscopeOperation();
             case 24:
                 return new GrayScaleOperation();
+            case 25:
+                return new BrightnessOperation();
+            case 26:
+                return new BinaryOperation();
             case 27:
                 return new SquareWaveformOperation();
+            case 28:
+                return new IrregularBricksOperation();
             case 29:
                 return new RasterizerOperation();
             case 30:
                 return new RangeOperation();
             case 32:
                 return new EmbossOperation();
+            case 33:
+                return new ColorEdgeDetectorOperation();
             case 34:
                 return new PerlinNoiseOperation();
+            case 35:
+                return new MonochromeEdgeDetectorOperation();
             case 36:
                 return new TextureSourceOperation();
+            case 37:
+                return new Operation37();
             case 38:
                 return new LineNoiseOperation();
             case 39:

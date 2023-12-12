@@ -256,6 +256,8 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         this.initTextureArray(app, textureLoader, textureIds);
         this.initMaterialsTexture(app, textureLoader, textureIds);
 
+        // textureLoader.getTextureIds().forEach((id) => this.debugTexture(textureLoader, id));
+
         console.log("init textures", textureIds, textureLoader.getTextureIds().length);
     }
 
@@ -308,15 +310,34 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         try {
             const size = textureLoader.isSmall(textureId) ? 64 : 128;
 
+            const test = textureId === 805;
+
             const proceduralTexture = textureLoader.getTexture(textureId)?.proceduralTexture;
             if (proceduralTexture) {
                 // proceduralTexture.colourOperation = proceduralTexture.operations[3];
+                // if (
+                //     proceduralTexture.operations.filter(
+                //         (op) => op instanceof IrregularBricksOperation,
+                //     ).length
+                // ) {
+                //     if (proceduralTexture.operations.length < 15 || true) {
+                //         console.log(textureId, proceduralTexture);
+                //     }
+                // }
+                if (test) {
+                    console.log(proceduralTexture);
+                    // proceduralTexture.colourOperation = proceduralTexture.operations[13];
+                }
+            }
+
+            if (!test) {
+                return;
             }
 
             const texturePixels = textureLoader.getPixelsArgb(textureId, size, true, 0.7);
 
             const canvas = new OffscreenCanvas(size, size);
-            const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d")!;
             if (!ctx) {
                 throw new Error("Could not get canvas context");
             }
