@@ -38,6 +38,8 @@ import { ColorEdgeDetectorOperation } from "./ColorEdgeDetectorOperation";
 import { MonochromeEdgeDetectorOperation } from "./MonochromeEdgeDetectorOperation";
 import { Operation37 } from "./Operation37";
 import { IrregularBricksOperation } from "./IrregularBricksOperation";
+import { TilingSpriteOperation } from "./TilingSpriteOperation";
+import { MandelbrotOperation } from "./MandelbrotOperation";
 
 export class TextureOperationFactory {
     static instantiate(id: number): TextureOperation {
@@ -78,6 +80,8 @@ export class TextureOperationFactory {
                 return new HerringboneOperation();
             case 17:
                 return new HslOperation();
+            case 18:
+                return new TilingSpriteOperation();
             case 19:
                 return new TrigWarpOperation();
             case 20:
@@ -102,6 +106,8 @@ export class TextureOperationFactory {
                 return new RasterizerOperation();
             case 30:
                 return new RangeOperation();
+            case 31:
+                return new MandelbrotOperation();
             case 32:
                 return new EmbossOperation();
             case 33:
