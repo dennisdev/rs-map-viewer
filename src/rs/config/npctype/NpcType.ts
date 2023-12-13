@@ -178,6 +178,8 @@ export class NpcType extends Type {
                 this.retextureFrom[i] = buffer.readUnsignedShort();
                 this.retextureTo[i] = buffer.readUnsignedShort();
             }
+        } else if (opcode === 44 || opcode === 45) {
+            buffer.readUnsignedShort();
         } else if (opcode === 60) {
             const count = buffer.readUnsignedByte();
             this.chatheadModelIds = new Array<number>(count);
@@ -362,6 +364,8 @@ export class NpcType extends Type {
             const mapFunctionId = buffer.readUnsignedShort();
         } else if (opcode === 143) {
             const bool = true;
+        } else if (opcode === 144) {
+            buffer.readUnsignedShort();
         } else if (opcode >= 150 && opcode < 155) {
             // member only options
             this.actions[opcode - 150] = this.readString(buffer);
@@ -396,6 +400,8 @@ export class NpcType extends Type {
             const v = buffer.readUnsignedByte();
         } else if (opcode === 168) {
             const v = buffer.readUnsignedByte();
+        } else if (opcode >= 170 && opcode < 176) {
+            buffer.readUnsignedShort();
         } else if (opcode === 249) {
             this.params = Type.readParamsMap(buffer, this.params);
         } else {

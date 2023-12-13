@@ -275,6 +275,8 @@ export class LocType extends Type {
                 this.retextureFrom[i] = buffer.readUnsignedShort();
                 this.retextureTo[i] = buffer.readUnsignedShort();
             }
+        } else if (opcode === 44 || opcode === 45) {
+            buffer.readUnsignedShort();
         } else if (opcode === 60) {
             const icon = buffer.readUnsignedShort();
         } else if (opcode === 61) {
@@ -452,6 +454,10 @@ export class LocType extends Type {
             const v = buffer.readUnsignedByte();
         } else if (opcode === 189) {
             const bloom = true;
+        } else if (opcode === 190) {
+            // unknown starts 731
+        } else if (opcode === 191) {
+            // unknown starts 731
         } else if (opcode === 249) {
             this.params = Type.readParamsMap(buffer, this.params);
         } else {

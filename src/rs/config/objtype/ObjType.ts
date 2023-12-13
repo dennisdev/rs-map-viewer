@@ -133,9 +133,17 @@ export class ObjType extends Type {
         this.model = 0;
     }
 
+    isLargeModelId(): boolean {
+        return this.cacheInfo.game === "runescape" && this.cacheInfo.revision >= 670;
+    }
+
+    readModelId(buffer: ByteBuffer): number {
+        return this.isLargeModelId() ? buffer.readBigSmart() : buffer.readUnsignedShort();
+    }
+
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
         if (opcode === 1) {
-            this.model = buffer.readUnsignedShort();
+            this.model = this.readModelId(buffer);
         } else if (opcode === 2) {
             this.name = this.readString(buffer);
         } else if (opcode === 3) {
@@ -172,19 +180,19 @@ export class ObjType extends Type {
         } else if (opcode === 16) {
             this.isMembers = true;
         } else if (opcode === 23) {
-            this.maleModel = buffer.readUnsignedShort();
+            this.maleModel = this.readModelId(buffer);
             if (this.cacheInfo.revision < 503) {
                 this.maleOffset = buffer.readUnsignedByte();
             }
         } else if (opcode === 24) {
-            this.maleModel1 = buffer.readUnsignedShort();
+            this.maleModel1 = this.readModelId(buffer);
         } else if (opcode === 25) {
-            this.femaleModel = buffer.readUnsignedShort();
+            this.femaleModel = this.readModelId(buffer);
             if (this.cacheInfo.revision < 503) {
                 this.femaleOffset = buffer.readUnsignedByte();
             }
         } else if (opcode === 26) {
-            this.femaleModel1 = buffer.readUnsignedShort();
+            this.femaleModel1 = this.readModelId(buffer);
         } else if (opcode === 27) {
             this.op27 = buffer.readUnsignedByte();
         } else if (opcode >= 30 && opcode < 35) {
@@ -214,22 +222,24 @@ export class ObjType extends Type {
             }
         } else if (opcode === 42) {
             this.shiftClickIndex = buffer.readByte();
+        } else if (opcode === 44 || opcode === 45) {
+            buffer.readUnsignedShort();
         } else if (opcode === 65) {
             this.isTradable = true;
         } else if (opcode === 75) {
             this.op75 = buffer.readShort();
         } else if (opcode === 78) {
-            this.maleModel2 = buffer.readUnsignedShort();
+            this.maleModel2 = this.readModelId(buffer);
         } else if (opcode === 79) {
-            this.femaleModel2 = buffer.readUnsignedShort();
+            this.femaleModel2 = this.readModelId(buffer);
         } else if (opcode === 90) {
-            this.maleHeadModel = buffer.readUnsignedShort();
+            this.maleHeadModel = this.readModelId(buffer);
         } else if (opcode === 91) {
-            this.femaleHeadModel = buffer.readUnsignedShort();
+            this.femaleHeadModel = this.readModelId(buffer);
         } else if (opcode === 92) {
-            this.maleHeadModel2 = buffer.readUnsignedShort();
+            this.maleHeadModel2 = this.readModelId(buffer);
         } else if (opcode === 93) {
-            this.femaleHeadModel2 = buffer.readUnsignedShort();
+            this.femaleHeadModel2 = this.readModelId(buffer);
         } else if (opcode === 94) {
             buffer.readUnsignedShort();
         } else if (opcode === 95) {
@@ -293,10 +303,14 @@ export class ObjType extends Type {
             this.unnotedId = buffer.readUnsignedShort();
         } else if (opcode === 140) {
             this.notedId = buffer.readUnsignedShort();
+        } else if (opcode >= 142 && opcode < 147) {
+            buffer.readUnsignedShort();
         } else if (opcode === 148) {
             this.placeholder = buffer.readUnsignedShort();
         } else if (opcode === 149) {
             this.placeholderTemplate = buffer.readUnsignedShort();
+        } else if (opcode >= 150 && opcode < 155) {
+            buffer.readUnsignedShort();
         } else if (opcode === 249) {
             this.params = Type.readParamsMap(buffer, this.params);
         } else {
