@@ -58,7 +58,7 @@ async function downloadCaches(count) {
                 cache.language === "en" &&
                 cache.builds.length > 0 &&
                 cache.builds[0].major >= 254 &&
-                cache.builds[0].major <= 640 &&
+                cache.builds[0].major <= 736 &&
                 cache.timestamp,
         ),
     );
