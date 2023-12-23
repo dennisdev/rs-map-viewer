@@ -298,8 +298,10 @@ async function fetchCachedFile(
             partCache.push(progress.part);
             partCacheLength += progress.part.byteLength;
 
-            // cache every 1MB
-            if (partCacheLength > 1000 * 1024) {
+            // cache every 1% of the total file size
+            const partCacheThreshold = Math.max(progress.total * 0.01, 1000 * 1024);
+
+            if (partCacheLength > partCacheThreshold) {
                 const partUrl = path + "/part/?p=" + partCount;
                 partUrls.push(partUrl);
                 const partResp = new Response(
@@ -327,7 +329,9 @@ async function fetchCachedFile(
         }
     };
     const newParts = await toBufferParts(resp, offset, partProgressListener);
-    parts.push(...newParts);
+    for (const part of newParts) {
+        parts.push(part);
+    }
 
     const buffer = partsToBuffer(parts, shared);
 
