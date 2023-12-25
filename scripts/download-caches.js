@@ -117,10 +117,11 @@ async function downloadCaches(count) {
 function getCacheDir(cache) {
     const build = cache.builds[0].major;
     const date = cache.timestamp.split("T")[0];
+    const langPostfix = cache.language !== "en" ? "-" + cache.language : "";
     if (cache.game === "oldschool") {
-        return `caches/osrs-${build}_${date}/`;
+        return `caches/osrs-${build}${langPostfix}_${date}/`;
     }
-    return `caches/rs2-${build}_${date}/`;
+    return `caches/rs2-${build}${langPostfix}_${date}/`;
 }
 
 async function downloadCache(cache, cacheDir) {
@@ -248,6 +249,7 @@ function createCacheList() {
         // Skip 311 for now, missing configs, no nice way to check atm
         if (
             !isValid(cacheInfo) ||
+            cacheInfo.language !== "en" ||
             (cacheInfo.game === "runescape" && (revision < 234 || revision > 740)) ||
             revision === 311
         ) {
