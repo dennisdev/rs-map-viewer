@@ -44,6 +44,9 @@ export class InputManager {
     gamepadIndex?: number;
 
     init(element: HTMLElement) {
+        if (!this.element) {
+            this.cleanUp();
+        }
         this.element = element;
 
         window.addEventListener("gamepadconnected", this.onGamepadConnected);
@@ -68,7 +71,7 @@ export class InputManager {
         element.addEventListener("focusout", this.onFocusOut);
     }
 
-    cleanup() {
+    cleanUp() {
         if (!this.element) {
             return;
         }

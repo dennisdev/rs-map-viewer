@@ -425,7 +425,7 @@ export class MapViewer {
 
     cleanup = (gl: WebGL2RenderingContext) => {
         console.log("MapViewer cleanup");
-        this.inputManager.cleanup();
+        this.inputManager.cleanUp();
         this.clearMapImageUrls();
         if (this.app && this.renderer) {
             this.renderer.cleanup(this.app);

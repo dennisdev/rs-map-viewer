@@ -690,6 +690,8 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
             newDrawRange(cmd.offset, cmd.elements, cmd.instances.length),
         );
 
+        console.log(`draw ranges interact: ${drawRangesInteract.length}`, mapX, mapY);
+
         // Interact Lod (non merged)
         const drawRangesInteractLod = sceneBuf.drawCommandsInteractLod.map((cmd) =>
             newDrawRange(cmd.offset, cmd.elements, cmd.instances.length),

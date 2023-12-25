@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
-import { fetchCacheList, loadCacheFiles } from "./Caches";
-import { renderDataLoaderSerializer } from "./worker/RenderDataLoader";
-import { registerSerializer } from "threads/worker";
-import { RenderDataWorkerPool } from "./worker/RenderDataWorkerPool";
-import { MapViewer } from "./MapViewer";
-import { DownloadProgress } from "../rs/cache/CacheFiles";
-import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
-import { formatBytes } from "../util/BytesUtil";
-import { MapViewerContainer } from "./MapViewerContainer";
 import { useSearchParams } from "react-router-dom";
+import { DownloadProgress } from "../rs/cache/CacheFiles";
+import { MapViewer } from "./MapViewer";
+import { MapViewerContainer } from "./MapViewerContainer";
 import WebFont from "webfontloader";
-import { fetchObjSpawns } from "./data/obj/ObjSpawn";
-import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
+import { fetchCacheList, loadCacheFiles } from "../mapviewer/Caches";
+import { RenderDataWorkerPool } from "../mapviewer/worker/RenderDataWorkerPool";
 import { isIos, isWallpaperEngine } from "../util/DeviceUtil";
+import { formatBytes } from "../util/BytesUtil";
+import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
+import { fetchObjSpawns } from "../mapviewer/data/obj/ObjSpawn";
+import { fetchNpcSpawns, getNpcSpawnsUrl } from "../mapviewer/data/npc/NpcSpawn";
+import { WEBGL } from "./MapViewerRenderers";
+import { registerSerializer } from "threads";
+import { renderDataLoaderSerializer } from "../mapviewer/worker/RenderDataLoader";
 
 registerSerializer(renderDataLoaderSerializer);
 
@@ -64,15 +65,15 @@ function MapViewerApp() {
 
             const mapViewer = new MapViewer(
                 workerPool,
-                mapImageCache,
                 cacheList,
                 objSpawns,
                 npcSpawns,
+                mapImageCache,
+                WEBGL,
                 cache,
             );
             mapViewer.applySearchParams(searchParams);
             mapViewer.init();
-            // mapViewer.initCache(cache);
 
             setDownloadProgress(undefined);
             setMapViewer(mapViewer);
@@ -105,7 +106,6 @@ function MapViewerApp() {
         );
     } else if (mapViewer) {
         content = <MapViewerContainer mapViewer={mapViewer} />;
-        // content = <TestApp />;
     }
 
     return <div className="App max-height">{content}</div>;

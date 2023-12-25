@@ -155,17 +155,17 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         this.shadersPromise = this.initShaders(app);
 
         this.sceneUniformBuffer = app.createUniformBuffer([
-            PicoGL.FLOAT_MAT4,
-            PicoGL.FLOAT_MAT4,
-            PicoGL.FLOAT_MAT4,
-            PicoGL.FLOAT_VEC4,
-            PicoGL.FLOAT_VEC2,
-            PicoGL.FLOAT,
-            PicoGL.FLOAT,
-            PicoGL.FLOAT,
-            PicoGL.FLOAT,
-            PicoGL.FLOAT,
-            PicoGL.FLOAT, // isNewTextureAnim
+            PicoGL.FLOAT_MAT4, // mat4 u_viewProjMatrix;
+            PicoGL.FLOAT_MAT4, // mat4 u_viewMatrix;
+            PicoGL.FLOAT_MAT4, // mat4 u_projectionMatrix;
+            PicoGL.FLOAT_VEC4, // vec4 u_skyColor;
+            PicoGL.FLOAT_VEC2, // vec2 u_cameraPos;
+            PicoGL.FLOAT, // float u_renderDistance;
+            PicoGL.FLOAT, // float u_fogDepth;
+            PicoGL.FLOAT, // float u_currentTime;
+            PicoGL.FLOAT, // float u_brightness;
+            PicoGL.FLOAT, // float u_colorBanding;
+            PicoGL.FLOAT, // float u_isNewTextureAnim;
         ]);
 
         if (this.textureLoader) {
@@ -293,6 +293,7 @@ export class SdRenderer extends Renderer<SdMapSquare> {
         const cacheInfo = this.mapViewer.loadedCache.info;
 
         let maxPreloadTextures = textureCount;
+        // we should check if the texture loader is procedural instead
         if (cacheInfo.game === "runescape" && cacheInfo.revision >= 508) {
             maxPreloadTextures = 64;
         }

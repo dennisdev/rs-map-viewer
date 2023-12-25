@@ -440,7 +440,6 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 step: 1,
                 onChange: (v) => {
                     mapViewer.camera.orthoZoom = v;
-                    // mapViewer.runCameraMoveEndCallback();
                 },
             },
         };
