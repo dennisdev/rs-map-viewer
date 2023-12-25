@@ -1,23 +1,29 @@
-import { PicoGL, App as PicoApp } from "picogl";
+import { URLSearchParamsInit } from "react-router-dom";
 import { CacheList, LoadedCache } from "./Caches";
-import { Renderer } from "./renderer/Renderer";
-import { RenderDataWorkerPool } from "./worker/RenderDataWorkerPool";
 import { Camera, CameraPosition, ProjectionType } from "./Camera";
 import { InputManager } from "./InputManager";
-import { SdRenderer } from "./renderer/sd/SdRenderer";
+import { NpcSpawn } from "./data/npc/NpcSpawn";
+import { ObjSpawn } from "./data/obj/ObjSpawn";
+import { RenderDataWorkerPool } from "./worker/RenderDataWorkerPool";
+import { vec3 } from "gl-matrix";
 import { CacheSystem } from "../rs/cache/CacheSystem";
 import { CacheLoaderFactory, getCacheLoaderFactory } from "../rs/cache/loader/CacheLoaderFactory";
-import { RenderStats } from "./RenderStats";
-import { vec3, vec4 } from "gl-matrix";
-import { URLSearchParamsInit } from "react-router-dom";
-import { getMapSquareId } from "../rs/map/MapFileIndex";
-import { MapManager, MapSquare } from "./renderer/MapManager";
-import { Scene } from "../rs/scene/Scene";
+import { MapViewerRenderer } from "./MapViewerRenderer";
+import { MapViewerRendererType, createRenderer } from "./MapViewerRenderers";
+import { TextureLoader } from "../rs/texture/TextureLoader";
+import { SeqTypeLoader } from "../rs/config/seqtype/SeqTypeLoader";
+import { SeqFrameLoader } from "../rs/model/seq/SeqFrameLoader";
+import { LocTypeLoader } from "../rs/config/loctype/LocTypeLoader";
+import { ObjTypeLoader } from "../rs/config/objtype/ObjTypeLoader";
+import { NpcTypeLoader } from "../rs/config/npctype/NpcTypeLoader";
+import { BasTypeLoader } from "../rs/config/bastype/BasTypeLoader";
+import { VarManager } from "../rs/config/vartype/VarManager";
+import { MapFileIndex, getMapSquareId } from "../rs/map/MapFileIndex";
+import { isTouchDevice, isWallpaperEngine } from "../util/DeviceUtil";
+import { Pathfinder } from "../rs/pathfinder/Pathfinder";
+import { MapManager } from "./MapManager";
 import { OsrsMenuEntry } from "../components/rs/menu/OsrsMenu";
 import { MenuTargetType } from "../rs/MenuEntry";
-import { ObjSpawn } from "./data/obj/ObjSpawn";
-import { NpcSpawn } from "./data/npc/NpcSpawn";
-import { isTouchDevice, isWallpaperEngine } from "../util/DeviceUtil";
 
 const DEFAULT_RENDER_DISTANCE = isWallpaperEngine ? 512 : 128;
 
@@ -27,28 +33,30 @@ export class MapViewer {
     inputManager: InputManager = new InputManager();
     camera: Camera = new Camera(3242, -26, 3202, -245, 1862);
 
+    pathfinder: Pathfinder = new Pathfinder();
+
+    renderer: MapViewerRenderer;
+
+    // Cache
     loadedCache!: LoadedCache;
-    cacheSystem?: CacheSystem;
-    loaderFactory?: CacheLoaderFactory;
+    cacheSystem!: CacheSystem;
+    loaderFactory!: CacheLoaderFactory;
 
-    app?: PicoApp;
-    hasMultiDraw: boolean = false;
+    textureLoader!: TextureLoader;
+    seqTypeLoader!: SeqTypeLoader;
+    seqFrameLoader!: SeqFrameLoader;
 
-    renderer!: Renderer<MapSquare>;
+    locTypeLoader!: LocTypeLoader;
+    objTypeLoader!: ObjTypeLoader;
+    npcTypeLoader!: NpcTypeLoader;
 
-    stats: RenderStats = new RenderStats();
+    basTypeLoader!: BasTypeLoader;
 
-    fpsLimit: number = 0;
-    lastFrameTimeSec: DOMHighResTimeStamp = 0;
+    varManager!: VarManager;
 
-    lastFrameSearchParamsUpdated: number = 0;
+    mapFileIndex!: MapFileIndex;
 
-    hudVisible: boolean = !isWallpaperEngine;
-
-    mapImageUrls: Map<number, string> = new Map();
-    loadingMapImageIds: Set<number> = new Set();
-
-    needsFramebufferUpdate: boolean = false;
+    isNewTextureAnim: boolean = false;
 
     // Settings
 
@@ -59,27 +67,12 @@ export class MapViewer {
     // Map square distance
     lodDistance: number = 3;
 
-    loadObjs: boolean = true;
-    loadNpcs: boolean = true;
-
-    maxLevel: number = Scene.MAX_LEVELS - 1;
-
-    skyColor: vec4 = vec4.fromValues(0, 0, 0, 1);
-    fogDepth: number = 16;
-
-    brightness: number = 1.0;
-    colorBanding: number = 255;
-
-    smoothTerrain: boolean = false;
-
-    cullBackFace: boolean = true;
-
-    // Anti aliasing
-    msaaEnabled: boolean = false;
-    fxaaEnabled: boolean = false;
-
     tooltips: boolean = !isTouchDevice;
     debugId: boolean = false;
+
+    // State
+    needsSearchParamUpdate: boolean = false;
+    lastTimeSearchParamsUpdated: number = 0;
 
     menuOpen: boolean = false;
     menuOpenedFrame: number = 0;
@@ -87,22 +80,24 @@ export class MapViewer {
     menuY: number = -1;
     menuEntries: OsrsMenuEntry[] = [];
 
+    hudVisible: boolean = true;
+
     debugText?: string;
+
+    mapImageUrls: Map<number, string> = new Map();
+    loadingMapImageIds: Set<number> = new Set();
 
     constructor(
         readonly workerPool: RenderDataWorkerPool,
-        readonly mapImageCache: Cache,
         readonly cacheList: CacheList,
         readonly objSpawns: ObjSpawn[],
         public npcSpawns: NpcSpawn[],
+        readonly mapImageCache: Cache,
+        rendererType: MapViewerRendererType,
         cache: LoadedCache,
     ) {
-        console.log("MapViewer constructor");
-        this.setRenderer(new SdRenderer(this));
+        this.renderer = createRenderer(rendererType, this);
         this.initCache(cache);
-        this.workerPool.loadCachedMapImages().then((mapImageUrls) => {
-            mapImageUrls.forEach((value, key) => this.mapImageUrls.set(key, value));
-        });
     }
 
     getSearchParams(): URLSearchParamsInit {
@@ -174,13 +169,10 @@ export class MapViewer {
         }
     }
 
-    init() {
-        this.renderer.mapManager.update(
-            this.camera,
-            this.stats.frameCount,
-            this.renderDistance,
-            this.unloadDistance,
-        );
+    init(): void {
+        this.workerPool.loadCachedMapImages().then((mapImageUrls) => {
+            mapImageUrls.forEach((value, key) => this.mapImageUrls.set(key, value));
+        });
     }
 
     initCache(cache: LoadedCache): void {
@@ -189,44 +181,90 @@ export class MapViewer {
         this.loaderFactory = getCacheLoaderFactory(cache.info, this.cacheSystem);
         this.workerPool.initCache(cache, this.objSpawns, this.npcSpawns);
         this.clearMapImageUrls();
-        if (this.renderer) {
-            this.renderer.initCache(this.app, this.cacheSystem, this.loaderFactory);
+
+        this.textureLoader = this.loaderFactory.getTextureLoader();
+        this.seqTypeLoader = this.loaderFactory.getSeqTypeLoader();
+        this.seqFrameLoader = this.loaderFactory.getSeqFrameLoader();
+        this.locTypeLoader = this.loaderFactory.getLocTypeLoader();
+        this.objTypeLoader = this.loaderFactory.getObjTypeLoader();
+        this.npcTypeLoader = this.loaderFactory.getNpcTypeLoader();
+        this.basTypeLoader = this.loaderFactory.getBasTypeLoader();
+
+        this.varManager = new VarManager(this.loaderFactory.getVarBitTypeLoader());
+        const questTypeLoader = this.loaderFactory.getQuestTypeLoader();
+        if (questTypeLoader) {
+            this.varManager.setQuestsCompleted(questTypeLoader);
         }
-        this.lastFrameSearchParamsUpdated = this.stats.frameCount;
+
+        this.mapFileIndex = this.loaderFactory.getMapFileIndex();
+
+        this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
+
+        this.renderer.initCache();
+
+        this.updateSearchParams();
     }
 
-    setRenderer(renderer: Renderer<MapSquare>): void {
-        const app = this.app;
-        const prevRenderer = this.renderer;
-        if (app && prevRenderer) {
-            prevRenderer.cleanup(app);
-        }
+    setRenderer(renderer: MapViewerRenderer): void {
         this.renderer = renderer;
-        if (app) {
-            renderer.init(app);
-        }
+        this.renderer.initCache();
+        this.resetMenu();
     }
 
-    initGl = (gl: WebGL2RenderingContext) => {
-        console.log("MapViewer init");
-
-        if (gl.canvas instanceof HTMLCanvasElement) {
-            this.inputManager.init(gl.canvas);
+    /**
+     * Sets the camera position to a new arbitrary position
+     * @param newPosition Any of the items you want to move: Position, pitch, yaw
+     */
+    setCamera(newPosition: Partial<CameraPosition>): void {
+        if (newPosition.position) {
+            vec3.copy(this.camera.pos, newPosition.position);
         }
-
-        this.app = PicoGL.createApp(gl as any);
-
-        // hack to get the right multi draw extension for picogl
-        const state: any = this.app.state;
-        const ext = gl.getExtension("WEBGL_multi_draw");
-        PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED = ext;
-        state.extensions.multiDrawInstanced = ext;
-
-        this.hasMultiDraw = !!PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED;
-
-        if (this.renderer) {
-            this.renderer.init(this.app);
+        if (newPosition.pitch !== undefined) {
+            this.camera.pitch = newPosition.pitch;
         }
+        if (newPosition.yaw !== undefined) {
+            this.camera.yaw = newPosition.yaw;
+        }
+        this.camera.updated = true;
+    }
+
+    updateSearchParams(): void {
+        this.needsSearchParamUpdate = true;
+        this.lastTimeSearchParamsUpdated = performance.now();
+    }
+
+    closeMenu = () => {
+        this.menuOpen = false;
+        this.menuX = -1;
+        this.menuY = -1;
+        this.renderer.canvas.focus();
+    };
+
+    resetMenu = () => {
+        this.closeMenu();
+        this.menuOpenedFrame = 0;
+    };
+
+    onExamine = (entry: OsrsMenuEntry) => {
+        let lookupType: string | undefined;
+        switch (entry.targetType) {
+            case MenuTargetType.NPC:
+                lookupType = "npc";
+                break;
+            case MenuTargetType.LOC:
+                lookupType = "object";
+                break;
+            case MenuTargetType.OBJ:
+                lookupType = "item";
+                break;
+        }
+        if (lookupType) {
+            window.open(
+                `https://oldschool.runescape.wiki/w/Special:Lookup?type=${lookupType}&id=${entry.targetId}`,
+                "_blank",
+            );
+        }
+        this.closeMenu();
     };
 
     static getCachedMapImageUrl(mapX: number, mapY: number): string {
@@ -287,151 +325,6 @@ export class MapViewer {
         }
         this.mapImageUrls.set(mapId, url);
     }
-
-    setLoadObjs(load: boolean) {
-        if (this.loadObjs !== load) {
-            this.renderer.clearMaps();
-        }
-        this.loadObjs = load;
-    }
-
-    setLoadNpcs(load: boolean) {
-        if (this.loadNpcs !== load) {
-            this.renderer.clearMaps();
-        }
-        this.loadNpcs = load;
-    }
-
-    setSmoothTerrain(smooth: boolean) {
-        if (this.smoothTerrain !== smooth) {
-            this.renderer.clearMaps();
-        }
-        this.smoothTerrain = smooth;
-    }
-
-    setMaxLevel(level: number): void {
-        if (this.maxLevel !== level) {
-            this.renderer.clearMaps();
-        }
-        this.maxLevel = level;
-    }
-
-    setSkyColor(r: number, g: number, b: number) {
-        this.skyColor[0] = r / 255;
-        this.skyColor[1] = g / 255;
-        this.skyColor[2] = b / 255;
-    }
-
-    setMsaa(enabled: boolean) {
-        this.msaaEnabled = enabled;
-        this.needsFramebufferUpdate = true;
-    }
-
-    setFxaa(enabled: boolean) {
-        this.fxaaEnabled = enabled;
-    }
-
-    closeMenu = () => {
-        this.menuOpen = false;
-        this.menuX = -1;
-        this.menuY = -1;
-        this.app?.canvas?.focus();
-    };
-
-    onExamine = (entry: OsrsMenuEntry) => {
-        let lookupType: string | undefined;
-        switch (entry.targetType) {
-            case MenuTargetType.NPC:
-                lookupType = "npc";
-                break;
-            case MenuTargetType.LOC:
-                lookupType = "object";
-                break;
-            case MenuTargetType.OBJ:
-                lookupType = "item";
-                break;
-        }
-        if (lookupType) {
-            window.open(
-                `https://oldschool.runescape.wiki/w/Special:Lookup?type=${lookupType}&id=${entry.targetId}`,
-                "_blank",
-            );
-        }
-        this.closeMenu();
-    };
-
-    /**
-     * Sets the camera position to a new arbitrary position
-     * @param newPosition Any of the items you want to move: Position, pitch, yaw
-     */
-    setCamera(newPosition: Partial<CameraPosition>): void {
-        if (newPosition.position) {
-            vec3.copy(this.camera.pos, newPosition.position);
-        }
-        if (newPosition.pitch !== undefined) {
-            this.camera.pitch = newPosition.pitch;
-        }
-        if (newPosition.yaw !== undefined) {
-            this.camera.yaw = newPosition.yaw;
-        }
-        this.camera.updated = true;
-    }
-
-    render = (gl: WebGL2RenderingContext, time: DOMHighResTimeStamp, resized: boolean) => {
-        const app = this.app;
-        if (!app) {
-            return;
-        }
-        const width = gl.canvas.width;
-        const height = gl.canvas.height;
-        if (resized) {
-            app.resize(width, height);
-        }
-
-        if (window.wallpaperFpsLimit !== undefined) {
-            this.fpsLimit = window.wallpaperFpsLimit;
-        }
-
-        const timeSec = time * 0.001;
-        const deltaTimeSec = timeSec - this.lastFrameTimeSec;
-        if (this.fpsLimit) {
-            const tolerance = 0.001;
-            if (deltaTimeSec < 1 / this.fpsLimit - tolerance) {
-                return;
-            }
-        }
-
-        this.stats.update(time);
-
-        if (this.cullBackFace) {
-            app.enable(PicoGL.CULL_FACE);
-        } else {
-            app.disable(PicoGL.CULL_FACE);
-        }
-
-        if (this.renderer) {
-            this.renderer.render(app, time, deltaTimeSec, resized);
-        }
-
-        if (this.camera.updated) {
-            this.lastFrameSearchParamsUpdated = this.stats.frameCount;
-        }
-
-        this.lastFrameTimeSec = timeSec;
-        this.inputManager.onFrameEnd();
-        this.camera.onFrameEnd();
-        this.stats.onFrameEnd();
-    };
-
-    cleanup = (gl: WebGL2RenderingContext) => {
-        console.log("MapViewer cleanup");
-        this.inputManager.cleanUp();
-        this.clearMapImageUrls();
-        if (this.app && this.renderer) {
-            this.renderer.cleanup(this.app);
-        }
-        this.app = undefined;
-    };
 
     clearMapImageUrls(): void {
         for (const url of this.mapImageUrls.values()) {

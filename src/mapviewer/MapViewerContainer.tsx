@@ -1,18 +1,19 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { GlCanvas } from "../components/GlCanvas";
+import { useCallback, useState, useRef, useEffect } from "react";
+import { RendererCanvas } from "../components/renderer/RendererCanvas";
 import { MapViewer } from "./MapViewer";
+import { MapViewerRenderer } from "./MapViewerRenderer";
 import { MapViewerControls } from "./MapViewerControls";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { formatBytes } from "../util/BytesUtil";
 import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
 import "./MapViewerContainer.css";
+import { OsrsMenu, OsrsMenuProps } from "../components/rs/menu/OsrsMenu";
+import { useSearchParams } from "react-router-dom";
+import { isTouchDevice } from "../util/DeviceUtil";
+import { Joystick } from "react-joystick-component";
 import { MinimapContainer } from "../components/rs/minimap/MinimapContainer";
 import { RS_TO_DEGREES } from "../rs/MathConstants";
 import { WorldMapModal } from "../components/rs/worldmap/WorldMapModal";
-import { OsrsMenu, OsrsMenuProps } from "../components/rs/menu/OsrsMenu";
-import { isTouchDevice } from "../util/DeviceUtil";
-import { Joystick } from "react-joystick-component";
 
 interface MapViewerContainerProps {
     mapViewer: MapViewer;
@@ -20,6 +21,8 @@ interface MapViewerContainerProps {
 
 export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.Element {
     const [searchParams, setSearchParams] = useSearchParams();
+
+    const [renderer, setRenderer] = useState<MapViewerRenderer>(mapViewer.renderer);
 
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress>();
 
@@ -33,15 +36,19 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
     const requestRef = useRef<number | undefined>();
 
     const animate = (time: DOMHighResTimeStamp) => {
-        // Wait for 5 frames before updating search params
-        if (mapViewer.stats.frameCount - mapViewer.lastFrameSearchParamsUpdated === 5) {
+        // Wait for 200ms before updating search params
+        if (
+            mapViewer.needsSearchParamUpdate &&
+            performance.now() - mapViewer.lastTimeSearchParamsUpdated > 200
+        ) {
             setSearchParams(mapViewer.getSearchParams(), { replace: true });
+            mapViewer.needsSearchParamUpdate = false;
             console.log("Updated search params");
         }
 
         setHudVisible(mapViewer.hudVisible);
         if (mapViewer.hudVisible) {
-            setFps(Math.round(mapViewer.stats.frameTimeFps));
+            setFps(Math.round(renderer.stats.frameTimeFps));
             setCameraYaw(mapViewer.camera.getYaw());
         }
 
@@ -75,8 +82,8 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
 
     const closeWorldMap = useCallback(() => {
         setWorldMapOpen(false);
-        mapViewer.app?.canvas.focus();
-    }, [mapViewer]);
+        renderer.canvas.focus();
+    }, [renderer]);
 
     const onMapClicked = useCallback(
         (x: number, y: number) => {
@@ -126,7 +133,8 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
             {menuProps && <OsrsMenu {...menuProps} />}
 
             <MapViewerControls
-                mapViewer={mapViewer}
+                renderer={renderer}
+                setRenderer={setRenderer}
                 setDownloadProgress={setDownloadProgress}
                 hidden={!hudVisible}
             />
@@ -180,11 +188,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
                 </div>
             )}
 
-            <GlCanvas
-                onInit={mapViewer.initGl}
-                onRender={mapViewer.render}
-                onCleanup={mapViewer.cleanup}
-            ></GlCanvas>
+            <RendererCanvas renderer={renderer} />
         </div>
     );
 }

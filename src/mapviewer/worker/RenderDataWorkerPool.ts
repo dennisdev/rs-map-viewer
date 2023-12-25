@@ -5,7 +5,7 @@ import { WorkerDescriptor } from "threads/dist/master/pool-types";
 import { RenderDataWorker } from "./RenderDataWorker";
 import { LoadedCache } from "../Caches";
 import { RenderDataLoader } from "./RenderDataLoader";
-import { MinimapData } from "../data/MinimapData";
+import { MinimapData } from "./MinimapData";
 import { ObjSpawn } from "../data/obj/ObjSpawn";
 import { NpcSpawn } from "../data/npc/NpcSpawn";
 

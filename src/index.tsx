@@ -2,11 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";
-// import MapViewerApp from "./mapviewer/MapViewerApp";
 import reportWebVitals from "./reportWebVitals";
 import { Bzip2 } from "./rs/compression/Bzip2";
 import { Gzip } from "./rs/compression/Gzip";
-import MapViewerApp from "./mapviewer2/MapViewerApp";
+import MapViewerApp from "./mapviewer/MapViewerApp";
 
 Bzip2.initWasm();
 Gzip.initWasm();
@@ -24,7 +23,6 @@ root.render(
     // <React.StrictMode>
     <BrowserRouter>
         <MapViewerApp />
-        {/* <MapViewerApp /> */}
     </BrowserRouter>,
     // </React.StrictMode>,
 );

@@ -9,10 +9,7 @@ import { LocModelType } from "./LocModelType";
 import { LocType } from "./LocType";
 import { LocTypeLoader } from "./LocTypeLoader";
 import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
-import {
-    getModelFaces,
-    isModelFaceTransparent,
-} from "../../../mapviewer/renderer/sd/buffer/SceneBuffer";
+import { getModelFaces, isModelFaceTransparent } from "../../../mapviewer/webgl/buffer/SceneBuffer";
 
 export type ContourGroundInfo = {
     type: number;

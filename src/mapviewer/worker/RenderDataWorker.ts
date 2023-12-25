@@ -14,7 +14,7 @@ import { LocModelLoader } from "../../rs/config/loctype/LocModelLoader";
 import { LandscapeLoadType, SceneBuilder } from "../../rs/scene/SceneBuilder";
 import { TextureLoader } from "../../rs/texture/TextureLoader";
 import { MapImageRenderer } from "../../rs/map/MapImageRenderer";
-import { loadMinimapBlob, MinimapData } from "../data/MinimapData";
+import { loadMinimapBlob, MinimapData } from "./MinimapData";
 import { Scene } from "../../rs/scene/Scene";
 import { VarManager } from "../../rs/config/vartype/VarManager";
 import { Hasher } from "../../util/Hasher";
@@ -34,7 +34,6 @@ import { IndexType } from "../../rs/cache/IndexType";
 import { SpriteLoader } from "../../rs/sprite/SpriteLoader";
 import { IndexedSprite } from "../../rs/sprite/IndexedSprite";
 import { ConfigType } from "../../rs/cache/ConfigType";
-import { MapManager } from "../renderer/MapManager";
 import { getMapSquareId } from "../../rs/map/MapFileIndex";
 
 registerSerializer(renderDataLoaderSerializer);
