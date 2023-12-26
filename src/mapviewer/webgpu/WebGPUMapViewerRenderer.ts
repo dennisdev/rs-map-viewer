@@ -1,8 +1,8 @@
+import { isWebGPUSupported } from "../../util/DeviceUtil";
 import { MapViewerRenderer } from "../MapViewerRenderer";
 import { MapViewerRendererType, WEBGPU } from "../MapViewerRenderers";
-import triangleVertShader from "./shaders/triangle.vert.wgsl?source";
 import redFragShader from "./shaders/red.frag.wgsl?source";
-import { isWebGPUSupported } from "../../util/DeviceUtil";
+import triangleVertShader from "./shaders/triangle.vert.wgsl?source";
 
 const ENABLED = false;
 

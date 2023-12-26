@@ -24,7 +24,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 import { LocModelType } from "../config/loctype/LocModelType";
 import { LocTypeLoader } from "../config/loctype/LocTypeLoader";
 import { Rasterizer3D } from "../graphics/Rasterizer3D";

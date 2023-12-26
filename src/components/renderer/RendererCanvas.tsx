@@ -1,4 +1,5 @@
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
+
 import { Renderer } from "./Renderer";
 
 export interface RendererCanvasProps {

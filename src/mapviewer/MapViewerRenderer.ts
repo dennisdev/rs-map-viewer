@@ -1,9 +1,10 @@
 import { Schema } from "leva/dist/declarations/src/types";
+
 import { Renderer } from "../components/renderer/Renderer";
+import { clamp } from "../util/MathUtil";
+import { MapManager, MapSquare } from "./MapManager";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRendererType } from "./MapViewerRenderers";
-import { MapManager, MapSquare } from "./MapManager";
-import { clamp } from "../util/MathUtil";
 
 export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends Renderer {
     abstract type: MapViewerRendererType;

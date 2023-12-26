@@ -6,7 +6,6 @@
  * MIT License
  * https://github.com/fuzhenn/frustum-intersects/blob/master/src/index.js
  */
-
 import { mat4, vec3, vec4 } from "gl-matrix";
 
 type Planes = [vec4, vec4, vec4, vec4, vec4, vec4];

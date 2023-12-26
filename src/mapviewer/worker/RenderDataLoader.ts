@@ -1,4 +1,5 @@
 import { SerializerImplementation } from "threads";
+
 import { SdMapDataLoader } from "../webgl/loader/SdMapDataLoader";
 import { WorkerState } from "./RenderDataWorker";
 

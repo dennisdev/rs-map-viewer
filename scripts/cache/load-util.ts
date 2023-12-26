@@ -1,4 +1,5 @@
 import fs from "fs";
+
 import { CacheList, LoadedCache, XteaMap } from "../../src/mapviewer/Caches";
 import { CacheFiles } from "../../src/rs/cache/CacheFiles";
 import { CacheInfo, getLatestCache } from "../../src/rs/cache/CacheInfo";

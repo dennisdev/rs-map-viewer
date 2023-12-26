@@ -1,5 +1,6 @@
 import gzip from "gzip-js";
 import init, { decompressGzip } from "wasm-gzip";
+
 const wasmGzipUrl = require("wasm-gzip/wasm_gzip_bg.wasm");
 
 export class Gzip {

@@ -7,8 +7,8 @@ import { SceneLoc } from "../../../rs/scene/SceneLoc";
 import { getIdFromTag } from "../../../rs/scene/entity/EntityTag";
 import { LocEntity } from "../../../rs/scene/entity/LocEntity";
 import { INVALID_HSL_COLOR } from "../../../rs/util/ColorUtil";
-import { ContourGroundType, SceneModel } from "../buffer/SceneBuffer";
 import { InteractType } from "../../webgl/InteractType";
+import { ContourGroundType, SceneModel } from "../buffer/SceneBuffer";
 import { SceneLocEntity } from "./SceneLocEntity";
 
 export type SceneLocs = {

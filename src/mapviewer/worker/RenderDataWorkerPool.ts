@@ -1,13 +1,14 @@
-import { spawn, Pool, ModuleThread } from "threads";
+import { ModuleThread, Pool, spawn } from "threads";
 import { QueuedTask } from "threads/dist/master/pool";
-import { ObservablePromise } from "threads/dist/observable-promise";
 import { WorkerDescriptor } from "threads/dist/master/pool-types";
-import { RenderDataWorker } from "./RenderDataWorker";
+import { ObservablePromise } from "threads/dist/observable-promise";
+
 import { LoadedCache } from "../Caches";
-import { RenderDataLoader } from "./RenderDataLoader";
-import { MinimapData } from "./MinimapData";
-import { ObjSpawn } from "../data/obj/ObjSpawn";
 import { NpcSpawn } from "../data/npc/NpcSpawn";
+import { ObjSpawn } from "../data/obj/ObjSpawn";
+import { MinimapData } from "./MinimapData";
+import { RenderDataLoader } from "./RenderDataLoader";
+import { RenderDataWorker } from "./RenderDataWorker";
 
 type RenderDataWorkerThread = ModuleThread<RenderDataWorker>;
 

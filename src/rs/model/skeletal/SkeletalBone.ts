@@ -1,4 +1,5 @@
 import { ReadonlyMat4, mat4, vec3 } from "gl-matrix";
+
 import { ByteBuffer } from "../../io/ByteBuffer";
 import { MatrixPool } from "./MatrixPool";
 

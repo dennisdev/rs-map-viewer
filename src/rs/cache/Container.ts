@@ -1,5 +1,4 @@
 // import { Xtea } from "../util/Xtea";
-
 import { Bzip2 } from "../compression/Bzip2";
 import { CompressionType } from "../compression/CompressionType";
 import { Gzip } from "../compression/Gzip";

@@ -1,8 +1,9 @@
 import fs from "fs";
-import { loadCache, loadCacheInfos, loadCacheList } from "./load-util";
+import sharp from "sharp";
+
 import { CacheSystem } from "../../src/rs/cache/CacheSystem";
 import { getCacheLoaderFactory } from "../../src/rs/cache/loader/CacheLoaderFactory";
-import sharp from "sharp";
+import { loadCache, loadCacheInfos, loadCacheList } from "./load-util";
 
 function saveArgbArrayToPng(pixels: Int32Array, width: number, height: number, outputPath: string) {
     // Convert ARGB to RGBA

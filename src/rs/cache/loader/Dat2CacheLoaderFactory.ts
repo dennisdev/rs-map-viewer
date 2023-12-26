@@ -1,4 +1,10 @@
 import {
+    ArchiveBasTypeLoader,
+    BasTypeLoader,
+    DummyBasTypeLoader,
+} from "../../config/bastype/BasTypeLoader";
+import { GraphicsDefaults } from "../../config/defaults/GraphicsDefaults";
+import {
     ArchiveOverlayFloorTypeLoader,
     ArchiveUnderlayFloorTypeLoader,
     FloorTypeLoader,
@@ -9,6 +15,7 @@ import {
     IndexLocTypeLoader,
     LocTypeLoader,
 } from "../../config/loctype/LocTypeLoader";
+import { MapSceneTypeLoader } from "../../config/mapscenetype/MapSceneTypeLoader";
 import {
     ArchiveNpcTypeLoader,
     IndexNpcTypeLoader,
@@ -19,6 +26,7 @@ import {
     IndexObjTypeLoader,
     ObjTypeLoader,
 } from "../../config/objtype/ObjTypeLoader";
+import { ArchiveQuestTypeLoader, QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 import {
     ArchiveSeqTypeLoader,
     IndexSeqTypeLoader,
@@ -30,10 +38,16 @@ import {
     VarBitTypeLoader,
 } from "../../config/vartype/bit/VarBitTypeLoader";
 import { Dat2MapIndex, MapFileIndex } from "../../map/MapFileIndex";
-import { TextureLoader } from "../../texture/TextureLoader";
 import { IndexModelLoader, ModelLoader } from "../../model/ModelLoader";
 import { IndexSeqBaseLoader, SeqBaseLoader } from "../../model/seq/SeqBaseLoader";
 import { Dat2SeqFrameLoader, SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
+import { IndexSkeletalSeqLoader, SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
+import { IndexedSprite } from "../../sprite/IndexedSprite";
+import { SpriteLoader } from "../../sprite/SpriteLoader";
+import { OldProceduralTextureLoader } from "../../texture/OldProceduralTextureLoader";
+import { ProceduralTextureLoader } from "../../texture/ProceduralTextureLoader";
+import { SpriteTextureLoader } from "../../texture/SpriteTextureLoader";
+import { TextureLoader } from "../../texture/TextureLoader";
 import { ApiType } from "../ApiType";
 import { CacheIndex } from "../CacheIndex";
 import { CacheInfo } from "../CacheInfo";
@@ -42,20 +56,6 @@ import { CacheType } from "../CacheType";
 import { ConfigType } from "../ConfigType";
 import { IndexType } from "../IndexType";
 import { CacheLoaderFactory } from "./CacheLoaderFactory";
-import { SpriteTextureLoader } from "../../texture/SpriteTextureLoader";
-import { OldProceduralTextureLoader } from "../../texture/OldProceduralTextureLoader";
-import { ProceduralTextureLoader } from "../../texture/ProceduralTextureLoader";
-import { IndexedSprite } from "../../sprite/IndexedSprite";
-import { GraphicsDefaults } from "../../config/defaults/GraphicsDefaults";
-import { SpriteLoader } from "../../sprite/SpriteLoader";
-import { MapSceneTypeLoader } from "../../config/mapscenetype/MapSceneTypeLoader";
-import {
-    ArchiveBasTypeLoader,
-    BasTypeLoader,
-    DummyBasTypeLoader,
-} from "../../config/bastype/BasTypeLoader";
-import { IndexSkeletalSeqLoader, SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
-import { ArchiveQuestTypeLoader, QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 
 export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
     constructor(

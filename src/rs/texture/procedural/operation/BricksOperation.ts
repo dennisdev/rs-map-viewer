@@ -1,8 +1,9 @@
 import JavaRandom from "java-random";
-import { ByteBuffer } from "../../../io/ByteBuffer";
-import { TextureOperation } from "./TextureOperation";
-import { TextureGenerator } from "../TextureGenerator";
+
 import { nextIntJagex } from "../../../../util/MathUtil";
+import { ByteBuffer } from "../../../io/ByteBuffer";
+import { TextureGenerator } from "../TextureGenerator";
+import { TextureOperation } from "./TextureOperation";
 
 export class BricksOperation extends TextureOperation {
     field0 = 4;

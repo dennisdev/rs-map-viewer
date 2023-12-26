@@ -1,20 +1,21 @@
 import {
+    MouseEvent,
+    TouchEvent,
+    WheelEvent,
     memo,
+    useCallback,
+    useLayoutEffect,
     useRef,
     useState,
-    useCallback,
-    MouseEvent,
-    WheelEvent,
-    TouchEvent,
-    useLayoutEffect,
 } from "react";
-import "./WorldMap.css";
-import { useElementSize } from "usehooks-ts";
-import { OsrsSelect } from "../select/OsrsSelect";
 import { SingleValue } from "react-select";
-import locationsImport from "./locations.json";
+import { useElementSize } from "usehooks-ts";
+
 import { getMapSquareId } from "../../../rs/map/MapFileIndex";
 import { clamp } from "../../../util/MathUtil";
+import { OsrsSelect } from "../select/OsrsSelect";
+import "./WorldMap.css";
+import locationsImport from "./locations.json";
 
 interface Location {
     name: string;

@@ -1,6 +1,6 @@
+import { ByteBuffer } from "../../../io/ByteBuffer";
 import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
-import { ByteBuffer } from "../../../io/ByteBuffer";
 
 export class PerlinNoiseOperation extends TextureOperation {
     static readonly invertTable: number[][] = [

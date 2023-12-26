@@ -1,12 +1,13 @@
+import { mat4, vec3 } from "gl-matrix";
+
 import { COSINE, SINE } from "../MathConstants";
 import { Entity } from "../scene/entity/Entity";
 import { ModelData } from "./ModelData";
-import { SeqFrame } from "./seq/SeqFrame";
 import { SeqBase } from "./seq/SeqBase";
+import { SeqFrame } from "./seq/SeqFrame";
 import { SeqTransformType } from "./seq/SeqTransformType";
-import { SkeletalSeq } from "./skeletal/SkeletalSeq";
 import { SkeletalBase } from "./skeletal/SkeletalBase";
-import { mat4, vec3 } from "gl-matrix";
+import { SkeletalSeq } from "./skeletal/SkeletalSeq";
 
 const scaleVector = vec3.create();
 

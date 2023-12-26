@@ -1,10 +1,11 @@
-import { memo, useEffect, useState, useRef } from "react";
-import frame from "./minimap-frame.png";
-import minimapBlack from "./minimap-black.png";
-import compass from "./compass.png";
+import { memo, useEffect, useRef, useState } from "react";
+
+import { getMapSquareId } from "../../../rs/map/MapFileIndex";
 import "./MinimapContainer.css";
 import { MinimapImage } from "./MinimapImage";
-import { getMapSquareId } from "../../../rs/map/MapFileIndex";
+import compass from "./compass.png";
+import minimapBlack from "./minimap-black.png";
+import frame from "./minimap-frame.png";
 
 interface Position {
     x: number;

@@ -1,40 +1,41 @@
+import Denque from "denque";
+import { vec2, vec4 } from "gl-matrix";
+import { folder } from "leva";
+import { Schema } from "leva/dist/declarations/src/types";
 import {
-    PicoGL,
-    App as PicoApp,
     DrawCall,
+    Framebuffer,
+    App as PicoApp,
+    PicoGL,
     Program,
+    Renderbuffer,
     Texture,
     UniformBuffer,
     VertexArray,
     VertexBuffer,
-    Renderbuffer,
-    Framebuffer,
 } from "picogl";
-import { Schema } from "leva/dist/declarations/src/types";
+
+import { OsrsMenuEntry } from "../../components/rs/menu/OsrsMenu";
+import { createTextureArray } from "../../picogl/PicoTexture";
+import { MenuTargetType } from "../../rs/MenuEntry";
+import { Scene } from "../../rs/scene/Scene";
+import { isTouchDevice, isWebGL2Supported } from "../../util/DeviceUtil";
 import { MapViewer } from "../MapViewer";
 import { MapViewerRenderer } from "../MapViewerRenderer";
 import { MapViewerRendererType, WEBGL } from "../MapViewerRenderers";
+import { DrawRange, NULL_DRAW_RANGE } from "./DrawRange";
+import { InteractType } from "./InteractType";
+import { Interactions } from "./Interactions";
 import { WebGLMapSquare } from "./WebGLMapSquare";
-import { createTextureArray } from "../../picogl/PicoTexture";
+import { SdMapData } from "./loader/SdMapData";
 import { SdMapDataLoader } from "./loader/SdMapDataLoader";
 import { SdMapLoaderInput } from "./loader/SdMapLoaderInput";
-import { SdMapData } from "./loader/SdMapData";
-import { folder } from "leva";
-import { Scene } from "../../rs/scene/Scene";
-import Denque from "denque";
 import {
     FRAME_FXAA_PROGRAM,
     FRAME_PROGRAM,
     createMainProgram,
     createNpcProgram,
 } from "./shaders/Shaders";
-import { vec2, vec4 } from "gl-matrix";
-import { Interactions } from "./Interactions";
-import { DrawRange, NULL_DRAW_RANGE } from "./DrawRange";
-import { MenuTargetType } from "../../rs/MenuEntry";
-import { InteractType } from "./InteractType";
-import { OsrsMenuEntry } from "../../components/rs/menu/OsrsMenu";
-import { isTouchDevice, isWebGL2Supported } from "../../util/DeviceUtil";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;

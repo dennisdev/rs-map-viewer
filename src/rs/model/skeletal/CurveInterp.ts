@@ -1,4 +1,5 @@
 import { vec2 } from "gl-matrix";
+
 import { FloatUtil } from "../../../util/FloatUtil";
 import { Curve } from "./Curve";
 import { CurveInterpType } from "./CurveInterpType";

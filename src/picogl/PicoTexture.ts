@@ -1,4 +1,5 @@
 import PicoGL, { App, Texture as TextureType } from "picogl";
+
 const { Texture } = require("picogl/build/module/texture.js");
 
 // Hack to fix invalid mipmap levels

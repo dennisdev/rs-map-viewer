@@ -1,5 +1,5 @@
-import xxhash, { XXHashAPI } from "xxhash-wasm";
 import { xxHash32 } from "js-xxhash";
+import xxhash, { XXHashAPI } from "xxhash-wasm";
 
 export class Hasher {
     static hashApi: XXHashAPI | undefined;

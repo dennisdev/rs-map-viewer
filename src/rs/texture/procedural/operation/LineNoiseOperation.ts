@@ -1,8 +1,9 @@
 import JavaRandom from "java-random";
+
+import { nextIntJagex } from "../../../../util/MathUtil";
+import { ByteBuffer } from "../../../io/ByteBuffer";
 import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
-import { ByteBuffer } from "../../../io/ByteBuffer";
-import { nextIntJagex } from "../../../../util/MathUtil";
 
 export class LineNoiseOperation extends TextureOperation {
     seed = 0;

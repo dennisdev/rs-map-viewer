@@ -1,7 +1,7 @@
 import { CacheIndex } from "../../cache/CacheIndex";
 import { CacheInfo } from "../../cache/CacheInfo";
-import { Dat2SeqFrame, DatSeqFrame, SeqFrame } from "./SeqFrame";
 import { SeqBaseLoader } from "./SeqBaseLoader";
+import { Dat2SeqFrame, DatSeqFrame, SeqFrame } from "./SeqFrame";
 import { SeqFrameMap } from "./SeqFrameMap";
 
 export interface SeqFrameLoader {

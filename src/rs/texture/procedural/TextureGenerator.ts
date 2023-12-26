@@ -1,9 +1,10 @@
 import JavaRandom from "java-random";
+
+import { nextIntJagex } from "../../../util/MathUtil";
 import { CacheIndex } from "../../cache/CacheIndex";
 import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
 import { TextureLoader } from "../TextureLoader";
-import { nextIntJagex } from "../../../util/MathUtil";
 
 export class TextureGenerator {
     static SINE: Int32Array;

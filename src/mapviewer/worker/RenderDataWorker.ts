@@ -1,40 +1,41 @@
-import { expose, Transfer } from "threads/worker";
+import JSZip from "jszip";
 import { TransferDescriptor } from "threads";
-import { Bzip2 } from "../../rs/compression/Bzip2";
-import { Gzip } from "../../rs/compression/Gzip";
-import { LoadedCache } from "../Caches";
-import { CacheSystem } from "../../rs/cache/CacheSystem";
-import { RenderDataLoader, renderDataLoaderSerializer } from "./RenderDataLoader";
 import { registerSerializer } from "threads";
+import { Transfer, expose } from "threads/worker";
+
+import { CacheSystem } from "../../rs/cache/CacheSystem";
+import { ConfigType } from "../../rs/cache/ConfigType";
+import { IndexType } from "../../rs/cache/IndexType";
 import {
     CacheLoaderFactory,
     getCacheLoaderFactory,
 } from "../../rs/cache/loader/CacheLoaderFactory";
+import { Bzip2 } from "../../rs/compression/Bzip2";
+import { Gzip } from "../../rs/compression/Gzip";
+import { BasTypeLoader } from "../../rs/config/bastype/BasTypeLoader";
 import { LocModelLoader } from "../../rs/config/loctype/LocModelLoader";
-import { LandscapeLoadType, SceneBuilder } from "../../rs/scene/SceneBuilder";
-import { TextureLoader } from "../../rs/texture/TextureLoader";
-import { MapImageRenderer } from "../../rs/map/MapImageRenderer";
-import { loadMinimapBlob, MinimapData } from "./MinimapData";
-import { Scene } from "../../rs/scene/Scene";
-import { VarManager } from "../../rs/config/vartype/VarManager";
-import { Hasher } from "../../util/Hasher";
-import { ObjModelLoader } from "../../rs/config/objtype/ObjModelLoader";
 import { LocTypeLoader } from "../../rs/config/loctype/LocTypeLoader";
+import { NpcModelLoader } from "../../rs/config/npctype/NpcModelLoader";
+import { NpcTypeLoader } from "../../rs/config/npctype/NpcTypeLoader";
+import { ObjModelLoader } from "../../rs/config/objtype/ObjModelLoader";
 import { ObjTypeLoader } from "../../rs/config/objtype/ObjTypeLoader";
 import { SeqTypeLoader } from "../../rs/config/seqtype/SeqTypeLoader";
-import { ObjSpawn } from "../data/obj/ObjSpawn";
-import { NpcSpawn } from "../data/npc/NpcSpawn";
-import { NpcModelLoader } from "../../rs/config/npctype/NpcModelLoader";
-import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
-import { BasTypeLoader } from "../../rs/config/bastype/BasTypeLoader";
-import { NpcTypeLoader } from "../../rs/config/npctype/NpcTypeLoader";
-import { SkeletalSeqLoader } from "../../rs/model/skeletal/SkeletalSeqLoader";
-import JSZip from "jszip";
-import { IndexType } from "../../rs/cache/IndexType";
-import { SpriteLoader } from "../../rs/sprite/SpriteLoader";
-import { IndexedSprite } from "../../rs/sprite/IndexedSprite";
-import { ConfigType } from "../../rs/cache/ConfigType";
+import { VarManager } from "../../rs/config/vartype/VarManager";
 import { getMapSquareId } from "../../rs/map/MapFileIndex";
+import { MapImageRenderer } from "../../rs/map/MapImageRenderer";
+import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
+import { SkeletalSeqLoader } from "../../rs/model/skeletal/SkeletalSeqLoader";
+import { Scene } from "../../rs/scene/Scene";
+import { LandscapeLoadType, SceneBuilder } from "../../rs/scene/SceneBuilder";
+import { IndexedSprite } from "../../rs/sprite/IndexedSprite";
+import { SpriteLoader } from "../../rs/sprite/SpriteLoader";
+import { TextureLoader } from "../../rs/texture/TextureLoader";
+import { Hasher } from "../../util/Hasher";
+import { LoadedCache } from "../Caches";
+import { NpcSpawn } from "../data/npc/NpcSpawn";
+import { ObjSpawn } from "../data/obj/ObjSpawn";
+import { MinimapData, loadMinimapBlob } from "./MinimapData";
+import { RenderDataLoader, renderDataLoaderSerializer } from "./RenderDataLoader";
 
 registerSerializer(renderDataLoaderSerializer);
 

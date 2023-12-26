@@ -1,7 +1,7 @@
 import { toSigned16bit } from "../../../util/MathUtil";
 import { CacheInfo } from "../../cache/CacheInfo";
 import { ByteBuffer } from "../../io/ByteBuffer";
-import { Type, ParamsMap } from "../Type";
+import { ParamsMap, Type } from "../Type";
 import { VarManager } from "../vartype/VarManager";
 import { LocModelType } from "./LocModelType";
 import { LocTypeLoader } from "./LocTypeLoader";

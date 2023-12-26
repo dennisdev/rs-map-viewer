@@ -1,3 +1,4 @@
+import { BasTypeLoader, DummyBasTypeLoader } from "../../config/bastype/BasTypeLoader";
 import {
     DatFloorTypeLoader,
     FloorTypeLoader,
@@ -6,12 +7,17 @@ import {
 import { DatLocTypeLoader, LocTypeLoader } from "../../config/loctype/LocTypeLoader";
 import { DatNpcTypeLoader, NpcTypeLoader } from "../../config/npctype/NpcTypeLoader";
 import { DatObjTypeLoader, ObjTypeLoader } from "../../config/objtype/ObjTypeLoader";
+import { QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 import { DatSeqTypeLoader, SeqTypeLoader } from "../../config/seqtype/SeqTypeLoader";
 import { DatVarBitTypeLoader, VarBitTypeLoader } from "../../config/vartype/bit/VarBitTypeLoader";
 import { DatMapFileIndex, MapFileIndex } from "../../map/MapFileIndex";
-import { TextureLoader } from "../../texture/TextureLoader";
 import { IndexModelLoader, ModelLoader } from "../../model/ModelLoader";
 import { DatSeqFrameLoader, SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
+import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
+import { IndexedSprite } from "../../sprite/IndexedSprite";
+import { SpriteLoader } from "../../sprite/SpriteLoader";
+import { DatTextureLoader } from "../../texture/DatTextureLoader";
+import { TextureLoader } from "../../texture/TextureLoader";
 import { ApiType } from "../ApiType";
 import { Archive } from "../Archive";
 import { CacheIndex } from "../CacheIndex";
@@ -21,12 +27,6 @@ import { CacheType } from "../CacheType";
 import { ConfigType } from "../ConfigType";
 import { IndexType } from "../IndexType";
 import { CacheLoaderFactory } from "./CacheLoaderFactory";
-import { DatTextureLoader } from "../../texture/DatTextureLoader";
-import { IndexedSprite } from "../../sprite/IndexedSprite";
-import { SpriteLoader } from "../../sprite/SpriteLoader";
-import { BasTypeLoader, DummyBasTypeLoader } from "../../config/bastype/BasTypeLoader";
-import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
-import { QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 
 export class DatCacheLoaderFactory implements CacheLoaderFactory {
     configIndex: CacheIndex;

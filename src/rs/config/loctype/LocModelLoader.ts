@@ -1,15 +1,15 @@
-import { TextureLoader } from "../../texture/TextureLoader";
+import { getModelFaces, isModelFaceTransparent } from "../../../mapviewer/webgl/buffer/SceneBuffer";
 import { Model } from "../../model/Model";
 import { ModelData } from "../../model/ModelData";
 import { ModelLoader } from "../../model/ModelLoader";
 import { SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
+import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
+import { TextureLoader } from "../../texture/TextureLoader";
 import { SeqType } from "../seqtype/SeqType";
 import { SeqTypeLoader } from "../seqtype/SeqTypeLoader";
 import { LocModelType } from "./LocModelType";
 import { LocType } from "./LocType";
 import { LocTypeLoader } from "./LocTypeLoader";
-import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
-import { getModelFaces, isModelFaceTransparent } from "../../../mapviewer/webgl/buffer/SceneBuffer";
 
 export type ContourGroundInfo = {
     type: number;

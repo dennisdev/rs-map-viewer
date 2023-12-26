@@ -1,7 +1,7 @@
 import { CacheInfo } from "../../cache/CacheInfo";
 import { ByteBuffer } from "../../io/ByteBuffer";
-import { SeqTransformType } from "./SeqTransformType";
 import { SkeletalBase } from "../skeletal/SkeletalBase";
+import { SeqTransformType } from "./SeqTransformType";
 
 export class SeqBase {
     constructor(

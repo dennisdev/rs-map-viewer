@@ -1,9 +1,10 @@
 import JavaRandom from "java-random";
+
+import { nextIntJagex } from "../../../../util/MathUtil";
 import { ByteBuffer } from "../../../io/ByteBuffer";
+import { ArrayUtils } from "../../../util/ArrayUtils";
 import { TextureGenerator } from "../TextureGenerator";
 import { TextureOperation } from "./TextureOperation";
-import { nextIntJagex } from "../../../../util/MathUtil";
-import { ArrayUtils } from "../../../util/ArrayUtils";
 
 export class IrregularBricksOperation extends TextureOperation {
     seed = 0;

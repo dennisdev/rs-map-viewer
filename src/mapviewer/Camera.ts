@@ -1,7 +1,8 @@
 import { mat4, vec3 } from "gl-matrix";
-import { Frustum } from "./Frustum";
+
 import { DEGREES_TO_RADIANS, RS_TO_RADIANS } from "../rs/MathConstants";
 import { clamp } from "../util/MathUtil";
+import { Frustum } from "./Frustum";
 
 export interface CameraPosition {
     position: vec3;

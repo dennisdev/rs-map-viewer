@@ -1,5 +1,6 @@
 import { memo } from "react";
-import Select, { createFilter, components, GroupBase, Props, OptionProps } from "react-select";
+import Select, { GroupBase, OptionProps, Props, components, createFilter } from "react-select";
+
 import "./OsrsSelect.css";
 
 function OsrsSelectOption<Option, IsMulti extends boolean, Group extends GroupBase<Option>>({

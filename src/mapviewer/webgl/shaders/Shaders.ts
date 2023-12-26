@@ -1,11 +1,11 @@
 import { ProgramSource, prependDefines } from "./ShaderUtil";
+import frameFxaaFragShader from "./frame-fxaa.frag.glsl";
+import frameFxaaVertShader from "./frame-fxaa.vert.glsl";
+import frameFragShader from "./frame.frag.glsl";
+import frameVertShader from "./frame.vert.glsl";
 import mainFragShader from "./main.frag.glsl";
 import mainVertShader from "./main.vert.glsl";
 import npcVertShader from "./npc.vert.glsl";
-import frameFragShader from "./frame.frag.glsl";
-import frameVertShader from "./frame.vert.glsl";
-import frameFxaaFragShader from "./frame-fxaa.frag.glsl";
-import frameFxaaVertShader from "./frame-fxaa.vert.glsl";
 
 export function createProgram(
     vertShader: string,

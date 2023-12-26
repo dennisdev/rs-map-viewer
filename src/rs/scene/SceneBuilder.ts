@@ -7,16 +7,16 @@ import { LocModelType } from "../config/loctype/LocModelType";
 import { LocType } from "../config/loctype/LocType";
 import { LocTypeLoader } from "../config/loctype/LocTypeLoader";
 import { ByteBuffer } from "../io/ByteBuffer";
-import { getMapSquareId, MapFileIndex } from "../map/MapFileIndex";
+import { MapFileIndex, getMapSquareId } from "../map/MapFileIndex";
 import { Model } from "../model/Model";
-import { adjustOverlayLight, adjustUnderlayLight, HSL_RGB_MAP, packHsl } from "../util/ColorUtil";
+import { HSL_RGB_MAP, adjustOverlayLight, adjustUnderlayLight, packHsl } from "../util/ColorUtil";
 import { generateHeight } from "../util/HeightCalc";
 import { CollisionMap } from "./CollisionMap";
+import { Scene } from "./Scene";
+import { SceneTileModel } from "./SceneTileModel";
 import { Entity } from "./entity/Entity";
 import { EntityType, calculateEntityTag, getIdFromTag } from "./entity/EntityTag";
 import { LocEntity } from "./entity/LocEntity";
-import { Scene } from "./Scene";
-import { SceneTileModel } from "./SceneTileModel";
 
 export enum LandscapeLoadType {
     MODELS,

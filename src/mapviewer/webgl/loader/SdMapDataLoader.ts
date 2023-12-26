@@ -1,8 +1,23 @@
+import { BasTypeLoader } from "../../../rs/config/bastype/BasTypeLoader";
+import { ContourGroundInfo, LocModelLoader } from "../../../rs/config/loctype/LocModelLoader";
+import { LocType } from "../../../rs/config/loctype/LocType";
+import { NpcModelLoader } from "../../../rs/config/npctype/NpcModelLoader";
+import { NpcType } from "../../../rs/config/npctype/NpcType";
+import { ObjModelLoader } from "../../../rs/config/objtype/ObjModelLoader";
+import { VarManager } from "../../../rs/config/vartype/VarManager";
+import { Model } from "../../../rs/model/Model";
 import { Scene } from "../../../rs/scene/Scene";
+import { LocEntity } from "../../../rs/scene/entity/LocEntity";
+import { TextureLoader } from "../../../rs/texture/TextureLoader";
+import { NpcSpawn, getMapNpcSpawns } from "../../data/npc/NpcSpawn";
+import { ObjSpawn, getMapObjSpawns } from "../../data/obj/ObjSpawn";
 import { loadMinimapBlob } from "../../worker/MinimapData";
 import { RenderDataLoader, RenderDataResult } from "../../worker/RenderDataLoader";
 import { WorkerState } from "../../worker/RenderDataWorker";
+import { AnimationFrames } from "../AnimationFrames";
 import { DrawRange, NULL_DRAW_RANGE, newDrawRange } from "../DrawRange";
+import { InteractType } from "../InteractType";
+import { ModelHashBuffer, getModelHash } from "../buffer/ModelHashBuffer";
 import {
     ContourGroundType,
     DrawCommand,
@@ -14,28 +29,13 @@ import {
     getModelFaces,
     isModelFaceTransparent,
 } from "../buffer/SceneBuffer";
+import { LocAnimatedGroup } from "../loc/LocAnimatedGroup";
+import { SceneLocEntity } from "../loc/SceneLocEntity";
+import { getSceneLocs, isLowDetail } from "../loc/SceneLocs";
+import { createNpcDatas } from "../npc/NpcData";
+import { NpcSpawnGroup } from "../npc/NpcSpawnGroup";
 import { SdMapData } from "./SdMapData";
 import { SdMapLoaderInput } from "./SdMapLoaderInput";
-import { ModelHashBuffer, getModelHash } from "../buffer/ModelHashBuffer";
-import { ContourGroundInfo, LocModelLoader } from "../../../rs/config/loctype/LocModelLoader";
-import { ObjModelLoader } from "../../../rs/config/objtype/ObjModelLoader";
-import { ObjSpawn, getMapObjSpawns } from "../../data/obj/ObjSpawn";
-import { Model } from "../../../rs/model/Model";
-import { InteractType } from "../InteractType";
-import { TextureLoader } from "../../../rs/texture/TextureLoader";
-import { AnimationFrames } from "../AnimationFrames";
-import { LocEntity } from "../../../rs/scene/entity/LocEntity";
-import { LocType } from "../../../rs/config/loctype/LocType";
-import { VarManager } from "../../../rs/config/vartype/VarManager";
-import { NpcSpawn, getMapNpcSpawns } from "../../data/npc/NpcSpawn";
-import { NpcModelLoader } from "../../../rs/config/npctype/NpcModelLoader";
-import { NpcType } from "../../../rs/config/npctype/NpcType";
-import { NpcSpawnGroup } from "../npc/NpcSpawnGroup";
-import { createNpcDatas } from "../npc/NpcData";
-import { BasTypeLoader } from "../../../rs/config/bastype/BasTypeLoader";
-import { SceneLocEntity } from "../loc/SceneLocEntity";
-import { LocAnimatedGroup } from "../loc/LocAnimatedGroup";
-import { getSceneLocs, isLowDetail } from "../loc/SceneLocs";
 
 function loadHeightMapTextureData(scene: Scene): Float32Array {
     const heightMapTextureData = new Float32Array(Scene.MAX_LEVELS * scene.sizeX * scene.sizeY);

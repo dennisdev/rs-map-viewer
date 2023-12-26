@@ -1,22 +1,23 @@
-import { useEffect, useState, memo } from "react";
-import { MapViewerRenderer } from "./MapViewerRenderer";
+import FileSaver from "file-saver";
+import { vec3 } from "gl-matrix";
 import { Leva, button, buttonGroup, folder, useControls } from "leva";
+import { Schema } from "leva/dist/declarations/src/types";
+import { memo, useEffect, useState } from "react";
+
+import { DownloadProgress } from "../rs/cache/CacheFiles";
+import { isTouchDevice } from "../util/DeviceUtil";
+import { lerp, slerp } from "../util/MathUtil";
+import { loadCacheFiles } from "./Caches";
+import { CameraPosition, ProjectionType } from "./Camera";
+import { MapViewer } from "./MapViewer";
+import { MapViewerRenderer } from "./MapViewerRenderer";
 import {
     MapViewerRendererType,
     createRenderer,
     getAvailableRenderers,
     getRendererName,
 } from "./MapViewerRenderers";
-import { DownloadProgress } from "../rs/cache/CacheFiles";
-import { loadCacheFiles } from "./Caches";
 import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
-import { CameraPosition, ProjectionType } from "./Camera";
-import { isTouchDevice } from "../util/DeviceUtil";
-import { Schema } from "leva/dist/declarations/src/types";
-import { MapViewer } from "./MapViewer";
-import FileSaver from "file-saver";
-import { vec3 } from "gl-matrix";
-import { lerp, slerp } from "../util/MathUtil";
 
 interface MapViewerControlsProps {
     renderer: MapViewerRenderer;

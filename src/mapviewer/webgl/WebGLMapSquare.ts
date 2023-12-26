@@ -1,24 +1,25 @@
+import { vec2 } from "gl-matrix";
 import PicoGL, {
-    App as PicoApp,
     DrawCall,
+    App as PicoApp,
+    Program,
+    Texture,
+    UniformBuffer,
     VertexArray,
     VertexBuffer,
-    Texture,
-    Program,
-    UniformBuffer,
 } from "picogl";
-import { SdMapData } from "./loader/SdMapData";
-import { Scene } from "../../rs/scene/Scene";
-import { vec2 } from "gl-matrix";
-import { DrawRange, newDrawRange } from "./DrawRange";
-import { LocAnimated } from "./loc/LocAnimated";
+
+import { BasTypeLoader } from "../../rs/config/bastype/BasTypeLoader";
+import { NpcTypeLoader } from "../../rs/config/npctype/NpcTypeLoader";
 import { SeqTypeLoader } from "../../rs/config/seqtype/SeqTypeLoader";
 import { getMapSquareId } from "../../rs/map/MapFileIndex";
-import { CollisionMap } from "../../rs/scene/CollisionMap";
-import { NpcTypeLoader } from "../../rs/config/npctype/NpcTypeLoader";
-import { Npc } from "./npc/Npc";
 import { CollisionFlag } from "../../rs/pathfinder/flag/CollisionFlag";
-import { BasTypeLoader } from "../../rs/config/bastype/BasTypeLoader";
+import { CollisionMap } from "../../rs/scene/CollisionMap";
+import { Scene } from "../../rs/scene/Scene";
+import { DrawRange, newDrawRange } from "./DrawRange";
+import { SdMapData } from "./loader/SdMapData";
+import { LocAnimated } from "./loc/LocAnimated";
+import { Npc } from "./npc/Npc";
 
 const FRAME_RENDER_DELAY = 3;
 

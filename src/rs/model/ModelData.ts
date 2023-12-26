@@ -1,11 +1,11 @@
 import { COSINE, SINE } from "../MathConstants";
 import { ByteBuffer } from "../io/ByteBuffer";
-import { TextureLoader } from "../texture/TextureLoader";
 import { Entity } from "../scene/entity/Entity";
+import { TextureLoader } from "../texture/TextureLoader";
 import { FaceNormal } from "./FaceNormal";
 import { Model } from "./Model";
-import { VertexNormal } from "./VertexNormal";
 import { computeTextureCoords } from "./TextureMapper";
+import { VertexNormal } from "./VertexNormal";
 
 export class ModelData extends Entity {
     private static mergeModelNormalsCount: number = 0;

@@ -1,6 +1,7 @@
 import Modal from "react-modal";
-import "./WorldMapModal.css";
+
 import { WorldMap, WorldMapProps } from "./WorldMap";
+import "./WorldMapModal.css";
 
 interface WorldMapModalProps {
     isOpen: boolean;

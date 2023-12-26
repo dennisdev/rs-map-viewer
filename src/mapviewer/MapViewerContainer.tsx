@@ -1,19 +1,20 @@
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Joystick } from "react-joystick-component";
+import { useSearchParams } from "react-router-dom";
+
 import { RendererCanvas } from "../components/renderer/RendererCanvas";
-import { MapViewer } from "./MapViewer";
-import { MapViewerRenderer } from "./MapViewerRenderer";
-import { MapViewerControls } from "./MapViewerControls";
+import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
+import { OsrsMenu, OsrsMenuProps } from "../components/rs/menu/OsrsMenu";
+import { MinimapContainer } from "../components/rs/minimap/MinimapContainer";
+import { WorldMapModal } from "../components/rs/worldmap/WorldMapModal";
+import { RS_TO_DEGREES } from "../rs/MathConstants";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { formatBytes } from "../util/BytesUtil";
-import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
-import "./MapViewerContainer.css";
-import { OsrsMenu, OsrsMenuProps } from "../components/rs/menu/OsrsMenu";
-import { useSearchParams } from "react-router-dom";
 import { isTouchDevice } from "../util/DeviceUtil";
-import { Joystick } from "react-joystick-component";
-import { MinimapContainer } from "../components/rs/minimap/MinimapContainer";
-import { RS_TO_DEGREES } from "../rs/MathConstants";
-import { WorldMapModal } from "../components/rs/worldmap/WorldMapModal";
+import { MapViewer } from "./MapViewer";
+import "./MapViewerContainer.css";
+import { MapViewerControls } from "./MapViewerControls";
+import { MapViewerRenderer } from "./MapViewerRenderer";
 
 interface MapViewerContainerProps {
     mapViewer: MapViewer;

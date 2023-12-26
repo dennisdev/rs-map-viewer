@@ -1,10 +1,12 @@
 import { mat4, quat, vec3 } from "gl-matrix";
+
 import { ByteBuffer } from "../../io/ByteBuffer";
 import { SeqBase } from "../seq/SeqBase";
 import { SeqBaseLoader } from "../seq/SeqBaseLoader";
 import { Curve } from "./Curve";
 import { getCurveIndex, getCurveTypeForId } from "./CurveType";
 import { MatrixPool } from "./MatrixPool";
+import { QuatPool } from "./QuatPool";
 import { SkeletalBase } from "./SkeletalBase";
 import { SkeletalBone } from "./SkeletalBone";
 import {
@@ -12,7 +14,6 @@ import {
     getCurveCount,
     getTransformTypeForId,
 } from "./SkeletalTransformType";
-import { QuatPool } from "./QuatPool";
 
 const rotateAxis = vec3.create();
 const scaleVector = vec3.create();
