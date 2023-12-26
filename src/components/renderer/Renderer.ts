@@ -1,8 +1,9 @@
 import { RenderStats } from "./RenderStats";
 
 function resizeCanvas(canvas: HTMLCanvasElement) {
-    const width = canvas.offsetWidth;
-    const height = canvas.offsetHeight;
+    const devicePixelRatio = window.devicePixelRatio;
+    const width = canvas.offsetWidth * devicePixelRatio;
+    const height = canvas.offsetHeight * devicePixelRatio;
 
     if (width !== canvas.width || height !== canvas.height) {
         canvas.width = width;
