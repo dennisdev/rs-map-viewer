@@ -26,6 +26,10 @@ module.exports = {
                 resourceQuery: /url/,
                 type: "asset/resource",
             });
+            webpackConfig.module.rules.push({
+                resourceQuery: /source/,
+                type: "asset/source",
+            });
 
             // addBeforeLoader(webpackConfig, loaderByName('file-loader'), glslLoader);
 

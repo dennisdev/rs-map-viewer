@@ -13,7 +13,7 @@ import {
 import { Schema } from "leva/dist/declarations/src/types";
 import { MapViewer } from "../MapViewer";
 import { MapViewerRenderer } from "../MapViewerRenderer";
-import { MapViewerRendererType } from "../MapViewerRenderers";
+import { MapViewerRendererType, WEBGL } from "../MapViewerRenderers";
 import { WebGLMapSquare } from "./WebGLMapSquare";
 import { createTextureArray } from "../../picogl/PicoTexture";
 import { SdMapDataLoader } from "./loader/SdMapDataLoader";
@@ -34,7 +34,7 @@ import { DrawRange, NULL_DRAW_RANGE } from "./DrawRange";
 import { MenuTargetType } from "../../rs/MenuEntry";
 import { InteractType } from "./InteractType";
 import { OsrsMenuEntry } from "../../components/rs/menu/OsrsMenu";
-import { isTouchDevice } from "../../util/DeviceUtil";
+import { isTouchDevice, isWebGL2Supported } from "../../util/DeviceUtil";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -49,7 +49,7 @@ interface ColorRgb {
 }
 
 export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
-    type: MapViewerRendererType = "webgl";
+    type: MapViewerRendererType = WEBGL;
 
     dataLoader = new SdMapDataLoader();
 
@@ -140,6 +140,10 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
             this.interactions[i] = new Interactions(INTERACTION_RADIUS);
         }
+    }
+
+    static isSupported(): boolean {
+        return isWebGL2Supported;
     }
 
     async init(): Promise<void> {
@@ -432,7 +436,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 min: 0,
                 max: 3,
                 step: 1,
-                onChange: (v) => {
+                onChange: (v: number) => {
                     this.setMaxLevel(v);
                 },
             },
@@ -449,7 +453,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 min: 0,
                 max: 256,
                 step: 8,
-                onChange: (v) => {
+                onChange: (v: number) => {
                     this.fogDepth = v;
                 },
             },
@@ -458,7 +462,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 min: 0,
                 max: 4,
                 step: 1,
-                onChange: (v) => {
+                onChange: (v: number) => {
                     this.brightness = 1.0 - v * 0.1;
                 },
             },
@@ -467,19 +471,19 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 min: 0,
                 max: 100,
                 step: 1,
-                onChange: (v) => {
+                onChange: (v: number) => {
                     this.colorBanding = 255 - v * 2;
                 },
             },
             "Smooth Terrain": {
                 value: this.smoothTerrain,
-                onChange: (v) => {
+                onChange: (v: boolean) => {
                     this.setSmoothTerrain(v);
                 },
             },
             "Cull Back-faces": {
                 value: this.cullBackFace,
-                onChange: (v) => {
+                onChange: (v: boolean) => {
                     this.cullBackFace = v;
                 },
             },
@@ -487,13 +491,13 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 {
                     MSAA: {
                         value: this.msaaEnabled,
-                        onChange: (v) => {
+                        onChange: (v: boolean) => {
                             this.setMsaa(v);
                         },
                     },
                     FXAA: {
                         value: this.fxaaEnabled,
-                        onChange: (v) => {
+                        onChange: (v: boolean) => {
                             this.setFxaa(v);
                         },
                     },
@@ -504,13 +508,13 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 {
                     Items: {
                         value: this.loadObjs,
-                        onChange: (v) => {
+                        onChange: (v: boolean) => {
                             this.setLoadObjs(v);
                         },
                     },
                     Npcs: {
                         value: this.loadNpcs,
-                        onChange: (v) => {
+                        onChange: (v: boolean) => {
                             this.setLoadNpcs(v);
                         },
                     },

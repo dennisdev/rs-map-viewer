@@ -1,14 +1,18 @@
 import { MapViewer } from "./MapViewer";
 import { MapViewerRenderer } from "./MapViewerRenderer";
 import { WebGLMapViewerRenderer } from "./webgl/WebGLMapViewerRenderer";
+import { WebGPUMapViewerRenderer } from "./webgpu/WebGPUMapViewerRenderer";
 
-export type MapViewerRendererType = "webgl";
+export type MapViewerRendererType = "webgl" | "webgpu";
 export const WEBGL: MapViewerRendererType = "webgl";
+export const WEBGPU: MapViewerRendererType = "webgpu";
 
 export function getRendererName(type: MapViewerRendererType): string {
     switch (type) {
         case WEBGL:
             return "WebGL";
+        case WEBGPU:
+            return "WebGPU";
         default:
             throw new Error("Unknown renderer type");
     }
@@ -21,11 +25,23 @@ export function createRenderer(
     switch (type) {
         case WEBGL:
             return new WebGLMapViewerRenderer(mapViewer);
+        case WEBGPU:
+            return new WebGPUMapViewerRenderer(mapViewer);
         default:
             throw new Error("Unknown renderer type");
     }
 }
 
 export function getAvailableRenderers(): MapViewerRendererType[] {
-    return [WEBGL];
+    const renderers: MapViewerRendererType[] = [];
+
+    if (WebGLMapViewerRenderer.isSupported()) {
+        renderers.push(WEBGL);
+    }
+
+    if (WebGPUMapViewerRenderer.isSupported()) {
+        renderers.push(WEBGPU);
+    }
+
+    return renderers;
 }

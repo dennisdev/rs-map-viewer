@@ -169,7 +169,7 @@ export const MapViewerControls = memo(
                                 Perspective: ProjectionType.PERSPECTIVE,
                                 Ortho: ProjectionType.ORTHO,
                             },
-                            onChange: (v) => {
+                            onChange: (v: ProjectionType) => {
                                 mapViewer.camera.setProjectionType(v);
                                 setProjectionType(v);
                             },
@@ -187,7 +187,7 @@ export const MapViewerControls = memo(
                             min: 16,
                             max: 2000,
                             step: 16,
-                            onChange: (v) => {
+                            onChange: (v: number) => {
                                 mapViewer.renderDistance = v;
                             },
                         },
@@ -196,7 +196,7 @@ export const MapViewerControls = memo(
                             min: 1,
                             max: 30,
                             step: 1,
-                            onChange: (v) => {
+                            onChange: (v: number) => {
                                 mapViewer.unloadDistance = v;
                             },
                         },
@@ -205,7 +205,7 @@ export const MapViewerControls = memo(
                             min: 0,
                             max: 30,
                             step: 1,
-                            onChange: (v) => {
+                            onChange: (v: number) => {
                                 mapViewer.lodDistance = v;
                             },
                         },
@@ -217,7 +217,7 @@ export const MapViewerControls = memo(
                         Version: {
                             value: mapViewer.loadedCache.info.name,
                             options: mapViewer.cacheList.caches.map((cache) => cache.name),
-                            onChange: async (v) => {
+                            onChange: async (v: string) => {
                                 const cacheInfo = mapViewer.cacheList.caches.find(
                                     (cache) => cache.name === v,
                                 );
@@ -252,7 +252,7 @@ export const MapViewerControls = memo(
                             value: renderer.fpsLimit,
                             min: 1,
                             max: 999,
-                            onChange: (v) => {
+                            onChange: (v: number) => {
                                 renderer.fpsLimit = v;
                             },
                         },
@@ -264,13 +264,13 @@ export const MapViewerControls = memo(
                     {
                         Tooltips: {
                             value: mapViewer.tooltips,
-                            onChange: (v) => {
+                            onChange: (v: boolean) => {
                                 mapViewer.tooltips = v;
                             },
                         },
                         "Debug Id": {
                             value: mapViewer.debugId,
-                            onChange: (v) => {
+                            onChange: (v: boolean) => {
                                 mapViewer.debugId = v;
                             },
                         },
@@ -283,7 +283,7 @@ export const MapViewerControls = memo(
                         "Add point": button(() => addPoint()),
                         Length: {
                             value: animationDuration,
-                            onChange: (v) => {
+                            onChange: (v: number) => {
                                 setAnimationDuration(v);
                             },
                         },
@@ -343,7 +343,7 @@ export const MapViewerControls = memo(
         return (
             <Leva
                 titleBar={{ filter: false }}
-                collapsed={false}
+                collapsed={true}
                 hideCopyButton={true}
                 hidden={hidden}
             />
@@ -359,7 +359,7 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 min: 30,
                 max: 140,
                 step: 1,
-                onChange: (v) => {
+                onChange: (v: number) => {
                     mapViewer.camera.fov = v;
                 },
             },
@@ -371,7 +371,7 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 min: 1,
                 max: 60,
                 step: 1,
-                onChange: (v) => {
+                onChange: (v: number) => {
                     mapViewer.camera.orthoZoom = v;
                 },
             },

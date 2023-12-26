@@ -22,3 +22,7 @@ export const isWallpaperEngine = !!window.wallpaperRegisterAudioListener;
 export const isTouchDevice = !!(
     navigator.maxTouchPoints || "ontouchstart" in document.documentElement
 );
+
+export const isWebGL2Supported = !!document.createElement("canvas").getContext("webgl2");
+
+export const isWebGPUSupported = "gpu" in navigator;

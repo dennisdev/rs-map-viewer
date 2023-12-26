@@ -11,7 +11,7 @@ import { formatBytes } from "../util/BytesUtil";
 import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
 import { fetchObjSpawns } from "./data/obj/ObjSpawn";
 import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
-import { WEBGL } from "./MapViewerRenderers";
+import { WEBGL, getAvailableRenderers } from "./MapViewerRenderers";
 import { registerSerializer } from "threads";
 import { renderDataLoaderSerializer } from "./worker/RenderDataLoader";
 
@@ -63,13 +63,22 @@ function MapViewerApp() {
 
             const mapImageCache = await caches.open("map-images");
 
+            const availableRenderers = getAvailableRenderers();
+            if (availableRenderers.length === 0) {
+                setErrorMessage("No renderers available");
+                return;
+            }
+
+            // Add some way to get preferred renderer
+            const rendererType = availableRenderers[0];
+
             const mapViewer = new MapViewer(
                 workerPool,
                 cacheList,
                 objSpawns,
                 npcSpawns,
                 mapImageCache,
-                WEBGL,
+                rendererType,
                 cache,
             );
             mapViewer.applySearchParams(searchParams);
