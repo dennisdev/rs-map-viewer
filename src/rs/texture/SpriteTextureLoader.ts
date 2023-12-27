@@ -17,8 +17,6 @@ export class SpriteTextureLoader implements TextureLoader {
 
     idIndexMap: Map<number, number>;
 
-    transparentTextureMap: Map<number, boolean> = new Map();
-
     static load(textureIndex: CacheIndex, spriteIndex: CacheIndex): SpriteTextureLoader {
         const definitions = new Map<number, TextureDefinition>();
 
@@ -83,13 +81,11 @@ export class SpriteTextureLoader implements TextureLoader {
     }
 
     isTransparent(id: number): boolean {
-        if (!this.transparentTextureMap.has(id)) {
-            if (!this.definitions.has(id)) {
-                return false;
-            }
-            this.getPixelsRgb(id, 128, false, 1.0);
+        const def = this.definitions.get(id);
+        if (!def) {
+            return false;
         }
-        return this.transparentTextureMap.get(id) ?? false;
+        return !def.opaque;
     }
 
     getMaterial(id: number): TextureMaterial {
@@ -148,8 +144,6 @@ export class SpriteTextureLoader implements TextureLoader {
         const pixelCount = size * size;
         const pixels = new Int32Array(pixelCount);
 
-        let alphaPixelCount: number = 0;
-
         for (let i = 0; i < def.spriteIds.length; i++) {
             const sprite = SpriteLoader.loadIntoIndexedSprite(this.spriteIndex, def.spriteIds[i]);
             if (!sprite) {
@@ -179,12 +173,10 @@ export class SpriteTextureLoader implements TextureLoader {
                 }
             }
 
-            const alphaPaletteIndices: Set<number> = new Set();
             for (let pi = 0; pi < palette.length; pi++) {
                 let alpha = 0xff;
                 if (palette[pi] === 0) {
                     alpha = 0;
-                    alphaPaletteIndices.add(pi);
                 }
                 palette[pi] = (alpha << 24) | brightenRgb(palette[pi], brightness);
             }
@@ -198,9 +190,6 @@ export class SpriteTextureLoader implements TextureLoader {
                 if (size === sprite.subWidth) {
                     for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
                         const paletteIndex = palettePixels[pixelIndex];
-                        if (alphaPaletteIndices.has(paletteIndex)) {
-                            alphaPixelCount++;
-                        }
                         pixels[pixelIndex] = palette[paletteIndex];
                     }
                 } else if (sprite.subWidth === 64 && size === 128) {
@@ -209,9 +198,6 @@ export class SpriteTextureLoader implements TextureLoader {
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
                             const paletteIndex = palettePixels[((x >> 1) << 6) + (y >> 1)];
-                            if (alphaPaletteIndices.has(paletteIndex)) {
-                                alphaPixelCount++;
-                            }
                             pixels[pixelIndex++] = palette[paletteIndex];
                         }
                     }
@@ -225,17 +211,12 @@ export class SpriteTextureLoader implements TextureLoader {
                     for (let x = 0; x < size; x++) {
                         for (let y = 0; y < size; y++) {
                             const paletteIndex = palettePixels[(y << 1) + ((x << 1) << 7)];
-                            if (alphaPaletteIndices.has(paletteIndex)) {
-                                alphaPixelCount++;
-                            }
                             pixels[pixelIndex++] = palette[paletteIndex];
                         }
                     }
                 }
             }
         }
-
-        this.transparentTextureMap.set(id, alphaPixelCount > 0);
 
         return pixels;
     }
@@ -248,7 +229,7 @@ export class SpriteTextureLoader implements TextureLoader {
 class TextureDefinition {
     static decode(id: number, buffer: ByteBuffer): TextureDefinition {
         const averageHsl = buffer.readUnsignedShort();
-        const unknown = buffer.readUnsignedByte() === 1;
+        const opaque = buffer.readUnsignedByte() === 1;
         const spriteCount = buffer.readUnsignedByte();
         if (spriteCount < 1 || spriteCount > 4) {
             throw new Error("Invalid sprite count for texture: " + spriteCount);
@@ -285,7 +266,7 @@ class TextureDefinition {
         return new TextureDefinition(
             id,
             averageHsl,
-            unknown,
+            opaque,
             spriteCount,
             spriteIds,
             transforms,
@@ -299,7 +280,7 @@ class TextureDefinition {
     constructor(
         readonly id: number,
         readonly averageHsl: number,
-        readonly unknown: boolean,
+        readonly opaque: boolean,
         readonly spriteCount: number,
         readonly spriteIds: number[],
         readonly transforms: number[],
