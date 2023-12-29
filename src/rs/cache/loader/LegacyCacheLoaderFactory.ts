@@ -109,4 +109,8 @@ export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
     getMapScenes(): IndexedSprite[] {
         return [];
     }
+
+    getMapFunctions(): IndexedSprite[] {
+        return [];
+    }
 }

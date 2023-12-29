@@ -16,8 +16,9 @@ export async function loadMinimapBlob(
     scene: Scene,
     level: number,
     borderSize: number,
+    drawMapFunctions: boolean,
 ): Promise<Blob> {
-    const minimapPixels = mapImageRenderer.renderMinimapHd(scene, level);
+    const minimapPixels = mapImageRenderer.renderMinimapHd(scene, level, drawMapFunctions);
 
     const minimapView = new DataView(minimapPixels.buffer);
     for (let i = 0; i < minimapPixels.length; i++) {

@@ -108,7 +108,14 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
 
     const loadMapImageUrl = useCallback(
         (mapX: number, mapY: number) => {
-            return mapViewer.getMapImageUrl(mapX, mapY);
+            return mapViewer.getMapImageUrl(mapX, mapY, false);
+        },
+        [mapViewer],
+    );
+
+    const loadMinimapImageUrl = useCallback(
+        (mapX: number, mapY: number) => {
+            return mapViewer.getMapImageUrl(mapX, mapY, true);
         },
         [mapViewer],
     );
@@ -148,7 +155,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
                             onCompassClick={resetCameraYaw}
                             onWorldMapClick={openWorldMap}
                             getPosition={getMapPosition}
-                            loadMapImageUrl={loadMapImageUrl}
+                            loadMapImageUrl={loadMinimapImageUrl}
                         />
 
                         <div className="fps-counter content-text">{fps}</div>

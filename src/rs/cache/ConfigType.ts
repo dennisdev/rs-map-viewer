@@ -31,7 +31,7 @@ export class ConfigType {
         hitSplat: 32,
         healthBar: 33,
         struct: 34,
-        area: 35,
+        mapFunctions: 35,
         dbRow: 38,
         dbTable: 39,
     };
@@ -40,5 +40,6 @@ export class ConfigType {
         bas: 32,
         mapScenes: 34,
         quests: 35,
+        mapFunctions: 36,
     };
 }

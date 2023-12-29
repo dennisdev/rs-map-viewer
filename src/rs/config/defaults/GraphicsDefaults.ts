@@ -9,6 +9,7 @@ export class GraphicsDefaults extends Type {
     compass: number = -1;
     mapEdge: number = -1;
     mapScenes: number = -1;
+    mapFunctions: number = -1;
     headIconsPk: number = -1;
     headIconsPrayer: number = -1;
     headIconsHint: number = -1;
@@ -47,6 +48,7 @@ export class GraphicsDefaults extends Type {
             defaults.compass = spriteIndex.getArchiveId("compass");
             defaults.mapEdge = spriteIndex.getArchiveId("mapedge");
             defaults.mapScenes = spriteIndex.getArchiveId("mapscene");
+            defaults.mapFunctions = spriteIndex.getArchiveId("mapfunction");
             defaults.headIconsPk = spriteIndex.getArchiveId("headicons_pk");
             defaults.headIconsPrayer = spriteIndex.getArchiveId("headicons_prayer");
             defaults.headIconsHint = spriteIndex.getArchiveId("headicons_hint");

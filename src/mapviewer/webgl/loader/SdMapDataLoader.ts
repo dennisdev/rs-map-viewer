@@ -724,13 +724,21 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
         const vertices = sceneBuf.vertexBuf.byteArray();
         const indices = new Int32Array(sceneBuf.indices);
 
-        const minimapBlob = await loadMinimapBlob(state.mapImageRenderer, scene, 0, borderSize);
+        const minimapBlob = await loadMinimapBlob(
+            state.mapImageRenderer,
+            scene,
+            0,
+            borderSize,
+            false,
+        );
 
         const loadedTextures = new Map<number, Int32Array>();
         for (const textureId of sceneBuf.usedTextureIds) {
             if (!loadedTextureIds.has(textureId)) {
-                const pixels = textureLoader.getPixelsArgb(textureId, 128, true, 1.0);
-                loadedTextures.set(textureId, pixels);
+                try {
+                    const pixels = textureLoader.getPixelsArgb(textureId, 128, true, 1.0);
+                    loadedTextures.set(textureId, pixels);
+                } catch (e) {}
             }
         }
 

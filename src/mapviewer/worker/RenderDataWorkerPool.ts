@@ -66,12 +66,13 @@ export class RenderDataWorkerPool {
         );
     }
 
-    queueMinimap(
+    queueMapImage(
         mapX: number,
         mapY: number,
         level: number,
+        drawMapFunctions: boolean,
     ): QueuedTask<RenderDataWorkerThread, MinimapData | undefined> {
-        return this.pool.queue((w) => w.loadMinimap(mapX, mapY, level));
+        return this.pool.queue((w) => w.loadMapImage(mapX, mapY, level, drawMapFunctions));
     }
 
     loadCachedMapImages(): QueuedTask<RenderDataWorkerThread, Map<number, string>> {

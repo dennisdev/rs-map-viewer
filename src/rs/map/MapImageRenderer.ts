@@ -65,6 +65,7 @@ export class MapImageRenderer {
         readonly textureLoader: TextureLoader,
         readonly locTypeLoader: LocTypeLoader,
         readonly mapScenes: IndexedSprite[],
+        readonly mapFunctions: IndexedSprite[],
     ) {}
 
     renderMinimap(scene: Scene, level: number): Int32Array {
@@ -143,7 +144,7 @@ export class MapImageRenderer {
         return spritePixels.pixels;
     }
 
-    renderMinimapHd(scene: Scene, playerLevel: number): Int32Array {
+    renderMinimapHd(scene: Scene, playerLevel: number, drawMapFunctions: boolean): Int32Array {
         const width = scene.sizeX * 4;
         const height = scene.sizeY * 4;
         const spritePixels = SpritePixels.fromDimensions(width, height);
@@ -181,6 +182,34 @@ export class MapImageRenderer {
                         wallRgb,
                         wallInteractiveRgb,
                     );
+                }
+            }
+        }
+
+        if (drawMapFunctions) {
+            for (let tileY = 0; tileY < scene.sizeY; tileY++) {
+                for (let tileX = 0; tileX < scene.sizeX; tileX++) {
+                    const floorDecorationTag = scene.getFloorDecorationTag(
+                        playerLevel,
+                        tileX,
+                        tileY,
+                    );
+                    if (floorDecorationTag !== 0n) {
+                        const locId = getIdFromTag(floorDecorationTag);
+                        const locType = this.locTypeLoader.load(locId);
+
+                        if (locType.mapFunctionId !== -1) {
+                            const mapFunction = this.mapFunctions[locType.mapFunctionId];
+                            if (mapFunction) {
+                                const x = ((locType.sizeX * 4 - mapFunction.subWidth) / 2) | 0;
+                                const y = ((locType.sizeY * 4 - mapFunction.subHeight) / 2) | 0;
+                                mapFunction.drawAt(
+                                    tileX * 4 + x,
+                                    y + (scene.sizeY - tileY - locType.sizeY) * 4,
+                                );
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -450,8 +479,8 @@ export class MapImageRenderer {
             if (locType.mapSceneId !== -1) {
                 const mapScene = this.mapScenes[locType.mapSceneId];
                 if (mapScene) {
-                    const x = (locType.sizeX * 4 - mapScene.subWidth) / 2;
-                    const y = (locType.sizeY * 4 - mapScene.subHeight) / 2;
+                    const x = ((locType.sizeX * 4 - mapScene.subWidth) / 2) | 0;
+                    const y = ((locType.sizeY * 4 - mapScene.subHeight) / 2) | 0;
                     mapScene.drawAt(tileX * 4 + x, y + (scene.sizeY - tileY - locType.sizeY) * 4);
                 }
             }

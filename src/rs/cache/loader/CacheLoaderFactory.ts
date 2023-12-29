@@ -46,6 +46,7 @@ export interface CacheLoaderFactory {
     getMapIndex(): CacheIndex;
 
     getMapScenes(): IndexedSprite[];
+    getMapFunctions(): IndexedSprite[];
 }
 
 export function getCacheLoaderFactory(

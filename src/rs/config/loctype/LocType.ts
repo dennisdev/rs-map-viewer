@@ -50,7 +50,7 @@ export class LocType extends Type {
 
     actions: string[];
 
-    mapIconId: number;
+    mapFunctionId: number;
     mapSceneId: number;
     flipMapSceneSprite: boolean;
 
@@ -108,7 +108,7 @@ export class LocType extends Type {
         this.ambient = 0;
         this.contrast = 0;
         this.actions = new Array(5);
-        this.mapIconId = -1;
+        this.mapFunctionId = -1;
         this.mapSceneId = -1;
         this.flipMapSceneSprite = false;
         this.isRotated = false;
@@ -278,7 +278,7 @@ export class LocType extends Type {
         } else if (opcode === 44 || opcode === 45) {
             buffer.readUnsignedShort();
         } else if (opcode === 60) {
-            const icon = buffer.readUnsignedShort();
+            this.mapFunctionId = buffer.readUnsignedShort();
         } else if (opcode === 61) {
             buffer.readUnsignedShort();
         } else if (opcode === 62) {
@@ -359,7 +359,7 @@ export class LocType extends Type {
             this.contourGroundParam = toSigned16bit(this.contouredGround);
         } else if (opcode === 82) {
             if (this.cacheInfo.game === "oldschool") {
-                this.mapIconId = buffer.readUnsignedShort();
+                this.mapFunctionId = buffer.readUnsignedShort();
             } else {
                 // hd only = true?
             }
@@ -418,7 +418,7 @@ export class LocType extends Type {
                 totalDelay += delay;
             }
         } else if (opcode === 107) {
-            const mapFunctionId = buffer.readUnsignedShort();
+            this.mapFunctionId = buffer.readUnsignedShort();
         } else if (opcode >= 150 && opcode < 155) {
             this.actions[opcode - 150] = this.readString(buffer);
             if (this.actions[opcode - 150].toLowerCase() === "hidden") {

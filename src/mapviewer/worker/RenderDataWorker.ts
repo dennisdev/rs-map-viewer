@@ -149,6 +149,7 @@ async function initWorker(
         textureLoader,
         locTypeLoader,
         loaderFactory.getMapScenes(),
+        loaderFactory.getMapFunctions(),
     );
 
     const mapImageCache = await caches.open("map-images");
@@ -237,7 +238,12 @@ const worker = {
 
         return Transfer(pixels, [pixels.buffer]);
     },
-    async loadMinimap(mapX: number, mapY: number, level: number): Promise<MinimapData | undefined> {
+    async loadMapImage(
+        mapX: number,
+        mapY: number,
+        level: number,
+        drawMapFunctions: boolean,
+    ): Promise<MinimapData | undefined> {
         const workerState = await workerStatePromise;
         if (!workerState) {
             throw new Error("Worker not initialized");
@@ -263,6 +269,7 @@ const worker = {
             scene,
             level,
             borderSize,
+            drawMapFunctions,
         );
 
         return {

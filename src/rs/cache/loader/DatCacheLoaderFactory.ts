@@ -133,4 +133,22 @@ export class DatCacheLoaderFactory implements CacheLoaderFactory {
 
         return mapScenes;
     }
+
+    getMapFunctions(): IndexedSprite[] {
+        // TODO: maybe there is a way to check how many mapscenes there are
+        const mapFunctions = new Array<IndexedSprite>();
+        for (let i = 0; i < 100; i++) {
+            try {
+                mapFunctions[i] = SpriteLoader.loadIndexedSpriteDat(
+                    this.mediaArchive,
+                    "mapfunction",
+                    i,
+                );
+            } catch (e) {
+                break;
+            }
+        }
+
+        return mapFunctions;
+    }
 }

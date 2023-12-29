@@ -17,6 +17,10 @@ import {
 } from "../../config/loctype/LocTypeLoader";
 import { MapSceneTypeLoader } from "../../config/mapscenetype/MapSceneTypeLoader";
 import {
+    ArchiveMapElementTypeLoader,
+    MapElementTypeLoader,
+} from "../../config/meltype/MapElementTypeLoader";
+import {
     ArchiveNpcTypeLoader,
     IndexNpcTypeLoader,
     NpcTypeLoader,
@@ -261,6 +265,69 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
             }
 
             return mapScenes;
+        }
+    }
+
+    loadMapElementSprites(
+        spriteIndex: CacheIndex,
+        mapElementTypeLoader: MapElementTypeLoader,
+    ): IndexedSprite[] {
+        const mapElementSprites = new Array<IndexedSprite>(mapElementTypeLoader.getCount());
+        for (let i = 0; i < mapElementSprites.length; i++) {
+            const mapElement = mapElementTypeLoader.load(i);
+            if (mapElement.spriteId === -1) {
+                continue;
+            }
+            const sprite = SpriteLoader.loadIntoIndexedSprite(spriteIndex, mapElement.spriteId);
+            if (sprite) {
+                mapElementSprites[i] = sprite;
+            }
+        }
+        return mapElementSprites;
+    }
+
+    getMapFunctions(): IndexedSprite[] {
+        const configIndex = this.cacheSystem.getIndex(IndexType.DAT2.configs);
+        const spriteIndex = this.cacheSystem.getIndex(IndexType.DAT2.sprites);
+
+        if (
+            this.cacheInfo.game === "oldschool" &&
+            configIndex.archiveExists(ConfigType.OSRS.mapFunctions)
+        ) {
+            const mapElementArchive = configIndex.getArchive(ConfigType.OSRS.mapFunctions);
+            const mapElementTypeLoader = new ArchiveMapElementTypeLoader(
+                this.cacheInfo,
+                mapElementArchive,
+            );
+
+            return this.loadMapElementSprites(spriteIndex, mapElementTypeLoader);
+        } else if (
+            this.cacheInfo.game === "runescape" &&
+            configIndex.archiveExists(ConfigType.RS2.mapFunctions)
+        ) {
+            const mapElementArchive = configIndex.getArchive(ConfigType.RS2.mapFunctions);
+            const mapElementTypeLoader = new ArchiveMapElementTypeLoader(
+                this.cacheInfo,
+                mapElementArchive,
+            );
+
+            return this.loadMapElementSprites(spriteIndex, mapElementTypeLoader);
+        } else {
+            const graphicDefaults = GraphicsDefaults.load(this.cacheInfo, this.cacheSystem);
+            if (graphicDefaults.mapFunctions === -1) {
+                return [];
+            }
+
+            const mapFunctions = SpriteLoader.loadIntoIndexedSprites(
+                spriteIndex,
+                graphicDefaults.mapFunctions,
+            );
+
+            if (!mapFunctions) {
+                throw new Error("Failed to load map functions");
+            }
+
+            return mapFunctions;
         }
     }
 }
