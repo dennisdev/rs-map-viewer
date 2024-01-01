@@ -4,6 +4,7 @@ import { WorkerDescriptor } from "threads/dist/master/pool-types";
 import { ObservablePromise } from "threads/dist/observable-promise";
 
 import { EditorMapData } from "../mapeditor/webgl/loader/EditorMapData";
+import { EditorMapTerrainData } from "../mapeditor/webgl/loader/EditorMapTerrainData";
 import { LoadedCache } from "../mapviewer/Caches";
 import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
 import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
@@ -62,6 +63,19 @@ export class RenderDataWorkerPool {
     ): QueuedTask<RenderDataWorkerThread, EditorMapData | undefined> {
         return this.pool.queue(
             (w) => w.loadEditorMapData(mapX, mapY) as ObservablePromise<EditorMapData | undefined>,
+        );
+    }
+
+    queueLoadEditorMapTerrainData(
+        mapX: number,
+        mapY: number,
+        heightMapTextureData: Float32Array,
+    ): QueuedTask<RenderDataWorkerThread, EditorMapTerrainData | undefined> {
+        return this.pool.queue(
+            (w) =>
+                w.loadEditorMapTerrainData(mapX, mapY, heightMapTextureData) as ObservablePromise<
+                    EditorMapTerrainData | undefined
+                >,
         );
     }
 

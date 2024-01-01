@@ -25,6 +25,17 @@ export function loadHeightMapTextureData(scene: Scene): Float32Array {
     return heightMapTextureData;
 }
 
+export function applyHeightMapTextureData(scene: Scene, heightMapTextureData: Float32Array) {
+    let dataIndex = 0;
+    for (let level = 0; level < scene.levels; level++) {
+        for (let y = 0; y < scene.sizeY; y++) {
+            for (let x = 0; x < scene.sizeX; x++) {
+                scene.tileHeights[level][x][y] = (-heightMapTextureData[dataIndex++] * 8) | 0;
+            }
+        }
+    }
+}
+
 export class Scene {
     static readonly MAX_LEVELS = 4;
     static readonly MAP_SQUARE_SIZE = 64;

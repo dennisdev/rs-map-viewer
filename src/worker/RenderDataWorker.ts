@@ -4,7 +4,11 @@ import { registerSerializer } from "threads";
 import { Transfer, expose } from "threads/worker";
 
 import { EditorMapData } from "../mapeditor/webgl/loader/EditorMapData";
-import { loadEditorMapData } from "../mapeditor/webgl/loader/EditorMapDataLoader";
+import {
+    loadEditorMapData,
+    loadEditorMapTerrainData,
+} from "../mapeditor/webgl/loader/EditorMapDataLoader";
+import { EditorMapTerrainData } from "../mapeditor/webgl/loader/EditorMapTerrainData";
 import { LoadedCache } from "../mapviewer/Caches";
 import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
 import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
@@ -230,6 +234,18 @@ const worker = {
 
         return loadEditorMapData(workerState, mapX, mapY);
     },
+    async loadEditorMapTerrainData(
+        mapX: number,
+        mapY: number,
+        heightMapTextureData: Float32Array,
+    ): Promise<EditorMapTerrainData | undefined> {
+        const workerState = await workerStatePromise;
+        if (!workerState) {
+            throw new Error("Worker not initialized");
+        }
+
+        return loadEditorMapTerrainData(workerState, mapX, mapY, heightMapTextureData);
+    },
     async loadTexture(
         id: number,
         size: number,
@@ -267,6 +283,7 @@ const worker = {
             baseY,
             mapSize,
             mapSize,
+            true,
             false,
             LandscapeLoadType.NO_MODELS,
         );
