@@ -3,6 +3,7 @@ import { vec3 } from "gl-matrix";
 import { Leva, button, buttonGroup, folder, useControls } from "leva";
 import { Schema } from "leva/dist/declarations/src/types";
 import { memo, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { isTouchDevice } from "../util/DeviceUtil";
@@ -34,6 +35,8 @@ export const MapViewerControls = memo(
         hidden,
     }: MapViewerControlsProps): JSX.Element => {
         const mapViewer = renderer.mapViewer;
+
+        const navigate = useNavigate();
 
         const [projectionType, setProjectionType] = useState<ProjectionType>(
             mapViewer.camera.projectionType,
@@ -156,6 +159,9 @@ export const MapViewerControls = memo(
             {
                 Links: folder(
                     {
+                        Editor: button(() => {
+                            navigate("/editor");
+                        }),
                         Github: button(() => {
                             window.open("https://github.com/dennisdev/rs-map-viewer", "_blank");
                         }),

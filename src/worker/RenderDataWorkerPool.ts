@@ -3,9 +3,10 @@ import { QueuedTask } from "threads/dist/master/pool";
 import { WorkerDescriptor } from "threads/dist/master/pool-types";
 import { ObservablePromise } from "threads/dist/observable-promise";
 
-import { LoadedCache } from "../Caches";
-import { NpcSpawn } from "../data/npc/NpcSpawn";
-import { ObjSpawn } from "../data/obj/ObjSpawn";
+import { EditorMapData } from "../mapeditor/webgl/loader/EditorMapData";
+import { LoadedCache } from "../mapviewer/Caches";
+import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
+import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
 import { MinimapData } from "./MinimapData";
 import { RenderDataLoader } from "./RenderDataLoader";
 import { RenderDataWorker } from "./RenderDataWorker";
@@ -55,6 +56,15 @@ export class RenderDataWorkerPool {
         return this.pool.queue((w) => w.load(loader, input) as ObservablePromise<D>);
     }
 
+    queueLoadEditorMapData(
+        mapX: number,
+        mapY: number,
+    ): QueuedTask<RenderDataWorkerThread, EditorMapData | undefined> {
+        return this.pool.queue(
+            (w) => w.loadEditorMapData(mapX, mapY) as ObservablePromise<EditorMapData | undefined>,
+        );
+    }
+
     queueLoadTexture(
         id: number,
         size: number,
@@ -88,6 +98,7 @@ export class RenderDataWorkerPool {
     }
 
     terminate(): Promise<void> {
+        console.log("Terminating worker pool");
         return this.pool.terminate();
     }
 }

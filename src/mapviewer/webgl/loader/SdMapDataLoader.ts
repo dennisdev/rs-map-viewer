@@ -6,14 +6,14 @@ import { NpcType } from "../../../rs/config/npctype/NpcType";
 import { ObjModelLoader } from "../../../rs/config/objtype/ObjModelLoader";
 import { VarManager } from "../../../rs/config/vartype/VarManager";
 import { Model } from "../../../rs/model/Model";
-import { Scene } from "../../../rs/scene/Scene";
+import { Scene, loadHeightMapTextureData } from "../../../rs/scene/Scene";
 import { LocEntity } from "../../../rs/scene/entity/LocEntity";
 import { TextureLoader } from "../../../rs/texture/TextureLoader";
+import { loadMinimapBlob } from "../../../worker/MinimapData";
+import { RenderDataLoader, RenderDataResult } from "../../../worker/RenderDataLoader";
+import { WorkerState } from "../../../worker/RenderDataWorker";
 import { NpcSpawn, getMapNpcSpawns } from "../../data/npc/NpcSpawn";
 import { ObjSpawn, getMapObjSpawns } from "../../data/obj/ObjSpawn";
-import { loadMinimapBlob } from "../../worker/MinimapData";
-import { RenderDataLoader, RenderDataResult } from "../../worker/RenderDataLoader";
-import { WorkerState } from "../../worker/RenderDataWorker";
 import { AnimationFrames } from "../AnimationFrames";
 import { DrawRange, NULL_DRAW_RANGE, newDrawRange } from "../DrawRange";
 import { InteractType } from "../InteractType";
@@ -36,21 +36,6 @@ import { createNpcDatas } from "../npc/NpcData";
 import { NpcSpawnGroup } from "../npc/NpcSpawnGroup";
 import { SdMapData } from "./SdMapData";
 import { SdMapLoaderInput } from "./SdMapLoaderInput";
-
-function loadHeightMapTextureData(scene: Scene): Float32Array {
-    const heightMapTextureData = new Float32Array(Scene.MAX_LEVELS * scene.sizeX * scene.sizeY);
-
-    let dataIndex = 0;
-    for (let level = 0; level < scene.levels; level++) {
-        for (let y = 0; y < scene.sizeY; y++) {
-            for (let x = 0; x < scene.sizeX; x++) {
-                heightMapTextureData[dataIndex++] = (-scene.tileHeights[level][x][y] / 8) | 0;
-            }
-        }
-    }
-
-    return heightMapTextureData;
-}
 
 function createObjSceneModels(
     objModelLoader: ObjModelLoader,

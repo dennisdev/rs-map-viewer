@@ -135,7 +135,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
     }
 
     return (
-        <div className="max-height">
+        <div className="mapviewer-container max-height">
             {loadingBarOverlay}
 
             {menuProps && <OsrsMenu {...menuProps} />}

@@ -3,37 +3,36 @@ import { TransferDescriptor } from "threads";
 import { registerSerializer } from "threads";
 import { Transfer, expose } from "threads/worker";
 
-import { CacheSystem } from "../../rs/cache/CacheSystem";
-import { ConfigType } from "../../rs/cache/ConfigType";
-import { IndexType } from "../../rs/cache/IndexType";
-import {
-    CacheLoaderFactory,
-    getCacheLoaderFactory,
-} from "../../rs/cache/loader/CacheLoaderFactory";
-import { Bzip2 } from "../../rs/compression/Bzip2";
-import { Gzip } from "../../rs/compression/Gzip";
-import { BasTypeLoader } from "../../rs/config/bastype/BasTypeLoader";
-import { LocModelLoader } from "../../rs/config/loctype/LocModelLoader";
-import { LocTypeLoader } from "../../rs/config/loctype/LocTypeLoader";
-import { NpcModelLoader } from "../../rs/config/npctype/NpcModelLoader";
-import { NpcTypeLoader } from "../../rs/config/npctype/NpcTypeLoader";
-import { ObjModelLoader } from "../../rs/config/objtype/ObjModelLoader";
-import { ObjTypeLoader } from "../../rs/config/objtype/ObjTypeLoader";
-import { SeqTypeLoader } from "../../rs/config/seqtype/SeqTypeLoader";
-import { VarManager } from "../../rs/config/vartype/VarManager";
-import { getMapSquareId } from "../../rs/map/MapFileIndex";
-import { MapImageRenderer } from "../../rs/map/MapImageRenderer";
-import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
-import { SkeletalSeqLoader } from "../../rs/model/skeletal/SkeletalSeqLoader";
-import { Scene } from "../../rs/scene/Scene";
-import { LandscapeLoadType, SceneBuilder } from "../../rs/scene/SceneBuilder";
-import { IndexedSprite } from "../../rs/sprite/IndexedSprite";
-import { SpriteLoader } from "../../rs/sprite/SpriteLoader";
-import { TextureLoader } from "../../rs/texture/TextureLoader";
-import { Hasher } from "../../util/Hasher";
-import { LoadedCache } from "../Caches";
-import { NpcSpawn } from "../data/npc/NpcSpawn";
-import { ObjSpawn } from "../data/obj/ObjSpawn";
+import { EditorMapData } from "../mapeditor/webgl/loader/EditorMapData";
+import { loadEditorMapData } from "../mapeditor/webgl/loader/EditorMapDataLoader";
+import { LoadedCache } from "../mapviewer/Caches";
+import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
+import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
+import { CacheSystem } from "../rs/cache/CacheSystem";
+import { ConfigType } from "../rs/cache/ConfigType";
+import { IndexType } from "../rs/cache/IndexType";
+import { CacheLoaderFactory, getCacheLoaderFactory } from "../rs/cache/loader/CacheLoaderFactory";
+import { Bzip2 } from "../rs/compression/Bzip2";
+import { Gzip } from "../rs/compression/Gzip";
+import { BasTypeLoader } from "../rs/config/bastype/BasTypeLoader";
+import { LocModelLoader } from "../rs/config/loctype/LocModelLoader";
+import { LocTypeLoader } from "../rs/config/loctype/LocTypeLoader";
+import { NpcModelLoader } from "../rs/config/npctype/NpcModelLoader";
+import { NpcTypeLoader } from "../rs/config/npctype/NpcTypeLoader";
+import { ObjModelLoader } from "../rs/config/objtype/ObjModelLoader";
+import { ObjTypeLoader } from "../rs/config/objtype/ObjTypeLoader";
+import { SeqTypeLoader } from "../rs/config/seqtype/SeqTypeLoader";
+import { VarManager } from "../rs/config/vartype/VarManager";
+import { getMapSquareId } from "../rs/map/MapFileIndex";
+import { MapImageRenderer } from "../rs/map/MapImageRenderer";
+import { SeqFrameLoader } from "../rs/model/seq/SeqFrameLoader";
+import { SkeletalSeqLoader } from "../rs/model/skeletal/SkeletalSeqLoader";
+import { Scene } from "../rs/scene/Scene";
+import { LandscapeLoadType, SceneBuilder } from "../rs/scene/SceneBuilder";
+import { IndexedSprite } from "../rs/sprite/IndexedSprite";
+import { SpriteLoader } from "../rs/sprite/SpriteLoader";
+import { TextureLoader } from "../rs/texture/TextureLoader";
+import { Hasher } from "../util/Hasher";
 import { MinimapData, loadMinimapBlob } from "./MinimapData";
 import { RenderDataLoader, renderDataLoaderSerializer } from "./RenderDataLoader";
 
@@ -222,6 +221,14 @@ const worker = {
             return undefined;
         }
         return Transfer<D>(data, transferables);
+    },
+    async loadEditorMapData(mapX: number, mapY: number): Promise<EditorMapData | undefined> {
+        const workerState = await workerStatePromise;
+        if (!workerState) {
+            throw new Error("Worker not initialized");
+        }
+
+        return loadEditorMapData(workerState, mapX, mapY);
     },
     async loadTexture(
         id: number,

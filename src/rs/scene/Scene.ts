@@ -10,6 +10,21 @@ import { WallDecoration } from "./WallDecoration";
 import { Entity } from "./entity/Entity";
 import { EntityTag, EntityType, getEntityTypeFromTag } from "./entity/EntityTag";
 
+export function loadHeightMapTextureData(scene: Scene): Float32Array {
+    const heightMapTextureData = new Float32Array(Scene.MAX_LEVELS * scene.sizeX * scene.sizeY);
+
+    let dataIndex = 0;
+    for (let level = 0; level < scene.levels; level++) {
+        for (let y = 0; y < scene.sizeY; y++) {
+            for (let x = 0; x < scene.sizeX; x++) {
+                heightMapTextureData[dataIndex++] = (-scene.tileHeights[level][x][y] / 8) | 0;
+            }
+        }
+    }
+
+    return heightMapTextureData;
+}
+
 export class Scene {
     static readonly MAX_LEVELS = 4;
     static readonly MAP_SQUARE_SIZE = 64;
