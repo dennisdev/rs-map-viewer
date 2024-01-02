@@ -96,6 +96,19 @@ export class EditorMapSquare implements MapSquare {
         public heightMapTextureData: Float32Array,
     ) {}
 
+    getHeightMapIndex(x: number, y: number): number {
+        const heightMapSize = Scene.MAP_SQUARE_SIZE + this.borderSize * 2;
+        return x + heightMapSize * y;
+    }
+
+    getHeightMapHeight(x: number, y: number): number {
+        return this.heightMapTextureData[this.getHeightMapIndex(x, y)];
+    }
+
+    setHeightMapHeight(x: number, y: number, height: number): void {
+        this.heightMapTextureData[this.getHeightMapIndex(x, y)] = height;
+    }
+
     updateHeightMapTexture(app: PicoApp): void {
         this.heightMapTexture.delete();
 
