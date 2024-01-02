@@ -503,48 +503,16 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
             }
         };
 
-        const getTile = (worldX: number, worldY: number): [number, number] => {
+        const getHeightWorld = (worldX: number, worldY: number, tilePlane: number = 0): number => {
             const mapX = Math.floor(worldX / 64);
             const mapY = Math.floor(worldY / 64);
             const tileX = (worldX % 64) + borderSize;
             const tileY = (worldY % 64) + borderSize;
-            const tileId = (tileX << 8) | tileY;
-            const mapId = getMapSquareId(mapX, mapY);
-            return [mapId, tileId];
-        };
-
-        const getHeight = (
-            map: EditorMapSquare,
-            tileX: number,
-            tileY: number,
-            tilePlane: number = 0,
-        ): number => {
-            const heightMapTextureSize = Scene.MAP_SQUARE_SIZE + map.borderSize * 2;
-            const heightMapIndex = tileY * heightMapTextureSize + tileX;
-            return map.heightMapTextureData[heightMapIndex];
-        };
-
-        const getHeightWorld = (worldX: number, worldY: number, tilePlane: number = 0): number => {
-            const tile = getTile(worldX, worldY);
-            var neighbourMapId = tile[0];
-            const nMap = this.mapManager.getMapById(neighbourMapId);
-            if (!nMap) return 0;
-            var neighbourTileId = tile[1];
-            const nX = neighbourTileId >> 8;
-            const nY = neighbourTileId & 0xff;
-            return getHeight(nMap, nX, nY);
-        };
-
-        const setHeight = (
-            height: number,
-            map: EditorMapSquare,
-            tileX: number,
-            tileY: number,
-            tilePlane: number = 0,
-        ) => {
-            const heightMapTextureSize = Scene.MAP_SQUARE_SIZE + map.borderSize * 2;
-            const heightMapIndex = tileY * heightMapTextureSize + tileX;
-            map.heightMapTextureData[heightMapIndex] = height;
+            const map = this.mapManager.getMap(mapX, mapY);
+            if (!map) {
+                return 0;
+            }
+            return map.getHeightMapHeight(tileX, tileY);
         };
 
         for (let x = -this.brushSize; x <= this.brushSize; x++) {
@@ -623,68 +591,75 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
             }
         }
 
-        for (const [mapId, tileIds] of hoveredTilesMap) {
-            const map = this.mapManager.getMapById(mapId);
-            if (!map) {
-                continue;
-            }
-            const heightMapTextureSize = Scene.MAP_SQUARE_SIZE + map.borderSize * 2;
-
-            if (smoothing) {
+        if (smoothing) {
+            const worldTileAverageHeightMap = new Map<number, number>();
+            for (const [mapId, tileIds] of hoveredTilesMap) {
+                const map = this.mapManager.getMapById(mapId);
+                if (!map) {
+                    continue;
+                }
                 for (const tileId of tileIds) {
                     const tileX = tileId >> 8;
                     const tileY = tileId & 0xff;
-
+                    const worldX = map.mapX * 64 + tileX - borderSize;
+                    const worldY = map.mapY * 64 + tileY - borderSize;
+                    const worldTileId = (worldX << 16) | worldY;
+                    if (worldTileAverageHeightMap.has(worldTileId)) {
+                        continue;
+                    }
                     let heightSum = 0;
-
-                    for (let neighbourX = tileX - 1; neighbourX <= tileX + 1; neighbourX++)
-                        for (let neighbourY = tileY - 1; neighbourY <= tileY + 1; neighbourY++) {
-                            if (
-                                neighbourX >= 0 &&
-                                neighbourY >= 0 &&
-                                neighbourX <= 64 &&
-                                neighbourY <= 64
-                            ) {
-                                heightSum += getHeight(map, neighbourX, neighbourY);
-                            } else {
-                                //tile is in different map square
-                                var mapX1 = map?.mapX;
-                                var mapY1 = map?.mapY;
-
-                                var worldX = mapX1 * 64 + neighbourX - borderSize;
-                                var worldY = mapY1 * 64 + neighbourY - borderSize;
-                                heightSum += getHeightWorld(worldX, worldY);
-                            }
+                    for (let x = worldX - 1; x <= worldX + 1; x++) {
+                        for (let y = worldY - 1; y <= worldY + 1; y++) {
+                            heightSum += getHeightWorld(x, y);
                         }
+                    }
 
-                    //todo should always be 9 other tiles sorrounding a tile right?
                     const avg = Math.floor(heightSum / 9);
 
-                    //todo make all above planes above incremented by the difference
-                    const diff = getHeight(map, tileX, tileY) - avg;
-                    setHeight(Math.max(avg, 0), map, tileX, tileY);
+                    worldTileAverageHeightMap.set(worldTileId, avg);
                 }
-            } else {
+            }
+            for (const [mapId, tileIds] of hoveredTilesMap) {
+                const map = this.mapManager.getMapById(mapId);
+                if (!map) {
+                    continue;
+                }
+
+                for (const tileId of tileIds) {
+                    const tileX = tileId >> 8;
+                    const tileY = tileId & 0xff;
+                    const worldX = map.mapX * 64 + tileX - borderSize;
+                    const worldY = map.mapY * 64 + tileY - borderSize;
+                    const worldTileId = (worldX << 16) | worldY;
+
+                    const height = worldTileAverageHeightMap.get(worldTileId);
+                    if (height) {
+                        map.setHeightMapHeight(tileX, tileY, Math.max(height, 0));
+                    }
+                }
+                map.updateHeightMapTexture(this.app);
+                this.updatedTerrainMapIds.add(mapId);
+            }
+        } else {
+            for (const [mapId, tileIds] of hoveredTilesMap) {
+                const map = this.mapManager.getMapById(mapId);
+                if (!map) {
+                    continue;
+                }
+
                 for (const tileId of tileIds) {
                     const tileX = tileId >> 8;
                     const tileY = tileId & 0xff;
 
-                    const heightMapX = tileX;
-                    const heightMapY = tileY;
-                    const heightMapIndex = heightMapY * heightMapTextureSize + heightMapX;
+                    const height = map.getHeightMapHeight(tileX, tileY);
 
                     //todo make all above planes above incremented by the same amount
                     const adjustment = decrement ? -1 : 1;
-                    map.heightMapTextureData[heightMapIndex] = Math.max(
-                        map.heightMapTextureData[heightMapIndex] + adjustment,
-                        0,
-                    );
+                    map.setHeightMapHeight(tileX, tileY, Math.max(height + adjustment, 0));
                 }
+                map.updateHeightMapTexture(this.app);
+                this.updatedTerrainMapIds.add(mapId);
             }
-
-            map.updateHeightMapTexture(this.app);
-
-            this.updatedTerrainMapIds.add(mapId);
         }
     }
 
