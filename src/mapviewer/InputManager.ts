@@ -115,6 +115,13 @@ export class InputManager {
         return this.isKeyDown("ShiftLeft") || this.isKeyDown("ShiftRight");
     }
 
+    isControlDown(): boolean {
+        return this.isKeyDown("ControlLeft") || this.isKeyDown("ControlRight");
+    }
+    isAltDown(): boolean {
+        return this.isKeyDown("AltLeft") || this.isKeyDown("AltRight");
+    }
+
     isKeyDown(key: string): boolean {
         return this.keys.has(key);
     }
