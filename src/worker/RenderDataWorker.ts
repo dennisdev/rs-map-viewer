@@ -226,7 +226,10 @@ const worker = {
         }
         return Transfer<D>(data, transferables);
     },
-    async loadEditorMapData(mapX: number, mapY: number): Promise<EditorMapData | undefined> {
+    async loadEditorMapData(
+        mapX: number,
+        mapY: number,
+    ): Promise<TransferDescriptor<EditorMapData | undefined>> {
         const workerState = await workerStatePromise;
         if (!workerState) {
             throw new Error("Worker not initialized");

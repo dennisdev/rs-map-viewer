@@ -575,7 +575,14 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
         const mapSize = Scene.MAP_SQUARE_SIZE + borderSize * 2;
 
         console.time(`build scene ${mapX},${mapY}`);
-        const scene = state.sceneBuilder.buildScene(baseX, baseY, mapSize, mapSize, smoothTerrain);
+        const scene = state.sceneBuilder.buildScene(
+            baseX,
+            baseY,
+            mapSize,
+            mapSize,
+            true,
+            smoothTerrain,
+        );
         console.timeEnd(`build scene ${mapX},${mapY}`);
 
         const sceneBuf = new SceneBuffer(textureLoader, textureIdIndexMap, 100000);

@@ -756,6 +756,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
         this.app.drawFramebuffer(this.framebuffer);
 
         this.app.clearColor(0.0, 0.0, 0.0, 1.0);
+        this.app.clear();
         this.gl.clearBufferfv(PicoGL.COLOR, 0, this.skyColor);
 
         this.tickPass(timeSec, ticksElapsed, clientTicksElapsed);

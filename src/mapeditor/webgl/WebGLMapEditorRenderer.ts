@@ -14,8 +14,9 @@ import PicoGL, {
 import { newDrawRange } from "../../mapviewer/webgl/DrawRange";
 import { createTextureArray } from "../../picogl/PicoTexture";
 import { getMapSquareId } from "../../rs/map/MapFileIndex";
-import { Scene } from "../../rs/scene/Scene";
+import { Scene, loadHeightMapTextureData } from "../../rs/scene/Scene";
 import { clamp } from "../../util/MathUtil";
+import { MapEditor } from "../MapEditor";
 import { MapEditorRenderer } from "../MapEditorRenderer";
 import { EditorMapSquare } from "./EditorMapSquare";
 import {
@@ -24,6 +25,7 @@ import {
     TerrainVertexBuffer,
     getTileOffset,
 } from "./buffer/TerrainVertexBuffer";
+import { addTerrainTile } from "./loader/EditorMapDataLoader";
 import {
     GRID_PROGRAM,
     HIGHLIGHT_PROGRAM,
@@ -63,6 +65,7 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
     textureMaterials?: Texture;
 
     textureIds: number[] = [];
+    textureIndexMap: Map<number, number> = new Map();
     loadedTextureIds: Set<number> = new Set();
 
     // Geometry
@@ -96,6 +99,12 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
 
     mapSquareGridColor: vec4 = vec4.fromValues(1.0, 0.0, 0.0, 1.0);
     mapChunkGridColor: vec4 = vec4.fromValues(0.0, 1.0, 0.0, 1.0);
+
+    affectedTilesMap: Map<number, Set<number>> = new Map();
+
+    constructor(mapEditor: MapEditor) {
+        super(mapEditor);
+    }
 
     async init(): Promise<void> {
         await super.init();
@@ -258,6 +267,9 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
         this.textureIds = allTextureIds
             .filter((id) => textureLoader.isSd(id))
             .slice(0, MAX_TEXTURES - 1);
+        for (let i = 0; i < this.textureIds.length; i++) {
+            this.textureIndexMap.set(this.textureIds[i], i);
+        }
 
         this.initTextureArray();
         this.initMaterialsTexture();
@@ -608,9 +620,10 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
         if (!map) {
             return 0;
         }
+        const scene = map.scene;
         const tileX = (worldX % 64) + map.borderSize;
         const tileY = (worldY % 64) + map.borderSize;
-        return map.getHeightMapHeight(tileX, tileY);
+        return scene.tileHeights[level][tileX][tileY];
     }
 
     handleTileManipulation(time: number): void {
@@ -620,7 +633,7 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
             return;
         }
 
-        const smoothing = inputManager.isControlDown();
+        const isCtrlDown = inputManager.isControlDown();
 
         const borderSize = 6;
 
@@ -711,30 +724,80 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
             }
         }
 
-        // if (smoothing) {
-        //     this.applyHeightSmoothing(hoveredTilesMap);
-        // } else {
-        //     this.applyHeightAdjustment(hoveredTilesMap);
-        // }
+        this.applyTileChange(hoveredTilesMap);
 
-        const vertexBuf = new TerrainVertexBuffer(TOTAL_TILE_VERTICES);
+        this.updateAffectedTiles();
+    }
+
+    addAffectedTile(worldX: number, worldY: number) {
+        const mapX = Math.floor(worldX / 64);
+        const mapY = Math.floor(worldY / 64);
+        const tileX = worldX % 64;
+        const tileY = worldY % 64;
+        const mapId = getMapSquareId(mapX, mapY);
+        const tileId = (tileX << 8) | tileY;
+
+        const affectedTiles = this.affectedTilesMap.get(mapId);
+        if (affectedTiles) {
+            affectedTiles.add(tileId);
+        } else {
+            this.affectedTilesMap.set(mapId, new Set([tileId]));
+        }
+    }
+
+    applyTileChange(hoveredTilesMap: Map<number, Set<number>>): void {
+        const underlayTypeLoader = this.mapEditor.underlayTypeLoader;
+        const overlayTypeLoader = this.mapEditor.overlayTypeLoader;
+
+        const underlayCount = underlayTypeLoader.getCount();
+        const overlayCount = overlayTypeLoader.getCount();
+
         for (const [mapId, tileIds] of hoveredTilesMap) {
             const map = this.mapManager.getMapById(mapId);
             if (!map) {
                 continue;
             }
 
+            const scene = map.scene;
+
             for (const tileId of tileIds) {
-                const tileX = (tileId >> 8) - map.borderSize;
-                const tileY = (tileId & 0xff) - map.borderSize;
+                const sceneX = tileId >> 8;
+                const sceneY = tileId & 0xff;
+                const tileX = sceneX - map.borderSize;
+                const tileY = sceneY - map.borderSize;
+
+                if (sceneX >= scene.sizeX || sceneY >= scene.sizeY) {
+                    continue;
+                }
+
+                // scene.tileRotations[0][sceneX][sceneY]++;
+                // scene.tileRotations[0][sceneX][sceneY] &= 0x3;
+                const randomTileShape = Math.floor(Math.random() * 12);
+                const randomTileRotation = Math.floor(Math.random() * 4);
+                const randomOverlayId = Math.floor(Math.random() * overlayCount);
+                const randomUnderlayId = Math.floor(Math.random() * underlayCount) + 1;
+
+                // scene.tileShapes[0][sceneX][sceneY] = 0;
+                // scene.tileShapes[0][sceneX][sceneY] = randomTileShape;
+                // scene.tileRotations[0][sceneX][sceneY] = randomTileRotation;
+                // scene.tileOverlays[0][sceneX][sceneY] = randomOverlayId;
+                // scene.tileOverlays[0][sceneX][sceneY] = 0;
+                scene.tileUnderlays[0][sceneX][sceneY] = 2;
+
+                map.underlayUpdated = true;
 
                 if (tileX < 0 || tileX >= 64 || tileY < 0 || tileY >= 64) {
                     continue;
                 }
 
-                const offset = getTileOffset(0, tileX, tileY);
+                const worldX = map.mapX * 64 + tileX;
+                const worldY = map.mapY * 64 + tileY;
 
-                map.terrainVertexBuffer.data(vertexBuf.view, offset * TerrainVertexBuffer.STRIDE);
+                for (let x = worldX - 4; x <= worldX + 4; x++) {
+                    for (let y = worldY - 4; y <= worldY + 4; y++) {
+                        this.addAffectedTile(x, y);
+                    }
+                }
             }
         }
     }
@@ -773,25 +836,40 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
                 continue;
             }
 
+            const scene = map.scene;
+
             for (const tileId of tileIds) {
-                const tileX = tileId >> 8;
-                const tileY = tileId & 0xff;
-                const worldX = map.mapX * 64 + tileX - map.borderSize;
-                const worldY = map.mapY * 64 + tileY - map.borderSize;
+                const sceneX = tileId >> 8;
+                const sceneY = tileId & 0xff;
+                const tileX = sceneX - map.borderSize;
+                const tileY = sceneY - map.borderSize;
+                const worldX = map.mapX * 64 + tileX;
+                const worldY = map.mapY * 64 + tileY;
                 const worldTileId = (worldX << 16) | worldY;
 
-                const height = worldTileAverageHeightMap.get(worldTileId);
-                if (height !== undefined) {
-                    map.setHeightMapHeight(tileX, tileY, Math.max(height, 0));
+                const newHeight = worldTileAverageHeightMap.get(worldTileId);
+                if (!newHeight) {
+                    continue;
+                }
+                const height = scene.tileHeights[0][sceneX][sceneY];
+                if (newHeight === height) {
+                    continue;
+                }
+                scene.tileHeights[0][sceneX][sceneY] = newHeight;
+                for (let x = worldX - 2; x <= worldX + 1; x++) {
+                    for (let y = worldY - 2; y <= worldY + 1; y++) {
+                        this.addAffectedTile(x, y);
+                    }
                 }
             }
-            map.updateHeightMapTexture(this.app);
-            this.updatedTerrainMapIds.add(mapId);
+
+            map.heightUpdated = true;
         }
     }
 
     applyHeightAdjustment(hoveredTilesMap: Map<number, Set<number>>) {
         const decrement = this.mapEditor.inputManager.isAltDown();
+        const adjustment = decrement ? 8 : -8;
 
         for (const [mapId, tileIds] of hoveredTilesMap) {
             const map = this.mapManager.getMapById(mapId);
@@ -799,18 +877,117 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
                 continue;
             }
 
+            const scene = map.scene;
+
+            for (const tileId of tileIds) {
+                const sceneX = tileId >> 8;
+                const sceneY = tileId & 0xff;
+
+                const height = scene.tileHeights[0][sceneX][sceneY];
+                const newHeight = Math.min(height + adjustment, 0);
+
+                if (newHeight === height) {
+                    continue;
+                }
+
+                scene.tileHeights[0][sceneX][sceneY] = newHeight;
+
+                const tileX = sceneX - map.borderSize;
+                const tileY = sceneY - map.borderSize;
+                const worldX = map.mapX * 64 + tileX;
+                const worldY = map.mapY * 64 + tileY;
+                for (let x = worldX - 2; x <= worldX + 1; x++) {
+                    for (let y = worldY - 2; y <= worldY + 1; y++) {
+                        this.addAffectedTile(x, y);
+                    }
+                }
+            }
+
+            map.heightUpdated = true;
+        }
+    }
+
+    updateAffectedTiles(): void {
+        if (this.affectedTilesMap.size === 0) {
+            return;
+        }
+        const sceneBuilder = this.mapEditor.sceneBuilder;
+
+        const level = 0;
+
+        const vertexBuf = new TerrainVertexBuffer(TOTAL_TILE_VERTICES);
+        for (const [mapId, tileIds] of this.affectedTilesMap) {
+            const map = this.mapManager.getMapById(mapId);
+            if (!map) {
+                continue;
+            }
+
+            const scene = map.scene;
+
+            if (map.heightUpdated) {
+                map.heightMapTextureData = loadHeightMapTextureData(scene);
+                map.updateHeightMapTexture(this.app);
+
+                scene.calculateTileLights(level, true);
+
+                map.heightUpdated = false;
+            }
+
+            if (map.underlayUpdated) {
+                sceneBuilder.blendUnderlays(scene, level, true);
+
+                map.underlayUpdated = false;
+            }
+
+            const heights = scene.tileHeights;
+            const underlayIds = scene.tileUnderlays;
+            const overlayIds = scene.tileOverlays;
+            const tileShapes = scene.tileShapes;
+            const tileRotations = scene.tileRotations;
+
+            const lights = scene.tileLights[level];
+            const blendedColors = scene.tileBlendedColors[level];
+
             for (const tileId of tileIds) {
                 const tileX = tileId >> 8;
                 const tileY = tileId & 0xff;
+                const sceneX = tileX + map.borderSize;
+                const sceneY = tileY + map.borderSize;
 
-                const height = map.getHeightMapHeight(tileX, tileY);
+                if (tileX < 0 || tileX >= 64 || tileY < 0 || tileY >= 64) {
+                    continue;
+                }
 
-                const adjustment = decrement ? -1 : 1;
-                map.setHeightMapHeight(tileX, tileY, Math.max(height + adjustment, 0));
+                scene.setTileModel(level, sceneX, sceneY, undefined);
+                sceneBuilder.addTileModel(
+                    scene,
+                    heights,
+                    underlayIds,
+                    overlayIds,
+                    tileShapes,
+                    tileRotations,
+                    lights,
+                    blendedColors,
+                    level,
+                    sceneX,
+                    sceneY,
+                    false,
+                );
+                const tile = scene.tiles[level][sceneX][sceneY];
+                if (!tile) {
+                    continue;
+                }
+
+                const vertexOffset = map.borderSize * -128;
+                vertexBuf.clear();
+                addTerrainTile(this.textureIndexMap, vertexBuf, tile, vertexOffset, vertexOffset);
+
+                const offset = getTileOffset(level, tileX, tileY);
+                map.terrainVertexBuffer.data(vertexBuf.view, offset * TerrainVertexBuffer.STRIDE);
             }
-            map.updateHeightMapTexture(this.app);
-            this.updatedTerrainMapIds.add(mapId);
         }
+
+        this.affectedTilesMap.clear();
     }
 
     clearMaps(): void {
@@ -838,6 +1015,17 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
         this.textureArray = undefined;
         this.textureMaterials?.delete();
         this.textureMaterials = undefined;
+
+        // Grid
+        this.gridVertexBuffer?.delete();
+        this.gridVertexBuffer = undefined;
+        this.gridVertexArray?.delete();
+        this.gridVertexArray = undefined;
+
+        this.chunkGridVertexBuffer?.delete();
+        this.chunkGridVertexBuffer = undefined;
+        this.chunkGridVertexArray?.delete();
+        this.chunkGridVertexArray = undefined;
 
         this.clearMaps();
 
