@@ -5,6 +5,12 @@ export function getMapSquareId(mapX: number, mapY: number): number {
     return (mapX << 8) + mapY;
 }
 
+export function getMapCoordinates(mapId: number): { mapX: number; mapY: number } {
+    const mapY = mapId & 255;
+    const mapX = (mapId >> 8) & 0xffff;
+    return { mapX, mapY };
+}
+
 export interface MapFileIndex {
     getTerrainArchiveId(mapX: number, mapY: number): number;
     getLandscapeArchiveId(mapX: number, mapY: number): number;

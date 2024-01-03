@@ -13,10 +13,12 @@ import PicoGL, {
 
 import { newDrawRange } from "../../mapviewer/webgl/DrawRange";
 import { createTextureArray } from "../../picogl/PicoTexture";
-import { getMapSquareId } from "../../rs/map/MapFileIndex";
-import { Scene } from "../../rs/scene/Scene";
+import { getMapCoordinates, getMapSquareId } from "../../rs/map/MapFileIndex";
 import { clamp } from "../../util/MathUtil";
 import { MapEditorRenderer } from "../MapEditorRenderer";
+import { Tile } from "../Tile";
+import { getMapAndTile, getWorldTileIdFromLocal } from "../Tiles";
+import { UndoRedoManager, undoRedoManager } from "../UndoRedoManager";
 import { EditorMapSquare } from "./EditorMapSquare";
 import {
     GRID_PROGRAM,
@@ -706,6 +708,9 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
             }
         }
 
+        const cachedHeights: { tile: Tile; height: number }[] = [];
+        const modifiedHeights: { tile: Tile; newHeight: number }[] = [];
+
         if (smoothing) {
             const worldTileAverageHeightMap = new Map<number, number>();
             for (const [mapId, tileIds] of hoveredTilesMap) {
@@ -768,13 +773,48 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
 
                     const height = map.getHeightMapHeight(tileX, tileY);
 
+                    const tile = new Tile(tileX, tileY, 0, mapId);
+                    cachedHeights.push({ tile, height });
+
                     //todo make all above planes above incremented by the same amount
                     const adjustment = decrement ? -1 : 1;
+                    const newHeight = Math.max(height + adjustment, 0);
+                    modifiedHeights.push({ tile, newHeight });
                     map.setHeightMapHeight(tileX, tileY, Math.max(height + adjustment, 0));
                 }
-                map.updateHeightMapTexture(this.app);
-                this.updatedTerrainMapIds.add(mapId);
             }
+
+            undoRedoManager.push({
+                common: () => {
+                    for (const [mapId, tileIds] of hoveredTilesMap) {
+                        const map = this.mapManager.getMapById(mapId);
+                        if (!map) continue;
+                        map.updateHeightMapTexture(this.app);
+                        this.updatedTerrainMapIds.add(mapId);
+                    }
+                },
+                apply: () => {
+                    for (const entry of cachedHeights) {
+                        const { tile, height } = entry;
+                        const map = this.mapManager.getMapById(tile.getMapId());
+                        if (!map) {
+                            continue;
+                        }
+                        map.setHeightMapHeight(tile.getLocalX(), tile.getLocalY(), height);
+                    }
+                },
+                redo: () => {
+                    for (const entry of modifiedHeights) {
+                        const { tile, newHeight } = entry;
+                        const mapId = tile.getMapId();
+                        const map = this.mapManager.getMapById(mapId);
+                        if (!map) {
+                            continue;
+                        }
+                        map.setHeightMapHeight(tile.getLocalX(), tile.getLocalY(), newHeight);
+                    }
+                },
+            });
         }
     }
 
