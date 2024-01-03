@@ -1,5 +1,6 @@
 import { vec2 } from "gl-matrix";
 import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
+import {undoRedoManager} from "../mapeditor/UndoRedoManager";
 
 export function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     const rect = container.getBoundingClientRect();
@@ -194,12 +195,31 @@ export class InputManager {
     private onKeyDown = (event: KeyboardEvent) => {
         event.preventDefault();
         this.keys.set(event.code, true);
+        this.handleUndoRedoShortcuts();
     };
 
     private onKeyUp = (event: KeyboardEvent) => {
         event.preventDefault();
         this.keys.delete(event.code);
     };
+
+
+    /**
+     * Handles keyboard shortcuts for undo (Ctrl+Z) and redo (Ctrl+Shift+Z).
+     */
+    private handleUndoRedoShortcuts() {
+        if (this.isControlDown()) {
+            if (this.isKeyDownEvent("KeyZ")) {
+                if (this.isShiftDown()) {
+                    // Ctrl+Shift+Z for redo
+                    undoRedoManager.redo();
+                } else {
+                    // Ctrl+Z for undo
+                    undoRedoManager.undo();
+                }
+            }
+        }
+    }
 
     private onMouseDown = (event: MouseEvent) => {
         if (!this.element) {
