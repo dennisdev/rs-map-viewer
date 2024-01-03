@@ -16,7 +16,7 @@ export interface EditorAction {
     /**
      * Callback executed when an action should be applied/undone.
      */
-    apply: () => UndoRedoReturnType<unknown>;
+    undo: () => UndoRedoReturnType<unknown>;
     /**
      * Callback called when an action should be redone.
      * Calling undoRedo.push(...) will automatically invoke this callback.
@@ -72,11 +72,13 @@ export class UndoRedoManager {
      */
     private performUndo<T>(): UndoRedoReturnType<T> {
         if (this.currentIndex < 0) {
-            return (() => {}) as UndoRedoReturnType<T>;
+            return (() => {
+                console.log("can't undo.");
+            }) as UndoRedoReturnType<T>;
         }
 
         const action = this.actionStack[this.currentIndex];
-        const possiblePromise = action.apply();
+        const possiblePromise = action.undo();
 
         if (possiblePromise instanceof Promise) {
             possiblePromise.then(() => {
@@ -95,7 +97,9 @@ export class UndoRedoManager {
      */
     private applyAction<T>(actionType: "push" | "redo"): UndoRedoReturnType<T> {
         if (this.currentIndex >= this.actionStack.length - 1) {
-            return (() => {}) as UndoRedoReturnType<T>;
+            return (() => {
+                console.log("can't do action");
+            }) as UndoRedoReturnType<T>;
         }
 
         this.currentIndex++;

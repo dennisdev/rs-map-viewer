@@ -5,8 +5,8 @@ export class Tile {
         if (typeof mapId === "number") {
             const mapX = (mapId >> 8) & 0xffff;
             const mapY = mapId & 255;
-            x = mapX + x;
-            y = mapY + y;
+            x = mapX * 64 + x - 6;
+            y = mapY * 64 + y - 6;
         }
         this.hash = y | (x << 14) | (z << 28);
     }

@@ -793,11 +793,12 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
                         this.updatedTerrainMapIds.add(mapId);
                     }
                 },
-                apply: () => {
+                undo: () => {
                     for (const entry of cachedHeights) {
                         const { tile, height } = entry;
                         const map = this.mapManager.getMapById(tile.getMapId());
                         if (!map) {
+                            console.log("undo invalid map " + tile.getMapId());
                             continue;
                         }
                         map.setHeightMapHeight(tile.getLocalX(), tile.getLocalY(), height);
@@ -809,6 +810,7 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
                         const mapId = tile.getMapId();
                         const map = this.mapManager.getMapById(mapId);
                         if (!map) {
+                            console.log("redo invalid map " + tile.getMapId());
                             continue;
                         }
                         map.setHeightMapHeight(tile.getLocalX(), tile.getLocalY(), newHeight);
