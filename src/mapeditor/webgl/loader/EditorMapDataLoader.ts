@@ -3,7 +3,11 @@ import { Scene } from "../../../rs/scene/Scene";
 import { LocLoadType } from "../../../rs/scene/SceneBuilder";
 import { SceneTile } from "../../../rs/scene/SceneTile";
 import { WorkerState } from "../../../worker/RenderDataWorker";
-import { VertexBuffer } from "../buffer/VertexBuffer";
+import {
+    LEVEL_TILE_VERTICES,
+    TerrainVertexBuffer,
+    getTileOffset,
+} from "../buffer/TerrainVertexBuffer";
 import { EditorMapData } from "./EditorMapData";
 import { EditorMapTerrainData } from "./EditorMapTerrainData";
 
@@ -62,9 +66,15 @@ export function loadEditorMapData(
         LocLoadType.NO_MODELS,
     );
 
-    const vertexBuffer = new VertexBuffer(100000);
+    const terrainVertexBuffer = new TerrainVertexBuffer(scene.levels * LEVEL_TILE_VERTICES);
 
-    const terrainDrawRanges = addTerrain(textureIndexMap, vertexBuffer, scene, borderSize, 3);
+    const terrainDrawRanges = addTerrain(
+        textureIndexMap,
+        terrainVertexBuffer,
+        scene,
+        borderSize,
+        3,
+    );
 
     const heightMapTextureData = loadHeightMapTextureData(scene);
 
@@ -73,7 +83,7 @@ export function loadEditorMapData(
         mapY,
         borderSize,
 
-        terrainVertices: vertexBuffer.byteArray(),
+        terrainVertices: terrainVertexBuffer.bytes,
         terrainDrawRanges,
 
         heightMapTextureData,
@@ -115,23 +125,29 @@ export function loadEditorMapTerrainData(
 
     sceneBuilder.addTileModels(scene, false);
 
-    const vertexBuffer = new VertexBuffer(100000);
+    const terrainVertexBuffer = new TerrainVertexBuffer(scene.levels * LEVEL_TILE_VERTICES);
 
-    const terrainDrawRanges = addTerrain(textureIndexMap, vertexBuffer, scene, borderSize, 3);
+    const terrainDrawRanges = addTerrain(
+        textureIndexMap,
+        terrainVertexBuffer,
+        scene,
+        borderSize,
+        3,
+    );
 
     return {
         mapX,
         mapY,
         borderSize,
 
-        terrainVertices: vertexBuffer.byteArray(),
+        terrainVertices: terrainVertexBuffer.bytes,
         terrainDrawRanges,
     };
 }
 
 export function addTerrain(
     textureIndexMap: Map<number, number>,
-    vertexBuf: VertexBuffer,
+    vertexBuf: TerrainVertexBuffer,
     scene: Scene,
     borderSize: number,
     maxLevel: number,
@@ -146,20 +162,22 @@ export function addTerrain(
     const drawRanges: DrawRange[] = [];
 
     for (let level = 0; level < scene.levels; level++) {
-        const startOffset = vertexBuf.offset;
         for (let x = startX; x < endX; x++) {
             for (let y = startY; y < endY; y++) {
                 const tile = scene.tiles[level][x][y];
                 if (!tile || tile.minLevel > maxLevel) {
                     continue;
                 }
+                const realX = x - borderSize;
+                const realY = y - borderSize;
+                vertexBuf.offset = getTileOffset(level, realX, realY);
                 addTerrainTile(textureIndexMap, vertexBuf, tile, vertexOffset, vertexOffset);
             }
         }
 
-        const levelVertexCount = vertexBuf.offset - startOffset;
+        const offset = level * LEVEL_TILE_VERTICES;
 
-        drawRanges.push(newDrawRange(startOffset, levelVertexCount));
+        drawRanges.push(newDrawRange(offset, offset + LEVEL_TILE_VERTICES));
 
         // if (levelVertexCount > 0) {
         // }
@@ -170,7 +188,7 @@ export function addTerrain(
 
 export function addTerrainTile(
     textureIndexMap: Map<number, number>,
-    vertexBuf: VertexBuffer,
+    vertexBuf: TerrainVertexBuffer,
     tile: SceneTile,
     offsetX: number,
     offsetY: number,
