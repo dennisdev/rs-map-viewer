@@ -14,6 +14,11 @@ export class DataBuffer {
         this.offset = offset;
     }
 
+    clear(): void {
+        this.bytes.fill(0);
+        this.offset = 0;
+    }
+
     ensureSize(count: number): boolean {
         const byteOffset = this.offset * this.stride;
         if (byteOffset + count * this.stride >= this.view.byteLength) {
