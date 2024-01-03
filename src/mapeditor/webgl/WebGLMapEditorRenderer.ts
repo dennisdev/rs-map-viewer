@@ -17,8 +17,7 @@ import { getMapCoordinates, getMapSquareId } from "../../rs/map/MapFileIndex";
 import { clamp } from "../../util/MathUtil";
 import { MapEditorRenderer } from "../MapEditorRenderer";
 import { Tile } from "../Tile";
-import { getMapAndTile, getWorldTileIdFromLocal } from "../Tiles";
-import { UndoRedoManager, undoRedoManager } from "../UndoRedoManager";
+import { undoRedoManager } from "../UndoRedoManager";
 import { EditorMapSquare } from "./EditorMapSquare";
 import {
     GRID_PROGRAM,
