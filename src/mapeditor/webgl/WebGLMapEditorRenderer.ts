@@ -20,6 +20,7 @@ import { MapEditor } from "../MapEditor";
 import { MapEditorRenderer } from "../MapEditorRenderer";
 import { EditorMapSquare } from "./EditorMapSquare";
 import {
+    LEVEL_TILE_VERTICES,
     TOTAL_TILE_VERTICES,
     TerrainVertexBuffer,
     getTileOffset,
@@ -485,17 +486,19 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
         this.app.enable(PicoGL.DEPTH_TEST);
         this.app.enable(PicoGL.BLEND);
 
+        const startLevel = 0;
+        const endLevel = 4;
+
+        const terrainDrawRange = newDrawRange(
+            startLevel * LEVEL_TILE_VERTICES,
+            endLevel * LEVEL_TILE_VERTICES,
+        );
+
         for (let i = 0; i < this.mapManager.visibleMapCount; i++) {
             const map = this.mapManager.visibleMaps[i];
 
-            const drawRanges = map.terrainDrawRanges;
-            for (let i = 0; i < drawRanges.length; i++) {
-                map.terrainDrawCall.uniform("u_level", i);
-                map.terrainDrawCall.drawRanges(drawRanges[i]);
-                map.terrainDrawCall.draw();
-            }
-
-            // this.draw(map.terrainDrawCall, map.terrainDrawRanges);
+            map.terrainDrawCall.drawRanges(terrainDrawRange);
+            map.terrainDrawCall.draw();
         }
 
         // this.app.disable(PicoGL.DEPTH_TEST);
