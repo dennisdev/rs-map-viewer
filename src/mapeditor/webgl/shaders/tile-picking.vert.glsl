@@ -15,15 +15,16 @@ uniform SceneUniforms {
 // Per draw
 uniform float u_mapX;
 uniform float u_mapY;
+uniform float u_level;
 
 uniform mediump sampler2DArray u_heightMap;
 
 out vec4 v_color;
 
-float getHeightInterp(vec2 pos, uint plane) {
+float getHeightInterp(vec2 pos, uint level) {
     vec2 uv = (pos + vec2(SCENE_BORDER_SIZE + 0.5)) / vec2(64.0 + SCENE_BORDER_SIZE * 2.0);
 
-    return texture(u_heightMap, vec3(uv, plane)).r * 8.0;
+    return texture(u_heightMap, vec3(uv, level)).r * 8.0;
 }
 
 void main() {
@@ -35,7 +36,7 @@ void main() {
 
     vec2 tilePos = vec2(TILE_X[vertexIndex] + tileX, TILE_Y[vertexIndex] + tileY);
 
-    float height = -getHeightInterp(tilePos, 0u) / 128.0;
+    float height = -getHeightInterp(tilePos, uint(u_level)) / 128.0;
 
     v_color = vec4(tileX / 255.0, tileY / 255.0, u_mapX / 255.0, u_mapY / 255.0);
     vec4 pos = vec4(tilePos.x, height, tilePos.y, 1.0);
