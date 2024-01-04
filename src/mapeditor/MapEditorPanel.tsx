@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { FloorType } from "../rs/config/floortype/FloorType";
 import { MapEditor } from "./MapEditor";
@@ -47,11 +47,27 @@ export function MapEditorPanel({ mapEditor }: MapEditorPanelProps): JSX.Element 
         );
     });
 
+    const isNoUnderlaySelected = selectedUnderlayId === -1;
+
+    const setNoUnderlay = useCallback(() => {
+        mapEditor.selectedUnderlayId = -1;
+        setSelectedUnderlayId(-1);
+    }, [mapEditor]);
+
     return (
         <div className="map-editor-panel content-text">
             <div style={{ padding: "5px" }}>Underlays</div>
 
-            <div className="underlays-container">{underlayPreviews}</div>
+            <div className="underlays-container">
+                <div
+                    className={`underlay-preview ${isNoUnderlaySelected ? "selected" : ""}`}
+                    style={{ backgroundColor: "black" }}
+                    onClick={setNoUnderlay}
+                >
+                    None
+                </div>
+                {underlayPreviews}
+            </div>
         </div>
     );
 }

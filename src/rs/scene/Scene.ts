@@ -499,6 +499,22 @@ export class Scene {
         );
     }
 
+    getMinHeight(level: number, tileX: number, tileY: number): number {
+        if (level === 0) {
+            return 0;
+        } else {
+            return this.tileHeights[level - 1][tileX][tileY];
+        }
+    }
+
+    setHeight(level: number, tileX: number, tileY: number, newHeight: number): void {
+        const height = this.tileHeights[level][tileX][tileY];
+        const deltaHeight = newHeight - height;
+        for (let i = level; i < this.levels; i++) {
+            this.tileHeights[i][tileX][tileY] += deltaHeight;
+        }
+    }
+
     mergeLargeLocNormals(
         model: ModelData,
         startLevel: number,
