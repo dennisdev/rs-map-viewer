@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 
 import { RendererCanvas } from "../components/renderer/RendererCanvas";
 import { MapEditor } from "./MapEditor";
+import "./MapEditorContainer.css";
+import { MapEditorPanel } from "./MapEditorPanel";
 
 export interface MapEditorContainerProps {
     mapEditor: MapEditor;
@@ -39,13 +41,15 @@ export function MapEditorContainer({ mapEditor }: MapEditorContainerProps): JSX.
     }, [searchParams]);
 
     return (
-        <div className="max-height">
+        <div className="map-editor-container">
             <div className="hud left-top">
                 <div className="fps-counter content-text">{fps}</div>
                 <div className="fps-counter content-text">{debugText}</div>
             </div>
 
             <RendererCanvas renderer={mapEditor.renderer} />
+
+            <MapEditorPanel mapEditor={mapEditor} />
         </div>
     );
 }

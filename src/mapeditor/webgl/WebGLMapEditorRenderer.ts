@@ -780,7 +780,7 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
                 // scene.tileRotations[0][sceneX][sceneY] = randomTileRotation;
                 // scene.tileOverlays[0][sceneX][sceneY] = randomOverlayId;
                 // scene.tileOverlays[0][sceneX][sceneY] = 0;
-                scene.tileUnderlays[0][sceneX][sceneY] = 2;
+                scene.tileUnderlays[0][sceneX][sceneY] = this.mapEditor.selectedUnderlayId + 1;
 
                 map.underlayUpdated = true;
 

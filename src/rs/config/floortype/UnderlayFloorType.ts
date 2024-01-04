@@ -30,6 +30,10 @@ export class UnderlayFloorType extends Type implements FloorType {
         this.blockShadow = true;
     }
 
+    getRgb(): number {
+        return this.rgbColor;
+    }
+
     getHueBlend(): number {
         return this.hue;
     }

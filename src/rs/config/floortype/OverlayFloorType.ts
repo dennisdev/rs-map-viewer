@@ -60,6 +60,10 @@ export class OverlayFloorType extends Type implements FloorType {
         this.isOverlay = cacheInfo.game !== "runescape" || cacheInfo.revision > 377;
     }
 
+    getRgb(): number {
+        return this.primaryRgb;
+    }
+
     getHueBlend(): number {
         return this.hueBlend;
     }
