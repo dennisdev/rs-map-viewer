@@ -198,7 +198,8 @@ export class MapViewer {
             this.varManager.setQuestsCompleted(questTypeLoader);
         }
 
-        this.mapFileIndex = this.loaderFactory.getMapFileIndex();
+        const mapFileLoader = this.loaderFactory.getMapFileLoader();
+        this.mapFileIndex = mapFileLoader.mapFileIndex;
 
         this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
 

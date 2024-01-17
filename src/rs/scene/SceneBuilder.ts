@@ -1,5 +1,4 @@
 import { NpcSpawn } from "../../mapviewer/data/npc/NpcSpawn";
-import { CacheIndex } from "../cache/CacheIndex";
 import { CacheInfo } from "../cache/CacheInfo";
 import { FloorTypeLoader, OverlayFloorTypeLoader } from "../config/floortype/FloorTypeLoader";
 import { ContourGroundInfo, LocModelLoader } from "../config/loctype/LocModelLoader";
@@ -7,7 +6,8 @@ import { LocModelType } from "../config/loctype/LocModelType";
 import { LocType } from "../config/loctype/LocType";
 import { LocTypeLoader } from "../config/loctype/LocTypeLoader";
 import { ByteBuffer } from "../io/ByteBuffer";
-import { MapFileIndex, getMapSquareId } from "../map/MapFileIndex";
+import { getMapSquareId } from "../map/MapFileIndex";
+import { MapFileLoader } from "../map/MapFileLoader";
 import { Model } from "../model/Model";
 import { HSL_RGB_MAP, adjustOverlayLight, adjustUnderlayLight, packHsl } from "../util/ColorUtil";
 import { generateHeight } from "../util/HeightCalc";
@@ -43,8 +43,7 @@ export class SceneBuilder {
 
     constructor(
         readonly cacheInfo: CacheInfo,
-        readonly mapFileIndex: MapFileIndex,
-        readonly mapIndex: CacheIndex,
+        readonly mapFileLoader: MapFileLoader,
         readonly underlayTypeLoader: FloorTypeLoader,
         readonly overlayTypeLoader: OverlayFloorTypeLoader,
         readonly locTypeLoader: LocTypeLoader,
@@ -56,45 +55,15 @@ export class SceneBuilder {
     }
 
     getTerrainData(mapX: number, mapY: number): Int8Array | undefined {
-        const archiveId = this.mapFileIndex.getTerrainArchiveId(mapX, mapY);
-        if (archiveId === -1) {
-            return undefined;
-        }
-        try {
-            const file = this.mapIndex.getFile(archiveId, 0);
-            return file?.data;
-        } catch (e) {
-            return undefined;
-        }
+        return this.mapFileLoader.getTerrainData(mapX, mapY);
     }
 
-    getLandscapeData(mapX: number, mapY: number): Int8Array | undefined {
-        const archiveId = this.mapFileIndex.getLandscapeArchiveId(mapX, mapY);
-        if (archiveId === -1) {
-            return undefined;
-        }
-        const key = this.xteasMap.get(archiveId);
-        try {
-            const file = this.mapIndex.getFile(archiveId, 0, key);
-            return file?.data;
-        } catch (e) {
-            return undefined;
-        }
+    getLocData(mapX: number, mapY: number): Int8Array | undefined {
+        return this.mapFileLoader.getLocData(mapX, mapY, this.xteasMap);
     }
 
     getNpcSpawnData(mapX: number, mapY: number): Int8Array | undefined {
-        const landscapeArchiveId = this.mapFileIndex.getLandscapeArchiveId(mapX, mapY);
-        const archiveId = this.mapIndex.getArchiveId(`n${mapX}_${mapY}`);
-        if (landscapeArchiveId === -1 || archiveId === -1) {
-            return undefined;
-        }
-        const key = this.xteasMap.get(landscapeArchiveId);
-        try {
-            const file = this.mapIndex.getFile(archiveId, 0, key);
-            return file?.data;
-        } catch (e) {
-            return undefined;
-        }
+        return this.mapFileLoader.getNpcSpawnData(mapX, mapY, this.xteasMap);
     }
 
     buildScene(
@@ -149,7 +118,7 @@ export class SceneBuilder {
 
         for (let mx = mapStartX; mx < mapEndX; mx++) {
             for (let my = mapStartY; my < mapEndY; my++) {
-                const landscapeData = this.getLandscapeData(mx, my);
+                const landscapeData = this.getLocData(mx, my);
                 if (!landscapeData) {
                     continue;
                 }

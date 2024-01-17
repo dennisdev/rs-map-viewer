@@ -14,7 +14,8 @@ import {
     DummyVarBitTypeLoader,
     VarBitTypeLoader,
 } from "../../config/vartype/bit/VarBitTypeLoader";
-import { DatMapFileIndex, MapFileIndex } from "../../map/MapFileIndex";
+import { DatMapFileIndex } from "../../map/MapFileIndex";
+import { MapFileLoader } from "../../map/MapFileLoader";
 import { IndexModelLoader, ModelLoader } from "../../model/ModelLoader";
 import { DatSeqFrameLoader, SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
 import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
@@ -22,7 +23,6 @@ import { IndexedSprite } from "../../sprite/IndexedSprite";
 import { SpriteLoader } from "../../sprite/SpriteLoader";
 import { DatTextureLoader } from "../../texture/DatTextureLoader";
 import { TextureLoader } from "../../texture/TextureLoader";
-import { ApiType } from "../ApiType";
 import { Archive } from "../Archive";
 import { CacheIndex } from "../CacheIndex";
 import { CacheInfo } from "../CacheInfo";
@@ -31,6 +31,28 @@ import { CacheType } from "../CacheType";
 import { ConfigType } from "../ConfigType";
 import { IndexType } from "../IndexType";
 import { CacheLoaderFactory } from "./CacheLoaderFactory";
+
+export function loadMapSprites(mediaArchive: Archive, name: string): IndexedSprite[] {
+    // TODO: maybe there is a way to check how many sprites there are
+    const sprites = new Array<IndexedSprite>();
+    for (let i = 0; i < 100; i++) {
+        try {
+            sprites[i] = SpriteLoader.loadIndexedSpriteDat(mediaArchive, name, i);
+        } catch (e) {
+            break;
+        }
+    }
+
+    return sprites;
+}
+
+export function loadMapScenes(mediaArchive: Archive): IndexedSprite[] {
+    return loadMapSprites(mediaArchive, "mapscene");
+}
+
+export function loadMapFunctions(mediaArchive: Archive): IndexedSprite[] {
+    return loadMapSprites(mediaArchive, "mapfunction");
+}
 
 export class DatCacheLoaderFactory implements CacheLoaderFactory {
     configIndex: CacheIndex;
@@ -118,44 +140,18 @@ export class DatCacheLoaderFactory implements CacheLoaderFactory {
         return undefined;
     }
 
-    getMapFileIndex(): MapFileIndex {
+    getMapFileLoader(): MapFileLoader {
+        const mapIndex = this.cacheSystem.getIndex(IndexType.DAT.maps);
         const versionListArchive = this.configIndex.getArchive(ConfigType.DAT.versionList);
-        return DatMapFileIndex.load(versionListArchive);
-    }
-
-    getMapIndex(): CacheIndex<ApiType.SYNC> {
-        return this.cacheSystem.getIndex(IndexType.DAT.maps);
+        const mapFileIndex = DatMapFileIndex.load(versionListArchive);
+        return new MapFileLoader(mapIndex, mapFileIndex);
     }
 
     getMapScenes(): IndexedSprite[] {
-        // TODO: maybe there is a way to check how many mapscenes there are
-        const mapScenes = new Array<IndexedSprite>();
-        for (let i = 0; i < 100; i++) {
-            try {
-                mapScenes[i] = SpriteLoader.loadIndexedSpriteDat(this.mediaArchive, "mapscene", i);
-            } catch (e) {
-                break;
-            }
-        }
-
-        return mapScenes;
+        return loadMapScenes(this.mediaArchive);
     }
 
     getMapFunctions(): IndexedSprite[] {
-        // TODO: maybe there is a way to check how many mapscenes there are
-        const mapFunctions = new Array<IndexedSprite>();
-        for (let i = 0; i < 100; i++) {
-            try {
-                mapFunctions[i] = SpriteLoader.loadIndexedSpriteDat(
-                    this.mediaArchive,
-                    "mapfunction",
-                    i,
-                );
-            } catch (e) {
-                break;
-            }
-        }
-
-        return mapFunctions;
+        return loadMapFunctions(this.mediaArchive);
     }
 }

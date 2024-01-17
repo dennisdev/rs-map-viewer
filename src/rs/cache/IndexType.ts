@@ -1,4 +1,12 @@
 export class IndexType {
+    static readonly LEGACY = {
+        configs: 0,
+        media: 1,
+        textures: 2,
+        models: 3,
+        maps: 4,
+    };
+
     static readonly DAT = {
         configs: 0,
         models: 1,

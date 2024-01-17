@@ -7,9 +7,30 @@ import { ArchiveFile } from "./ArchiveFile";
 type HashFunction = (str: string) => number;
 
 export class Archive {
+    static create(id: number, data: Int8Array): Archive {
+        const fileCount = 1;
+        const lastFileId = fileCount - 1;
+
+        const fileIds = new Int32Array(fileCount);
+        const fileNameHashes = new Int32Array(fileCount);
+
+        const files = new Map<number, ArchiveFile>();
+        files.set(lastFileId, new ArchiveFile(lastFileId, id, data));
+
+        return new Archive(
+            StringUtil.hashOld,
+            id,
+            lastFileId,
+            fileCount,
+            fileIds,
+            fileNameHashes,
+            files,
+        );
+    }
+
     static decodeOld(id: number, data: Int8Array, multipleFiles: boolean) {
         const buffer = new ByteBuffer(data);
-        const files: Map<number, ArchiveFile> = new Map();
+        const files = new Map<number, ArchiveFile>();
 
         let fileCount: number;
         let fileIds: Int32Array;
@@ -83,7 +104,7 @@ export class Archive {
         fileNameHashes: Int32Array,
         buffer: ByteBuffer,
     ): Archive {
-        const files: Map<number, ArchiveFile> = new Map();
+        const files = new Map<number, ArchiveFile>();
         if (fileCount === 1) {
             files.set(lastFileId, new ArchiveFile(lastFileId, id, buffer.data));
         } else {

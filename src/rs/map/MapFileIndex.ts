@@ -7,7 +7,7 @@ export function getMapSquareId(mapX: number, mapY: number): number {
 
 export interface MapFileIndex {
     getTerrainArchiveId(mapX: number, mapY: number): number;
-    getLandscapeArchiveId(mapX: number, mapY: number): number;
+    getLocArchiveId(mapX: number, mapY: number): number;
 }
 
 class MapSquare {
@@ -50,7 +50,7 @@ export class DatMapFileIndex implements MapFileIndex {
         return this.mapSquares.get(getMapSquareId(mapX, mapY))?.terrainArchiveId ?? -1;
     }
 
-    getLandscapeArchiveId(mapX: number, mapY: number): number {
+    getLocArchiveId(mapX: number, mapY: number): number {
         return this.mapSquares.get(getMapSquareId(mapX, mapY))?.landscapeArchiveId ?? -1;
     }
 }
@@ -62,7 +62,7 @@ export class Dat2MapIndex implements MapFileIndex {
         return this.mapIndex.getArchiveId(`m${mapX}_${mapY}`);
     }
 
-    getLandscapeArchiveId(mapX: number, mapY: number): number {
+    getLocArchiveId(mapX: number, mapY: number): number {
         return this.mapIndex.getArchiveId(`l${mapX}_${mapY}`);
     }
 }

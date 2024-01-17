@@ -1,13 +1,28 @@
+import { Archive } from "../../cache/Archive";
 import { CacheIndex } from "../../cache/CacheIndex";
 import { CacheInfo } from "../../cache/CacheInfo";
 import { SeqBaseLoader } from "./SeqBaseLoader";
-import { Dat2SeqFrame, DatSeqFrame, SeqFrame } from "./SeqFrame";
+import { Dat2SeqFrame, DatSeqFrame, LegacySeqFrame, SeqFrame } from "./SeqFrame";
 import { SeqFrameMap } from "./SeqFrameMap";
 
 export interface SeqFrameLoader {
     load(id: number): SeqFrame | undefined;
 
     clearCache(): void;
+}
+
+export class LegacySeqFrameLoader implements SeqFrameLoader {
+    static load(modelArchive: Archive): LegacySeqFrameLoader {
+        return new LegacySeqFrameLoader(LegacySeqFrame.load(modelArchive));
+    }
+
+    constructor(readonly frames: SeqFrame[]) {}
+
+    load(id: number): SeqFrame | undefined {
+        return this.frames[id];
+    }
+
+    clearCache(): void {}
 }
 
 export class DatSeqFrameLoader implements SeqFrameLoader {

@@ -42,6 +42,7 @@ import {
     VarBitTypeLoader,
 } from "../../config/vartype/bit/VarBitTypeLoader";
 import { Dat2MapIndex, MapFileIndex } from "../../map/MapFileIndex";
+import { MapFileLoader } from "../../map/MapFileLoader";
 import { IndexModelLoader, ModelLoader } from "../../model/ModelLoader";
 import { IndexSeqBaseLoader, SeqBaseLoader } from "../../model/seq/SeqBaseLoader";
 import { Dat2SeqFrameLoader, SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
@@ -218,13 +219,10 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
         return new IndexSkeletalSeqLoader(index, this.getSeqBaseLoader());
     }
 
-    getMapFileIndex(): MapFileIndex {
+    getMapFileLoader(): MapFileLoader {
         const mapIndex = this.cacheSystem.getIndex(IndexType.DAT2.maps);
-        return new Dat2MapIndex(mapIndex);
-    }
-
-    getMapIndex(): CacheIndex<ApiType.SYNC> {
-        return this.cacheSystem.getIndex(IndexType.DAT2.maps);
+        const mapFileIndex = new Dat2MapIndex(mapIndex);
+        return new MapFileLoader(mapIndex, mapFileIndex);
     }
 
     getMapScenes(): IndexedSprite[] {

@@ -1,4 +1,5 @@
 import { ByteBuffer } from "../io/ByteBuffer";
+import { StringUtil } from "../util/StringUtil";
 import { ApiReturnType, ApiType } from "./ApiType";
 import { Archive } from "./Archive";
 import { ArchiveFile } from "./ArchiveFile";
@@ -184,12 +185,17 @@ export class LegacyCacheIndex extends CacheIndex {
     constructor(
         readonly id: number,
         readonly archives: Archive[],
+        readonly archiveNameHashes: Map<number, number> = new Map(),
     ) {
         super(id, ReferenceTable.INVALID_TABLE);
     }
 
     override getArchive(archiveId: number, key?: number[]): Archive {
         return this.archives[archiveId];
+    }
+
+    override getArchiveId(name: string): number {
+        return this.archiveNameHashes.get(StringUtil.hashOld(name)) ?? -1;
     }
 
     override getFile(archiveId: number, fileId: number, key?: number[]): ArchiveFile | undefined {

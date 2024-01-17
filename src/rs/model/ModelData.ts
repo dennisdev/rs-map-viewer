@@ -4,6 +4,7 @@ import { Entity } from "../scene/entity/Entity";
 import { TextureLoader } from "../texture/TextureLoader";
 import { FaceNormal } from "./FaceNormal";
 import { Model } from "./Model";
+import { LegacyModelLoader, LegacyModelMetadata } from "./ModelLoader";
 import { computeTextureCoords } from "./TextureMapper";
 import { VertexNormal } from "./VertexNormal";
 
@@ -97,6 +98,12 @@ export class ModelData extends Entity {
     static decode(data: Int8Array): ModelData {
         const model = new ModelData();
         model.decode(data);
+        return model;
+    }
+
+    static decodeLegacy(loader: LegacyModelLoader, meta: LegacyModelMetadata): ModelData {
+        const model = new ModelData();
+        model.decodeLegacy(loader, meta);
         return model;
     }
 
@@ -1594,8 +1601,8 @@ export class ModelData extends Entity {
 
     decodeOld(data: Int8Array): void {
         this.version = 0;
-        let var2 = false;
-        let var3 = false;
+        let hasRenderType = false;
+        let isTextured = false;
         const buf1 = new ByteBuffer(data);
         const buf2 = new ByteBuffer(data);
         const buf3 = new ByteBuffer(data);
@@ -1749,7 +1756,7 @@ export class ModelData extends Entity {
                 const flag = buf2.readUnsignedByte();
                 if ((flag & 1) === 1) {
                     this.faceRenderTypes[i] = 1;
-                    var2 = true;
+                    hasRenderType = true;
                 } else {
                     this.faceRenderTypes[i] = 0;
                 }
@@ -1759,7 +1766,7 @@ export class ModelData extends Entity {
                     this.faceTextures[i] = this.faceColors[i];
                     this.faceColors[i] = 127;
                     if (this.faceTextures[i] !== -1) {
-                        var3 = true;
+                        isTextured = true;
                     }
                 } else {
                     this.textureCoords[i] = -1;
@@ -1785,16 +1792,16 @@ export class ModelData extends Entity {
         let index1 = 0;
         let index2 = 0;
         let index3 = 0;
-        let var41 = 0;
+        let lastIndex = 0;
 
         this.usedVertexCount = -1;
         for (let i = 0; i < faceCount; i++) {
             const type = buf2.readUnsignedByte();
             if (type === 1) {
-                index1 = buf1.readSmart2() + var41;
+                index1 = buf1.readSmart2() + lastIndex;
                 index2 = buf1.readSmart2() + index1;
                 index3 = buf1.readSmart2() + index2;
-                var41 = index3;
+                lastIndex = index3;
                 this.indices1[i] = index1;
                 this.indices2[i] = index2;
                 this.indices3[i] = index3;
@@ -1811,8 +1818,8 @@ export class ModelData extends Entity {
 
             if (type === 2) {
                 index2 = index3;
-                index3 = buf1.readSmart2() + var41;
-                var41 = index3;
+                index3 = buf1.readSmart2() + lastIndex;
+                lastIndex = index3;
                 this.indices1[i] = index1;
                 this.indices2[i] = index2;
                 this.indices3[i] = index3;
@@ -1823,8 +1830,8 @@ export class ModelData extends Entity {
 
             if (type === 3) {
                 index1 = index3;
-                index3 = buf1.readSmart2() + var41;
-                var41 = index3;
+                index3 = buf1.readSmart2() + lastIndex;
+                lastIndex = index3;
                 this.indices1[i] = index1;
                 this.indices2[i] = index2;
                 this.indices3[i] = index3;
@@ -1837,8 +1844,8 @@ export class ModelData extends Entity {
                 const var44 = index1;
                 index1 = index2;
                 index2 = var44;
-                index3 = buf1.readSmart2() + var41;
-                var41 = index3;
+                index3 = buf1.readSmart2() + lastIndex;
+                lastIndex = index3;
                 this.indices1[i] = index1;
                 this.indices2[i] = var44;
                 this.indices3[i] = index3;
@@ -1862,12 +1869,12 @@ export class ModelData extends Entity {
             let hasValidTexFace = false;
 
             for (let i = 0; i < faceCount; i++) {
-                const var44 = this.textureCoords[i] & 255;
-                if (var44 !== 255) {
+                const index = this.textureCoords[i] & 255;
+                if (index !== 255) {
                     if (
-                        this.indices1[i] === (this.textureMappingP[var44] & 0xffff) &&
-                        this.indices2[i] === (this.textureMappingM[var44] & 0xffff) &&
-                        this.indices3[i] === (this.textureMappingN[var44] & 0xffff)
+                        this.indices1[i] === (this.textureMappingP[index] & 0xffff) &&
+                        this.indices2[i] === (this.textureMappingM[index] & 0xffff) &&
+                        this.indices3[i] === (this.textureMappingN[index] & 0xffff)
                     ) {
                         this.textureCoords[i] = -1;
                     } else {
@@ -1881,11 +1888,249 @@ export class ModelData extends Entity {
             }
         }
 
-        if (!var3) {
+        if (!isTextured) {
             this.faceTextures = undefined;
         }
 
-        if (!var2) {
+        if (!hasRenderType) {
+            this.faceRenderTypes = undefined;
+        }
+    }
+
+    decodeLegacy(loader: LegacyModelLoader, meta: LegacyModelMetadata) {
+        let hasRenderType = false;
+        let isTextured = false;
+
+        this.verticesCount = meta.vertexCount;
+        this.faceCount = meta.triangleCount;
+        this.textureFaceCount = meta.texturedTriangleCount;
+        this.verticesX = new Int32Array(this.verticesCount);
+        this.verticesY = new Int32Array(this.verticesCount);
+        this.verticesZ = new Int32Array(this.verticesCount);
+        this.indices1 = new Int32Array(this.faceCount);
+        this.indices2 = new Int32Array(this.faceCount);
+        this.indices3 = new Int32Array(this.faceCount);
+        if (this.textureFaceCount > 0) {
+            this.textureRenderTypes = new Int8Array(this.textureFaceCount);
+            this.textureMappingP = new Int16Array(this.textureFaceCount);
+            this.textureMappingM = new Int16Array(this.textureFaceCount);
+            this.textureMappingN = new Int16Array(this.textureFaceCount);
+        }
+
+        if (meta.vertexLabelsOffset >= 0) {
+            this.vertexSkins = new Int32Array(this.verticesCount);
+        }
+
+        if (meta.faceInfosOffset >= 0) {
+            this.faceRenderTypes = new Int8Array(this.faceCount);
+            this.textureCoords = new Int8Array(this.faceCount);
+            this.faceTextures = new Int16Array(this.faceCount);
+        }
+
+        if (meta.facePrioritiesOffset >= 0) {
+            this.faceRenderPriorities = new Int8Array(this.faceCount);
+        } else {
+            this.priority = -meta.facePrioritiesOffset - 1;
+        }
+
+        if (meta.faceAlphasOffset >= 0) {
+            this.faceAlphas = new Int8Array(this.faceCount);
+        }
+
+        if (meta.faceLabelsOffset >= 0) {
+            this.faceSkins = new Int32Array(this.faceCount);
+        }
+
+        this.faceColors = new Uint16Array(this.faceCount);
+
+        loader.point1.offset = meta.vertexFlagsOffset;
+        loader.point2.offset = meta.vertexXOffset;
+        loader.point3.offset = meta.vertexYOffset;
+        loader.point4.offset = meta.vertexZOffset;
+        loader.point5.offset = meta.vertexLabelsOffset;
+
+        let lastVertX = 0;
+        let lastVertY = 0;
+        let lastVertZ = 0;
+
+        for (let i = 0; i < this.verticesCount; i++) {
+            const flag = loader.point1.readUnsignedByte();
+            let deltaVertX = 0;
+            if ((flag & 0x1) !== 0) {
+                deltaVertX = loader.point2.readSmart2();
+            }
+
+            let deltaVertY = 0;
+            if ((flag & 0x2) !== 0) {
+                deltaVertY = loader.point3.readSmart2();
+            }
+
+            let deltaVertZ = 0;
+            if ((flag & 0x4) !== 0) {
+                deltaVertZ = loader.point4.readSmart2();
+            }
+
+            this.verticesX[i] = lastVertX + deltaVertX;
+            this.verticesY[i] = lastVertY + deltaVertY;
+            this.verticesZ[i] = lastVertZ + deltaVertZ;
+            lastVertX = this.verticesX[i];
+            lastVertY = this.verticesY[i];
+            lastVertZ = this.verticesZ[i];
+            if (this.vertexSkins) {
+                this.vertexSkins[i] = loader.point5.readUnsignedByte();
+            }
+        }
+
+        loader.face1.offset = meta.faceColorsOffset;
+        loader.face2.offset = meta.faceInfosOffset;
+        loader.face3.offset = meta.facePrioritiesOffset;
+        loader.face4.offset = meta.faceAlphasOffset;
+        loader.face5.offset = meta.faceLabelsOffset;
+
+        for (let i = 0; i < this.faceCount; i++) {
+            this.faceColors[i] = loader.face1.readUnsignedShort();
+            if (this.faceRenderTypes && this.textureCoords && this.faceTextures) {
+                const flag = loader.face2.readUnsignedByte();
+                if ((flag & 0x1) === 1) {
+                    this.faceRenderTypes[i] = 1;
+                    hasRenderType = true;
+                } else {
+                    this.faceRenderTypes[i] = 0;
+                }
+
+                if ((flag & 0x2) === 2) {
+                    this.textureCoords[i] = flag >> 2;
+                    this.faceTextures[i] = this.faceColors[i];
+                    this.faceColors[i] = 127;
+                    if (this.faceTextures[i] !== -1) {
+                        isTextured = true;
+                    }
+                } else {
+                    this.textureCoords[i] = -1;
+                    this.faceTextures[i] = -1;
+                }
+            }
+
+            if (this.faceRenderPriorities) {
+                this.faceRenderPriorities[i] = loader.face3.readByte();
+            }
+
+            if (this.faceAlphas) {
+                this.faceAlphas[i] = loader.face4.readByte();
+            }
+
+            if (this.faceSkins) {
+                this.faceSkins[i] = loader.face5.readUnsignedByte();
+            }
+        }
+
+        loader.vertex1.offset = meta.faceVerticesOffset;
+        loader.vertex2.offset = meta.faceOrientationsOffset;
+
+        let index1 = 0;
+        let index2 = 0;
+        let index3 = 0;
+        let lastIndex = 0;
+
+        this.usedVertexCount = -1;
+        for (let i = 0; i < this.faceCount; i++) {
+            const type = loader.vertex2.readUnsignedByte();
+            if (type === 1) {
+                index1 = loader.vertex1.readSmart2() + lastIndex;
+                index2 = loader.vertex1.readSmart2() + index1;
+                index3 = loader.vertex1.readSmart2() + index2;
+                lastIndex = index3;
+                this.indices1[i] = index1;
+                this.indices2[i] = index2;
+                this.indices3[i] = index3;
+                if (index1 > this.usedVertexCount) {
+                    this.usedVertexCount = index1;
+                }
+                if (index2 > this.usedVertexCount) {
+                    this.usedVertexCount = index2;
+                }
+                if (index3 > this.usedVertexCount) {
+                    this.usedVertexCount = index3;
+                }
+            }
+
+            if (type === 2) {
+                index2 = index3;
+                index3 = loader.vertex1.readSmart2() + lastIndex;
+                lastIndex = index3;
+                this.indices1[i] = index1;
+                this.indices2[i] = index2;
+                this.indices3[i] = index3;
+                if (index3 > this.usedVertexCount) {
+                    this.usedVertexCount = index3;
+                }
+            }
+
+            if (type === 3) {
+                index1 = index3;
+                index3 = loader.vertex1.readSmart2() + lastIndex;
+                lastIndex = index3;
+                this.indices1[i] = index1;
+                this.indices2[i] = index2;
+                this.indices3[i] = index3;
+                if (index3 > this.usedVertexCount) {
+                    this.usedVertexCount = index3;
+                }
+            }
+
+            if (type === 4) {
+                const temp = index1;
+                index1 = index2;
+                index2 = temp;
+                index3 = loader.vertex1.readSmart2() + lastIndex;
+                lastIndex = index3;
+                this.indices1[i] = index1;
+                this.indices2[i] = temp;
+                this.indices3[i] = index3;
+                if (index3 > this.usedVertexCount) {
+                    this.usedVertexCount = index3;
+                }
+            }
+        }
+        this.usedVertexCount++;
+
+        loader.axis.offset = meta.faceTextureAxisOffset * 6;
+
+        for (let i = 0; i < this.textureFaceCount; i++) {
+            this.textureRenderTypes[i] = 0;
+            this.textureMappingP[i] = loader.axis.readUnsignedShort();
+            this.textureMappingM[i] = loader.axis.readUnsignedShort();
+            this.textureMappingN[i] = loader.axis.readUnsignedShort();
+        }
+
+        if (this.textureCoords) {
+            let hasValidTexFace = false;
+
+            for (let i = 0; i < this.faceCount; i++) {
+                const index = this.textureCoords[i] & 255;
+                if (index !== 255) {
+                    if (
+                        this.indices1[i] === (this.textureMappingP[index] & 0xffff) &&
+                        this.indices2[i] === (this.textureMappingM[index] & 0xffff) &&
+                        this.indices3[i] === (this.textureMappingN[index] & 0xffff)
+                    ) {
+                        this.textureCoords[i] = -1;
+                    } else {
+                        hasValidTexFace = true;
+                    }
+                }
+            }
+
+            if (!hasValidTexFace) {
+                this.textureCoords = undefined;
+            }
+        }
+
+        if (!isTextured) {
+            this.faceTextures = undefined;
+        }
+
+        if (!hasRenderType) {
             this.faceRenderTypes = undefined;
         }
     }

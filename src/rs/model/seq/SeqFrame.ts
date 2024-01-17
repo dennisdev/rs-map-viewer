@@ -1,6 +1,7 @@
+import { Archive } from "../../cache/Archive";
 import { CacheInfo } from "../../cache/CacheInfo";
 import { ByteBuffer } from "../../io/ByteBuffer";
-import { DatSeqBase, SeqBase } from "./SeqBase";
+import { DatSeqBase, LegacySeqBase, SeqBase } from "./SeqBase";
 import { SeqBaseLoader } from "./SeqBaseLoader";
 import { SeqTransformType } from "./SeqTransformType";
 
@@ -23,6 +24,121 @@ export class SeqFrame {
         readonly hasAlphaTransform: boolean,
         readonly hasColorTransform: boolean = false,
     ) {}
+}
+
+export class LegacySeqFrame {
+    static load(modelArchive: Archive): SeqFrame[] {
+        const bases = LegacySeqBase.load(modelArchive);
+
+        const head = modelArchive.getFileNamed("frame_head.dat")!.getDataAsBuffer();
+        const tran1 = modelArchive.getFileNamed("frame_tran1.dat")!.getDataAsBuffer();
+        const tran2 = modelArchive.getFileNamed("frame_tran2.dat")!.getDataAsBuffer();
+        const del = modelArchive.getFileNamed("frame_del.dat")!.getDataAsBuffer();
+
+        const frameCount = head.readUnsignedShort();
+        const lastFrameId = head.readUnsignedShort();
+
+        const frames: SeqFrame[] = new Array(lastFrameId + 1);
+        for (let f = 0; f < frameCount; f++) {
+            const frameId = head.readUnsignedShort();
+
+            const frameLength = del.readUnsignedByte();
+
+            const baseId = head.readUnsignedShort();
+            const base = bases[baseId];
+            const count = head.readUnsignedByte();
+
+            let transformCount = 0;
+            let resetOriginGroup = -1;
+            let lastResetOriginGroup = -1;
+
+            let hasAlphaTransform = false;
+
+            for (let i = 0; i < count; i++) {
+                const type = base.types[i];
+
+                if (type === SeqTransformType.ORIGIN) {
+                    resetOriginGroup = i;
+                }
+
+                const flag = tran1.readUnsignedByte();
+                if (flag === 0) {
+                    continue;
+                }
+
+                if (type === SeqTransformType.ORIGIN) {
+                    lastResetOriginGroup = i;
+                }
+
+                SeqFrame.transformGroupCache[transformCount] = i;
+
+                let defaultValue = 0;
+                if (type === SeqTransformType.SCALE) {
+                    defaultValue = 128;
+                }
+
+                if ((flag & 0x1) !== 0) {
+                    SeqFrame.transformXCache[transformCount] = tran2.readSmart2();
+                } else {
+                    SeqFrame.transformXCache[transformCount] = defaultValue;
+                }
+
+                if ((flag & 0x2) !== 0) {
+                    SeqFrame.transformYCache[transformCount] = tran2.readSmart2();
+                } else {
+                    SeqFrame.transformYCache[transformCount] = defaultValue;
+                }
+
+                if ((flag & 0x4) !== 0) {
+                    SeqFrame.transformZCache[transformCount] = tran2.readSmart2();
+                } else {
+                    SeqFrame.transformZCache[transformCount] = defaultValue;
+                }
+
+                SeqFrame.resetOriginGroupsCache[transformCount] = -1;
+                if (
+                    type === SeqTransformType.TRANSLATE ||
+                    type === SeqTransformType.ROTATE ||
+                    type === SeqTransformType.SCALE
+                ) {
+                    if (resetOriginGroup > lastResetOriginGroup) {
+                        SeqFrame.resetOriginGroupsCache[transformCount] = resetOriginGroup;
+                        lastResetOriginGroup = resetOriginGroup;
+                    }
+                } else if (type === SeqTransformType.ALPHA) {
+                    hasAlphaTransform = true;
+                }
+                transformCount++;
+            }
+
+            const transformGroups: number[] = new Array(transformCount);
+            const transformX: number[] = new Array(transformCount);
+            const transformY: number[] = new Array(transformCount);
+            const transformZ: number[] = new Array(transformCount);
+            const resetOriginGroups: number[] = new Array(transformCount);
+            for (let i = 0; i < transformCount; i++) {
+                transformGroups[i] = SeqFrame.transformGroupCache[i];
+                transformX[i] = SeqFrame.transformXCache[i];
+                transformY[i] = SeqFrame.transformYCache[i];
+                transformZ[i] = SeqFrame.transformZCache[i];
+                resetOriginGroups[i] = SeqFrame.resetOriginGroupsCache[i];
+            }
+
+            frames[frameId] = new SeqFrame(
+                frameLength,
+                base,
+                transformCount,
+                transformGroups,
+                transformX,
+                transformY,
+                transformZ,
+                resetOriginGroups,
+                hasAlphaTransform,
+            );
+        }
+
+        return frames;
+    }
 }
 
 export class DatSeqFrame {

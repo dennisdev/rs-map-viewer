@@ -4,29 +4,42 @@ import {
     FloorTypeLoader,
     OverlayFloorTypeLoader,
 } from "../../config/floortype/FloorTypeLoader";
-import { LocTypeLoader } from "../../config/loctype/LocTypeLoader";
-import { NpcTypeLoader } from "../../config/npctype/NpcTypeLoader";
-import { ObjTypeLoader } from "../../config/objtype/ObjTypeLoader";
+import { DatLocTypeLoader, LocTypeLoader } from "../../config/loctype/LocTypeLoader";
+import { DatNpcTypeLoader, NpcTypeLoader } from "../../config/npctype/NpcTypeLoader";
+import { DatObjTypeLoader, ObjTypeLoader } from "../../config/objtype/ObjTypeLoader";
 import { QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
-import { SeqTypeLoader } from "../../config/seqtype/SeqTypeLoader";
+import { DatSeqTypeLoader, SeqTypeLoader } from "../../config/seqtype/SeqTypeLoader";
 import { DummyVarBitTypeLoader, VarBitTypeLoader } from "../../config/vartype/bit/VarBitTypeLoader";
-import { MapFileIndex } from "../../map/MapFileIndex";
-import { ModelLoader } from "../../model/ModelLoader";
-import { SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
+import { Dat2MapIndex } from "../../map/MapFileIndex";
+import { LegacyMapFileLoader, MapFileLoader } from "../../map/MapFileLoader";
+import { LegacyModelLoader } from "../../model/ModelLoader";
+import { LegacySeqFrameLoader, SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
 import { SkeletalSeqLoader } from "../../model/skeletal/SkeletalSeqLoader";
 import { IndexedSprite } from "../../sprite/IndexedSprite";
+import { DatTextureLoader } from "../../texture/DatTextureLoader";
 import { TextureLoader } from "../../texture/TextureLoader";
-import { ApiType } from "../ApiType";
 import { Archive } from "../Archive";
 import { CacheIndex } from "../CacheIndex";
 import { CacheInfo } from "../CacheInfo";
 import { CacheSystem } from "../CacheSystem";
 import { IndexType } from "../IndexType";
 import { CacheLoaderFactory } from "./CacheLoaderFactory";
+import { loadMapFunctions, loadMapScenes } from "./DatCacheLoaderFactory";
 
 export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
     configIndex: CacheIndex;
     configArchive: Archive;
+
+    mediaIndex: CacheIndex;
+    mediaArchive: Archive;
+
+    textureIndex: CacheIndex;
+    textureArchive: Archive;
+
+    modelIndex: CacheIndex;
+    modelArchive: Archive;
+
+    mapIndex: CacheIndex;
 
     floTypeLoader?: OverlayFloorTypeLoader;
 
@@ -34,9 +47,19 @@ export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
         readonly cacheInfo: CacheInfo,
         readonly cacheSystem: CacheSystem,
     ) {
-        this.configIndex = cacheSystem.getIndex(IndexType.DAT.configs);
+        this.configIndex = cacheSystem.getIndex(IndexType.LEGACY.configs);
         this.configArchive = this.configIndex.getArchive(0);
-        // this.mediaArchive = this.configIndex.getArchive(ConfigType.DAT.media);
+
+        this.mediaIndex = cacheSystem.getIndex(IndexType.LEGACY.media);
+        this.mediaArchive = this.mediaIndex.getArchive(0);
+
+        this.textureIndex = cacheSystem.getIndex(IndexType.LEGACY.textures);
+        this.textureArchive = this.textureIndex.getArchive(0);
+
+        this.modelIndex = cacheSystem.getIndex(IndexType.LEGACY.models);
+        this.modelArchive = this.modelIndex.getArchive(0);
+
+        this.mapIndex = cacheSystem.getIndex(IndexType.LEGACY.maps);
     }
 
     getFloTypeLoader(): OverlayFloorTypeLoader {
@@ -59,19 +82,19 @@ export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
     }
 
     getLocTypeLoader(): LocTypeLoader {
-        throw new Error("Method not implemented.");
+        return DatLocTypeLoader.load(this.cacheInfo, this.configArchive);
     }
 
     getNpcTypeLoader(): NpcTypeLoader {
-        throw new Error("Method not implemented.");
+        return DatNpcTypeLoader.load(this.cacheInfo, this.configArchive);
     }
 
     getObjTypeLoader(): ObjTypeLoader {
-        throw new Error("Method not implemented.");
+        return DatObjTypeLoader.load(this.cacheInfo, this.configArchive);
     }
 
     getSeqTypeLoader(): SeqTypeLoader {
-        throw new Error("Method not implemented.");
+        return DatSeqTypeLoader.load(this.cacheInfo, this.configArchive);
     }
 
     getBasTypeLoader(): BasTypeLoader {
@@ -83,34 +106,31 @@ export class LegacyCacheLoaderFactory implements CacheLoaderFactory {
     }
 
     getTextureLoader(): TextureLoader {
-        throw new Error("Method not implemented.");
+        const animatedTextureIds = [DatTextureLoader.WATER_DROPLETS_TEXTURE_ID, 24];
+        return new DatTextureLoader(this.textureArchive, animatedTextureIds);
     }
 
-    getModelLoader(): ModelLoader {
-        throw new Error("Method not implemented.");
+    getModelLoader(): LegacyModelLoader {
+        return LegacyModelLoader.load(this.modelArchive);
     }
 
     getSeqFrameLoader(): SeqFrameLoader {
-        throw new Error("Method not implemented.");
+        return LegacySeqFrameLoader.load(this.modelArchive);
     }
 
     getSkeletalSeqLoader(): SkeletalSeqLoader | undefined {
-        throw new Error("Method not implemented.");
+        return undefined;
     }
 
-    getMapFileIndex(): MapFileIndex {
-        throw new Error("Method not implemented.");
-    }
-
-    getMapIndex(): CacheIndex<ApiType.SYNC> {
-        throw new Error("Method not implemented.");
+    getMapFileLoader(): MapFileLoader {
+        return new LegacyMapFileLoader(this.mapIndex, new Dat2MapIndex(this.mapIndex));
     }
 
     getMapScenes(): IndexedSprite[] {
-        return [];
+        return loadMapScenes(this.mediaArchive);
     }
 
     getMapFunctions(): IndexedSprite[] {
-        return [];
+        return loadMapFunctions(this.mediaArchive);
     }
 }

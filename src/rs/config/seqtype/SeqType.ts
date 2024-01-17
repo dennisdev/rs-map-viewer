@@ -59,7 +59,7 @@ export class SeqType extends Type {
     getFrameLength(seqFrameLoader: SeqFrameLoader, frame: number): number {
         let frameLength = this.frameLengths[frame];
 
-        if (this.cacheType === "dat") {
+        if (this.cacheType === "legacy" || this.cacheType === "dat") {
             if (frameLength === 0) {
                 const animFrame = seqFrameLoader.load(this.frameIds[frame]);
                 if (animFrame) {
@@ -114,7 +114,11 @@ export class SeqType extends Type {
             }
             this.masks[count] = 9999999;
         } else if (opcode === 4) {
-            this.stretches = true;
+            if (this.cacheInfo.game === "runescape" && this.cacheInfo.revision <= 194) {
+                this.stretches = buffer.readUnsignedShort() === 1;
+            } else {
+                this.stretches = true;
+            }
         } else if (opcode === 5) {
             this.forcedPriority = buffer.readUnsignedByte();
         } else if (opcode === 6) {

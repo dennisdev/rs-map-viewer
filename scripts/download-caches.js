@@ -57,7 +57,7 @@ async function downloadCaches(count) {
                 cache.environment === "live" &&
                 cache.language === "en" &&
                 cache.builds.length > 0 &&
-                cache.builds[0].major >= 245 &&
+                cache.builds[0].major >= 194 &&
                 cache.builds[0].major <= 736 &&
                 cache.timestamp,
         ),
@@ -250,10 +250,21 @@ function createCacheList() {
         if (
             !isValid(cacheInfo) ||
             cacheInfo.language !== "en" ||
-            (cacheInfo.game === "runescape" && (revision < 234 || revision > 740)) ||
+            (cacheInfo.game === "runescape" && (revision < 194 || revision > 740)) ||
             revision === 311
         ) {
             continue;
+        }
+
+        const mapsPath = dir + "/maps/";
+        if (fs.existsSync(mapsPath)) {
+            const mapNames = fs
+                .readdirSync(mapsPath)
+                .filter((name) => name.startsWith("m") || name.startsWith("l"));
+
+            console.log("Found " + mapNames.length + " map(s) for cache " + name);
+
+            fs.writeFileSync(dir + "/maps.json", JSON.stringify(mapNames), "utf8");
         }
 
         const cache = {

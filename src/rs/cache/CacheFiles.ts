@@ -55,6 +55,18 @@ export class CacheFiles {
         const filePromises = fileNames.map((name) =>
             fetchCachedFile(baseUrl, name, shared, false, cache, signal),
         );
+
+        let mapNames: string[] = [];
+        try {
+            mapNames = await fetch(baseUrl + "maps.json").then((resp) => resp.json());
+        } catch (e) {}
+
+        for (const mapName of mapNames) {
+            filePromises.push(
+                fetchCachedFile(baseUrl, "maps/" + mapName, shared, false, cache, signal),
+            );
+        }
+
         const cachedFiles = await Promise.all([modelsFilePromise, ...filePromises]);
 
         for (const file of cachedFiles) {

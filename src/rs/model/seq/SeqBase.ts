@@ -1,3 +1,4 @@
+import { Archive } from "../../cache/Archive";
 import { CacheInfo } from "../../cache/CacheInfo";
 import { ByteBuffer } from "../../io/ByteBuffer";
 import { SkeletalBase } from "../skeletal/SkeletalBase";
@@ -13,6 +14,43 @@ export class SeqBase {
         readonly labels: number[][],
         readonly skeletalBase?: SkeletalBase,
     ) {}
+}
+
+export class LegacySeqBase {
+    static load(modelArchive: Archive): SeqBase[] {
+        const head = modelArchive.getFileNamed("base_head.dat")!.getDataAsBuffer();
+        const type = modelArchive.getFileNamed("base_type.dat")!.getDataAsBuffer();
+        const label = modelArchive.getFileNamed("base_label.dat")!.getDataAsBuffer();
+
+        const baseCount = head.readUnsignedShort();
+        const lastBaseId = head.readUnsignedShort();
+
+        const bases: SeqBase[] = new Array(lastBaseId + 1);
+        for (let i = 0; i < baseCount; i++) {
+            const id = head.readUnsignedShort();
+            const count = head.readUnsignedByte();
+
+            // const count = buf.readUnsignedByte();
+            const types: SeqTransformType[] = new Array(count);
+            const transformActor: boolean[] = new Array(count).fill(true);
+            const masks = new Uint16Array(count).fill(-1);
+            const labels: number[][] = new Array(count);
+
+            for (let j = 0; j < count; j++) {
+                types[j] = type.readUnsignedByte();
+
+                const subCount = label.readUnsignedByte();
+                labels[j] = new Array(subCount);
+                for (let l = 0; l < subCount; l++) {
+                    labels[j][l] = label.readUnsignedByte();
+                }
+            }
+
+            bases[id] = new SeqBase(id, count, types, transformActor, masks, labels);
+        }
+
+        return bases;
+    }
 }
 
 export class DatSeqBase {

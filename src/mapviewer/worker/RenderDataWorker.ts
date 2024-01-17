@@ -104,8 +104,7 @@ async function initWorker(
     const seqFrameLoader = loaderFactory.getSeqFrameLoader();
     const skeletalSeqLoader = loaderFactory.getSkeletalSeqLoader();
 
-    const mapFileIndex = loaderFactory.getMapFileIndex();
-    const mapIndex = loaderFactory.getMapIndex();
+    const mapFileLoader = loaderFactory.getMapFileLoader();
 
     const varManager = new VarManager(varBitTypeLoader);
     const questTypeLoader = loaderFactory.getQuestTypeLoader();
@@ -136,8 +135,7 @@ async function initWorker(
 
     const sceneBuilder = new SceneBuilder(
         cache.info,
-        mapFileIndex,
-        mapIndex,
+        mapFileLoader,
         underlayTypeLoader,
         overlayTypeLoader,
         locTypeLoader,
