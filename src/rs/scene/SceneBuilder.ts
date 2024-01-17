@@ -18,7 +18,7 @@ import { Entity } from "./entity/Entity";
 import { EntityType, calculateEntityTag, getIdFromTag } from "./entity/EntityTag";
 import { LocEntity } from "./entity/LocEntity";
 
-export enum LandscapeLoadType {
+export enum LocLoadType {
     MODELS,
     NO_MODELS,
 }
@@ -72,7 +72,7 @@ export class SceneBuilder {
         sizeX: number,
         sizeY: number,
         smoothUnderlays: boolean = false,
-        landscapeLoadType: LandscapeLoadType = LandscapeLoadType.MODELS,
+        locLoadType: LocLoadType = LocLoadType.MODELS,
     ): Scene {
         const scene = new Scene(Scene.MAX_LEVELS, sizeX, sizeY);
 
@@ -118,20 +118,20 @@ export class SceneBuilder {
 
         for (let mx = mapStartX; mx < mapEndX; mx++) {
             for (let my = mapStartY; my < mapEndY; my++) {
-                const landscapeData = this.getLocData(mx, my);
-                if (!landscapeData) {
+                const locData = this.getLocData(mx, my);
+                if (!locData) {
                     continue;
                 }
                 const offsetX = mx * Scene.MAP_SQUARE_SIZE - baseX;
                 const offsetY = my * Scene.MAP_SQUARE_SIZE - baseY;
-                this.decodeLandscape(scene, landscapeData, offsetX, offsetY, landscapeLoadType);
+                this.decodeLocs(scene, locData, offsetX, offsetY, locLoadType);
             }
         }
 
         this.addTileModels(scene, smoothUnderlays);
         scene.setTileMinLevels();
 
-        if (landscapeLoadType === LandscapeLoadType.MODELS) {
+        if (locLoadType === LocLoadType.MODELS) {
             scene.light(this.locModelLoader.textureLoader, -50, -10, -50);
         }
 
@@ -337,12 +337,12 @@ export class SceneBuilder {
         }
     }
 
-    decodeLandscape(
+    decodeLocs(
         scene: Scene,
         data: Int8Array,
         offsetX: number,
         offsetY: number,
-        landscapeLoadType: LandscapeLoadType,
+        locLoadType: LocLoadType,
     ): void {
         const buffer = new ByteBuffer(data);
 
@@ -393,7 +393,7 @@ export class SceneBuilder {
                         type,
                         rotation,
                         collisionMap,
-                        landscapeLoadType,
+                        locLoadType,
                     );
                 }
             }
@@ -409,7 +409,7 @@ export class SceneBuilder {
         type: LocModelType,
         rotation: number,
         collisionMap: CollisionMap | undefined,
-        landscapeLoadType: LandscapeLoadType,
+        locLoadType: LocLoadType,
     ): void {
         const locType = this.locTypeLoader.load(id);
 
@@ -486,7 +486,7 @@ export class SceneBuilder {
         const isEntity =
             seqId !== -1 ||
             locType.transforms !== undefined ||
-            landscapeLoadType === LandscapeLoadType.NO_MODELS;
+            locLoadType === LocLoadType.NO_MODELS;
 
         if (type === LocModelType.FLOOR_DECORATION) {
             let entity: Entity | undefined;

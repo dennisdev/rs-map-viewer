@@ -26,7 +26,7 @@ import { MapImageRenderer } from "../../rs/map/MapImageRenderer";
 import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
 import { SkeletalSeqLoader } from "../../rs/model/skeletal/SkeletalSeqLoader";
 import { Scene } from "../../rs/scene/Scene";
-import { LandscapeLoadType, SceneBuilder } from "../../rs/scene/SceneBuilder";
+import { LocLoadType, SceneBuilder } from "../../rs/scene/SceneBuilder";
 import { IndexedSprite } from "../../rs/sprite/IndexedSprite";
 import { SpriteLoader } from "../../rs/sprite/SpriteLoader";
 import { TextureLoader } from "../../rs/texture/TextureLoader";
@@ -259,7 +259,7 @@ const worker = {
             mapSize,
             mapSize,
             false,
-            LandscapeLoadType.NO_MODELS,
+            LocLoadType.NO_MODELS,
         );
 
         const minimapBlob = await loadMinimapBlob(

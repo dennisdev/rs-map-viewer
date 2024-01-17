@@ -14,7 +14,7 @@ class MapSquare {
     constructor(
         readonly mapId: number,
         readonly terrainArchiveId: number,
-        readonly landscapeArchiveId: number,
+        readonly locArchiveId: number,
         readonly members: boolean,
     ) {}
 }
@@ -33,12 +33,9 @@ export class DatMapFileIndex implements MapFileIndex {
         for (let i = 0; i < count; i++) {
             const mapId = buffer.readUnsignedShort();
             const terrainArchiveId = buffer.readUnsignedShort();
-            const landscapeArchiveId = buffer.readUnsignedShort();
+            const locArchiveId = buffer.readUnsignedShort();
             const members = buffer.readUnsignedByte() === 1;
-            mapSquares.set(
-                mapId,
-                new MapSquare(mapId, terrainArchiveId, landscapeArchiveId, members),
-            );
+            mapSquares.set(mapId, new MapSquare(mapId, terrainArchiveId, locArchiveId, members));
         }
 
         return new DatMapFileIndex(mapSquares);
@@ -51,7 +48,7 @@ export class DatMapFileIndex implements MapFileIndex {
     }
 
     getLocArchiveId(mapX: number, mapY: number): number {
-        return this.mapSquares.get(getMapSquareId(mapX, mapY))?.landscapeArchiveId ?? -1;
+        return this.mapSquares.get(getMapSquareId(mapX, mapY))?.locArchiveId ?? -1;
     }
 }
 

@@ -38,12 +38,12 @@ export class MapFileLoader {
     }
 
     getNpcSpawnData(mapX: number, mapY: number, xteasMap: XteaMap): Int8Array | undefined {
-        const landscapeArchiveId = this.mapFileIndex.getLocArchiveId(mapX, mapY);
+        const locArchiveId = this.mapFileIndex.getLocArchiveId(mapX, mapY);
         const archiveId = this.mapIndex.getArchiveId(`n${mapX}_${mapY}`);
-        if (landscapeArchiveId === -1 || archiveId === -1) {
+        if (locArchiveId === -1 || archiveId === -1) {
             return undefined;
         }
-        const key = xteasMap.get(landscapeArchiveId);
+        const key = xteasMap.get(locArchiveId);
         try {
             const file = this.mapIndex.getFile(archiveId, 0, key);
             return file?.data;
