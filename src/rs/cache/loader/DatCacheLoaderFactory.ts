@@ -9,7 +9,11 @@ import { DatNpcTypeLoader, NpcTypeLoader } from "../../config/npctype/NpcTypeLoa
 import { DatObjTypeLoader, ObjTypeLoader } from "../../config/objtype/ObjTypeLoader";
 import { QuestTypeLoader } from "../../config/questtype/QuestTypeLoader";
 import { DatSeqTypeLoader, SeqTypeLoader } from "../../config/seqtype/SeqTypeLoader";
-import { DatVarBitTypeLoader, VarBitTypeLoader } from "../../config/vartype/bit/VarBitTypeLoader";
+import {
+    DatVarBitTypeLoader,
+    DummyVarBitTypeLoader,
+    VarBitTypeLoader,
+} from "../../config/vartype/bit/VarBitTypeLoader";
 import { DatMapFileIndex, MapFileIndex } from "../../map/MapFileIndex";
 import { IndexModelLoader, ModelLoader } from "../../model/ModelLoader";
 import { DatSeqFrameLoader, SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
@@ -61,6 +65,9 @@ export class DatCacheLoaderFactory implements CacheLoaderFactory {
     }
 
     getVarBitTypeLoader(): VarBitTypeLoader {
+        if (this.cacheInfo.revision < 254) {
+            return new DummyVarBitTypeLoader(this.cacheInfo);
+        }
         return DatVarBitTypeLoader.load(this.cacheInfo, this.configArchive);
     }
 

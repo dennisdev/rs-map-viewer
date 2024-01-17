@@ -147,7 +147,11 @@ export class NpcType extends Type {
         } else if (opcode === 15) {
             this.turnLeftSeqId = buffer.readUnsignedShort();
         } else if (opcode === 16) {
-            this.turnRightSeqId = buffer.readUnsignedShort();
+            if (this.cacheInfo.game === "runescape" && this.cacheInfo.revision < 254) {
+                // disposeAlpha?
+            } else {
+                this.turnRightSeqId = buffer.readUnsignedShort();
+            }
         } else if (opcode === 17) {
             this.walkSeqId = buffer.readUnsignedShort();
             this.walkBackSeqId = buffer.readUnsignedShort();

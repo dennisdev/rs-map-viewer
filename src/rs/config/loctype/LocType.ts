@@ -244,6 +244,8 @@ export class LocType extends Type {
             if (this.seqId === 65535) {
                 this.seqId = -1;
             }
+        } else if (opcode === 25) {
+            // disposeAlpha?
         } else if (opcode === 27) {
             this.clipType = 1;
         } else if (opcode === 28) {
