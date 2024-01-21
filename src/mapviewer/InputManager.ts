@@ -1,9 +1,13 @@
 import { vec2 } from "gl-matrix";
 import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
 
+import { pixelRatio } from "../util/DeviceUtil";
+
 export function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     const rect = container.getBoundingClientRect();
-    return [event.clientX - rect.left, event.clientY - rect.top];
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    return [x, y];
 }
 
 export function getAxisDeadzone(axis: number, zone: number): number {

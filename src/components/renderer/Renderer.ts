@@ -1,7 +1,8 @@
+import { pixelRatio } from "../../util/DeviceUtil";
 import { RenderStats } from "./RenderStats";
 
 function resizeCanvas(canvas: HTMLCanvasElement) {
-    const devicePixelRatio = window.devicePixelRatio;
+    const devicePixelRatio = pixelRatio;
     const width = canvas.offsetWidth * devicePixelRatio;
     const height = canvas.offsetHeight * devicePixelRatio;
 

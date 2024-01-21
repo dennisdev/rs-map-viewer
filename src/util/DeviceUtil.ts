@@ -32,3 +32,5 @@ export const isTouchDevice = !!(
 export const isWebGL2Supported = !!document.createElement("canvas").getContext("webgl2");
 
 export const isWebGPUSupported = "gpu" in navigator;
+
+export const pixelRatio = window.devicePixelRatio || 1;

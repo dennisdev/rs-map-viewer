@@ -19,7 +19,7 @@ import { OsrsMenuEntry } from "../../components/rs/menu/OsrsMenu";
 import { createTextureArray } from "../../picogl/PicoTexture";
 import { MenuTargetType } from "../../rs/MenuEntry";
 import { Scene } from "../../rs/scene/Scene";
-import { isTouchDevice, isWebGL2Supported } from "../../util/DeviceUtil";
+import { isTouchDevice, isWebGL2Supported, pixelRatio } from "../../util/DeviceUtil";
 import { MapViewer } from "../MapViewer";
 import { MapViewerRenderer } from "../MapViewerRenderer";
 import { MapViewerRendererType, WEBGL } from "../MapViewerRenderers";
@@ -795,7 +795,11 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                     this.gl.readBuffer(PicoGL.COLOR_ATTACHMENT1);
                 }
 
-                currInteractions.read(this.gl, mouseX, mouseY);
+                currInteractions.read(
+                    this.gl,
+                    (mouseX * pixelRatio) | 0,
+                    (mouseY * pixelRatio) | 0,
+                );
             }
         }
 
