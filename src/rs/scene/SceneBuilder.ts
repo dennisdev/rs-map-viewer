@@ -39,6 +39,8 @@ export class SceneBuilder {
     private static readonly diagonalDisplacementX: number[] = [1, -1, -1, 1];
     private static readonly diagonalDisplacementY: number[] = [-1, -1, 1, 1];
 
+    static readonly WATER_OVERLAY_ID = 5;
+
     newTerrainFormat: boolean;
 
     constructor(
@@ -52,6 +54,10 @@ export class SceneBuilder {
     ) {
         this.newTerrainFormat =
             this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 209;
+    }
+
+    static fillEmptyTerrain(info: CacheInfo): boolean {
+        return info.game === "runescape" && info.revision <= 225;
     }
 
     getTerrainData(mapX: number, mapY: number): Int8Array | undefined {
@@ -146,11 +152,15 @@ export class SceneBuilder {
         sizeX: number,
         sizeY: number,
     ): void {
+        const fillEmptyTerrain = SceneBuilder.fillEmptyTerrain(this.cacheInfo);
         for (let ty = tileY; ty < tileY + sizeY; ty++) {
             for (let tx = tileX; tx < tileX + sizeX; tx++) {
                 if (tx >= 0 && tx < scene.sizeX && ty >= 0 && ty < scene.sizeY) {
                     if (level === 0) {
                         scene.tileHeights[level][tx][ty] = 0;
+                        if (fillEmptyTerrain) {
+                            scene.tileOverlays[level][tx][ty] = SceneBuilder.WATER_OVERLAY_ID + 1;
+                        }
                     } else {
                         scene.tileHeights[level][tx][ty] =
                             scene.tileHeights[level - 1][tx][ty] - 240;

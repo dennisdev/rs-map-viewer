@@ -50,13 +50,30 @@ export class MapManager<T extends MapSquare> {
         readonly loadMapFunction: LoadMapFunction,
     ) {}
 
-    init(mapFileIndex: MapFileIndex): void {
+    init(mapFileIndex: MapFileIndex, fillEmptyTerrain: boolean): void {
         this.cleanUp();
         for (let x = 0; x < MapManager.MAX_MAP_X; x++) {
             for (let y = 0; y < MapManager.MAX_MAP_Y; y++) {
-                if (mapFileIndex.getTerrainArchiveId(x, y) === -1) {
-                    this.invalidMapIds.add(getMapSquareId(x, y));
+                const exists = mapFileIndex.getTerrainArchiveId(x, y) !== -1;
+                if (exists) {
+                    continue;
                 }
+                if (y < 100 && fillEmptyTerrain) {
+                    let hasNeighbour = false;
+                    loop: for (let nx = x - 2; nx <= x + 2; nx++) {
+                        for (let ny = y - 2; ny <= y + 2; ny++) {
+                            const neighbourExists = mapFileIndex.getTerrainArchiveId(nx, ny) !== -1;
+                            if (neighbourExists) {
+                                hasNeighbour = true;
+                                break loop;
+                            }
+                        }
+                    }
+                    if (hasNeighbour) {
+                        continue;
+                    }
+                }
+                this.invalidMapIds.add(getMapSquareId(x, y));
             }
         }
         console.log("Invalid map count", this.invalidMapIds.size);

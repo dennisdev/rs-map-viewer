@@ -1,6 +1,7 @@
 import { Schema } from "leva/dist/declarations/src/types";
 
 import { Renderer } from "../components/renderer/Renderer";
+import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
 import { MapManager, MapSquare } from "./MapManager";
 import { MapViewer } from "./MapViewer";
@@ -28,7 +29,10 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     }
 
     initCache(): void {
-        this.mapManager.init(this.mapViewer.mapFileIndex);
+        this.mapManager.init(
+            this.mapViewer.mapFileIndex,
+            SceneBuilder.fillEmptyTerrain(this.mapViewer.loadedCache.info),
+        );
         this.mapManager.update(
             this.mapViewer.camera,
             this.stats.frameCount,
