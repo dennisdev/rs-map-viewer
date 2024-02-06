@@ -61,7 +61,10 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
 
         let cameraSpeedMult = 1.0;
         if (inputManager.isShiftDown()) {
-            cameraSpeedMult = 10.0;
+            cameraSpeedMult = 2.0;
+        }
+        if (inputManager.isKeyDown("Tab")) {
+            cameraSpeedMult = 0.5;
         }
 
         const deltaPitch = 64 * 5 * deltaTimeSec;
@@ -86,8 +89,8 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
         let deltaY = 0;
         let deltaZ = 0;
 
-        const deltaPos = 16 * cameraSpeedMult * deltaTimeSec;
-        const deltaHeight = 8 * cameraSpeedMult * deltaTimeSec;
+        const deltaPos = 16 * (camera.speed * cameraSpeedMult) * deltaTimeSec;
+        const deltaHeight = 8 * (camera.speed * cameraSpeedMult) * deltaTimeSec;
 
         if (inputManager.isKeyDown("KeyW")) {
             // Forward
