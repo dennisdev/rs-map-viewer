@@ -64,7 +64,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
             cameraSpeedMult = 10.0;
         }
         if (inputManager.isKeyDown("Tab")) {
-            cameraSpeedMult = 0.5;
+            cameraSpeedMult = 0.1;
         }
 
         const deltaPitch = 64 * 5 * deltaTimeSec;
