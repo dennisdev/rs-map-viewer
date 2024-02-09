@@ -89,6 +89,8 @@ export class MapViewer {
     minimapImageUrls: Map<number, string> = new Map();
     loadingMapImageIds: Set<number> = new Set();
 
+    cameraSpeed: number = 1;
+
     constructor(
         readonly workerPool: RenderDataWorkerPool,
         readonly cacheList: CacheList,

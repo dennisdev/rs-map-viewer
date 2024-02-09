@@ -44,7 +44,7 @@ export const MapViewerControls = memo(
 
         const positionControls = isTouchDevice
             ? "Left joystick, Drag up and down."
-            : "WASD,\nR or E (up),\nF or C (down),\nUse SHIFT to go faster.";
+            : "WASD,\nR or E (up),\nF or C (down),\nUse SHIFT to go faster, or TAB to go slower.";
         const directionControls = isTouchDevice
             ? "Right joystick."
             : "Arrow Keys or Click and Drag. Double click for pointerlock.";
@@ -364,6 +364,15 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                     mapViewer.camera.fov = v;
                 },
             },
+            Speed: {
+                value: mapViewer.cameraSpeed,
+                min: 0.1,
+                max: 5,
+                step: 0.1,
+                onChange: (v: number) => {
+                    mapViewer.cameraSpeed = v;
+                },
+            },
         };
     } else {
         return {
@@ -374,6 +383,15 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 step: 1,
                 onChange: (v: number) => {
                     mapViewer.camera.orthoZoom = v;
+                },
+            },
+            Speed: {
+                value: mapViewer.cameraSpeed,
+                min: 0.1,
+                max: 5,
+                step: 0.1,
+                onChange: (v: number) => {
+                    mapViewer.cameraSpeed = v;
                 },
             },
         };
