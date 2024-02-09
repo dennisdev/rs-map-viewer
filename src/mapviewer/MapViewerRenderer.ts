@@ -89,8 +89,8 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
         let deltaY = 0;
         let deltaZ = 0;
 
-        const deltaPos = 16 * (camera.speed * cameraSpeedMult) * deltaTimeSec;
-        const deltaHeight = 8 * (camera.speed * cameraSpeedMult) * deltaTimeSec;
+        const deltaPos = 16 * (this.mapViewer.cameraSpeed * cameraSpeedMult) * deltaTimeSec;
+        const deltaHeight = 8 * (this.mapViewer.cameraSpeed * cameraSpeedMult) * deltaTimeSec;
 
         if (inputManager.isKeyDown("KeyW")) {
             // Forward

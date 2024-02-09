@@ -365,12 +365,12 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 },
             },
             Speed: {
-                value: mapViewer.camera.speed,
+                value: mapViewer.cameraSpeed,
                 min: 0.1,
                 max: 5,
                 step: 0.1,
                 onChange: (v: number) => {
-                    mapViewer.camera.speed = v;
+                    mapViewer.cameraSpeed = v;
                 },
             },
         };
@@ -386,12 +386,12 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 },
             },
             Speed: {
-                value: mapViewer.camera.speed,
+                value: mapViewer.cameraSpeed,
                 min: 0.1,
                 max: 5,
                 step: 0.1,
                 onChange: (v: number) => {
-                    mapViewer.camera.speed = v;
+                    mapViewer.cameraSpeed = v;
                 },
             },
         };
