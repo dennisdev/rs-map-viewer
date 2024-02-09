@@ -28,7 +28,6 @@ export class Camera {
 
     fov: number = 90;
     orthoZoom: number = 15;
-    speed: number = 1;
 
     projectionMatrix: mat4 = mat4.create();
     cameraMatrix: mat4 = mat4.create();
