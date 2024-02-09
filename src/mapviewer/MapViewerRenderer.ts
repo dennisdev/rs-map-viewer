@@ -61,7 +61,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
 
         let cameraSpeedMult = 1.0;
         if (inputManager.isShiftDown()) {
-            cameraSpeedMult = 2.0;
+            cameraSpeedMult = 10.0;
         }
         if (inputManager.isKeyDown("Tab")) {
             cameraSpeedMult = 0.5;
