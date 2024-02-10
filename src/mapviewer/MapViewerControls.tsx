@@ -156,6 +156,27 @@ export const MapViewerControls = memo(
             rendererOptions[getRendererName(v)] = v;
         }
 
+        const recordSchema: Schema = {
+            "Add point": button(() => addPoint()),
+            Length: {
+                value: animationDuration,
+                onChange: (v: number) => {
+                    setAnimationDuration(v);
+                },
+            },
+            Points: pointsControls,
+        };
+
+        if (isCameraRunning) {
+            const buttonName = "Stop";
+            recordSchema[buttonName] = button(() => setCameraRunning(false));
+            recordSchema[buttonName].order = -1;
+        } else {
+            const buttonName = "Start";
+            recordSchema[buttonName] = button(() => setCameraRunning(true));
+            recordSchema[buttonName].order = -1;
+        }
+
         useControls(
             {
                 Links: folder(
@@ -292,20 +313,7 @@ export const MapViewerControls = memo(
                     },
                     { collapsed: true },
                 ),
-                Record: folder(
-                    {
-                        Start: button(() => setCameraRunning(true)),
-                        "Add point": button(() => addPoint()),
-                        Length: {
-                            value: animationDuration,
-                            onChange: (v: number) => {
-                                setAnimationDuration(v);
-                            },
-                        },
-                        Points: pointsControls,
-                    },
-                    { collapsed: true },
-                ),
+                Record: folder(recordSchema, { collapsed: true }),
                 Export: folder(
                     {
                         "Export Sprites": button(
@@ -352,7 +360,14 @@ export const MapViewerControls = memo(
                     { collapsed: true },
                 ),
             },
-            [renderer, projectionType, pointsControls, isExportingSprites, isExportingTextures],
+            [
+                renderer,
+                projectionType,
+                pointsControls,
+                isCameraRunning,
+                isExportingSprites,
+                isExportingTextures,
+            ],
         );
 
         return (
