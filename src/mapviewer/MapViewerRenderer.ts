@@ -132,10 +132,6 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
             camera.pos[0] = 2780;
             camera.pos[2] = 9537;
         }
-
-        if (inputManager.isKeyDownEvent("F1")) {
-            this.mapViewer.hudVisible = !this.mapViewer.hudVisible;
-        }
     }
 
     handleMouseInput() {

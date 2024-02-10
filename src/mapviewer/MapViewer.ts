@@ -81,8 +81,6 @@ export class MapViewer {
     menuY: number = -1;
     menuEntries: OsrsMenuEntry[] = [];
 
-    hudVisible: boolean = true;
-
     debugText?: string;
 
     mapImageUrls: Map<number, string> = new Map();

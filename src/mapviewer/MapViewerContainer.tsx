@@ -27,7 +27,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
 
     const [downloadProgress, setDownloadProgress] = useState<DownloadProgress>();
 
-    const [hudVisible, setHudVisible] = useState(mapViewer.hudVisible);
+    const [hideUi, setHideUi] = useState(false);
     const [fps, setFps] = useState(0);
     const [cameraYaw, setCameraYaw] = useState(mapViewer.camera.getYaw());
     const [isWorldMapOpen, setWorldMapOpen] = useState<boolean>(false);
@@ -47,8 +47,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
             console.log("Updated search params");
         }
 
-        setHudVisible(mapViewer.hudVisible);
-        if (mapViewer.hudVisible) {
+        if (!hideUi) {
             setFps(Math.round(renderer.stats.frameTimeFps));
             setCameraYaw(mapViewer.camera.getYaw());
         }
@@ -71,7 +70,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
     useEffect(() => {
         requestRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(requestRef.current!);
-    }, [searchParams]);
+    }, [searchParams, hideUi]);
 
     const resetCameraYaw = useCallback(() => {
         mapViewer.camera.setYaw(0);
@@ -142,12 +141,13 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
 
             <MapViewerControls
                 renderer={renderer}
+                hideUi={hideUi}
                 setRenderer={setRenderer}
+                setHideUi={setHideUi}
                 setDownloadProgress={setDownloadProgress}
-                hidden={!hudVisible}
             />
 
-            {hudVisible && (
+            {!hideUi && (
                 <span>
                     <div className="hud left-top">
                         <MinimapContainer
@@ -171,7 +171,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
                 </span>
             )}
 
-            {hudVisible && isTouchDevice && (
+            {!hideUi && isTouchDevice && (
                 <div className="joystick-container left">
                     <Joystick
                         size={75}
@@ -183,7 +183,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
                     ></Joystick>
                 </div>
             )}
-            {hudVisible && isTouchDevice && (
+            {!hideUi && isTouchDevice && (
                 <div className="joystick-container right">
                     <Joystick
                         size={75}
