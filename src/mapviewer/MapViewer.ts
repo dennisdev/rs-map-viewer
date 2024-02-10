@@ -17,7 +17,7 @@ import { Pathfinder } from "../rs/pathfinder/Pathfinder";
 import { TextureLoader } from "../rs/texture/TextureLoader";
 import { isTouchDevice, isWallpaperEngine } from "../util/DeviceUtil";
 import { CacheList, LoadedCache } from "./Caches";
-import { Camera, CameraPosition, ProjectionType } from "./Camera";
+import { Camera, CameraView, ProjectionType } from "./Camera";
 import { InputManager } from "./InputManager";
 import { MapManager } from "./MapManager";
 import { MapViewerRenderer } from "./MapViewerRenderer";
@@ -218,17 +218,23 @@ export class MapViewer {
 
     /**
      * Sets the camera position to a new arbitrary position
-     * @param newPosition Any of the items you want to move: Position, pitch, yaw
+     * @param newView Any of the items you want to move: Position, pitch, yaw
      */
-    setCamera(newPosition: Partial<CameraPosition>): void {
-        if (newPosition.position) {
-            vec3.copy(this.camera.pos, newPosition.position);
+    setCamera(newView: Partial<CameraView>): void {
+        if (newView.position) {
+            vec3.copy(this.camera.pos, newView.position);
         }
-        if (newPosition.pitch !== undefined) {
-            this.camera.pitch = newPosition.pitch;
+        if (newView.pitch !== undefined) {
+            this.camera.pitch = newView.pitch;
         }
-        if (newPosition.yaw !== undefined) {
-            this.camera.yaw = newPosition.yaw;
+        if (newView.yaw !== undefined) {
+            this.camera.yaw = newView.yaw;
+        }
+        if (newView.fov !== undefined) {
+            this.camera.fov = newView.fov;
+        }
+        if (newView.orthoZoom !== undefined) {
+            this.camera.orthoZoom = newView.orthoZoom;
         }
         this.camera.updated = true;
     }

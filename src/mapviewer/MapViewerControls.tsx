@@ -8,7 +8,7 @@ import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { isTouchDevice } from "../util/DeviceUtil";
 import { lerp, slerp } from "../util/MathUtil";
 import { loadCacheFiles } from "./Caches";
-import { CameraPosition, ProjectionType } from "./Camera";
+import { CameraView, ProjectionType } from "./Camera";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRenderer } from "./MapViewerRenderer";
 import {
@@ -55,7 +55,7 @@ export const MapViewerControls = memo(
         };
 
         const [animationDuration, setAnimationDuration] = useState(10);
-        const [cameraPoints, setCameraPoints] = useState<CameraPosition[]>(() => []);
+        const [cameraPoints, setCameraPoints] = useState<CameraView[]>(() => []);
 
         const addPoint = () => {
             setCameraPoints((pts) => [
@@ -68,6 +68,8 @@ export const MapViewerControls = memo(
                     ),
                     pitch: mapViewer.camera.pitch,
                     yaw: mapViewer.camera.yaw,
+                    fov: mapViewer.camera.fov,
+                    orthoZoom: mapViewer.camera.orthoZoom,
                 },
             ]);
         };
@@ -125,7 +127,7 @@ export const MapViewerControls = memo(
                     mapViewer.setCamera(cameraPoints[cameraPoints.length - 1]);
                     return;
                 }
-                const newPosition: { position: vec3; pitch: number; yaw: number } = {
+                const newView: CameraView = {
                     position: vec3.fromValues(
                         lerp(from.position[0], to.position[0], localProgress),
                         lerp(from.position[1], to.position[1], localProgress),
@@ -133,8 +135,10 @@ export const MapViewerControls = memo(
                     ),
                     pitch: lerp(from.pitch, to.pitch, localProgress),
                     yaw: slerp(from.yaw, to.yaw, localProgress, 2048),
+                    fov: lerp(from.fov, to.fov, localProgress),
+                    orthoZoom: lerp(from.orthoZoom, to.orthoZoom, localProgress),
                 };
-                mapViewer.setCamera(newPosition);
+                mapViewer.setCamera(newView);
 
                 animationId = requestAnimationFrame(animate);
             };
@@ -177,6 +181,16 @@ export const MapViewerControls = memo(
                             order: 0,
                         },
                         ...createCameraControls(mapViewer),
+                        Speed: {
+                            value: mapViewer.cameraSpeed,
+                            min: 0.1,
+                            max: 5,
+                            step: 0.1,
+                            onChange: (v: number) => {
+                                mapViewer.cameraSpeed = v;
+                            },
+                            order: 10,
+                        },
                         Controls: folder(controlsSchema, { collapsed: true, order: 999 }),
                     },
                     { collapsed: false },
@@ -364,15 +378,6 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                     mapViewer.camera.fov = v;
                 },
             },
-            Speed: {
-                value: mapViewer.cameraSpeed,
-                min: 0.1,
-                max: 5,
-                step: 0.1,
-                onChange: (v: number) => {
-                    mapViewer.cameraSpeed = v;
-                },
-            },
         };
     } else {
         return {
@@ -383,15 +388,6 @@ function createCameraControls(mapViewer: MapViewer): Schema {
                 step: 1,
                 onChange: (v: number) => {
                     mapViewer.camera.orthoZoom = v;
-                },
-            },
-            Speed: {
-                value: mapViewer.cameraSpeed,
-                min: 0.1,
-                max: 5,
-                step: 0.1,
-                onChange: (v: number) => {
-                    mapViewer.cameraSpeed = v;
                 },
             },
         };
