@@ -321,13 +321,21 @@ export class NpcType extends Type {
                 offsets[2] = buffer.readByte();
             }
         } else if (opcode === 122) {
-            if (this.isLargeModelId()) {
-                const hitBarSpriteId = buffer.readBigSmart();
+            if (this.cacheInfo.game === "oldschool") {
+                this.isFollower = true;
             } else {
-                const hitBarSpriteId = buffer.readUnsignedShort();
+                if (this.isLargeModelId()) {
+                    const hitBarSpriteId = buffer.readBigSmart();
+                } else {
+                    const hitBarSpriteId = buffer.readUnsignedShort();
+                }
             }
         } else if (opcode === 123) {
-            const iconHeight = buffer.readUnsignedShort();
+            if (this.cacheInfo.game === "oldschool") {
+                // lowPriorityFollowerOps = true;
+            } else {
+                const iconHeight = buffer.readUnsignedShort();
+            }
         } else if (opcode === 125) {
             this.spawnDirection = buffer.readByte();
         } else if (opcode === 127) {

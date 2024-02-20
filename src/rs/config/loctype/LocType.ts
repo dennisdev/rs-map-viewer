@@ -78,11 +78,12 @@ export class LocType extends Type {
 
     ambientSoundId: number;
 
-    int4: number;
-    int5: number;
-    int6: number;
+    ambientSoundDistance: number;
+    ambientSoundChangeTicksMin: number;
+    ambientSoundChangeTicksMax: number;
+    ambientSoundRetain: number;
 
-    soundEffectIds!: number[];
+    ambientSoundIds!: number[];
 
     seqRandomStart: boolean;
 
@@ -125,9 +126,10 @@ export class LocType extends Type {
         this.transformVarbit = -1;
         this.transformVarp = -1;
         this.ambientSoundId = -1;
-        this.int4 = 0;
-        this.int5 = 0;
-        this.int6 = 0;
+        this.ambientSoundDistance = 0;
+        this.ambientSoundChangeTicksMin = 0;
+        this.ambientSoundChangeTicksMax = 0;
+        this.ambientSoundRetain = 0;
         this.seqRandomStart = true;
 
         this.contourGroundType = 0;
@@ -343,16 +345,22 @@ export class LocType extends Type {
             this.transforms[count + 1] = var3;
         } else if (opcode === 78) {
             this.ambientSoundId = buffer.readUnsignedShort();
-            this.int4 = buffer.readUnsignedByte();
+            this.ambientSoundDistance = buffer.readUnsignedByte();
+            if (this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 220) {
+                this.ambientSoundRetain = buffer.readUnsignedByte();
+            }
         } else if (opcode === 79) {
-            this.int5 = buffer.readUnsignedShort();
-            this.int6 = buffer.readUnsignedShort();
-            this.int4 = buffer.readUnsignedByte();
+            this.ambientSoundChangeTicksMin = buffer.readUnsignedShort();
+            this.ambientSoundChangeTicksMax = buffer.readUnsignedShort();
+            this.ambientSoundDistance = buffer.readUnsignedByte();
+            if (this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 220) {
+                this.ambientSoundRetain = buffer.readUnsignedByte();
+            }
             const count = buffer.readUnsignedByte();
-            this.soundEffectIds = new Array(count);
+            this.ambientSoundIds = new Array(count);
 
             for (let i = 0; i < count; i++) {
-                this.soundEffectIds[i] = buffer.readUnsignedShort();
+                this.ambientSoundIds[i] = buffer.readUnsignedShort();
             }
         } else if (opcode === 81) {
             this.contouredGround = buffer.readUnsignedByte() * 256;

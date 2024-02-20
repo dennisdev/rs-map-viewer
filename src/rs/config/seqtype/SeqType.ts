@@ -3,11 +3,20 @@ import { ByteBuffer } from "../../io/ByteBuffer";
 import { SeqFrameLoader } from "../../model/seq/SeqFrameLoader";
 import { Type } from "../Type";
 
+export class SeqSoundEffect {
+    constructor(
+        readonly id: number,
+        readonly loops: number,
+        readonly location: number,
+        readonly retain: number,
+    ) {}
+}
+
 export class SeqType extends Type {
     frameIds!: number[];
     chatFrameIds?: number[];
     frameLengths!: number[];
-    frameSounds?: number[];
+    frameSounds?: SeqSoundEffect[];
 
     frameStep: number;
 
@@ -31,7 +40,7 @@ export class SeqType extends Type {
     replyMode: number;
 
     skeletalId: number;
-    skeletalFrameSounds?: Map<number, number>;
+    skeletalFrameSounds?: Map<number, SeqSoundEffect>;
     skeletalStart: number;
     skeletalEnd: number;
     skeletalMasks?: boolean[];
@@ -73,6 +82,10 @@ export class SeqType extends Type {
         }
 
         return frameLength;
+    }
+
+    isNewSoundEffects(): boolean {
+        return this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 220;
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
@@ -165,8 +178,25 @@ export class SeqType extends Type {
                 const count = buffer.readUnsignedByte();
                 this.frameSounds = new Array(count);
 
+                const isNewSoundEffects = this.isNewSoundEffects();
+
                 for (let i = 0; i < count; i++) {
-                    this.frameSounds[i] = buffer.readMedium();
+                    let id: number;
+                    let loops: number;
+                    let location: number;
+                    let retain: number = 0;
+                    if (isNewSoundEffects) {
+                        id = buffer.readUnsignedShort();
+                        loops = buffer.readUnsignedByte();
+                        location = buffer.readUnsignedByte();
+                        retain = buffer.readUnsignedByte();
+                    } else {
+                        const sound = buffer.readUnsignedMedium();
+                        id = sound >> 8;
+                        loops = (sound >> 4) & 0x7;
+                        location = sound & 0xf;
+                    }
+                    this.frameSounds[i] = new SeqSoundEffect(id, loops, location, retain);
                 }
             }
         } else if (opcode === 14) {
@@ -180,10 +210,29 @@ export class SeqType extends Type {
                 const count = buffer.readUnsignedShort();
                 this.skeletalFrameSounds = new Map();
 
+                const isNewSoundEffects = this.isNewSoundEffects();
+
                 for (let i = 0; i < count; i++) {
                     const frame = buffer.readUnsignedShort();
-                    const sound = buffer.readMedium();
-                    this.skeletalFrameSounds.set(frame, sound);
+                    let id: number;
+                    let loops: number;
+                    let location: number;
+                    let retain: number = 0;
+                    if (isNewSoundEffects) {
+                        id = buffer.readUnsignedShort();
+                        loops = buffer.readUnsignedByte();
+                        location = buffer.readUnsignedByte();
+                        retain = buffer.readUnsignedByte();
+                    } else {
+                        const sound = buffer.readUnsignedMedium();
+                        id = sound >> 8;
+                        loops = (sound >> 4) & 0x7;
+                        location = sound & 0xf;
+                    }
+                    this.skeletalFrameSounds.set(
+                        frame,
+                        new SeqSoundEffect(id, loops, location, retain),
+                    );
                 }
             } else {
                 // interpolate = true;
