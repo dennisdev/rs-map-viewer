@@ -43,7 +43,6 @@ async function downloadCaches(count) {
         (cache) =>
             cache.scope === "runescape" &&
             cache.game === "oldschool" &&
-            cache.environment === "live" &&
             cache.language === "en" &&
             cache.builds.length > 0 &&
             cache.timestamp,
@@ -67,11 +66,18 @@ async function downloadCaches(count) {
     caches.sort((a, b) => {
         const isOsrsA = a.game === "oldschool";
         const isOsrsB = b.game === "oldschool";
+        const isLiveA = a.environment === "live";
+        const isLiveB = b.environment === "live";
         const buildA = a.builds[0].major;
         const buildB = b.builds[0].major;
         const dateA = Date.parse(a.timestamp);
         const dateB = Date.parse(b.timestamp);
-        return (isOsrsB ? 1 : 0) - (isOsrsA ? 1 : 0) || buildB - buildA || dateB - dateA;
+        return (
+            (isOsrsB ? 1 : 0) - (isOsrsA ? 1 : 0) ||
+            (isLiveB ? 1 : 0) - (isLiveA ? 1 : 0) ||
+            buildB - buildA ||
+            dateB - dateA
+        );
     });
 
     const cachesToDownload = [];
@@ -117,10 +123,13 @@ async function downloadCaches(count) {
 function getCacheDir(cache) {
     const build = cache.builds[0].major;
     const date = cache.timestamp.split("T")[0];
-    const langPostfix = cache.language !== "en" ? "-" + cache.language : "";
     if (cache.game === "oldschool") {
-        return `caches/osrs-${build}${langPostfix}_${date}/`;
+        if (cache.environment === "beta") {
+            return `caches/osrs-beta-${build}_${date}/`;
+        }
+        return `caches/osrs-${build}_${date}/`;
     }
+    const langPostfix = cache.language !== "en" ? "-" + cache.language : "";
     return `caches/rs2-${build}${langPostfix}_${date}/`;
 }
 
@@ -270,6 +279,7 @@ function createCacheList() {
         const cache = {
             name,
             game: cacheInfo.game,
+            environment: cacheInfo.environment,
             revision,
             timestamp: cacheInfo.timestamp,
             size: cacheInfo.size,
