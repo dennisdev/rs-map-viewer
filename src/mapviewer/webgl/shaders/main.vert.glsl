@@ -10,8 +10,6 @@
 
 #define FOG_CORNER_ROUNDING 8.0
 
-#define SCENE_BORDER_SIZE 6.0
-
 precision highp float;
 
 layout(std140, column_major) uniform;
@@ -28,7 +26,7 @@ uniform float u_timeLoaded;
 
 
 uniform highp usampler2D u_modelInfoTexture;
-uniform mediump sampler2DArray u_heightMap;
+uniform mediump isampler2DArray u_heightMap;
 
 layout(location = 0) in uvec3 a_vertex;
 
@@ -68,7 +66,7 @@ ModelInfo decodeModelInfo(int offset) {
 
     ModelInfo info;
 
-    info.tilePos = vec2(float(data.r & 0x3FFFu), float(data.g & 0x3FFFu)) / vec2(128.0);
+    info.tilePos = vec2(float(data.r & 0x3FFFu), float(data.g & 0x3FFFu));
     info.height = (data.b >> 6) * 8u;
     info.plane = data.r >> 14;
     info.priority = data.b & 0x7u;
@@ -99,12 +97,14 @@ void main() {
 
     ModelInfo modelInfo = decodeModelInfo(offset);
 
-    vec3 localPos = vertex.pos / vec3(128.0) + vec3(modelInfo.tilePos.x, 0, modelInfo.tilePos.y);
+    vec3 localPos = vertex.pos + vec3(modelInfo.tilePos.x, 0, modelInfo.tilePos.y);
 
     vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_CENTER_TILE)) 
             + localPos.xz * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_VERTEX));
-    localPos.y -= float(modelInfo.height) / 128.0;
-    localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE) / 128.0;
+    localPos.y -= float(modelInfo.height);
+    localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE);
+
+    localPos /= 128.0;
 
     localPos += vec3(u_mapPos.x, 0, u_mapPos.y) * vec3(64);
 

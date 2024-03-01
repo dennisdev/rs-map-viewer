@@ -37,8 +37,8 @@ import { NpcSpawnGroup } from "../npc/NpcSpawnGroup";
 import { SdMapData } from "./SdMapData";
 import { SdMapLoaderInput } from "./SdMapLoaderInput";
 
-function loadHeightMapTextureData(scene: Scene): Float32Array {
-    const heightMapTextureData = new Float32Array(Scene.MAX_LEVELS * scene.sizeX * scene.sizeY);
+function loadHeightMapTextureData(scene: Scene): Int16Array {
+    const heightMapTextureData = new Int16Array(Scene.MAX_LEVELS * scene.sizeX * scene.sizeY);
 
     let dataIndex = 0;
     for (let level = 0; level < scene.levels; level++) {

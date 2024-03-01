@@ -11,8 +11,6 @@
 
 #define FOG_CORNER_ROUNDING 8.0
 
-#define SCENE_BORDER_SIZE 6.0
-
 #define NPC_INTERACT_TYPE 3.0
 
 precision highp float;
@@ -30,7 +28,7 @@ uniform float u_timeLoaded;
 uniform int u_npcDataOffset;
 
 uniform highp usampler2D u_npcDataTexture;
-uniform mediump sampler2DArray u_heightMap;
+uniform mediump isampler2DArray u_heightMap;
 
 layout(location = 0) in uvec3 a_vertex;
 
@@ -67,7 +65,7 @@ NpcInfo decodeNpcInfo(int offset) {
 
     NpcInfo info;
 
-    info.tilePos = vec2(float(data.r), float(data.g)) / vec2(128);
+    info.tilePos = vec2(float(data.r), float(data.g));
     info.plane = data.b & 0x3u;
     info.rotation = data.b >> 2;
     info.interactId = data.a;
@@ -100,9 +98,11 @@ void main() {
 
     NpcInfo npcInfo = decodeNpcInfo(DRAW_ID + u_npcDataOffset);
 
-    vec4 localPos = vec4(vertex.pos / vec3(128.0), 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
+    vec4 localPos = vec4(vertex.pos, 1.0) * rotationY(float(npcInfo.rotation) * RS_TO_RADIANS) + vec4(npcInfo.tilePos.x, 0, npcInfo.tilePos.y, 0.0);
 
-    localPos.y -= getHeightInterp(npcInfo.tilePos, npcInfo.plane) / 128.0;
+    localPos.y -= getHeightInterp(npcInfo.tilePos, npcInfo.plane);
+
+    localPos /= vec4(vec3(128.0), 1.0);
 
     localPos += vec4(vec3(u_mapPos.x, 0, u_mapPos.y) * vec3(64), 0);
 

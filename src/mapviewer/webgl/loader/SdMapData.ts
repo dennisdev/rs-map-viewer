@@ -37,7 +37,7 @@ export type SdMapData = {
     modelTextureDataInteractLod: Uint16Array;
     modelTextureDataInteractLodAlpha: Uint16Array;
 
-    heightMapTextureData: Float32Array;
+    heightMapTextureData: Int16Array;
 
     drawRanges: DrawRange[];
     drawRangesAlpha: DrawRange[];

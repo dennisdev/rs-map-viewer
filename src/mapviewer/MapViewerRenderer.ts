@@ -197,5 +197,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
 
         this.mapViewer.inputManager.onFrameEnd();
         this.mapViewer.camera.onFrameEnd();
+
+        // this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(3)}`;
     }
 }

@@ -6,6 +6,8 @@ export class RenderStats {
 
     lastFrameTime: DOMHighResTimeStamp | undefined;
 
+    frameTimeJs: number = 0;
+
     getDeltaTime(time: DOMHighResTimeStamp): number {
         return time - (this.lastFrameTime ?? time);
     }
@@ -20,5 +22,8 @@ export class RenderStats {
 
     onFrameEnd() {
         this.frameCount++;
+        if (this.lastFrameTime !== undefined) {
+            this.frameTimeJs = performance.now() - this.lastFrameTime;
+        }
     }
 }
