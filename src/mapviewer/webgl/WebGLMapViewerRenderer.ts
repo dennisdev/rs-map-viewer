@@ -664,6 +664,8 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
     }
 
     override render(time: number, deltaTime: number, resized: boolean): void {
+        const frameStart = performance.now();
+
         const frameCount = this.stats.frameCount;
 
         const timeSec = time / 1000;
@@ -717,7 +719,9 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
         const renderDistance = this.mapViewer.renderDistance;
 
+        const mapManagerStart = performance.now();
         this.mapManager.update(camera, frameCount, renderDistance, this.mapViewer.unloadDistance);
+        const mapManagerTime = performance.now() - mapManagerStart;
 
         this.cameraPosUni[0] = camera.getPosX();
         this.cameraPosUni[1] = camera.getPosZ();
@@ -738,11 +742,13 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
         const currInteractions = this.interactions[frameCount % this.interactions.length];
 
+        const interactionsStart = performance.now();
         if (!inputManager.isPointerLock()) {
             this.checkInteractions(currInteractions);
         } else if (this.hoveredMapIds.size > 0) {
             this.hoveredMapIds.clear();
         }
+        const interactionsTime = performance.now() - interactionsStart;
 
         if (this.cullBackFace) {
             this.app.enable(PicoGL.CULL_FACE);
@@ -759,18 +765,28 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
         this.app.clear();
         this.gl.clearBufferfv(PicoGL.COLOR, 0, this.skyColor);
 
+        const tickStart = performance.now();
         this.tickPass(timeSec, ticksElapsed, clientTicksElapsed);
+        const tickTime = performance.now() - tickStart;
 
         const npcDataTextureIndex = this.updateNpcDataTexture();
         const npcDataTexture = this.npcDataTextureBuffer[npcDataTextureIndex];
 
         this.app.disable(PicoGL.BLEND);
+        const opaquePassStart = performance.now();
         this.renderOpaquePass();
+        const opaquePassTime = performance.now() - opaquePassStart;
+        const opaqueNpcPassStart = performance.now();
         this.renderOpaqueNpcPass(npcDataTextureIndex, npcDataTexture);
+        const opaqueNpcPassTime = performance.now() - opaqueNpcPassStart;
 
         this.app.enable(PicoGL.BLEND);
+        const transparentPassStart = performance.now();
         this.renderTransparentPass();
+        const transparentPassTime = performance.now() - transparentPassStart;
+        const transparentNpcPassStart = performance.now();
         this.renderTransparentNpcPass(npcDataTextureIndex, npcDataTexture);
+        const transparentNpcPassTime = performance.now() - transparentNpcPassStart;
 
         // Can't sample from renderbuffer so blit to a texture for sampling.
         this.app.readFramebuffer(this.framebuffer);
@@ -834,6 +850,38 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 mapData,
                 timeSec,
             );
+        }
+
+        const frameTime = performance.now() - frameStart;
+
+        if (this.mapViewer.inputManager.isKeyDown("KeyH")) {
+            this.mapViewer.debugText = `MapManager: ${mapManagerTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyJ")) {
+            this.mapViewer.debugText = `Interactions: ${interactionsTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyK")) {
+            this.mapViewer.debugText = `Tick: ${tickTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyL")) {
+            this.mapViewer.debugText = `Opaque Pass: ${opaquePassTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyB")) {
+            this.mapViewer.debugText = `Opaque Npc Pass: ${opaqueNpcPassTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyN")) {
+            this.mapViewer.debugText = `Transparent Pass: ${transparentPassTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyM")) {
+            this.mapViewer.debugText = `Transparent Npc Pass: ${transparentNpcPassTime.toFixed(
+                2,
+            )}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyV")) {
+            this.mapViewer.debugText = `Frame Time: ${frameTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyU")) {
+            this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(2)}ms`;
         }
     }
 
