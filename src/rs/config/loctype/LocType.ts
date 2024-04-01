@@ -512,9 +512,15 @@ export class LocType extends Type {
             transformIndex = varManager.getVarp(this.transformVarp);
         }
 
-        let transformId = this.transforms[this.transforms.length - 1];
-        if (transformIndex >= 0 && transformIndex < this.transforms.length - 1) {
+        let transformId = -1;
+        if (
+            transformIndex >= 0 &&
+            transformIndex < this.transforms.length - 1 &&
+            this.transforms[transformIndex] !== -1
+        ) {
             transformId = this.transforms[transformIndex];
+        } else {
+            transformId = this.transforms[this.transforms.length - 1];
         }
 
         if (transformId === -1) {
