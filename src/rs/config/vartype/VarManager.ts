@@ -6,11 +6,19 @@ import { VarBitTypeLoader } from "./bit/VarBitTypeLoader";
 export class VarManager {
     varbitLoader: VarBitTypeLoader;
 
-    varps: Int32Array;
+    values: Int32Array;
 
     constructor(varbitLoader: VarBitTypeLoader) {
         this.varbitLoader = varbitLoader;
-        this.varps = new Int32Array(8000);
+        this.values = new Int32Array(8000);
+    }
+
+    clear(): void {
+        this.values.fill(0);
+    }
+
+    set(values: Int32Array): void {
+        this.values.set(values);
     }
 
     setQuestsCompleted(questTypeLoader: QuestTypeLoader): void {
@@ -33,25 +41,38 @@ export class VarManager {
     }
 
     getVarp(id: number): number {
-        return this.varps[id];
+        return this.values[id];
     }
 
-    setVarp(id: number, value: number): void {
-        this.varps[id] = value;
+    setVarp(id: number, value: number): boolean {
+        if (this.getVarp(id) === value || id >= this.values.length) {
+            return false;
+        }
+        this.values[id] = value;
+        return true;
     }
 
     getVarbit(id: number): number {
         const { baseVar, startBit, endBit } = this.varbitLoader.load(id);
         const mask = BIT_MASKS[endBit - startBit];
-        const value = (this.varps[baseVar] >> startBit) & mask;
+        const value = (this.values[baseVar] >> startBit) & mask;
         return value;
     }
 
-    setVarbit(id: number, value: number): void {
+    setVarbit(id: number, value: number): boolean {
         const { baseVar, startBit, endBit } = this.varbitLoader.load(id);
-        const mask = BIT_MASKS[endBit - startBit];
-        value = clamp(value, 0, mask);
-        this.varps[baseVar] =
-            (this.varps[baseVar] & ~(mask << startBit)) | ((value & mask) << startBit);
+        if (baseVar >= this.values.length) {
+            return false;
+        }
+        let mask = BIT_MASKS[endBit - startBit];
+        if (value < 0 || value > mask) {
+            value = 0;
+        }
+        if (this.getVarbit(id) === value) {
+            return false;
+        }
+        mask <<= startBit;
+        this.values[baseVar] = ((value << startBit) & mask) | (this.values[baseVar] & ~mask);
+        return true;
     }
 }

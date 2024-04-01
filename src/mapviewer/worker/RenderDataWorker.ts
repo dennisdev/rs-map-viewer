@@ -278,6 +278,13 @@ const worker = {
             minimapBlob,
         };
     },
+    async setVars(values: Int32Array): Promise<void> {
+        const workerState = await workerStatePromise;
+        if (!workerState) {
+            throw new Error("Worker not initialized");
+        }
+        workerState.varManager.set(values);
+    },
     async loadCachedMapImages(): Promise<Map<number, string>> {
         const workerState = await workerStatePromise;
         if (!workerState) {

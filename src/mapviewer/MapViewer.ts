@@ -276,6 +276,10 @@ export class MapViewer {
         this.closeMenu();
     };
 
+    updateVars(): void {
+        this.workerPool.setVars(this.varManager.values);
+    }
+
     static getCachedMapImageUrl(mapX: number, mapY: number): string {
         return CACHED_MAP_IMAGE_PREFIX + `${mapX}_${mapY}.png`;
     }

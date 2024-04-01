@@ -27,6 +27,11 @@ interface MapViewerControlsProps {
     setDownloadProgress: (progress: DownloadProgress | undefined) => void;
 }
 
+enum VarType {
+    VARP = 0,
+    VARBIT = 1,
+}
+
 export const MapViewerControls = memo(
     ({
         renderer,
@@ -50,6 +55,10 @@ export const MapViewerControls = memo(
         const directionControls = isTouchDevice
             ? "Right joystick."
             : "Arrow Keys or Click and Drag. Double click for pointerlock.";
+
+        const [varType, setVarType] = useState<VarType>(VarType.VARBIT);
+        const [varId, setVarId] = useState(0);
+        const [varValue, setVarValue] = useState(0);
 
         const controlsSchema: Schema = {
             Position: { value: positionControls, editable: false },
@@ -333,6 +342,47 @@ export const MapViewerControls = memo(
                     },
                     { collapsed: true },
                 ),
+                Vars: folder(
+                    {
+                        Type: {
+                            value: varType,
+                            options: {
+                                Varplayer: VarType.VARP,
+                                Varbit: VarType.VARBIT,
+                            },
+                            onChange: setVarType,
+                        },
+                        Id: {
+                            value: varId,
+                            step: 1,
+                            onChange: setVarId,
+                        },
+                        Value: {
+                            value: varValue,
+                            step: 1,
+                            onChange: setVarValue,
+                        },
+                        Set: button(() => {
+                            const varManager = mapViewer.varManager;
+                            let updated = false;
+                            if (varType === VarType.VARP) {
+                                updated = varManager.setVarp(varId, varValue);
+                            } else {
+                                updated = varManager.setVarbit(varId, varValue);
+                            }
+                            if (updated) {
+                                mapViewer.updateVars();
+                                mapViewer.renderer.mapManager.clearMaps();
+                            }
+                        }),
+                        Clear: button(() => {
+                            mapViewer.varManager.clear();
+                            mapViewer.updateVars();
+                            mapViewer.renderer.mapManager.clearMaps();
+                        }),
+                    },
+                    { collapsed: true },
+                ),
                 Menu: folder(
                     {
                         Tooltips: {
@@ -400,6 +450,9 @@ export const MapViewerControls = memo(
             [
                 renderer,
                 projectionType,
+                varType,
+                varId,
+                varValue,
                 pointsControls,
                 isCameraRunning,
                 isExportingSprites,

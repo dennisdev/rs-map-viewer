@@ -75,6 +75,10 @@ export class RenderDataWorkerPool {
         return this.pool.queue((w) => w.loadMapImage(mapX, mapY, level, drawMapFunctions));
     }
 
+    setVars(vars: Int32Array): Promise<void> {
+        return this.runAll((w) => w.setVars(vars));
+    }
+
     loadCachedMapImages(): QueuedTask<RenderDataWorkerThread, Map<number, string>> {
         return this.pool.queue((w) => w.loadCachedMapImages());
     }
