@@ -227,7 +227,7 @@ export const MapViewerControls = memo(
             {
                 Links: folder(
                     {
-                        Github: button(() => {
+                        GitHub: button(() => {
                             window.open("https://github.com/dennisdev/rs-map-viewer", "_blank");
                         }),
                     },
