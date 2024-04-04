@@ -82,7 +82,7 @@ mat4 rotationY( in float angle ) {
 
 void main() {
     Vertex vertex = decodeVertex(a_vertex.x, a_vertex.y, a_vertex.z, u_brightness);
-    
+
     v_color = vertex.color;
 
     Material material = getMaterial(vertex.textureId);
@@ -129,7 +129,7 @@ void main() {
         interactType,
         1.0
     );
-    
+
     gl_Position = u_viewMatrix * localPos;
     gl_Position.z += float(npcInfo.plane) * 0.005 + (float(vertex.priority) + 20.0) * 0.0007;
     gl_Position = u_projectionMatrix * gl_Position;
