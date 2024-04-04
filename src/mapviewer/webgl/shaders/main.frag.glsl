@@ -20,7 +20,7 @@ layout(location = 1) out vec4 interactId;
 
 void main() {
     vec4 textureColor = texture(u_textures, vec3(v_texCoord, v_texId)).bgra;
-    fragColor = pow(textureColor, vec4(vec3(u_brightness), 1.0)) * 
+    fragColor = pow(textureColor, vec4(vec3(u_brightness), 1.0)) *
         vec4(round(v_color.rgb * u_colorBanding) / u_colorBanding, v_color.a);
 #ifdef DISCARD_ALPHA
     if ((v_texId == 0u && fragColor.a < 0.01) || (textureColor.a < v_alphaCutOff)) {

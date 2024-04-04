@@ -99,7 +99,7 @@ void main() {
 
     vec3 localPos = vertex.pos + vec3(modelInfo.tilePos.x, 0, modelInfo.tilePos.y);
 
-    vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_CENTER_TILE)) 
+    vec2 interpPos = modelInfo.tilePos * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_CENTER_TILE))
             + localPos.xz * vec2(when_eq(modelInfo.contourGround, CONTOUR_GROUND_VERTEX));
     localPos.y -= float(modelInfo.height);
     localPos.y -= getHeightInterp(interpPos, modelInfo.plane) * when_neq(modelInfo.contourGround, CONTOUR_GROUND_NONE);
@@ -131,7 +131,7 @@ void main() {
         interactType,
         1.0
     );
-    
+
     gl_Position = u_viewMatrix * vec4(localPos, 1.0);
     // gl_Position.z += (float(vertex.priority)) * 0.0007;
     gl_Position.z += float(modelInfo.plane) * 0.005 + (float(vertex.priority) + float(modelInfo.priority)) * 0.0007;
