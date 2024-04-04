@@ -49,6 +49,31 @@ interface ColorRgb {
     b: number;
 }
 
+enum TextureFilterMode {
+    DISABLED,
+    BILINEAR,
+    TRILINEAR,
+    ANISOTROPIC_2X,
+    ANISOTROPIC_4X,
+    ANISOTROPIC_8X,
+    ANISOTROPIC_16X,
+}
+
+function getMaxAnisotropy(mode: TextureFilterMode): number {
+    switch (mode) {
+        case TextureFilterMode.ANISOTROPIC_2X:
+            return 2;
+        case TextureFilterMode.ANISOTROPIC_4X:
+            return 4;
+        case TextureFilterMode.ANISOTROPIC_8X:
+            return 8;
+        case TextureFilterMode.ANISOTROPIC_16X:
+            return 16;
+        default:
+            return 1;
+    }
+}
+
 export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
     type: MapViewerRendererType = WEBGL;
 
@@ -91,6 +116,8 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
     interactFramebuffer?: Framebuffer;
 
     // Textures
+    textureFilterMode: TextureFilterMode = TextureFilterMode.ANISOTROPIC_16X;
+
     textureArray?: Texture;
     textureMaterials?: Texture;
 
@@ -358,13 +385,66 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
             TEXTURE_SIZE,
             TEXTURE_SIZE,
             textureCount + 1,
-            {
-                // wrapS: PicoGL.CLAMP_TO_EDGE,
-                maxAnisotropy: PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,
-            },
+            {},
         );
 
+        this.updateTextureFiltering();
+
         console.timeEnd("load textures");
+    }
+
+    updateTextureFiltering(): void {
+        if (!this.textureArray) {
+            throw new Error("Texture array is not initialized");
+        }
+
+        this.textureArray.bind(0);
+
+        if (this.textureFilterMode === TextureFilterMode.DISABLED) {
+            this.gl.texParameteri(
+                PicoGL.TEXTURE_2D_ARRAY,
+                PicoGL.TEXTURE_MIN_FILTER,
+                PicoGL.NEAREST,
+            );
+            this.gl.texParameteri(
+                PicoGL.TEXTURE_2D_ARRAY,
+                PicoGL.TEXTURE_MAG_FILTER,
+                PicoGL.NEAREST,
+            );
+        } else if (this.textureFilterMode === TextureFilterMode.BILINEAR) {
+            this.gl.texParameteri(
+                PicoGL.TEXTURE_2D_ARRAY,
+                PicoGL.TEXTURE_MIN_FILTER,
+                PicoGL.LINEAR_MIPMAP_NEAREST,
+            );
+            this.gl.texParameteri(
+                PicoGL.TEXTURE_2D_ARRAY,
+                PicoGL.TEXTURE_MAG_FILTER,
+                PicoGL.LINEAR,
+            );
+        } else {
+            this.gl.texParameteri(
+                PicoGL.TEXTURE_2D_ARRAY,
+                PicoGL.TEXTURE_MIN_FILTER,
+                PicoGL.LINEAR_MIPMAP_LINEAR,
+            );
+            this.gl.texParameteri(
+                PicoGL.TEXTURE_2D_ARRAY,
+                PicoGL.TEXTURE_MAG_FILTER,
+                PicoGL.LINEAR,
+            );
+        }
+
+        const maxAnisotropy = Math.min(
+            getMaxAnisotropy(this.textureFilterMode),
+            PicoGL.WEBGL_INFO.MAX_TEXTURE_ANISOTROPY,
+        );
+
+        this.gl.texParameteri(
+            PicoGL.TEXTURE_2D_ARRAY,
+            PicoGL.TEXTURE_MAX_ANISOTROPY_EXT,
+            maxAnisotropy,
+        );
     }
 
     updateTextureArray(textures: Map<number, Int32Array>): void {
@@ -474,6 +554,25 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 step: 1,
                 onChange: (v: number) => {
                     this.colorBanding = 255 - v * 2;
+                },
+            },
+            "Texture Filtering": {
+                value: this.textureFilterMode,
+                options: {
+                    Disabled: TextureFilterMode.DISABLED,
+                    Bilinear: TextureFilterMode.BILINEAR,
+                    Trilinear: TextureFilterMode.TRILINEAR,
+                    "Anisotropic 2x": TextureFilterMode.ANISOTROPIC_2X,
+                    "Anisotropic 4x": TextureFilterMode.ANISOTROPIC_4X,
+                    "Anisotropic 8x": TextureFilterMode.ANISOTROPIC_8X,
+                    "Anisotropic 16x": TextureFilterMode.ANISOTROPIC_16X,
+                },
+                onChange: (v: TextureFilterMode) => {
+                    if (v === this.textureFilterMode) {
+                        return;
+                    }
+                    this.textureFilterMode = v;
+                    this.updateTextureFiltering();
                 },
             },
             "Smooth Terrain": {
