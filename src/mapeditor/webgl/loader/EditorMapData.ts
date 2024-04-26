@@ -1,4 +1,4 @@
-import { DrawRange } from "../../../renderer/webgl/DrawRange";
+import { DrawRange } from "../../../renderer/DrawRange";
 
 export interface SceneData {
     levels: number;

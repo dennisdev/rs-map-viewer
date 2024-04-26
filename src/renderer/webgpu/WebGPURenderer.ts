@@ -1,14 +1,14 @@
 import { isWebGPUSupported } from "../../util/DeviceUtil";
 import { MapViewerRenderer } from "../../mapviewer/MapViewerRenderer";
-import { MapViewerRendererType, WEBGPU } from "../../mapviewer/MapViewerRenderers";
+import { RendererType, WEBGPU } from "../Renderers";
 import fullscreenTexturedQuadShader from "./shaders/fullscreenTexturedQuad.wgsl?source";
 import redFragShader from "./shaders/red.frag.wgsl?source";
 import triangleVertShader from "./shaders/triangle.vert.wgsl?source";
 
 const ENABLED = false;
 
-export class WebGPUMapViewerRenderer extends MapViewerRenderer {
-    type: MapViewerRendererType = WEBGPU;
+export class WebGPURenderer extends MapViewerRenderer {
+    type: RendererType = WEBGPU;
 
     adapter!: GPUAdapter;
     device!: GPUDevice;

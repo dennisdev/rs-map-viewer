@@ -1,6 +1,6 @@
 import { Transfer, TransferDescriptor } from "threads";
 
-import { DrawRange, newDrawRange } from "../../../renderer/webgl/DrawRange";
+import { DrawRange, newDrawRange } from "../../../renderer/DrawRange";
 import {
     Scene,
     applyHeightMapTextureData,

@@ -9,7 +9,7 @@ import PicoGL, {
 } from "picogl";
 
 import { MapSquare } from "../../renderer/MapManager";
-import { DrawRange } from "../../renderer/webgl/DrawRange";
+import { DrawRange } from "../../renderer/DrawRange";
 import { Scene } from "../../rs/scene/Scene";
 import { EditorMapData } from "./loader/EditorMapData";
 

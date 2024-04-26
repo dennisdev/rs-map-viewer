@@ -1,13 +1,13 @@
-import { LocModelType } from "../../../rs/config/loctype/LocModelType";
-import { LocType } from "../../../rs/config/loctype/LocType";
-import { LocTypeLoader } from "../../../rs/config/loctype/LocTypeLoader";
-import { Model } from "../../../rs/model/Model";
-import { Scene } from "../../../rs/scene/Scene";
-import { SceneLoc } from "../../../rs/scene/SceneLoc";
-import { getIdFromTag } from "../../../rs/scene/entity/EntityTag";
-import { LocEntity } from "../../../rs/scene/entity/LocEntity";
-import { INVALID_HSL_COLOR } from "../../../rs/util/ColorUtil";
-import { InteractType } from "../../webgl/InteractType";
+import { LocModelType } from "../../rs/config/loctype/LocModelType";
+import { LocType } from "../../rs/config/loctype/LocType";
+import { LocTypeLoader } from "../../rs/config/loctype/LocTypeLoader";
+import { Model } from "../../rs/model/Model";
+import { Scene } from "../../rs/scene/Scene";
+import { SceneLoc } from "../../rs/scene/SceneLoc";
+import { getIdFromTag } from "../../rs/scene/entity/EntityTag";
+import { LocEntity } from "../../rs/scene/entity/LocEntity";
+import { INVALID_HSL_COLOR } from "../../rs/util/ColorUtil";
+import { InteractType } from "../InteractType";
 import { ContourGroundType, SceneModel } from "../buffer/SceneBuffer";
 import { SceneLocEntity } from "./SceneLocEntity";
 

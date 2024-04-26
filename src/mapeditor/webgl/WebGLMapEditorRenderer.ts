@@ -11,8 +11,8 @@ import PicoGL, {
     VertexBuffer,
 } from "picogl";
 
-import { newDrawRange } from "../../renderer/webgl/DrawRange";
-import { createTextureArray } from "../../renderer/picogl/PicoTexture";
+import { newDrawRange } from "../../renderer/DrawRange";
+import { createTextureArray } from "../../renderer/webgl/PicoTexture";
 import { getMapSquareId } from "../../rs/map/MapFileIndex";
 import { Scene, loadHeightMapTextureData } from "../../rs/scene/Scene";
 import { clamp } from "../../util/MathUtil";

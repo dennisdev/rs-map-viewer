@@ -13,11 +13,11 @@ import { CameraPosition, ProjectionType } from "../renderer/Camera";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRenderer } from "./MapViewerRenderer";
 import {
-    MapViewerRendererType,
+    RendererType,
     createRenderer,
     getAvailableRenderers,
     getRendererName,
-} from "./MapViewerRenderers";
+} from "../renderer/Renderers";
 import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
 
 interface MapViewerControlsProps {
@@ -150,7 +150,7 @@ export const MapViewerControls = memo(
             };
         }, [mapViewer, cameraPoints, animationDuration, isCameraRunning]);
 
-        const rendererOptions: Record<string, MapViewerRendererType> = {};
+        const rendererOptions: Record<string, RendererType> = {};
         for (let v of getAvailableRenderers()) {
             rendererOptions[getRendererName(v)] = v;
         }
@@ -247,7 +247,7 @@ export const MapViewerControls = memo(
                         Renderer: {
                             value: renderer.type,
                             options: rendererOptions,
-                            onChange: (v: MapViewerRendererType) => {
+                            onChange: (v: RendererType) => {
                                 if (renderer.type !== v) {
                                     const renderer = createRenderer(v, mapViewer);
                                     mapViewer.setRenderer(renderer);
