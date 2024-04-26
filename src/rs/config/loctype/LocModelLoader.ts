@@ -1,4 +1,3 @@
-import { getModelFaces, isModelFaceTransparent } from "../../../mapviewer/webgl/buffer/SceneBuffer";
 import { Model } from "../../model/Model";
 import { ModelData } from "../../model/ModelData";
 import { ModelLoader } from "../../model/ModelLoader";

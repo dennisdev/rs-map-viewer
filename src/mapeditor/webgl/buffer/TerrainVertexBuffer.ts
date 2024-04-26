@@ -1,4 +1,4 @@
-import { DataBuffer } from "../../../mapviewer/buffer/DataBuffer";
+import { DataBuffer } from "../../../renderer/buffer/DataBuffer";
 import { Scene } from "../../../rs/scene/Scene";
 
 export const TILE_MAX_FACES = 6;

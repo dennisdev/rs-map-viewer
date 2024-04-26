@@ -9,7 +9,7 @@ import {
     loadEditorMapTerrainData,
 } from "../mapeditor/webgl/loader/EditorMapDataLoader";
 import { EditorMapTerrainData } from "../mapeditor/webgl/loader/EditorMapTerrainData";
-import { LoadedCache } from "../mapviewer/Caches";
+import { LoadedCache } from "../util/Caches";
 import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
 import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
 import { CacheSystem } from "../rs/cache/CacheSystem";

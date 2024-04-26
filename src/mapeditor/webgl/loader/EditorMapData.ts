@@ -1,4 +1,4 @@
-import { DrawRange } from "../../../mapviewer/webgl/DrawRange";
+import { DrawRange } from "../../../renderer/webgl/DrawRange";
 
 export interface SceneData {
     levels: number;

@@ -8,8 +8,8 @@ import PicoGL, {
     VertexBuffer,
 } from "picogl";
 
-import { MapSquare } from "../../mapviewer/MapManager";
-import { DrawRange } from "../../mapviewer/webgl/DrawRange";
+import { MapSquare } from "../../renderer/MapManager";
+import { DrawRange } from "../../renderer/webgl/DrawRange";
 import { Scene } from "../../rs/scene/Scene";
 import { EditorMapData } from "./loader/EditorMapData";
 

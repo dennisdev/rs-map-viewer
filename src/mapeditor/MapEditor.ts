@@ -1,9 +1,9 @@
 import { vec3 } from "gl-matrix";
 import { URLSearchParamsInit } from "react-router-dom";
 
-import { CacheList, LoadedCache } from "../mapviewer/Caches";
-import { Camera, ProjectionType } from "../mapviewer/Camera";
-import { InputManager } from "../mapviewer/InputManager";
+import { CacheList, LoadedCache } from "../util/Caches";
+import { Camera, ProjectionType } from "../renderer/Camera";
+import { InputManager } from "../util/InputManager";
 import { CacheSystem } from "../rs/cache/CacheSystem";
 import { CacheLoaderFactory, getCacheLoaderFactory } from "../rs/cache/loader/CacheLoaderFactory";
 import { BasTypeLoader } from "../rs/config/bastype/BasTypeLoader";

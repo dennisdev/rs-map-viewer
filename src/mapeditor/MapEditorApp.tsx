@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
-import { fetchCacheList, loadCacheFiles } from "../mapviewer/Caches";
+import { fetchCacheList, loadCacheFiles } from "../util/Caches";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { formatBytes } from "../util/BytesUtil";
 import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";

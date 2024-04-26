@@ -16,13 +16,13 @@ import {
 } from "picogl";
 
 import { OsrsMenuEntry } from "../../components/rs/menu/OsrsMenu";
-import { createTextureArray } from "../../picogl/PicoTexture";
+import { createTextureArray } from "../picogl/PicoTexture";
 import { MenuTargetType } from "../../rs/MenuEntry";
 import { Scene } from "../../rs/scene/Scene";
 import { isTouchDevice, isWebGL2Supported } from "../../util/DeviceUtil";
-import { MapViewer } from "../MapViewer";
-import { MapViewerRenderer } from "../MapViewerRenderer";
-import { MapViewerRendererType, WEBGL } from "../MapViewerRenderers";
+import { MapViewer } from "../../mapviewer/MapViewer";
+import { MapViewerRenderer } from "../../mapviewer/MapViewerRenderer";
+import { MapViewerRendererType, WEBGL } from "../../mapviewer/MapViewerRenderers";
 import { DrawRange, NULL_DRAW_RANGE } from "./DrawRange";
 import { InteractType } from "./InteractType";
 import { Interactions } from "./Interactions";

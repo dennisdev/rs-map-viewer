@@ -1,6 +1,6 @@
 import { isWebGPUSupported } from "../../util/DeviceUtil";
-import { MapViewerRenderer } from "../MapViewerRenderer";
-import { MapViewerRendererType, WEBGPU } from "../MapViewerRenderers";
+import { MapViewerRenderer } from "../../mapviewer/MapViewerRenderer";
+import { MapViewerRendererType, WEBGPU } from "../../mapviewer/MapViewerRenderers";
 import fullscreenTexturedQuadShader from "./shaders/fullscreenTexturedQuad.wgsl?source";
 import redFragShader from "./shaders/red.frag.wgsl?source";
 import triangleVertShader from "./shaders/triangle.vert.wgsl?source";

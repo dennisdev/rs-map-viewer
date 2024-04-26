@@ -1,4 +1,4 @@
-import { ProgramSource, prependDefines } from "../../../mapviewer/webgl/shaders/ShaderUtil";
+import { ProgramSource, prependDefines } from "../../../renderer/webgl/shaders/ShaderUtil";
 import gridVertShader from "./grid.vert.glsl";
 import highlightTileVertShader from "./highlight-tile.vert.glsl";
 import simpleFragShader from "./simple.frag.glsl";

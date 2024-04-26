@@ -1,7 +1,7 @@
 import { Schema } from "leva/dist/declarations/src/types";
 
 import { Renderer } from "../components/renderer/Renderer";
-import { MapManager, MapSquare } from "../mapviewer/MapManager";
+import { MapManager, MapSquare } from "../renderer/MapManager";
 import { clamp } from "../util/MathUtil";
 import { MapEditor } from "./MapEditor";
 

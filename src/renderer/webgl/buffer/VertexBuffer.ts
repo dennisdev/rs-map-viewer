@@ -1,6 +1,6 @@
 import { FloatUtil } from "../../../util/FloatUtil";
 import { clamp } from "../../../util/MathUtil";
-import { DataBuffer } from "../../buffer/DataBuffer";
+import { DataBuffer } from "../../../renderer/buffer/DataBuffer";
 
 export class VertexBuffer extends DataBuffer {
     static readonly STRIDE = 12;

@@ -8,8 +8,8 @@ import { useNavigate } from "react-router-dom";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { isTouchDevice } from "../util/DeviceUtil";
 import { lerp, slerp } from "../util/MathUtil";
-import { loadCacheFiles } from "./Caches";
-import { CameraPosition, ProjectionType } from "./Camera";
+import { loadCacheFiles } from "../util/Caches";
+import { CameraPosition, ProjectionType } from "../renderer/Camera";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRenderer } from "./MapViewerRenderer";
 import {
