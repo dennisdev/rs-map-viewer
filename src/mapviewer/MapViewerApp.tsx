@@ -13,8 +13,8 @@ import { fetchCacheList, loadCacheFiles } from "../util/Caches";
 import { MapViewer } from "./MapViewer";
 import { MapViewerContainer } from "./MapViewerContainer";
 import { getAvailableRenderers } from "./MapViewerRenderers";
-import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
-import { fetchObjSpawns } from "./data/obj/ObjSpawn";
+import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
+import { fetchObjSpawns } from "../data/obj/ObjSpawn";
 
 registerSerializer(renderDataLoaderSerializer);
 

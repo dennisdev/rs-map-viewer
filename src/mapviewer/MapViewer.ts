@@ -23,8 +23,8 @@ import { InputManager } from "../util/InputManager";
 import { MapManager } from "../renderer/MapManager";
 import { MapViewerRenderer } from "./MapViewerRenderer";
 import { MapViewerRendererType, createRenderer } from "./MapViewerRenderers";
-import { NpcSpawn } from "./data/npc/NpcSpawn";
-import { ObjSpawn } from "./data/obj/ObjSpawn";
+import { NpcSpawn } from "../data/npc/NpcSpawn";
+import { ObjSpawn } from "../data/obj/ObjSpawn";
 
 const DEFAULT_RENDER_DISTANCE = isWallpaperEngine ? 512 : 128;
 
