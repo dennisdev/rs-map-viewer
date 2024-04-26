@@ -76,7 +76,7 @@ export interface WorldMapProps {
 export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     const { getPosition, loadMapImageUrl } = props;
 
-    const [ref, dimensions] = useElementSize();
+    const [ref, { width = 0, height = 0 }] = useElementSize();
     const dragRef = useRef<HTMLDivElement>(null);
 
     const [isDragging, setIsDragging] = useState(false);
@@ -94,8 +94,8 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     const cameraX = pos.x | 0;
     const cameraY = pos.y | 0;
 
-    const halfWidth = (dimensions.width / 2) | 0;
-    const halfHeight = (dimensions.height / 2) | 0;
+    const halfWidth = (width / 2) | 0;
+    const halfHeight = (height / 2) | 0;
 
     const animate = (time: DOMHighResTimeStamp) => {
         const halfTileSize = tileSize / 2;
@@ -110,8 +110,8 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
         const renderStartX = -Math.ceil(x / imageSize) - 1;
         const renderStartY = -Math.ceil(y / imageSize) - 1;
 
-        const renderEndX = Math.ceil((dimensions.width - x) / imageSize) + 1;
-        const renderEndY = Math.ceil((dimensions.height - y) / imageSize) + 1;
+        const renderEndX = Math.ceil((width - x) / imageSize) + 1;
+        const renderEndY = Math.ceil((height - y) / imageSize) + 1;
 
         const images: JSX.Element[] = [];
 
@@ -147,7 +147,7 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
     useLayoutEffect(() => {
         requestRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(requestRef.current!);
-    }, [dimensions, pos, tileSize]);
+    }, [width, height, pos, tileSize]);
 
     const onDoubleClick = (event: MouseEvent) => {
         setIsDragging(false);
