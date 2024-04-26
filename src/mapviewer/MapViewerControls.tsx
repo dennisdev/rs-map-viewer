@@ -16,7 +16,7 @@ import {
     getAvailableRenderers,
     getRendererName,
 } from "./MapViewerRenderers";
-import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
+import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
 import FileSaver from "file-saver";
 
 interface MapViewerControlsProps {

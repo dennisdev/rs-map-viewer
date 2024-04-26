@@ -4,8 +4,8 @@ import { WorkerDescriptor } from "threads/dist/master/pool-types";
 import { ObservablePromise } from "threads/dist/observable-promise";
 
 import { LoadedCache } from "../util/Caches";
-import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
-import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
+import { NpcSpawn } from "../data/npc/NpcSpawn";
+import { ObjSpawn } from "../data/obj/ObjSpawn";
 import { MinimapData } from "./MinimapData";
 import { RenderDataLoader } from "./RenderDataLoader";
 import { RenderDataWorker } from "./RenderDataWorker";

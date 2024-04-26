@@ -10,9 +10,9 @@ import { isIos, isWallpaperEngine } from "../util/DeviceUtil";
 import { fetchCacheList, loadCacheFiles } from "../util/Caches";
 import { MapViewer } from "./MapViewer";
 import { MapViewerContainer } from "./MapViewerContainer";
-import { WEBGL, getAvailableRenderers } from "./MapViewerRenderers";
-import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
-import { fetchObjSpawns } from "./data/obj/ObjSpawn";
+import { getAvailableRenderers } from "./MapViewerRenderers";
+import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
+import { fetchObjSpawns } from "../data/obj/ObjSpawn";
 import { renderDataLoaderSerializer } from "../worker/RenderDataLoader";
 import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";
 
