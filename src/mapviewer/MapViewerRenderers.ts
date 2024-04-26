@@ -1,7 +1,7 @@
 import { MapViewer } from "./MapViewer";
 import { MapViewerRenderer } from "./MapViewerRenderer";
-import { WebGLMapViewerRenderer } from "./webgl/WebGLMapViewerRenderer";
-import { WebGPUMapViewerRenderer } from "./webgpu/WebGPUMapViewerRenderer";
+import { WebGLMapViewerRenderer } from "../renderer/webgl/WebGLMapViewerRenderer";
+import { WebGPUMapViewerRenderer } from "../renderer/webgpu/WebGPUMapViewerRenderer";
 
 export type MapViewerRendererType = "webgl" | "webgpu";
 export const WEBGL: MapViewerRendererType = "webgl";

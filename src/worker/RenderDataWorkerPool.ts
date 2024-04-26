@@ -3,7 +3,7 @@ import { QueuedTask } from "threads/dist/master/pool";
 import { WorkerDescriptor } from "threads/dist/master/pool-types";
 import { ObservablePromise } from "threads/dist/observable-promise";
 
-import { LoadedCache } from "../mapviewer/Caches";
+import { LoadedCache } from "../util/Caches";
 import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
 import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
 import { MinimapData } from "./MinimapData";

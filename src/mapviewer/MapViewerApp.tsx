@@ -7,7 +7,7 @@ import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { formatBytes } from "../util/BytesUtil";
 import { isIos, isWallpaperEngine } from "../util/DeviceUtil";
-import { fetchCacheList, loadCacheFiles } from "./Caches";
+import { fetchCacheList, loadCacheFiles } from "../util/Caches";
 import { MapViewer } from "./MapViewer";
 import { MapViewerContainer } from "./MapViewerContainer";
 import { WEBGL, getAvailableRenderers } from "./MapViewerRenderers";

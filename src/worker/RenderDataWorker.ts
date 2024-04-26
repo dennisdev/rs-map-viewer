@@ -31,7 +31,7 @@ import { IndexedSprite } from "../rs/sprite/IndexedSprite";
 import { SpriteLoader } from "../rs/sprite/SpriteLoader";
 import { TextureLoader } from "../rs/texture/TextureLoader";
 import { Hasher } from "../util/Hasher";
-import { LoadedCache } from "../mapviewer/Caches";
+import { LoadedCache } from "../util/Caches";
 import { NpcSpawn } from "../mapviewer/data/npc/NpcSpawn";
 import { ObjSpawn } from "../mapviewer/data/obj/ObjSpawn";
 import { MinimapData, loadMinimapBlob } from "./MinimapData";

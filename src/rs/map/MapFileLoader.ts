@@ -1,4 +1,4 @@
-import { XteaMap } from "../../mapviewer/Caches";
+import { XteaMap } from "../../util/Caches";
 import { CacheIndex } from "../cache/CacheIndex";
 import { Bzip2 } from "../compression/Bzip2";
 import { ByteBuffer } from "../io/ByteBuffer";

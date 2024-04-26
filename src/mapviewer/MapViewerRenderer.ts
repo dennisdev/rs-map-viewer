@@ -3,7 +3,7 @@ import { Schema } from "leva/dist/declarations/src/types";
 import { Renderer } from "../components/renderer/Renderer";
 import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
-import { MapManager, MapSquare } from "./MapManager";
+import { MapManager, MapSquare } from "../renderer/MapManager";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRendererType } from "./MapViewerRenderers";
 
