@@ -10,7 +10,7 @@ import { isIos, isWallpaperEngine } from "../util/DeviceUtil";
 import { fetchCacheList, loadCacheFiles } from "../util/Caches";
 import { MapViewer } from "./MapViewer";
 import { MapViewerContainer } from "./MapViewerContainer";
-import { getAvailableRenderers } from "./MapViewerRenderers";
+import { getAvailableRenderers } from "../renderer/Renderers";
 import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
 import { fetchObjSpawns } from "../data/obj/ObjSpawn";
 import { renderDataLoaderSerializer } from "../worker/RenderDataLoader";

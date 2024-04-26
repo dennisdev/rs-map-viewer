@@ -21,7 +21,7 @@ import { Camera, CameraView, ProjectionType } from "../renderer/Camera";
 import { InputManager } from "../util/InputManager";
 import { MapManager } from "../renderer/MapManager";
 import { MapViewerRenderer } from "./MapViewerRenderer";
-import { MapViewerRendererType, createRenderer } from "./MapViewerRenderers";
+import { RendererType, createRenderer } from "../renderer/Renderers";
 import { NpcSpawn } from "../data/npc/NpcSpawn";
 import { ObjSpawn } from "../data/obj/ObjSpawn";
 import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";
@@ -95,7 +95,7 @@ export class MapViewer {
         readonly objSpawns: ObjSpawn[],
         public npcSpawns: NpcSpawn[],
         readonly mapImageCache: Cache,
-        rendererType: MapViewerRendererType,
+        rendererType: RendererType,
         cache: LoadedCache,
     ) {
         this.renderer = createRenderer(rendererType, this);

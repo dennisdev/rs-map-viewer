@@ -1,12 +1,12 @@
-import { NpcType } from "../../../rs/config/npctype/NpcType";
-import { SeqTypeLoader } from "../../../rs/config/seqtype/SeqTypeLoader";
-import { SeqFrameLoader } from "../../../rs/model/seq/SeqFrameLoader";
-import { BLOCKED_STATEGY, NORMAL_STRATEGY } from "../../../rs/pathfinder/CollisionStrategy";
-import { Pathfinder } from "../../../rs/pathfinder/Pathfinder";
-import { ExactRouteStrategy } from "../../../rs/pathfinder/RouteStrategy";
-import { CollisionFlag } from "../../../rs/pathfinder/flag/CollisionFlag";
-import { CollisionMap } from "../../../rs/scene/CollisionMap";
-import { clamp } from "../../../util/MathUtil";
+import { NpcType } from "../../rs/config/npctype/NpcType";
+import { SeqTypeLoader } from "../../rs/config/seqtype/SeqTypeLoader";
+import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
+import { BLOCKED_STATEGY, NORMAL_STRATEGY } from "../../rs/pathfinder/CollisionStrategy";
+import { Pathfinder } from "../../rs/pathfinder/Pathfinder";
+import { ExactRouteStrategy } from "../../rs/pathfinder/RouteStrategy";
+import { CollisionFlag } from "../../rs/pathfinder/flag/CollisionFlag";
+import { CollisionMap } from "../../rs/scene/CollisionMap";
+import { clamp } from "../../util/MathUtil";
 import { AnimationFrames } from "../AnimationFrames";
 
 export enum MovementType {

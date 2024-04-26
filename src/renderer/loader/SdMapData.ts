@@ -1,4 +1,4 @@
-import { CollisionData } from "../../../rs/scene/CollisionMap";
+import { CollisionData } from "../../rs/scene/CollisionMap";
 import { DrawRange } from "../DrawRange";
 import { LocAnimatedData } from "../loc/LocAnimatedData";
 import { NpcData } from "../npc/NpcData";

@@ -16,10 +16,10 @@ import { getMapSquareId } from "../../rs/map/MapFileIndex";
 import { CollisionFlag } from "../../rs/pathfinder/flag/CollisionFlag";
 import { CollisionMap } from "../../rs/scene/CollisionMap";
 import { Scene } from "../../rs/scene/Scene";
-import { DrawRange, newDrawRange } from "./DrawRange";
-import { SdMapData } from "./loader/SdMapData";
-import { LocAnimated } from "./loc/LocAnimated";
-import { Npc } from "./npc/Npc";
+import { DrawRange, newDrawRange } from "../DrawRange";
+import { SdMapData } from "../loader/SdMapData";
+import { LocAnimated } from "../loc/LocAnimated";
+import { Npc } from "../npc/Npc";
 
 const FRAME_RENDER_DELAY = 3;
 

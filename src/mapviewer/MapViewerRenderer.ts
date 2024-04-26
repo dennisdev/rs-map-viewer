@@ -5,10 +5,10 @@ import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
 import { MapManager, MapSquare } from "../renderer/MapManager";
 import { MapViewer } from "./MapViewer";
-import { MapViewerRendererType } from "./MapViewerRenderers";
+import { RendererType } from "../renderer/Renderers";
 
 export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends Renderer {
-    abstract type: MapViewerRendererType;
+    abstract type: RendererType;
 
     mapManager: MapManager<T>;
 

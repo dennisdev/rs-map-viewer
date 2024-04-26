@@ -1,5 +1,5 @@
-import { SeqType } from "../../../rs/config/seqtype/SeqType";
-import { SeqFrameLoader } from "../../../rs/model/seq/SeqFrameLoader";
+import { SeqType } from "../../rs/config/seqtype/SeqType";
+import { SeqFrameLoader } from "../../rs/model/seq/SeqFrameLoader";
 import { AnimationFrames } from "../AnimationFrames";
 
 export class LocAnimated {

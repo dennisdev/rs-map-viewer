@@ -16,20 +16,20 @@ import {
 } from "picogl";
 
 import { OsrsMenuEntry } from "../../components/rs/menu/OsrsMenu";
-import { createTextureArray } from "../picogl/PicoTexture";
+import { createTextureArray } from "./PicoTexture";
 import { MenuTargetType } from "../../rs/MenuEntry";
 import { Scene } from "../../rs/scene/Scene";
 import { isTouchDevice, isWebGL2Supported, pixelRatio } from "../../util/DeviceUtil";
 import { MapViewer } from "../../mapviewer/MapViewer";
 import { MapViewerRenderer } from "../../mapviewer/MapViewerRenderer";
-import { MapViewerRendererType, WEBGL } from "../../mapviewer/MapViewerRenderers";
-import { DrawRange, NULL_DRAW_RANGE } from "./DrawRange";
-import { InteractType } from "./InteractType";
-import { Interactions } from "./Interactions";
+import { RendererType, WEBGL } from "../Renderers";
+import { DrawRange, NULL_DRAW_RANGE } from "../DrawRange";
+import { InteractType } from "../InteractType";
+import { Interactions } from "../Interactions";
 import { WebGLMapSquare } from "./WebGLMapSquare";
-import { SdMapData } from "./loader/SdMapData";
-import { SdMapDataLoader } from "./loader/SdMapDataLoader";
-import { SdMapLoaderInput } from "./loader/SdMapLoaderInput";
+import { SdMapData } from "../loader/SdMapData";
+import { SdMapDataLoader } from "../loader/SdMapDataLoader";
+import { SdMapLoaderInput } from "../loader/SdMapLoaderInput";
 import {
     FRAME_FXAA_PROGRAM,
     FRAME_PROGRAM,
@@ -74,8 +74,8 @@ function getMaxAnisotropy(mode: TextureFilterMode): number {
     }
 }
 
-export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
-    type: MapViewerRendererType = WEBGL;
+export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
+    type: RendererType = WEBGL;
 
     dataLoader = new SdMapDataLoader();
 
