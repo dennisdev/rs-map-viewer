@@ -4,6 +4,12 @@ import { Renderer } from "../components/renderer/Renderer";
 import { MapManager, MapSquare } from "../renderer/MapManager";
 import { clamp } from "../util/MathUtil";
 import { MapEditor } from "./MapEditor";
+import { OsrsMenuEntry } from "../components/rs/menu/OsrsMenu";
+import { InteractType } from "../renderer/InteractType";
+import { Interactions } from "../renderer/Interactions";
+import { MenuTargetType } from "../rs/MenuEntry";
+import { isTouchDevice } from "../util/DeviceUtil";
+import { InputManager } from "../util/InputManager";
 
 export abstract class MapEditorRenderer<T extends MapSquare = MapSquare> extends Renderer {
     mapManager: MapManager<T>;
