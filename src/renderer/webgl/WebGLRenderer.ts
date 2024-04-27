@@ -36,6 +36,7 @@ import {
     createMainProgram,
     createNpcProgram,
 } from "./shaders/Shaders";
+import { CacheLoaders } from "../../rs/cache/CacheLoaders";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -53,6 +54,7 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
     type: RendererType = WEBGL;
 
     dataLoader = new SdMapDataLoader();
+    cacheLoaders: CacheLoaders;
 
     app!: PicoApp;
     gl!: WebGL2RenderingContext;
@@ -137,6 +139,7 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
     constructor(public mapViewer: MapViewer) {
         super(mapViewer);
+        this.cacheLoaders = mapViewer.cacheLoaders;
         this.interactions = new Array(INTERACT_BUFFER_COUNT);
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
             this.interactions[i] = new Interactions(INTERACTION_RADIUS);
@@ -297,7 +300,7 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
     }
 
     initTextures(): void {
-        const textureLoader = this.mapViewer.textureLoader;
+        const textureLoader = this.cacheLoaders.textureLoader;
 
         const allTextureIds = textureLoader.getTextureIds();
 
@@ -339,7 +342,7 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
         for (let i = 0; i < Math.min(textureCount, maxPreloadTextures); i++) {
             const textureId = this.textureIds[i];
             try {
-                const texturePixels = this.mapViewer.textureLoader.getPixelsArgb(
+                const texturePixels = this.cacheLoaders.textureLoader.getPixelsArgb(
                     textureId,
                     TEXTURE_SIZE,
                     true,
@@ -412,7 +415,7 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
         for (let i = 0; i < this.textureIds.length; i++) {
             const id = this.textureIds[i];
             try {
-                const material = this.mapViewer.textureLoader.getMaterial(id);
+                const material = this.cacheLoaders.textureLoader.getMaterial(id);
 
                 const index = (i + 1) * 4;
                 data[index] = material.animU;
@@ -575,9 +578,9 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
             mapX,
             mapY,
             WebGLMapSquare.load(
-                this.mapViewer.seqTypeLoader,
-                this.mapViewer.npcTypeLoader,
-                this.mapViewer.basTypeLoader,
+                this.cacheLoaders.seqTypeLoader,
+                this.cacheLoaders.npcTypeLoader,
+                this.cacheLoaders.basTypeLoader,
                 this.app,
                 mainProgram,
                 mainAlphaProgram,
@@ -836,8 +839,8 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
     tickPass(time: number, ticksElapsed: number, clientTicksElapsed: number): void {
         const cycle = time / 0.02;
 
-        const seqFrameLoader = this.mapViewer.seqFrameLoader;
-        const seqTypeLoader = this.mapViewer.seqTypeLoader;
+        const seqFrameLoader = this.cacheLoaders.seqFrameLoader;
+        const seqTypeLoader = this.cacheLoaders.seqTypeLoader;
 
         const pathfinder = this.mapViewer.pathfinder;
 
@@ -1147,7 +1150,7 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 const interactId = this.interactBuffer[index];
                 const interactType = this.interactBuffer[index + 2];
                 if (interactType === InteractType.LOC) {
-                    const locType = this.mapViewer.locTypeLoader.load(interactId);
+                    const locType = this.cacheLoaders.locTypeLoader.load(interactId);
                     if (locType.name === "null" && !this.mapViewer.debugId) {
                         continue;
                     }
@@ -1179,7 +1182,7 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
                         onClick: this.mapViewer.onExamine,
                     });
                 } else if (interactType === InteractType.OBJ) {
-                    const objType = this.mapViewer.objTypeLoader.load(interactId);
+                    const objType = this.cacheLoaders.objTypeLoader.load(interactId);
                     if (objType.name === "null" && !this.mapViewer.debugId) {
                         continue;
                     }
@@ -1211,11 +1214,11 @@ export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
                         onClick: this.mapViewer.onExamine,
                     });
                 } else if (interactType === InteractType.NPC) {
-                    let npcType = this.mapViewer.npcTypeLoader.load(interactId);
+                    let npcType = this.cacheLoaders.npcTypeLoader.load(interactId);
                     if (npcType.transforms) {
                         const transformed = npcType.transform(
-                            this.mapViewer.varManager,
-                            this.mapViewer.npcTypeLoader,
+                            this.cacheLoaders.varManager,
+                            this.cacheLoaders.npcTypeLoader,
                         );
                         if (!transformed) {
                             continue;

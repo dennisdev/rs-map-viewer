@@ -28,7 +28,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     }
 
     initCache(): void {
-        this.mapManager.init(this.mapViewer.mapFileIndex);
+        this.mapManager.init(this.mapViewer.cacheLoaders.mapFileIndex);
         this.mapManager.update(
             this.mapViewer.camera,
             this.stats.frameCount,
