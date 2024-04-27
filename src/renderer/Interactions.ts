@@ -1,5 +1,8 @@
 import PicoGL from "picogl";
 
+export const INTERACT_BUFFER_COUNT = 2;
+export const INTERACTION_RADIUS = 5;
+
 export class Interactions {
     interactSize: number;
 

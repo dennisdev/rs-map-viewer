@@ -6,11 +6,18 @@ import { clamp } from "../util/MathUtil";
 import { MapManager, MapSquare } from "../renderer/MapManager";
 import { MapViewer } from "./MapViewer";
 import { RendererType } from "../renderer/Renderers";
+import { OsrsMenuEntry } from "../components/rs/menu/OsrsMenu";
+import { InteractType } from "../renderer/InteractType";
+import { INTERACTION_RADIUS } from "../renderer/Interactions";
+import { MenuTargetType } from "../rs/MenuEntry";
+import { isTouchDevice } from "../util/DeviceUtil";
+import { InputManager } from "../util/InputManager";
 
 export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends Renderer {
     abstract type: RendererType;
 
     mapManager: MapManager<T>;
+    inputManager: InputManager;
 
     constructor(public mapViewer: MapViewer) {
         super();
@@ -18,6 +25,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
             mapViewer.workerPool.size * 2,
             this.queueLoadMap.bind(this),
         );
+        this.inputManager = mapViewer.inputManager;
     }
 
     override async init() {
@@ -199,5 +207,187 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
         this.mapViewer.camera.onFrameEnd();
 
         // this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(3)}`;
+    }
+
+    checkInteractions(interactReady: boolean, interactBuffer: Float32Array,
+        closestInteractIndices: Map<number, number[]>): void {
+        const frameCount = this.stats.frameCount;
+
+        const isMouseDown = this.inputManager.dragX !== -1 || this.inputManager.dragY !== -1;
+        const picked = this.inputManager.pickX !== -1 && this.inputManager.pickY !== -1;
+
+        if (!interactReady && !picked)
+            return;
+
+        const menuCooldown = isTouchDevice ? 50 : 10;
+
+        if (
+            this.inputManager.mouseX === -1 ||
+            this.inputManager.mouseY === -1 ||
+            frameCount - this.mapViewer.menuOpenedFrame < menuCooldown
+        ) {
+            return;
+        }
+
+        // Don't auto close menu on touch devices
+        if (this.mapViewer.menuOpen && !picked && !isMouseDown && isTouchDevice) {
+            return;
+        }
+
+        if (!picked && !this.mapViewer.tooltips) {
+            this.mapViewer.closeMenu();
+            return;
+        }
+
+        const menuEntries: OsrsMenuEntry[] = [];
+        const examineEntries: OsrsMenuEntry[] = [];
+
+        const locIds = new Set<number>();
+        const objIds = new Set<number>();
+        const npcIds = new Set<number>();
+
+        for (let i = 0; i < INTERACTION_RADIUS + 1; i++) {
+            const indices = closestInteractIndices.get(i);
+            if (!indices) {
+                continue;
+            }
+            for (const index of indices) {
+                const interactId = interactBuffer[index];
+                const interactType = interactBuffer[index + 2];
+                if (interactType === InteractType.LOC) {
+                    const locType = this.mapViewer.cacheLoaders.locTypeLoader.load(interactId);
+                    if (locType.name === "null" && !this.mapViewer.debugId) {
+                        continue;
+                    }
+                    if (locIds.has(interactId)) {
+                        continue;
+                    }
+                    locIds.add(interactId);
+
+                    for (const option of locType.actions) {
+                        if (!option) {
+                            continue;
+                        }
+                        menuEntries.push({
+                            option,
+                            targetId: locType.id,
+                            targetType: MenuTargetType.LOC,
+                            targetName: locType.name,
+                            targetLevel: -1,
+                            onClick: this.mapViewer.closeMenu,
+                        });
+                    }
+
+                    examineEntries.push({
+                        option: "Examine",
+                        targetId: locType.id,
+                        targetType: MenuTargetType.LOC,
+                        targetName: locType.name,
+                        targetLevel: -1,
+                        onClick: this.mapViewer.onExamine,
+                    });
+                } else if (interactType === InteractType.OBJ) {
+                    const objType = this.mapViewer.cacheLoaders.objTypeLoader.load(interactId);
+                    if (objType.name === "null" && !this.mapViewer.debugId) {
+                        continue;
+                    }
+                    if (objIds.has(interactId)) {
+                        continue;
+                    }
+                    objIds.add(interactId);
+
+                    for (const option of objType.groundActions) {
+                        if (!option) {
+                            continue;
+                        }
+                        menuEntries.push({
+                            option,
+                            targetId: objType.id,
+                            targetType: MenuTargetType.OBJ,
+                            targetName: objType.name,
+                            targetLevel: -1,
+                            onClick: this.mapViewer.closeMenu,
+                        });
+                    }
+
+                    examineEntries.push({
+                        option: "Examine",
+                        targetId: objType.id,
+                        targetType: MenuTargetType.OBJ,
+                        targetName: objType.name,
+                        targetLevel: -1,
+                        onClick: this.mapViewer.onExamine,
+                    });
+                } else if (interactType === InteractType.NPC) {
+                    let npcType = this.mapViewer.cacheLoaders.npcTypeLoader.load(interactId);
+                    if (npcType.transforms) {
+                        const transformed = npcType.transform(
+                            this.mapViewer.cacheLoaders.varManager,
+                            this.mapViewer.cacheLoaders.npcTypeLoader,
+                        );
+                        if (!transformed) {
+                            continue;
+                        }
+                        npcType = transformed;
+                    }
+                    if (npcType.name === "null" && !this.mapViewer.debugId) {
+                        continue;
+                    }
+                    if (npcIds.has(interactId)) {
+                        continue;
+                    }
+                    npcIds.add(interactId);
+
+                    for (const option of npcType.actions) {
+                        if (!option) {
+                            continue;
+                        }
+                        menuEntries.push({
+                            option,
+                            targetId: npcType.id,
+                            targetType: MenuTargetType.NPC,
+                            targetName: npcType.name,
+                            targetLevel: npcType.combatLevel,
+                            onClick: this.mapViewer.closeMenu,
+                        });
+                    }
+
+                    examineEntries.push({
+                        option: "Examine",
+                        targetId: npcType.id,
+                        targetType: MenuTargetType.NPC,
+                        targetName: npcType.name,
+                        targetLevel: npcType.combatLevel,
+                        onClick: this.mapViewer.onExamine,
+                    });
+                }
+            }
+        }
+
+        menuEntries.push({
+            option: "Walk here",
+            targetId: -1,
+            targetType: MenuTargetType.NONE,
+            targetName: "",
+            targetLevel: -1,
+            onClick: this.mapViewer.closeMenu,
+        });
+        menuEntries.push(...examineEntries);
+        menuEntries.push({
+            option: "Cancel",
+            targetId: -1,
+            targetType: MenuTargetType.NONE,
+            targetName: "",
+            targetLevel: -1,
+            onClick: this.mapViewer.closeMenu,
+        });
+
+        this.mapViewer.menuOpen = picked;
+        if (picked) {
+            this.mapViewer.menuOpenedFrame = frameCount;
+        }
+        this.mapViewer.menuX = this.inputManager.mouseX;
+        this.mapViewer.menuY = this.inputManager.mouseY;
+        this.mapViewer.menuEntries = menuEntries;
     }
 }
