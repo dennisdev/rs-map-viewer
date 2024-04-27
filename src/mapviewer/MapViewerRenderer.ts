@@ -30,7 +30,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
 
     initCache(): void {
         this.mapManager.init(
-            this.mapViewer.mapFileIndex,
+            this.mapViewer.cacheLoaders.mapFileIndex,
             SceneBuilder.fillEmptyTerrain(this.mapViewer.loadedCache.info),
         );
         this.mapManager.update(

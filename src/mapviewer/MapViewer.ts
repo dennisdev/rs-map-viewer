@@ -3,18 +3,8 @@ import { URLSearchParamsInit } from "react-router-dom";
 
 import { OsrsMenuEntry } from "../components/rs/menu/OsrsMenu";
 import { MenuTargetType } from "../rs/MenuEntry";
-import { CacheSystem } from "../rs/cache/CacheSystem";
-import { CacheLoaderFactory, getCacheLoaderFactory } from "../rs/cache/loader/CacheLoaderFactory";
-import { BasTypeLoader } from "../rs/config/bastype/BasTypeLoader";
-import { LocTypeLoader } from "../rs/config/loctype/LocTypeLoader";
-import { NpcTypeLoader } from "../rs/config/npctype/NpcTypeLoader";
-import { ObjTypeLoader } from "../rs/config/objtype/ObjTypeLoader";
-import { SeqTypeLoader } from "../rs/config/seqtype/SeqTypeLoader";
-import { VarManager } from "../rs/config/vartype/VarManager";
-import { MapFileIndex, getMapSquareId } from "../rs/map/MapFileIndex";
-import { SeqFrameLoader } from "../rs/model/seq/SeqFrameLoader";
+import { getMapSquareId } from "../rs/map/MapFileIndex";
 import { Pathfinder } from "../rs/pathfinder/Pathfinder";
-import { TextureLoader } from "../rs/texture/TextureLoader";
 import { isTouchDevice, isWallpaperEngine } from "../util/DeviceUtil";
 import { CacheList, LoadedCache } from "../util/Caches";
 import { Camera, CameraView, ProjectionType } from "../renderer/Camera";
@@ -25,6 +15,7 @@ import { RendererType, createRenderer } from "../renderer/Renderers";
 import { NpcSpawn } from "../data/npc/NpcSpawn";
 import { ObjSpawn } from "../data/obj/ObjSpawn";
 import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";
+import { CacheLoaders } from "../rs/cache/CacheLoaders";
 
 const DEFAULT_RENDER_DISTANCE = isWallpaperEngine ? 512 : 128;
 
@@ -38,24 +29,8 @@ export class MapViewer {
 
     renderer: MapViewerRenderer;
 
-    // Cache
     loadedCache!: LoadedCache;
-    cacheSystem!: CacheSystem;
-    loaderFactory!: CacheLoaderFactory;
-
-    textureLoader!: TextureLoader;
-    seqTypeLoader!: SeqTypeLoader;
-    seqFrameLoader!: SeqFrameLoader;
-
-    locTypeLoader!: LocTypeLoader;
-    objTypeLoader!: ObjTypeLoader;
-    npcTypeLoader!: NpcTypeLoader;
-
-    basTypeLoader!: BasTypeLoader;
-
-    varManager!: VarManager;
-
-    mapFileIndex!: MapFileIndex;
+    cacheLoaders: CacheLoaders;
 
     isNewTextureAnim: boolean = false;
 
@@ -98,7 +73,10 @@ export class MapViewer {
         rendererType: RendererType,
         cache: LoadedCache,
     ) {
+        this.loadedCache = cache;
+        this.cacheLoaders = new CacheLoaders(cache);
         this.renderer = createRenderer(rendererType, this);
+        this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
         this.initCache(cache);
     }
 
@@ -178,28 +156,8 @@ export class MapViewer {
     }
 
     initCache(cache: LoadedCache): void {
-        this.loadedCache = cache;
-        this.cacheSystem = CacheSystem.fromFiles(cache.type, cache.files);
-        this.loaderFactory = getCacheLoaderFactory(cache.info, this.cacheSystem);
         this.workerPool.initCache(cache, this.objSpawns, this.npcSpawns);
         this.clearMapImageUrls();
-
-        this.textureLoader = this.loaderFactory.getTextureLoader();
-        this.seqTypeLoader = this.loaderFactory.getSeqTypeLoader();
-        this.seqFrameLoader = this.loaderFactory.getSeqFrameLoader();
-        this.locTypeLoader = this.loaderFactory.getLocTypeLoader();
-        this.objTypeLoader = this.loaderFactory.getObjTypeLoader();
-        this.npcTypeLoader = this.loaderFactory.getNpcTypeLoader();
-        this.basTypeLoader = this.loaderFactory.getBasTypeLoader();
-
-        this.varManager = new VarManager(this.loaderFactory.getVarBitTypeLoader());
-        const questTypeLoader = this.loaderFactory.getQuestTypeLoader();
-        if (questTypeLoader) {
-            this.varManager.setQuestsCompleted(questTypeLoader);
-        }
-
-        const mapFileLoader = this.loaderFactory.getMapFileLoader();
-        this.mapFileIndex = mapFileLoader.mapFileIndex;
 
         this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
 
@@ -277,7 +235,7 @@ export class MapViewer {
     };
 
     updateVars(): void {
-        this.workerPool.setVars(this.varManager.values);
+        this.workerPool.setVars(this.cacheLoaders.varManager.values);
     }
 
     static getCachedMapImageUrl(mapX: number, mapY: number): string {

@@ -121,7 +121,7 @@ export class WebGPURenderer extends MapViewerRenderer {
     }
 
     initTextures(): void {
-        const textureLoader = this.mapViewer.textureLoader;
+        const textureLoader = this.mapViewer.cacheLoaders.textureLoader;
 
         const textureIds = textureLoader
             .getTextureIds()
@@ -149,7 +149,7 @@ export class WebGPURenderer extends MapViewerRenderer {
         for (let i = 0; i < textureIds.length; i++) {
             const textureId = textureIds[i];
             try {
-                const texturePixels = this.mapViewer.textureLoader.getPixelsArgb(
+                const texturePixels = this.mapViewer.cacheLoaders.textureLoader.getPixelsArgb(
                     textureId,
                     textureSize,
                     true,

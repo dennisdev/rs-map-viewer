@@ -363,7 +363,7 @@ export const MapViewerControls = memo(
                             onChange: setVarValue,
                         },
                         Set: button(() => {
-                            const varManager = mapViewer.varManager;
+                            const varManager = mapViewer.cacheLoaders.varManager;
                             let updated = false;
                             if (varType === VarType.VARP) {
                                 updated = varManager.setVarp(varId, varValue);
@@ -376,7 +376,7 @@ export const MapViewerControls = memo(
                             }
                         }),
                         Clear: button(() => {
-                            mapViewer.varManager.clear();
+                            mapViewer.cacheLoaders.varManager.clear();
                             mapViewer.updateVars();
                             mapViewer.renderer.mapManager.clearMaps();
                         }),
