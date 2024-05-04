@@ -1,6 +1,6 @@
 import { SerializerImplementation } from "threads";
 
-import { SdMapDataLoader } from "../webgl/loader/SdMapDataLoader";
+import { SdMapDataLoader } from "../mapviewer/webgl/loader/SdMapDataLoader";
 import { WorkerState } from "./RenderDataWorker";
 
 export type RenderDataResult<T> = {
