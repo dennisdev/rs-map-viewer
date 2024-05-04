@@ -13,19 +13,46 @@ import { MenuTargetType } from "../rs/MenuEntry";
 import { isTouchDevice } from "../util/DeviceUtil";
 import { InputManager } from "../util/InputManager";
 
+export class MapViewerRendererStats {
+    frameStart: number;
+    interactionsTime: number;
+
+    opaquePassTime: number;
+    opaqueNpcPassTime: number;
+    transparentPassTime: number;
+    transparentNpcPassTime: number;
+
+    constructor() {
+        this.frameStart = 0;
+        this.interactionsTime = 0;
+        this.opaquePassTime = 0;
+        this.opaqueNpcPassTime = 0;
+        this.transparentPassTime = 0;
+        this.transparentNpcPassTime = 0;
+    }
+};
+
 export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends Renderer {
     abstract type: RendererType;
 
-    mapManager: MapManager<T>;
     inputManager: InputManager;
+
+    mapManager: MapManager<T>;
+    mapManagerTime: number;
+
+    tickTime: number;
+    rendererStats: MapViewerRendererStats;
 
     constructor(public mapViewer: MapViewer) {
         super();
+        this.inputManager = mapViewer.inputManager;
         this.mapManager = new MapManager(
             mapViewer.workerPool.size * 2,
             this.queueLoadMap.bind(this),
         );
-        this.inputManager = mapViewer.inputManager;
+        this.mapManagerTime = 0;
+        this.tickTime = 0;
+        this.rendererStats = new MapViewerRendererStats();
     }
 
     override async init() {
@@ -34,6 +61,23 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
 
     override cleanUp(): void {
         this.mapViewer.inputManager.cleanUp();
+    }
+
+    abstract rendererUpdate(): void;
+
+    update(time: number, deltaTime: number) {
+        const camera = this.mapViewer.camera;
+
+        this.handleInput(deltaTime);
+
+        this.rendererUpdate();
+
+        const renderDistance = this.mapViewer.renderDistance;
+        const frameCount = this.stats.frameCount;
+
+        const mapManagerStart = performance.now();
+        this.mapManager.update(camera, frameCount, renderDistance, this.mapViewer.unloadDistance);
+        this.mapManagerTime = performance.now() - mapManagerStart;
     }
 
     initCache(): void {
@@ -53,7 +97,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
         return {};
     }
 
-    queueLoadMap(mapX: number, mapY: number): void {}
+    queueLoadMap(mapX: number, mapY: number): void { }
 
     handleInput(deltaTime: number) {
         this.handleKeyInput(deltaTime);
@@ -194,6 +238,38 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
 
     override onFrameEnd(): void {
         super.onFrameEnd();
+
+        const frameTime = performance.now() - this.rendererStats.frameStart;
+
+        if (this.mapViewer.inputManager.isKeyDown("KeyH")) {
+            this.mapViewer.debugText = `MapManager: ${this.mapManagerTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyJ")) {
+            this.mapViewer.debugText = `Interactions: ${this.rendererStats.interactionsTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyK")) {
+            this.mapViewer.debugText = `Tick: ${this.tickTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyL")) {
+            this.mapViewer.debugText = `Opaque Pass: ${this.rendererStats.opaquePassTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyB")) {
+            this.mapViewer.debugText = `Opaque Npc Pass: ${this.rendererStats.opaqueNpcPassTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyN")) {
+            this.mapViewer.debugText = `Transparent Pass: ${this.rendererStats.transparentPassTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyM")) {
+            this.mapViewer.debugText = `Transparent Npc Pass: ${this.rendererStats.transparentNpcPassTime.toFixed(
+                2,
+            )}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyV")) {
+            this.mapViewer.debugText = `Frame Time: ${frameTime.toFixed(2)}ms`;
+        }
+        if (this.mapViewer.inputManager.isKeyDown("KeyU")) {
+            this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(2)}ms`;
+        }
 
         if (window.wallpaperFpsLimit !== undefined) {
             this.fpsLimit = window.wallpaperFpsLimit;

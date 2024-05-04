@@ -179,13 +179,9 @@ export class WebGPURenderer extends MapViewerRenderer {
         );
     }
 
+    rendererUpdate(): void { }
+
     render(time: number, deltaTime: number, resized: boolean): void {
-        const camera = this.mapViewer.camera;
-
-        this.handleInput(deltaTime);
-
-        camera.update(this.canvas.width, this.canvas.height);
-
         const device = this.device;
         const context = this.context;
         const pipeline = this.pipeline;

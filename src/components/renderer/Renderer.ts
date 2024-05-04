@@ -68,6 +68,7 @@ export abstract class Renderer {
             }
 
             this.stats.update(time);
+            this.update(time, deltaTime);
 
             this.render(time, deltaTime, resized);
 
@@ -78,6 +79,8 @@ export abstract class Renderer {
             }
         }
     };
+
+    abstract update(time: number, deltaTime: number): void;
 
     abstract render(
         time: DOMHighResTimeStamp,
