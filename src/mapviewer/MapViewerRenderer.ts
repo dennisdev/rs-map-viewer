@@ -5,13 +5,13 @@ import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
 import { MapManager, MapSquare } from "../renderer/MapManager";
 import { MapViewer } from "./MapViewer";
-import { RendererType } from "../renderer/Renderers";
 import { OsrsMenuEntry } from "../components/rs/menu/OsrsMenu";
 import { InteractType } from "../renderer/InteractType";
 import { INTERACTION_RADIUS } from "../renderer/Interactions";
 import { MenuTargetType } from "../rs/MenuEntry";
 import { isTouchDevice } from "../util/DeviceUtil";
 import { InputManager } from "../util/InputManager";
+import { WebGLMapSquare } from "../renderer/webgl/WebGLMapSquare";
 
 export class MapViewerRendererStats {
     frameStart: number;
@@ -32,12 +32,10 @@ export class MapViewerRendererStats {
     }
 };
 
-export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends Renderer {
-    abstract type: RendererType;
-
+export abstract class MapViewerRenderer extends Renderer {
     inputManager: InputManager;
 
-    mapManager: MapManager<T>;
+    mapManager: MapManager<WebGLMapSquare>;
     mapManagerTime: number;
 
     tickTime: number;

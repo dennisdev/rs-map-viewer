@@ -11,11 +11,11 @@ import { Camera, CameraView, ProjectionType } from "../renderer/Camera";
 import { InputManager } from "../util/InputManager";
 import { MapManager } from "../renderer/MapManager";
 import { MapViewerRenderer } from "./MapViewerRenderer";
-import { RendererType, createRenderer } from "../renderer/Renderers";
 import { NpcSpawn } from "../data/npc/NpcSpawn";
 import { ObjSpawn } from "../data/obj/ObjSpawn";
 import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";
 import { CacheLoaders } from "../rs/cache/CacheLoaders";
+import { WebGLRenderer } from "../renderer/webgl/WebGLRenderer";
 
 const DEFAULT_RENDER_DISTANCE = isWallpaperEngine ? 512 : 128;
 
@@ -70,12 +70,11 @@ export class MapViewer {
         readonly objSpawns: ObjSpawn[],
         public npcSpawns: NpcSpawn[],
         readonly mapImageCache: Cache,
-        rendererType: RendererType,
         cache: LoadedCache,
     ) {
         this.loadedCache = cache;
         this.cacheLoaders = new CacheLoaders(cache);
-        this.renderer = createRenderer(rendererType, this);
+        this.renderer = new WebGLRenderer(this);
         this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
         this.initCache(cache);
     }

@@ -10,12 +10,6 @@ import { loadCacheFiles } from "../util/Caches";
 import { CameraView, ProjectionType } from "../renderer/Camera";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRenderer } from "./MapViewerRenderer";
-import {
-    RendererType,
-    createRenderer,
-    getAvailableRenderers,
-    getRendererName,
-} from "../renderer/Renderers";
 import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
 import FileSaver from "file-saver";
 
@@ -196,11 +190,6 @@ export const MapViewerControls = memo(
             };
         }, [mapViewer, cameraPoints, animationDuration, isCameraRunning]);
 
-        const rendererOptions: Record<string, RendererType> = {};
-        for (let v of getAvailableRenderers()) {
-            rendererOptions[getRendererName(v)] = v;
-        }
-
         const recordSchema: Schema = {
             "Add point (F3)": button(() => addPoint()),
             "Delete last point (F4)": button(() => removeLastPoint()),
@@ -319,17 +308,6 @@ export const MapViewerControls = memo(
                 ),
                 Render: folder(
                     {
-                        Renderer: {
-                            value: renderer.type,
-                            options: rendererOptions,
-                            onChange: (v: RendererType) => {
-                                if (renderer.type !== v) {
-                                    const renderer = createRenderer(v, mapViewer);
-                                    mapViewer.setRenderer(renderer);
-                                    setRenderer(renderer);
-                                }
-                            },
-                        },
                         "Fps Limit": {
                             value: renderer.fpsLimit,
                             min: 1,

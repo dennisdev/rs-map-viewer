@@ -20,7 +20,6 @@ import { Scene } from "../../rs/scene/Scene";
 import { isWebGL2Supported, pixelRatio } from "../../util/DeviceUtil";
 import { MapViewer } from "../../mapviewer/MapViewer";
 import { MapViewerRenderer } from "../../mapviewer/MapViewerRenderer";
-import { RendererType, WEBGL } from "../Renderers";
 import { DrawRange, NULL_DRAW_RANGE } from "../DrawRange";
 import { INTERACTION_RADIUS, INTERACT_BUFFER_COUNT, Interactions } from "../Interactions";
 import { WebGLMapSquare } from "./WebGLMapSquare";
@@ -70,9 +69,7 @@ function getMaxAnisotropy(mode: TextureFilterMode): number {
     }
 }
 
-export class WebGLRenderer extends MapViewerRenderer<WebGLMapSquare> {
-    type: RendererType = WEBGL;
-
+export class WebGLRenderer extends MapViewerRenderer {
     dataLoader = new SdMapDataLoader();
     cacheLoaders: CacheLoaders;
 
