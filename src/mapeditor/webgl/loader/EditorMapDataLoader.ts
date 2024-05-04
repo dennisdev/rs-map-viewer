@@ -5,6 +5,7 @@ import { SceneTile } from "../../../rs/scene/SceneTile";
 import { WorkerState } from "../../../worker/RenderDataWorker";
 import { VertexBuffer } from "../buffer/VertexBuffer";
 import { EditorMapData } from "./EditorMapData";
+import { EditorMapTerrainData } from "./EditorMapTerrainData";
 
 // TODO: Unify with the Int16 loader from Scene.
 export function loadHeightMapTextureData(scene: Scene): Float32Array {
@@ -20,6 +21,17 @@ export function loadHeightMapTextureData(scene: Scene): Float32Array {
     }
 
     return heightMapTextureData;
+}
+
+export function applyHeightMapTextureData(scene: Scene, heightMapTextureData: Float32Array) {
+    let dataIndex = 0;
+    for (let level = 0; level < scene.levels; level++) {
+        for (let y = 0; y < scene.sizeY; y++) {
+            for (let x = 0; x < scene.sizeX; x++) {
+                scene.tileHeights[level][x][y] = (-heightMapTextureData[dataIndex++] * 8) | 0;
+            }
+        }
+    }
 }
 
 export function loadEditorMapData(
@@ -45,6 +57,7 @@ export function loadEditorMapData(
         baseY,
         mapSize,
         mapSize,
+        true,
         false,
         LocLoadType.NO_MODELS,
     );
@@ -64,6 +77,55 @@ export function loadEditorMapData(
         terrainDrawRanges,
 
         heightMapTextureData,
+    };
+}
+
+export function loadEditorMapTerrainData(
+    workerState: WorkerState,
+    mapX: number,
+    mapY: number,
+    heightMapTextureData: Float32Array,
+): EditorMapTerrainData | undefined {
+    const sceneBuilder = workerState.sceneBuilder;
+
+    const textureLoader = workerState.textureLoader;
+    const textureIds = textureLoader.getTextureIds().filter((id) => textureLoader.isSd(id));
+    const textureIndexMap = new Map<number, number>();
+    for (let i = 0; i < textureIds.length; i++) {
+        textureIndexMap.set(textureIds[i], i);
+    }
+
+    const borderSize = 6;
+
+    const baseX = mapX * Scene.MAP_SQUARE_SIZE - borderSize;
+    const baseY = mapY * Scene.MAP_SQUARE_SIZE - borderSize;
+    const mapSize = Scene.MAP_SQUARE_SIZE + borderSize * 2;
+
+    const scene = sceneBuilder.buildScene(
+        baseX,
+        baseY,
+        mapSize,
+        mapSize,
+        false,
+        false,
+        LocLoadType.NO_MODELS,
+    );
+
+    applyHeightMapTextureData(scene, heightMapTextureData);
+
+    sceneBuilder.addTileModels(scene, false);
+
+    const vertexBuffer = new VertexBuffer(100000);
+
+    const terrainDrawRanges = addTerrain(textureIndexMap, vertexBuffer, scene, borderSize, 3);
+
+    return {
+        mapX,
+        mapY,
+        borderSize,
+
+        terrainVertices: vertexBuffer.byteArray(),
+        terrainDrawRanges,
     };
 }
 

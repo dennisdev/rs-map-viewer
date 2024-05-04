@@ -107,10 +107,18 @@ export class MapManager<T extends MapSquare> {
         return this.mapSquares.get(getMapSquareId(mapX, mapY));
     }
 
+    getMapById(mapId: number): T | undefined {
+        return this.mapSquares.get(mapId);
+    }
+
     addMap(mapX: number, mapY: number, mapSquare: T): void {
         const mapId = getMapSquareId(mapX, mapY);
         this.loadingMapIds.delete(mapId);
         this.invalidMapIds.delete(mapId);
+        const oldMap = this.mapSquares.get(mapId);
+        if (oldMap) {
+            oldMap.delete();
+        }
         this.mapSquares.set(mapId, mapSquare);
     }
 

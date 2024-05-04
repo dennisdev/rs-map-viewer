@@ -12,6 +12,7 @@ import PicoGL, {
 import { newDrawRange } from "../../mapviewer/webgl/DrawRange";
 import { createTextureArray } from "../../picogl/PicoTexture";
 import { getMapSquareId } from "../../rs/map/MapFileIndex";
+import { Scene } from "../../rs/scene/Scene";
 import { clamp } from "../../util/MathUtil";
 import { MapEditorRenderer } from "../MapEditorRenderer";
 import { EditorMapSquare } from "./EditorMapSquare";
@@ -61,6 +62,10 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
 
     hoverWorldX: number = -1;
     hoverWorldY: number = -1;
+
+    lastTimeTerrainUpdated: number = 0;
+    updatedTerrainMapIds: Set<number> = new Set();
+    loadingTerrainMapIds: Set<number> = new Set();
 
     async init(): Promise<void> {
         await super.init();
@@ -277,6 +282,18 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
         );
     }
 
+    async queueLoadTerrain(map: EditorMapSquare): Promise<void> {
+        const mapData = await this.mapEditor.workerPool.queueLoadEditorMapTerrainData(
+            map.mapX,
+            map.mapY,
+            map.heightMapTextureData,
+        );
+        if (!mapData) {
+            return;
+        }
+        map.terrainVertexBuffer.data(mapData.terrainVertices);
+    }
+
     override handleMouseInput(): void {
         super.handleMouseInput();
 
@@ -284,7 +301,7 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
 
         if (inputManager.scrollY !== 0) {
             const newBrushSize = this.brushSize - Math.sign(inputManager.scrollY);
-            this.brushSize = clamp(newBrushSize, 0, 8);
+            this.brushSize = clamp(newBrushSize, 0, 16);
         }
     }
 
@@ -329,6 +346,21 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
         this.renderTerrain();
 
         this.renderTilePicking();
+
+        this.handleTileManipulation(time);
+
+        if (time - this.lastTimeTerrainUpdated > 100 && this.updatedTerrainMapIds.size > 0) {
+            for (const mapId of this.updatedTerrainMapIds) {
+                const map = this.mapManager.getMapById(mapId);
+                if (!map) {
+                    continue;
+                }
+                this.queueLoadTerrain(map);
+            }
+
+            this.updatedTerrainMapIds.clear();
+            this.lastTimeTerrainUpdated = time;
+        }
     }
 
     renderTerrain(): void {
@@ -344,7 +376,6 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
 
         if (this.hoverWorldX !== -1 && this.hoverWorldY !== -1) {
             this.app.disable(PicoGL.DEPTH_TEST);
-            const hoveredMapIds = new Set<number>();
             const hoveredTilesMap = new Map<number, number[]>();
             for (let x = -this.brushSize; x <= this.brushSize; x++) {
                 for (let y = -this.brushSize; y <= this.brushSize; y++) {
@@ -357,7 +388,6 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
                     const tileId = (tileX << 8) | tileY;
 
                     const mapId = getMapSquareId(mapX, mapY);
-                    hoveredMapIds.add(mapId);
                     const hoveredTiles = hoveredTilesMap.get(mapId);
                     if (hoveredTiles) {
                         hoveredTiles.push(tileId);
@@ -415,7 +445,6 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
         }
 
         const inputManager = this.mapEditor.inputManager;
-        const picked = inputManager.pickX !== -1 && inputManager.pickY !== -1;
         if (inputManager.mouseX !== -1 && inputManager.mouseY !== -1) {
             this.gl.readPixels(
                 inputManager.mouseX,
@@ -441,12 +470,132 @@ export class WebGLMapEditorRenderer extends MapEditorRenderer<EditorMapSquare> {
             if (isValid) {
                 this.hoverWorldX = worldX;
                 this.hoverWorldY = worldY;
+
                 this.mapEditor.debugText = `Map: ${mapX}, ${mapY} Tile: ${tileX}, ${tileY} World: ${worldX}, ${worldY}`;
             } else {
                 this.hoverWorldX = -1;
                 this.hoverWorldY = -1;
                 this.mapEditor.debugText = "No tile selected";
             }
+        }
+    }
+
+    handleTileManipulation(time: number): void {
+        const inputManager = this.mapEditor.inputManager;
+
+        if (this.hoverWorldX === -1 || this.hoverWorldY === -1 || !inputManager.isHolding()) {
+            return;
+        }
+
+        const borderSize = 6;
+
+        const hoveredTilesMap = new Map<number, Set<number>>();
+        const addTile = (mapId: number, tileId: number) => {
+            const hoveredTiles = hoveredTilesMap.get(mapId);
+            if (hoveredTiles) {
+                hoveredTiles.add(tileId);
+            } else {
+                hoveredTilesMap.set(mapId, new Set([tileId]));
+            }
+        };
+
+        for (let x = -this.brushSize; x <= this.brushSize; x++) {
+            for (let y = -this.brushSize; y <= this.brushSize; y++) {
+                const worldX = this.hoverWorldX + x;
+                const worldY = this.hoverWorldY + y;
+                const mapX = Math.floor(worldX / 64);
+                const mapY = Math.floor(worldY / 64);
+                const tileX = (worldX % 64) + borderSize;
+                const tileY = (worldY % 64) + borderSize;
+                const tileId = (tileX << 8) | tileY;
+
+                const mapId = getMapSquareId(mapX, mapY);
+                addTile(mapId, tileId);
+
+                const updateWest = tileX - borderSize <= borderSize;
+                if (updateWest) {
+                    const mapId = getMapSquareId(mapX - 1, mapY);
+                    const westTileX = tileX + 64;
+                    const westTileY = tileY;
+                    const westTileId = (westTileX << 8) | westTileY;
+                    addTile(mapId, westTileId);
+                }
+                const updateSouth = tileY - borderSize <= borderSize;
+                if (updateSouth) {
+                    const mapId = getMapSquareId(mapX, mapY - 1);
+                    const southTileX = tileX;
+                    const southTileY = tileY + 64;
+                    const southTileId = (southTileX << 8) | southTileY;
+                    addTile(mapId, southTileId);
+                }
+                const updateEast = tileX >= 64;
+                if (updateEast) {
+                    const mapId = getMapSquareId(mapX + 1, mapY);
+                    const eastTileX = tileX - 64;
+                    const eastTileY = tileY;
+                    const eastTileId = (eastTileX << 8) | eastTileY;
+                    addTile(mapId, eastTileId);
+                }
+                const updateNorth = tileY >= 64;
+                if (updateNorth) {
+                    const mapId = getMapSquareId(mapX, mapY + 1);
+                    const northTileX = tileX;
+                    const northTileY = tileY - 64;
+                    const northTileId = (northTileX << 8) | northTileY;
+                    addTile(mapId, northTileId);
+                }
+                if (updateSouth && updateWest) {
+                    const mapId = getMapSquareId(mapX - 1, mapY - 1);
+                    const southWestTileX = tileX + 64;
+                    const southWestTileY = tileY + 64;
+                    const southWestTileId = (southWestTileX << 8) | southWestTileY;
+                    addTile(mapId, southWestTileId);
+                }
+                if (updateNorth && updateEast) {
+                    const mapId = getMapSquareId(mapX + 1, mapY + 1);
+                    const northEastTileX = tileX - 64;
+                    const northEastTileY = tileY - 64;
+                    const northEastTileId = (northEastTileX << 8) | northEastTileY;
+                    addTile(mapId, northEastTileId);
+                }
+                if (updateSouth && updateEast) {
+                    const mapId = getMapSquareId(mapX + 1, mapY - 1);
+                    const southEastTileX = tileX - 64;
+                    const southEastTileY = tileY + 64;
+                    const southEastTileId = (southEastTileX << 8) | southEastTileY;
+                    addTile(mapId, southEastTileId);
+                }
+                if (updateNorth && updateWest) {
+                    const mapId = getMapSquareId(mapX - 1, mapY + 1);
+                    const northWestTileX = tileX + 64;
+                    const northWestTileY = tileY - 64;
+                    const northWestTileId = (northWestTileX << 8) | northWestTileY;
+                    addTile(mapId, northWestTileId);
+                }
+            }
+        }
+
+        for (const [mapId, tileIds] of hoveredTilesMap) {
+            const map = this.mapManager.getMapById(mapId);
+            if (!map) {
+                continue;
+            }
+            const heightMapTextureSize = Scene.MAP_SQUARE_SIZE + map.borderSize * 2;
+
+            for (const tileId of tileIds) {
+                const tileX = tileId >> 8;
+                const tileY = tileId & 0xff;
+
+                const heightMapX = tileX;
+                const heightMapY = tileY;
+                const heightMapIndex = heightMapY * heightMapTextureSize + heightMapX;
+
+                map.heightMapTextureData[heightMapIndex] += 1;
+            }
+
+            map.updateHeightMapTexture(this.app);
+
+            this.updatedTerrainMapIds.add(mapId);
         }
     }
 

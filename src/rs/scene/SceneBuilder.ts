@@ -77,6 +77,7 @@ export class SceneBuilder {
         baseY: number,
         sizeX: number,
         sizeY: number,
+        addTileModels: boolean = true,
         smoothUnderlays: boolean = false,
         locLoadType: LocLoadType = LocLoadType.MODELS,
     ): Scene {
@@ -134,7 +135,9 @@ export class SceneBuilder {
             }
         }
 
-        this.addTileModels(scene, smoothUnderlays);
+        if (addTileModels) {
+            this.addTileModels(scene, smoothUnderlays);
+        }
         scene.setTileMinLevels();
 
         if (locLoadType === LocLoadType.MODELS) {

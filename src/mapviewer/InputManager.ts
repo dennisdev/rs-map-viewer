@@ -37,6 +37,9 @@ export class InputManager {
     deltaMouseX: number = 0;
     deltaMouseY: number = 0;
 
+    holdX: number = -1;
+    holdY: number = -1;
+
     isTouch: boolean = false;
 
     pickX: number = -1;
@@ -124,6 +127,10 @@ export class InputManager {
         return this.dragX !== -1 && this.dragY !== -1;
     }
 
+    isHolding(): boolean {
+        return this.holdX !== -1 && this.holdY !== -1;
+    }
+
     isPointerLock(): boolean {
         return document.pointerLockElement === this.element;
     }
@@ -192,12 +199,17 @@ export class InputManager {
     };
 
     private onMouseDown = (event: MouseEvent) => {
-        if (event.button !== 0 || !this.element) {
+        if (!this.element) {
             return;
         }
         const [x, y] = getMousePos(this.element, event);
-        this.dragX = x;
-        this.dragY = y;
+        if (event.button === 0) {
+            this.dragX = x;
+            this.dragY = y;
+        } else if (event.button === 2) {
+            this.holdX = x;
+            this.holdY = y;
+        }
         this.mouseX = x;
         this.mouseY = y;
     };
@@ -218,8 +230,13 @@ export class InputManager {
     };
 
     private onMouseUp = (event: MouseEvent) => {
-        this.dragX = -1;
-        this.dragY = -1;
+        if (event.button === 0) {
+            this.dragX = -1;
+            this.dragY = -1;
+        } else if (event.button === 2) {
+            this.holdX = -1;
+            this.holdY = -1;
+        }
     };
 
     private onMouseLeave = (event: MouseEvent) => {
@@ -293,6 +310,8 @@ export class InputManager {
         this.mouseY = -1;
         this.dragX = -1;
         this.dragY = -1;
+        this.holdX = -1;
+        this.holdY = -1;
     }
 
     onFrameEnd() {

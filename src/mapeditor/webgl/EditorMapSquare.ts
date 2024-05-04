@@ -13,6 +13,28 @@ import { DrawRange } from "../../mapviewer/webgl/DrawRange";
 import { Scene } from "../../rs/scene/Scene";
 import { EditorMapData } from "./loader/EditorMapData";
 
+export function createHeightMapTexture(
+    app: PicoApp,
+    borderSize: number,
+    heightMapTextureData: Float32Array,
+): Texture {
+    const heightMapSize = Scene.MAP_SQUARE_SIZE + borderSize * 2;
+    return app.createTextureArray(
+        heightMapTextureData,
+        heightMapSize,
+        heightMapSize,
+        Scene.MAX_LEVELS,
+        {
+            internalFormat: PicoGL.R32F,
+            minFilter: PicoGL.LINEAR,
+            magFilter: PicoGL.LINEAR,
+            type: PicoGL.FLOAT,
+            wrapS: PicoGL.CLAMP_TO_EDGE,
+            wrapT: PicoGL.CLAMP_TO_EDGE,
+        },
+    );
+}
+
 export class EditorMapSquare implements MapSquare {
     static create(
         app: PicoApp,
@@ -34,20 +56,10 @@ export class EditorMapSquare implements MapSquare {
                 integer: true as any,
             });
 
-        const heightMapSize = Scene.MAP_SQUARE_SIZE + borderSize * 2;
-        const heightMapTexture = app.createTextureArray(
+        const heightMapTexture = createHeightMapTexture(
+            app,
+            borderSize,
             mapData.heightMapTextureData,
-            heightMapSize,
-            heightMapSize,
-            Scene.MAX_LEVELS,
-            {
-                internalFormat: PicoGL.R32F,
-                minFilter: PicoGL.LINEAR,
-                magFilter: PicoGL.LINEAR,
-                type: PicoGL.FLOAT,
-                wrapS: PicoGL.CLAMP_TO_EDGE,
-                wrapT: PicoGL.CLAMP_TO_EDGE,
-            },
         );
 
         const terrainDrawCall = app
@@ -62,23 +74,38 @@ export class EditorMapSquare implements MapSquare {
         return new EditorMapSquare(
             mapX,
             mapY,
+            borderSize,
             terrainVertexBuffer,
             terrainVertexArray,
             terrainDrawCall,
             mapData.terrainDrawRanges,
             heightMapTexture,
+            mapData.heightMapTextureData,
         );
     }
 
     constructor(
         readonly mapX: number,
         readonly mapY: number,
+        readonly borderSize: number,
         readonly terrainVertexBuffer: VertexBuffer,
         readonly terrainVertexArray: VertexArray,
         readonly terrainDrawCall: DrawCall,
         readonly terrainDrawRanges: DrawRange[],
-        readonly heightMapTexture: Texture,
+        public heightMapTexture: Texture,
+        public heightMapTextureData: Float32Array,
     ) {}
+
+    updateHeightMapTexture(app: PicoApp): void {
+        this.heightMapTexture.delete();
+
+        this.heightMapTexture = createHeightMapTexture(
+            app,
+            this.borderSize,
+            this.heightMapTextureData,
+        );
+        this.terrainDrawCall.texture("u_heightMap", this.heightMapTexture);
+    }
 
     canRender(frameCount: number): boolean {
         return true;
