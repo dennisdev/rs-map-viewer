@@ -210,6 +210,16 @@ export class MapManager<T extends MapSquare> {
             });
         }
 
+        this.updateVisible(camera, frameCount);
+
+        // Update the render bounds based on the map squares we are rendering.
+        this.renderBounds[0] = mapStartX;
+        this.renderBounds[1] = mapStartY;
+        this.renderBounds[2] = mapEndX;
+        this.renderBounds[3] = mapEndY;
+    }
+
+    private updateVisible(camera: Camera, frameCount: number) {
         this.visibleMapCount = 0;
         for (let i = 0; i < this.renderDistMapCount; i++) {
             const mapId = this.renderDistMapIds[i];
@@ -233,12 +243,6 @@ export class MapManager<T extends MapSquare> {
             // Delete 1 per frame
             this.visibleMaps.length -= 1;
         }
-
-        // Update the render bounds based on the map squares we are rendering.
-        this.renderBounds[0] = mapStartX;
-        this.renderBounds[1] = mapStartY;
-        this.renderBounds[2] = mapEndX;
-        this.renderBounds[3] = mapEndY;
     }
 
     cleanUp(): void {
