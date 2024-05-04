@@ -16,6 +16,7 @@ import { SeqFrameLoader } from "../rs/model/seq/SeqFrameLoader";
 import { Pathfinder } from "../rs/pathfinder/Pathfinder";
 import { TextureLoader } from "../rs/texture/TextureLoader";
 import { isTouchDevice, isWallpaperEngine } from "../util/DeviceUtil";
+import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";
 import { CacheList, LoadedCache } from "./Caches";
 import { Camera, CameraView, ProjectionType } from "./Camera";
 import { InputManager } from "./InputManager";
@@ -24,7 +25,6 @@ import { MapViewerRenderer } from "./MapViewerRenderer";
 import { MapViewerRendererType, createRenderer } from "./MapViewerRenderers";
 import { NpcSpawn } from "./data/npc/NpcSpawn";
 import { ObjSpawn } from "./data/obj/ObjSpawn";
-import { RenderDataWorkerPool } from "./worker/RenderDataWorkerPool";
 
 const DEFAULT_RENDER_DISTANCE = isWallpaperEngine ? 512 : 128;
 

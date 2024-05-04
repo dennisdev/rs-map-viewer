@@ -42,6 +42,8 @@ export class InputManager {
     pickX: number = -1;
     pickY: number = -1;
 
+    scrollY: number = 0;
+
     positionJoystickEvent?: IJoystickUpdateEvent;
     cameraJoystickEvent?: IJoystickUpdateEvent;
 
@@ -65,6 +67,8 @@ export class InputManager {
         element.addEventListener("mousemove", this.onMouseMove);
         element.addEventListener("mouseup", this.onMouseUp);
         element.addEventListener("mouseleave", this.onMouseLeave);
+
+        element.addEventListener("wheel", this.onScroll);
 
         element.addEventListener("touchstart", this.onTouchStart);
         element.addEventListener("touchmove", this.onTouchMove);
@@ -92,6 +96,8 @@ export class InputManager {
         this.element.removeEventListener("mousemove", this.onMouseMove);
         this.element.removeEventListener("mouseup", this.onMouseUp);
         this.element.removeEventListener("mouseleave", this.onMouseLeave);
+
+        this.element.removeEventListener("wheel", this.onScroll);
 
         this.element.removeEventListener("touchstart", this.onTouchStart);
         this.element.removeEventListener("touchmove", this.onTouchMove);
@@ -220,6 +226,10 @@ export class InputManager {
         this.resetMouse();
     };
 
+    private onScroll = (event: WheelEvent) => {
+        this.scrollY = event.deltaY;
+    };
+
     private onTouchStart = (event: TouchEvent) => {
         if (!this.element) {
             return;
@@ -299,5 +309,6 @@ export class InputManager {
         this.pickY = -1;
         this.lastMouseX = this.mouseX;
         this.lastMouseY = this.mouseY;
+        this.scrollY = 0;
     }
 }
