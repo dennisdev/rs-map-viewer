@@ -1,3 +1,5 @@
+import { Transfer, TransferDescriptor } from "threads";
+
 import { DrawRange, newDrawRange } from "../../../mapviewer/webgl/DrawRange";
 import { Scene } from "../../../rs/scene/Scene";
 import { LocLoadType } from "../../../rs/scene/SceneBuilder";
@@ -42,7 +44,7 @@ export function loadEditorMapData(
     workerState: WorkerState,
     mapX: number,
     mapY: number,
-): EditorMapData | undefined {
+): TransferDescriptor<EditorMapData | undefined> {
     const textureLoader = workerState.textureLoader;
     const textureIds = textureLoader.getTextureIds().filter((id) => textureLoader.isSd(id));
     const textureIndexMap = new Map<number, number>();
@@ -78,16 +80,51 @@ export function loadEditorMapData(
 
     const heightMapTextureData = loadHeightMapTextureData(scene);
 
-    return {
-        mapX,
-        mapY,
-        borderSize,
+    const transferables: Transferable[] = [
+        terrainVertexBuffer.bytes.buffer,
+        heightMapTextureData.buffer,
+        ...scene.tileHeights.flat().map((a) => a.buffer),
+        ...scene.tileRenderFlags.flat().map((a) => a.buffer),
+        ...scene.tileUnderlays.flat().map((a) => a.buffer),
+        ...scene.tileOverlays.flat().map((a) => a.buffer),
+        ...scene.tileShapes.flat().map((a) => a.buffer),
+        ...scene.tileRotations.flat().map((a) => a.buffer),
+        ...scene.tileLightOcclusions.flat().map((a) => a.buffer),
+        ...scene.tileLights.flat().map((a) => a.buffer),
+        ...scene.tileBlendedColors.flat().map((a) => a.buffer),
+    ];
 
-        terrainVertices: terrainVertexBuffer.bytes,
-        terrainDrawRanges,
+    return Transfer<EditorMapData>(
+        {
+            mapX,
+            mapY,
+            borderSize,
 
-        heightMapTextureData,
-    };
+            scene: {
+                levels: scene.levels,
+                sizeX: scene.sizeX,
+                sizeY: scene.sizeY,
+
+                tileHeights: scene.tileHeights,
+                tileRenderFlags: scene.tileRenderFlags,
+                tileUnderlays: scene.tileUnderlays,
+                tileOverlays: scene.tileOverlays,
+                tileShapes: scene.tileShapes,
+                tileRotations: scene.tileRotations,
+
+                tileLightOcclusions: scene.tileLightOcclusions,
+                tileLights: scene.tileLights,
+
+                tileBlendedColors: scene.tileBlendedColors,
+            },
+
+            terrainVertices: terrainVertexBuffer.bytes,
+            terrainDrawRanges,
+
+            heightMapTextureData,
+        },
+        transferables,
+    );
 }
 
 export function loadEditorMapTerrainData(

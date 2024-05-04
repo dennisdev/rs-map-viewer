@@ -34,6 +34,11 @@ export class Scene {
     // Terrain light
     tileLightOcclusions: Uint8Array[][];
 
+    tileLights: Int32Array[][];
+
+    // Underlays
+    tileBlendedColors: Int32Array[][];
+
     constructor(
         readonly levels: number,
         readonly sizeX: number,
@@ -50,6 +55,9 @@ export class Scene {
         this.tileRotations = new Array(levels);
 
         this.tileLightOcclusions = new Array(levels);
+        this.tileLights = new Array(levels);
+
+        this.tileBlendedColors = new Array(levels);
         for (let l = 0; l < levels; l++) {
             this.tiles[l] = new Array(this.sizeX);
             this.collisionMaps[l] = new CollisionMap(this.sizeX, this.sizeY);
@@ -326,8 +334,13 @@ export class Scene {
         }
     }
 
-    calculateTileLights(level: number, ignoreTileLightOcclusion: boolean = false): Int32Array[] {
-        const lights: Int32Array[] = new Array(this.sizeX);
+    calculateTileLights(level: number, force: boolean = false, ignoreTileLightOcclusion: boolean = false): Int32Array[] {
+        let lights = this.tileLights[level];
+        if (lights && !force) {
+            return lights;
+        }
+
+        lights = new Array(this.sizeX);
         for (let i = 0; i < this.sizeX; i++) {
             lights[i] = new Int32Array(this.sizeY);
         }
@@ -396,10 +409,17 @@ export class Scene {
             }
         }
 
+        this.tileLights[level] = lights;
+
         return lights;
     }
 
-    newTileModel(level: number, tileX: number, tileY: number, tileModel: SceneTileModel) {
+    setTileModel(
+        level: number,
+        tileX: number,
+        tileY: number,
+        tileModel: SceneTileModel | undefined,
+    ) {
         this.ensureTileExists(level, level, tileX, tileY);
 
         this.tiles[level][tileX][tileY].tileModel = tileModel;

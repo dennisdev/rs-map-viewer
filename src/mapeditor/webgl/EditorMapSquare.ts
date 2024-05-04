@@ -36,6 +36,22 @@ export function createHeightMapTexture(
 }
 
 export class EditorMapSquare implements MapSquare {
+    heightUpdated: boolean = false;
+    underlayUpdated: boolean = false;
+
+    constructor(
+        readonly mapX: number,
+        readonly mapY: number,
+        readonly borderSize: number,
+        readonly scene: Scene,
+        readonly terrainVertexBuffer: VertexBuffer,
+        readonly terrainVertexArray: VertexArray,
+        readonly terrainDrawCall: DrawCall,
+        readonly terrainDrawRanges: DrawRange[],
+        public heightMapTexture: Texture,
+        public heightMapTextureData: Float32Array,
+    ) {}
+
     static create(
         app: PicoApp,
         mapData: EditorMapData,
@@ -45,6 +61,17 @@ export class EditorMapSquare implements MapSquare {
         terrainProgram: Program,
     ): EditorMapSquare {
         const { mapX, mapY, borderSize } = mapData;
+
+        const scene = new Scene(mapData.scene.levels, mapData.scene.sizeX, mapData.scene.sizeY);
+        scene.tileHeights = mapData.scene.tileHeights;
+        scene.tileRenderFlags = mapData.scene.tileRenderFlags;
+        scene.tileUnderlays = mapData.scene.tileUnderlays;
+        scene.tileOverlays = mapData.scene.tileOverlays;
+        scene.tileShapes = mapData.scene.tileShapes;
+        scene.tileRotations = mapData.scene.tileRotations;
+        scene.tileLightOcclusions = mapData.scene.tileLightOcclusions;
+        scene.tileLights = mapData.scene.tileLights;
+        scene.tileBlendedColors = mapData.scene.tileBlendedColors;
 
         const terrainVertexBuffer = app.createInterleavedBuffer(8, mapData.terrainVertices);
         const terrainVertexArray = app
@@ -75,6 +102,7 @@ export class EditorMapSquare implements MapSquare {
             mapX,
             mapY,
             borderSize,
+            scene,
             terrainVertexBuffer,
             terrainVertexArray,
             terrainDrawCall,
@@ -83,18 +111,6 @@ export class EditorMapSquare implements MapSquare {
             mapData.heightMapTextureData,
         );
     }
-
-    constructor(
-        readonly mapX: number,
-        readonly mapY: number,
-        readonly borderSize: number,
-        readonly terrainVertexBuffer: VertexBuffer,
-        readonly terrainVertexArray: VertexArray,
-        readonly terrainDrawCall: DrawCall,
-        readonly terrainDrawRanges: DrawRange[],
-        public heightMapTexture: Texture,
-        public heightMapTextureData: Float32Array,
-    ) {}
 
     getHeightMapIndex(x: number, y: number): number {
         const heightMapSize = Scene.MAP_SQUARE_SIZE + this.borderSize * 2;

@@ -1036,8 +1036,13 @@ export class SceneBuilder {
         }
     }
 
-    blendUnderlays(scene: Scene, level: number): Int32Array[] {
-        const colors: Int32Array[] = new Array(scene.sizeX);
+    blendUnderlays(scene: Scene, level: number, force: boolean = false): Int32Array[] {
+        let colors = scene.tileBlendedColors[level];
+        if (colors && !force) {
+            return colors;
+        }
+
+        colors = new Array(scene.sizeX);
         for (let i = 0; i < scene.sizeX; i++) {
             colors[i] = new Int32Array(scene.sizeY).fill(-1);
         }
@@ -1127,6 +1132,8 @@ export class SceneBuilder {
             }
         }
 
+        scene.tileBlendedColors[level] = colors;
+
         return colors;
     }
 
@@ -1138,151 +1145,179 @@ export class SceneBuilder {
         const tileRotations = scene.tileRotations;
 
         for (let level = 0; level < scene.levels; level++) {
-            const blendedColors = this.blendUnderlays(scene, level);
             const lights = scene.calculateTileLights(level);
-
+            const blendedColors = this.blendUnderlays(scene, level);
             for (let x = 1; x < scene.sizeX - 1; x++) {
                 for (let y = 1; y < scene.sizeY - 1; y++) {
-                    const underlayId = underlayIds[level][x][y] - 1;
-
-                    const overlayId = overlayIds[level][x][y] - 1;
-
-                    if (underlayId === -1 && overlayId === -1) {
-                        continue;
-                    }
-
-                    const heightSw = heights[level][x][y];
-                    const heightSe = heights[level][x + 1][y];
-                    const heightNe = heights[level][x + 1][y + 1];
-                    const heightNw = heights[level][x][y + 1];
-
-                    const lightSw = lights[x][y];
-                    const lightSe = lights[x + 1][y];
-                    const lightNe = lights[x + 1][y + 1];
-                    const lightNw = lights[x][y + 1];
-
-                    let underlayHslSw = -1;
-                    let underlayHslSe = -1;
-                    let underlayHslNe = -1;
-                    let underlayHslNw = -1;
-                    if (underlayId !== -1) {
-                        underlayHslSw = blendedColors[x][y];
-                        underlayHslSe = blendedColors[x + 1][y];
-                        underlayHslNe = blendedColors[x + 1][y + 1];
-                        underlayHslNw = blendedColors[x][y + 1];
-                        if (underlayHslSe === -1 || !smoothUnderlays) {
-                            underlayHslSe = underlayHslSw;
-                        }
-                        if (underlayHslNe === -1 || !smoothUnderlays) {
-                            underlayHslNe = underlayHslSw;
-                        }
-                        if (underlayHslNw === -1 || !smoothUnderlays) {
-                            underlayHslNw = underlayHslSw;
-                        }
-                    }
-
-                    let underlayRgb = 0;
-                    if (underlayHslSw !== -1) {
-                        underlayRgb = HSL_RGB_MAP[adjustUnderlayLight(underlayHslSw, 96)];
-                    }
-
-                    let tileModel: SceneTileModel;
-                    if (overlayId === -1) {
-                        tileModel = new SceneTileModel(
-                            0,
-                            0,
-                            -1,
-                            x,
-                            y,
-                            heightSw,
-                            heightSe,
-                            heightNe,
-                            heightNw,
-                            lightSw,
-                            lightSe,
-                            lightNe,
-                            lightNw,
-                            underlayHslSw,
-                            underlayHslSe,
-                            underlayHslNe,
-                            underlayHslNw,
-                            0,
-                            0,
-                            underlayRgb,
-                            0,
-                        );
-                    } else {
-                        const shape = tileShapes[level][x][y] + 1;
-                        const rotation = tileRotations[level][x][y];
-
-                        const overlay = this.overlayTypeLoader.load(overlayId);
-
-                        let overlayHsl: number;
-                        let overlayMinimapHsl: number;
-                        if (
-                            overlay.textureId !== -1 &&
-                            this.locModelLoader.textureLoader.isSd(overlay.textureId)
-                        ) {
-                            overlayMinimapHsl = this.locModelLoader.textureLoader.getAverageHsl(
-                                overlay.textureId,
-                            );
-                            overlayHsl = -1;
-                        } else if (overlay.primaryRgb === 0xff00ff) {
-                            overlayHsl = overlayMinimapHsl = -2;
-                        } else {
-                            overlayHsl = overlayMinimapHsl = packHsl(
-                                overlay.hue,
-                                overlay.saturation,
-                                overlay.lightness,
-                            );
-                        }
-
-                        if (overlay.secondaryRgb !== -1) {
-                            overlayMinimapHsl = packHsl(
-                                overlay.secondaryHue,
-                                overlay.secondarySaturation,
-                                overlay.secondaryLightness,
-                            );
-                        }
-
-                        let overlayRgb = 0;
-                        if (overlayMinimapHsl !== -2) {
-                            overlayRgb = HSL_RGB_MAP[adjustOverlayLight(overlayMinimapHsl, 96)];
-                        }
-
-                        // if (overlayMinimapHsl === -2) {
-                        //     overlayMinimapHsl = overlayHsl;
-                        // }
-
-                        tileModel = new SceneTileModel(
-                            shape,
-                            rotation,
-                            overlay.textureId,
-                            x,
-                            y,
-                            heightSw,
-                            heightSe,
-                            heightNe,
-                            heightNw,
-                            lightSw,
-                            lightSe,
-                            lightNe,
-                            lightNw,
-                            underlayHslSw,
-                            underlayHslSe,
-                            underlayHslNe,
-                            underlayHslNw,
-                            overlayHsl,
-                            overlayMinimapHsl,
-                            underlayRgb,
-                            overlayRgb,
-                        );
-                    }
-
-                    scene.newTileModel(level, x, y, tileModel);
+                    this.addTileModel(
+                        scene,
+                        heights,
+                        underlayIds,
+                        overlayIds,
+                        tileShapes,
+                        tileRotations,
+                        lights,
+                        blendedColors,
+                        level,
+                        x,
+                        y,
+                        smoothUnderlays,
+                    );
                 }
             }
         }
+    }
+
+    addTileModel(
+        scene: Scene,
+        heights: Int32Array[][],
+        underlayIds: Uint16Array[][],
+        overlayIds: Int16Array[][],
+        tileShapes: Uint8Array[][],
+        tileRotations: Uint8Array[][],
+        lights: Int32Array[],
+        blendedColors: Int32Array[],
+        level: number,
+        x: number,
+        y: number,
+        smoothUnderlays: boolean,
+    ): void {
+        const underlayId = underlayIds[level][x][y] - 1;
+        const overlayId = overlayIds[level][x][y] - 1;
+
+        if (underlayId === -1 && overlayId === -1) {
+            return;
+        }
+
+        const heightSw = heights[level][x][y];
+        const heightSe = heights[level][x + 1][y];
+        const heightNe = heights[level][x + 1][y + 1];
+        const heightNw = heights[level][x][y + 1];
+
+        const lightSw = lights[x][y];
+        const lightSe = lights[x + 1][y];
+        const lightNe = lights[x + 1][y + 1];
+        const lightNw = lights[x][y + 1];
+
+        let underlayHslSw = -1;
+        let underlayHslSe = -1;
+        let underlayHslNe = -1;
+        let underlayHslNw = -1;
+        if (underlayId !== -1) {
+            underlayHslSw = blendedColors[x][y];
+            underlayHslSe = blendedColors[x + 1][y];
+            underlayHslNe = blendedColors[x + 1][y + 1];
+            underlayHslNw = blendedColors[x][y + 1];
+            if (underlayHslSe === -1 || !smoothUnderlays) {
+                underlayHslSe = underlayHslSw;
+            }
+            if (underlayHslNe === -1 || !smoothUnderlays) {
+                underlayHslNe = underlayHslSw;
+            }
+            if (underlayHslNw === -1 || !smoothUnderlays) {
+                underlayHslNw = underlayHslSw;
+            }
+        }
+
+        let underlayRgb = 0;
+        if (underlayHslSw !== -1) {
+            underlayRgb = HSL_RGB_MAP[adjustUnderlayLight(underlayHslSw, 96)];
+        }
+
+        let tileModel: SceneTileModel;
+        if (overlayId === -1) {
+            tileModel = new SceneTileModel(
+                0,
+                0,
+                -1,
+                x,
+                y,
+                heightSw,
+                heightSe,
+                heightNe,
+                heightNw,
+                lightSw,
+                lightSe,
+                lightNe,
+                lightNw,
+                underlayHslSw,
+                underlayHslSe,
+                underlayHslNe,
+                underlayHslNw,
+                0,
+                0,
+                underlayRgb,
+                0,
+            );
+        } else {
+            const shape = tileShapes[level][x][y] + 1;
+            const rotation = tileRotations[level][x][y];
+
+            const overlay = this.overlayTypeLoader.load(overlayId);
+
+            let overlayHsl: number;
+            let overlayMinimapHsl: number;
+            if (
+                overlay.textureId !== -1 &&
+                this.locModelLoader.textureLoader.isSd(overlay.textureId)
+            ) {
+                overlayMinimapHsl = this.locModelLoader.textureLoader.getAverageHsl(
+                    overlay.textureId,
+                );
+                overlayHsl = -1;
+            } else if (overlay.primaryRgb === 0xff00ff) {
+                overlayHsl = overlayMinimapHsl = -2;
+            } else {
+                overlayHsl = overlayMinimapHsl = packHsl(
+                    overlay.hue,
+                    overlay.saturation,
+                    overlay.lightness,
+                );
+            }
+
+            if (overlay.secondaryRgb !== -1) {
+                overlayMinimapHsl = packHsl(
+                    overlay.secondaryHue,
+                    overlay.secondarySaturation,
+                    overlay.secondaryLightness,
+                );
+            }
+
+            let overlayRgb = 0;
+            if (overlayMinimapHsl !== -2) {
+                overlayRgb = HSL_RGB_MAP[adjustOverlayLight(overlayMinimapHsl, 96)];
+            }
+
+            // if (overlayMinimapHsl === -2) {
+            //     overlayMinimapHsl = overlayHsl;
+            // }
+
+            tileModel = new SceneTileModel(
+                shape,
+                rotation,
+                overlay.textureId,
+                x,
+                y,
+                heightSw,
+                heightSe,
+                heightNe,
+                heightNw,
+                lightSw,
+                lightSe,
+                lightNe,
+                lightNw,
+                underlayHslSw,
+                underlayHslSe,
+                underlayHslNe,
+                underlayHslNw,
+                overlayHsl,
+                overlayMinimapHsl,
+                underlayRgb,
+                overlayRgb,
+            );
+        }
+
+        scene.setTileModel(level, x, y, tileModel);
     }
 
     decodeNpcSpawns(

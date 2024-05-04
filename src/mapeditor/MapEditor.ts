@@ -7,13 +7,17 @@ import { InputManager } from "../mapviewer/InputManager";
 import { CacheSystem } from "../rs/cache/CacheSystem";
 import { CacheLoaderFactory, getCacheLoaderFactory } from "../rs/cache/loader/CacheLoaderFactory";
 import { BasTypeLoader } from "../rs/config/bastype/BasTypeLoader";
+import { FloorTypeLoader, OverlayFloorTypeLoader } from "../rs/config/floortype/FloorTypeLoader";
+import { LocModelLoader } from "../rs/config/loctype/LocModelLoader";
 import { LocTypeLoader } from "../rs/config/loctype/LocTypeLoader";
 import { NpcTypeLoader } from "../rs/config/npctype/NpcTypeLoader";
 import { ObjTypeLoader } from "../rs/config/objtype/ObjTypeLoader";
 import { SeqTypeLoader } from "../rs/config/seqtype/SeqTypeLoader";
 import { VarManager } from "../rs/config/vartype/VarManager";
 import { MapFileIndex } from "../rs/map/MapFileIndex";
+import { ModelLoader } from "../rs/model/ModelLoader";
 import { SeqFrameLoader } from "../rs/model/seq/SeqFrameLoader";
+import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { TextureLoader } from "../rs/texture/TextureLoader";
 import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";
 import { MapEditorRenderer } from "./MapEditorRenderer";
@@ -45,6 +49,14 @@ export class MapEditor {
     varManager!: VarManager;
 
     mapFileIndex!: MapFileIndex;
+
+    underlayTypeLoader!: FloorTypeLoader;
+    overlayTypeLoader!: OverlayFloorTypeLoader;
+
+    modelLoader!: ModelLoader;
+    locModelLoader!: LocModelLoader;
+
+    sceneBuilder!: SceneBuilder;
 
     // Settings
 
@@ -92,6 +104,30 @@ export class MapEditor {
 
         const mapFileLoader = this.loaderFactory.getMapFileLoader();
         this.mapFileIndex = mapFileLoader.mapFileIndex;
+
+        this.underlayTypeLoader = this.loaderFactory.getUnderlayTypeLoader();
+        this.overlayTypeLoader = this.loaderFactory.getOverlayTypeLoader();
+
+        this.modelLoader = this.loaderFactory.getModelLoader();
+
+        this.locModelLoader = new LocModelLoader(
+            this.locTypeLoader,
+            this.modelLoader,
+            this.textureLoader,
+            this.seqTypeLoader,
+            this.seqFrameLoader,
+            this.loaderFactory.getSkeletalSeqLoader(),
+        );
+
+        this.sceneBuilder = new SceneBuilder(
+            cache.info,
+            mapFileLoader,
+            this.underlayTypeLoader,
+            this.overlayTypeLoader,
+            this.locTypeLoader,
+            this.locModelLoader,
+            cache.xteas,
+        );
     }
 
     getSearchParams(): URLSearchParamsInit {
