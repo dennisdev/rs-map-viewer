@@ -1,5 +1,5 @@
 import { pixelRatio } from "../../util/DeviceUtil";
-import { RenderStats } from "./RenderStats";
+import { FrameStats } from "./FrameStats";
 
 function resizeCanvas(canvas: HTMLCanvasElement) {
     const devicePixelRatio = pixelRatio;
@@ -15,14 +15,14 @@ function resizeCanvas(canvas: HTMLCanvasElement) {
     return false;
 }
 
-export abstract class Renderer {
+export abstract class RendererMainLoop {
     canvas: HTMLCanvasElement;
     animationId: number | undefined;
     running: boolean = false;
 
     fpsLimit: number = 999;
 
-    stats: RenderStats = new RenderStats();
+    stats: FrameStats = new FrameStats();
 
     constructor() {
         this.canvas = document.createElement("canvas");

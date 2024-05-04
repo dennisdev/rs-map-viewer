@@ -1,9 +1,9 @@
 import { Schema } from "leva/dist/declarations/src/types";
 
-import { Renderer } from "../components/renderer/Renderer";
+import { RendererMainLoop } from "../components/renderer/RendererMainLoop";
 import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
-import { MapManager, MapSquare } from "../renderer/MapManager";
+import { MapManager } from "../renderer/MapManager";
 import { MapViewer } from "./MapViewer";
 import { OsrsMenuEntry } from "../components/rs/menu/OsrsMenu";
 import { InteractType } from "../renderer/InteractType";
@@ -32,7 +32,7 @@ export class MapViewerRendererStats {
     }
 };
 
-export abstract class MapViewerRenderer extends Renderer {
+export abstract class MapViewerRenderer extends RendererMainLoop {
     inputManager: InputManager;
 
     mapManager: MapManager<WebGLMapSquare>;
