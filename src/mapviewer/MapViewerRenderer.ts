@@ -48,17 +48,18 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
             mapViewer.workerPool.size * 2,
             this.queueLoadMap.bind(this),
         );
+
         this.mapManagerTime = 0;
         this.tickTime = 0;
         this.rendererStats = new MapViewerRendererStats();
     }
 
     override async init() {
-        this.mapViewer.inputManager.init(this.canvas);
+        this.inputManager.init(this.canvas);
     }
 
     override cleanUp(): void {
-        this.mapViewer.inputManager.cleanUp();
+        this.inputManager.cleanUp();
     }
 
     abstract rendererUpdate(): void;
@@ -106,7 +107,7 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
     handleKeyInput(deltaTime: number) {
         const deltaTimeSec = deltaTime / 1000;
 
-        const inputManager = this.mapViewer.inputManager;
+        const inputManager = this.inputManager;
         const camera = this.mapViewer.camera;
 
         let cameraSpeedMult = 1.0;
@@ -185,19 +186,18 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
     }
 
     handleMouseInput() {
-        const inputManager = this.mapViewer.inputManager;
         const camera = this.mapViewer.camera;
 
-        if (inputManager.isPointerLock()) {
+        if (this.inputManager.isPointerLock()) {
             this.mapViewer.closeMenu();
         }
 
         // mouse/touch controls
-        const deltaMouseX = inputManager.getDeltaMouseX();
-        const deltaMouseY = inputManager.getDeltaMouseY();
+        const deltaMouseX = this.inputManager.getDeltaMouseX();
+        const deltaMouseY = this.inputManager.getDeltaMouseY();
 
         if (deltaMouseX !== 0 || deltaMouseY !== 0) {
-            if (inputManager.isTouch) {
+            if (this.inputManager.isTouch) {
                 camera.move(0, clamp(-deltaMouseY, -100, 100) * 0.004, 0);
             } else {
                 camera.updatePitch(camera.pitch, deltaMouseY * 0.9);
@@ -209,15 +209,14 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
     handleJoystickInput(deltaTime: number) {
         const deltaTimeSec = deltaTime / 1000;
 
-        const inputManager = this.mapViewer.inputManager;
         const camera = this.mapViewer.camera;
 
         const deltaPitch = 64 * 5 * deltaTimeSec;
         const deltaYaw = 64 * 5 * deltaTimeSec;
 
         // joystick controls
-        const positionJoystickEvent = inputManager.positionJoystickEvent;
-        const cameraJoystickEvent = inputManager.cameraJoystickEvent;
+        const positionJoystickEvent = this.inputManager.positionJoystickEvent;
+        const cameraJoystickEvent = this.inputManager.cameraJoystickEvent;
 
         if (positionJoystickEvent) {
             const moveX = positionJoystickEvent.x ?? 0;
@@ -239,33 +238,33 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
 
         const frameTime = performance.now() - this.rendererStats.frameStart;
 
-        if (this.mapViewer.inputManager.isKeyDown("KeyH")) {
+        if (this.inputManager.isKeyDown("KeyH")) {
             this.mapViewer.debugText = `MapManager: ${this.mapManagerTime.toFixed(2)}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyJ")) {
+        if (this.inputManager.isKeyDown("KeyJ")) {
             this.mapViewer.debugText = `Interactions: ${this.rendererStats.interactionsTime.toFixed(2)}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyK")) {
+        if (this.inputManager.isKeyDown("KeyK")) {
             this.mapViewer.debugText = `Tick: ${this.tickTime.toFixed(2)}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyL")) {
+        if (this.inputManager.isKeyDown("KeyL")) {
             this.mapViewer.debugText = `Opaque Pass: ${this.rendererStats.opaquePassTime.toFixed(2)}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyB")) {
+        if (this.inputManager.isKeyDown("KeyB")) {
             this.mapViewer.debugText = `Opaque Npc Pass: ${this.rendererStats.opaqueNpcPassTime.toFixed(2)}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyN")) {
+        if (this.inputManager.isKeyDown("KeyN")) {
             this.mapViewer.debugText = `Transparent Pass: ${this.rendererStats.transparentPassTime.toFixed(2)}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyM")) {
+        if (this.inputManager.isKeyDown("KeyM")) {
             this.mapViewer.debugText = `Transparent Npc Pass: ${this.rendererStats.transparentNpcPassTime.toFixed(
                 2,
             )}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyV")) {
+        if (this.inputManager.isKeyDown("KeyV")) {
             this.mapViewer.debugText = `Frame Time: ${frameTime.toFixed(2)}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyU")) {
+        if (this.inputManager.isKeyDown("KeyU")) {
             this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(2)}ms`;
         }
 
@@ -277,7 +276,7 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
             this.mapViewer.updateSearchParams();
         }
 
-        this.mapViewer.inputManager.onFrameEnd();
+        this.inputManager.onFrameEnd();
         this.mapViewer.camera.onFrameEnd();
 
         // this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(3)}`;

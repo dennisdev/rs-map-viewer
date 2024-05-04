@@ -33,6 +33,7 @@ import {
     createNpcProgram,
 } from "./shaders/Shaders";
 import { CacheLoaders } from "../../rs/cache/CacheLoaders";
+import { InputManager } from "../../util/InputManager";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -70,6 +71,8 @@ function getMaxAnisotropy(mode: TextureFilterMode): number {
 }
 
 export class WebGLMapRenderer extends MapViewerRenderer {
+    inputManager: InputManager;
+    
     dataLoader = new SdMapDataLoader();
     cacheLoaders: CacheLoaders;
 
@@ -156,8 +159,9 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
-    constructor(public mapViewer: MapViewer) {
+    constructor(public mapViewer: MapViewer, inputManager: InputManager) {
         super(mapViewer);
+        this.inputManager = inputManager;
         this.cacheLoaders = mapViewer.cacheLoaders;
         this.interactions = new Array(INTERACT_BUFFER_COUNT);
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
@@ -832,8 +836,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         const currInteractions = this.interactions[frameCount % this.interactions.length];
 
         const interactionsStart = performance.now();
-        const inputManager = this.mapViewer.inputManager;
-        if (!inputManager.isPointerLock()) {
+        if (!this.inputManager.isPointerLock()) {
             this.prepareInteractions(currInteractions);
         } else if (this.hoveredMapIds.size > 0) {
             this.hoveredMapIds.clear();
@@ -885,9 +888,9 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         this.gl.readBuffer(PicoGL.COLOR_ATTACHMENT0);
         this.app.blitFramebuffer(PicoGL.COLOR_BUFFER_BIT);
 
-        if (!inputManager.isPointerLock()) {
-            const mouseX = inputManager.mouseX;
-            const mouseY = inputManager.mouseY;
+        if (!this.inputManager.isPointerLock()) {
+            const mouseX = this.inputManager.mouseX;
+            const mouseY = this.inputManager.mouseY;
             if (mouseX !== -1 && mouseY !== -1) {
                 if (this.msaaEnabled) {
                     // TODO: reading from the multisampled framebuffer is not accurate
