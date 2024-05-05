@@ -34,6 +34,7 @@ import {
 } from "./shaders/Shaders";
 import { CacheLoaders } from "../../rs/cache/CacheLoaders";
 import { InputManager } from "../../util/InputManager";
+import { RenderDataWorkerPool } from "../../worker/RenderDataWorkerPool";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -72,7 +73,7 @@ function getMaxAnisotropy(mode: TextureFilterMode): number {
 
 export class WebGLMapRenderer extends MapViewerRenderer {
     inputManager: InputManager;
-    
+    workerPool: RenderDataWorkerPool;
     dataLoader = new SdMapDataLoader();
     cacheLoaders: CacheLoaders;
 
@@ -159,9 +160,10 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
-    constructor(public mapViewer: MapViewer, inputManager: InputManager) {
+    constructor(public mapViewer: MapViewer, inputManager: InputManager, workerPool: RenderDataWorkerPool) {
         super(mapViewer);
         this.inputManager = inputManager;
+        this.workerPool = workerPool;
         this.cacheLoaders = mapViewer.cacheLoaders;
         this.interactions = new Array(INTERACT_BUFFER_COUNT);
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
@@ -186,8 +188,6 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         state.extensions.multiDrawInstanced = ext;
 
         this.hasMultiDraw = !!PicoGL.WEBGL_INFO.MULTI_DRAW_INSTANCED;
-
-        this.mapViewer.workerPool.initLoader(this.dataLoader);
 
         this.gl.getExtension("EXT_float_blend");
 
@@ -624,7 +624,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     }
 
     override async queueLoadMap(mapX: number, mapY: number): Promise<void> {
-        const mapData = await this.mapViewer.workerPool.queueLoad<
+        const mapData = await this.workerPool.queueLoad<
             SdMapLoaderInput,
             SdMapData | undefined,
             SdMapDataLoader
@@ -1223,7 +1223,6 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     override async cleanUp(): Promise<void> {
         super.cleanUp();
-        this.mapViewer.workerPool.resetLoader(this.dataLoader);
 
         this.quadArray?.delete();
         this.quadArray = undefined;

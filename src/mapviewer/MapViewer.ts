@@ -74,7 +74,7 @@ export class MapViewer {
     ) {
         this.loadedCache = cache;
         this.cacheLoaders = new CacheLoaders(cache);
-        this.renderer = new WebGLMapRenderer(this, this.inputManager);
+        this.renderer = new WebGLMapRenderer(this, this.inputManager, workerPool);
         this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
         this.initCache(cache);
     }
