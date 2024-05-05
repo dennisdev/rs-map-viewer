@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 
-import { Renderer } from "./Renderer";
+import { RendererMainLoop } from "./RendererMainLoop";
 
 export interface RendererCanvasProps {
-    renderer: Renderer;
+    renderer: RendererMainLoop;
 }
 
 export function RendererCanvas({ renderer }: RendererCanvasProps): JSX.Element {

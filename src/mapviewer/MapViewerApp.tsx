@@ -7,14 +7,13 @@ import { OsrsLoadingBar } from "../components/rs/loading/OsrsLoadingBar";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { formatBytes } from "../util/BytesUtil";
 import { isIos, isWallpaperEngine } from "../util/DeviceUtil";
-import { fetchCacheList, loadCacheFiles } from "./Caches";
+import { fetchCacheList, loadCacheFiles } from "../util/Caches";
 import { MapViewer } from "./MapViewer";
 import { MapViewerContainer } from "./MapViewerContainer";
-import { WEBGL, getAvailableRenderers } from "./MapViewerRenderers";
-import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
-import { fetchObjSpawns } from "./data/obj/ObjSpawn";
-import { renderDataLoaderSerializer } from "./worker/RenderDataLoader";
-import { RenderDataWorkerPool } from "./worker/RenderDataWorkerPool";
+import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
+import { fetchObjSpawns } from "../data/obj/ObjSpawn";
+import { renderDataLoaderSerializer } from "../worker/RenderDataLoader";
+import { RenderDataWorkerPool } from "../worker/RenderDataWorkerPool";
 
 registerSerializer(renderDataLoaderSerializer);
 
@@ -64,22 +63,12 @@ function MapViewerApp() {
 
             const mapImageCache = await caches.open("map-images");
 
-            const availableRenderers = getAvailableRenderers();
-            if (availableRenderers.length === 0) {
-                setErrorMessage("No renderers available");
-                return;
-            }
-
-            // Add some way to get preferred renderer
-            const rendererType = availableRenderers[0];
-
             const mapViewer = new MapViewer(
                 workerPool,
                 cacheList,
                 objSpawns,
                 npcSpawns,
                 mapImageCache,
-                rendererType,
                 cache,
             );
             mapViewer.applySearchParams(searchParams);

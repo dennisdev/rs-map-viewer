@@ -1,51 +1,37 @@
 import { Schema } from "leva/dist/declarations/src/types";
 
-import { Renderer } from "../components/renderer/Renderer";
-import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
-import { MapManager, MapSquare } from "./MapManager";
 import { MapViewer } from "./MapViewer";
-import { MapViewerRendererType } from "./MapViewerRenderers";
+import { OsrsMenuEntry } from "../components/rs/menu/OsrsMenu";
+import { InteractType } from "../renderer/InteractType";
+import { INTERACTION_RADIUS } from "../renderer/Interactions";
+import { MenuTargetType } from "../rs/MenuEntry";
+import { isTouchDevice } from "../util/DeviceUtil";
+import { SdMapData } from "../renderer/loader/SdMapData";
+import { WebGLMapRenderer } from "../renderer/webgl/WebGLMapRenderer";
 
-export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends Renderer {
-    abstract type: MapViewerRendererType;
-
-    mapManager: MapManager<T>;
+export class MapViewerRenderer extends WebGLMapRenderer {
 
     constructor(public mapViewer: MapViewer) {
-        super();
-        this.mapManager = new MapManager(
-            mapViewer.workerPool.size * 2,
-            this.queueLoadMap.bind(this),
-        );
+        super(mapViewer.cacheLoaders, mapViewer.inputManager, mapViewer.workerPool,
+            mapViewer.renderDistance, mapViewer.unloadDistance, mapViewer.lodDistance,
+            mapViewer.camera, mapViewer.pathfinder);
     }
 
     override async init() {
-        this.mapViewer.inputManager.init(this.canvas);
+        this.inputManager.init(this.canvas);
+        super.init();
     }
 
-    override cleanUp(): void {
-        this.mapViewer.inputManager.cleanUp();
+    override async cleanUp(): Promise<void> {
+        this.inputManager.cleanUp();
+        super.cleanUp();
     }
 
-    initCache(): void {
-        this.mapManager.init(
-            this.mapViewer.mapFileIndex,
-            SceneBuilder.fillEmptyTerrain(this.mapViewer.loadedCache.info),
-        );
-        this.mapManager.update(
-            this.mapViewer.camera,
-            this.stats.frameCount,
-            this.mapViewer.renderDistance,
-            this.mapViewer.unloadDistance,
-        );
+    override update(time: number, deltaTime: number) {
+        this.handleInput(deltaTime);
+        super.update(time, deltaTime);
     }
-
-    getControls(): Schema {
-        return {};
-    }
-
-    queueLoadMap(mapX: number, mapY: number): void {}
 
     handleInput(deltaTime: number) {
         this.handleKeyInput(deltaTime);
@@ -56,7 +42,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     handleKeyInput(deltaTime: number) {
         const deltaTimeSec = deltaTime / 1000;
 
-        const inputManager = this.mapViewer.inputManager;
+        const inputManager = this.inputManager;
         const camera = this.mapViewer.camera;
 
         let cameraSpeedMult = 1.0;
@@ -135,19 +121,18 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     }
 
     handleMouseInput() {
-        const inputManager = this.mapViewer.inputManager;
         const camera = this.mapViewer.camera;
 
-        if (inputManager.isPointerLock()) {
+        if (this.inputManager.isPointerLock()) {
             this.mapViewer.closeMenu();
         }
 
         // mouse/touch controls
-        const deltaMouseX = inputManager.getDeltaMouseX();
-        const deltaMouseY = inputManager.getDeltaMouseY();
+        const deltaMouseX = this.inputManager.getDeltaMouseX();
+        const deltaMouseY = this.inputManager.getDeltaMouseY();
 
         if (deltaMouseX !== 0 || deltaMouseY !== 0) {
-            if (inputManager.isTouch) {
+            if (this.inputManager.isTouch) {
                 camera.move(0, clamp(-deltaMouseY, -100, 100) * 0.004, 0);
             } else {
                 camera.updatePitch(camera.pitch, deltaMouseY * 0.9);
@@ -159,15 +144,14 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     handleJoystickInput(deltaTime: number) {
         const deltaTimeSec = deltaTime / 1000;
 
-        const inputManager = this.mapViewer.inputManager;
         const camera = this.mapViewer.camera;
 
         const deltaPitch = 64 * 5 * deltaTimeSec;
         const deltaYaw = 64 * 5 * deltaTimeSec;
 
         // joystick controls
-        const positionJoystickEvent = inputManager.positionJoystickEvent;
-        const cameraJoystickEvent = inputManager.cameraJoystickEvent;
+        const positionJoystickEvent = this.inputManager.positionJoystickEvent;
+        const cameraJoystickEvent = this.inputManager.cameraJoystickEvent;
 
         if (positionJoystickEvent) {
             const moveX = positionJoystickEvent.x ?? 0;
@@ -187,6 +171,38 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     override onFrameEnd(): void {
         super.onFrameEnd();
 
+        const frameTime = performance.now() - this.rendererStats.frameStart;
+
+        if (this.inputManager.isKeyDown("KeyH")) {
+            this.mapViewer.debugText = `MapManager: ${this.rendererStats.mapManagerTime.toFixed(2)}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyJ")) {
+            this.mapViewer.debugText = `Interactions: ${this.rendererStats.interactionsTime.toFixed(2)}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyK")) {
+            this.mapViewer.debugText = `Tick: ${this.rendererStats.tickTime.toFixed(2)}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyL")) {
+            this.mapViewer.debugText = `Opaque Pass: ${this.rendererStats.opaquePassTime.toFixed(2)}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyB")) {
+            this.mapViewer.debugText = `Opaque Npc Pass: ${this.rendererStats.opaqueNpcPassTime.toFixed(2)}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyN")) {
+            this.mapViewer.debugText = `Transparent Pass: ${this.rendererStats.transparentPassTime.toFixed(2)}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyM")) {
+            this.mapViewer.debugText = `Transparent Npc Pass: ${this.rendererStats.transparentNpcPassTime.toFixed(
+                2,
+            )}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyV")) {
+            this.mapViewer.debugText = `Frame Time: ${frameTime.toFixed(2)}ms`;
+        }
+        if (this.inputManager.isKeyDown("KeyU")) {
+            this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(2)}ms`;
+        }
+
         if (window.wallpaperFpsLimit !== undefined) {
             this.fpsLimit = window.wallpaperFpsLimit;
         }
@@ -195,9 +211,201 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
             this.mapViewer.updateSearchParams();
         }
 
-        this.mapViewer.inputManager.onFrameEnd();
+        this.inputManager.onFrameEnd();
         this.mapViewer.camera.onFrameEnd();
 
         // this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(3)}`;
+    }
+
+    override onMapLoad(mapData: SdMapData) {
+        this.mapViewer.setMapImageUrl(
+            mapData.mapX,
+            mapData.mapY,
+            URL.createObjectURL(mapData.minimapBlob),
+            true,
+            false,
+        );
+    }
+
+    override checkInteractions(interactReady: boolean, interactBuffer: Float32Array,
+        closestInteractIndices: Map<number, number[]>): void {
+        const frameCount = this.stats.frameCount;
+
+        const isMouseDown = this.inputManager.dragX !== -1 || this.inputManager.dragY !== -1;
+        const picked = this.inputManager.pickX !== -1 && this.inputManager.pickY !== -1;
+
+        if (!interactReady && !picked)
+            return;
+
+        const menuCooldown = isTouchDevice ? 50 : 10;
+
+        if (
+            this.inputManager.mouseX === -1 ||
+            this.inputManager.mouseY === -1 ||
+            frameCount - this.mapViewer.menuOpenedFrame < menuCooldown
+        ) {
+            return;
+        }
+
+        // Don't auto close menu on touch devices
+        if (this.mapViewer.menuOpen && !picked && !isMouseDown && isTouchDevice) {
+            return;
+        }
+
+        if (!picked && !this.mapViewer.tooltips) {
+            this.mapViewer.closeMenu();
+            return;
+        }
+
+        const menuEntries: OsrsMenuEntry[] = [];
+        const examineEntries: OsrsMenuEntry[] = [];
+
+        const locIds = new Set<number>();
+        const objIds = new Set<number>();
+        const npcIds = new Set<number>();
+
+        for (let i = 0; i < INTERACTION_RADIUS + 1; i++) {
+            const indices = closestInteractIndices.get(i);
+            if (!indices) {
+                continue;
+            }
+            for (const index of indices) {
+                const interactId = interactBuffer[index];
+                const interactType = interactBuffer[index + 2];
+                if (interactType === InteractType.LOC) {
+                    const locType = this.mapViewer.cacheLoaders.locTypeLoader.load(interactId);
+                    if (locType.name === "null" && !this.mapViewer.debugId) {
+                        continue;
+                    }
+                    if (locIds.has(interactId)) {
+                        continue;
+                    }
+                    locIds.add(interactId);
+
+                    for (const option of locType.actions) {
+                        if (!option) {
+                            continue;
+                        }
+                        menuEntries.push({
+                            option,
+                            targetId: locType.id,
+                            targetType: MenuTargetType.LOC,
+                            targetName: locType.name,
+                            targetLevel: -1,
+                            onClick: this.mapViewer.closeMenu,
+                        });
+                    }
+
+                    examineEntries.push({
+                        option: "Examine",
+                        targetId: locType.id,
+                        targetType: MenuTargetType.LOC,
+                        targetName: locType.name,
+                        targetLevel: -1,
+                        onClick: this.mapViewer.onExamine,
+                    });
+                } else if (interactType === InteractType.OBJ) {
+                    const objType = this.mapViewer.cacheLoaders.objTypeLoader.load(interactId);
+                    if (objType.name === "null" && !this.mapViewer.debugId) {
+                        continue;
+                    }
+                    if (objIds.has(interactId)) {
+                        continue;
+                    }
+                    objIds.add(interactId);
+
+                    for (const option of objType.groundActions) {
+                        if (!option) {
+                            continue;
+                        }
+                        menuEntries.push({
+                            option,
+                            targetId: objType.id,
+                            targetType: MenuTargetType.OBJ,
+                            targetName: objType.name,
+                            targetLevel: -1,
+                            onClick: this.mapViewer.closeMenu,
+                        });
+                    }
+
+                    examineEntries.push({
+                        option: "Examine",
+                        targetId: objType.id,
+                        targetType: MenuTargetType.OBJ,
+                        targetName: objType.name,
+                        targetLevel: -1,
+                        onClick: this.mapViewer.onExamine,
+                    });
+                } else if (interactType === InteractType.NPC) {
+                    let npcType = this.mapViewer.cacheLoaders.npcTypeLoader.load(interactId);
+                    if (npcType.transforms) {
+                        const transformed = npcType.transform(
+                            this.mapViewer.cacheLoaders.varManager,
+                            this.mapViewer.cacheLoaders.npcTypeLoader,
+                        );
+                        if (!transformed) {
+                            continue;
+                        }
+                        npcType = transformed;
+                    }
+                    if (npcType.name === "null" && !this.mapViewer.debugId) {
+                        continue;
+                    }
+                    if (npcIds.has(interactId)) {
+                        continue;
+                    }
+                    npcIds.add(interactId);
+
+                    for (const option of npcType.actions) {
+                        if (!option) {
+                            continue;
+                        }
+                        menuEntries.push({
+                            option,
+                            targetId: npcType.id,
+                            targetType: MenuTargetType.NPC,
+                            targetName: npcType.name,
+                            targetLevel: npcType.combatLevel,
+                            onClick: this.mapViewer.closeMenu,
+                        });
+                    }
+
+                    examineEntries.push({
+                        option: "Examine",
+                        targetId: npcType.id,
+                        targetType: MenuTargetType.NPC,
+                        targetName: npcType.name,
+                        targetLevel: npcType.combatLevel,
+                        onClick: this.mapViewer.onExamine,
+                    });
+                }
+            }
+        }
+
+        menuEntries.push({
+            option: "Walk here",
+            targetId: -1,
+            targetType: MenuTargetType.NONE,
+            targetName: "",
+            targetLevel: -1,
+            onClick: this.mapViewer.closeMenu,
+        });
+        menuEntries.push(...examineEntries);
+        menuEntries.push({
+            option: "Cancel",
+            targetId: -1,
+            targetType: MenuTargetType.NONE,
+            targetName: "",
+            targetLevel: -1,
+            onClick: this.mapViewer.closeMenu,
+        });
+
+        this.mapViewer.menuOpen = picked;
+        if (picked) {
+            this.mapViewer.menuOpenedFrame = frameCount;
+        }
+        this.mapViewer.menuX = this.inputManager.mouseX;
+        this.mapViewer.menuY = this.inputManager.mouseY;
+        this.mapViewer.menuEntries = menuEntries;
     }
 }

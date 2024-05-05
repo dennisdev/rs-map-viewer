@@ -1,4 +1,3 @@
-import FileSaver from "file-saver";
 import { vec3 } from "gl-matrix";
 import { Leva, button, buttonGroup, folder, useControls } from "leva";
 import { ButtonGroupOpts, Schema } from "leva/dist/declarations/src/types";
@@ -7,17 +6,12 @@ import { memo, useEffect, useState } from "react";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
 import { isTouchDevice } from "../util/DeviceUtil";
 import { lerp, slerp } from "../util/MathUtil";
-import { loadCacheFiles } from "./Caches";
-import { CameraView, ProjectionType } from "./Camera";
+import { loadCacheFiles } from "../util/Caches";
+import { CameraView, ProjectionType } from "../renderer/Camera";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRenderer } from "./MapViewerRenderer";
-import {
-    MapViewerRendererType,
-    createRenderer,
-    getAvailableRenderers,
-    getRendererName,
-} from "./MapViewerRenderers";
-import { fetchNpcSpawns, getNpcSpawnsUrl } from "./data/npc/NpcSpawn";
+import { fetchNpcSpawns, getNpcSpawnsUrl } from "../data/npc/NpcSpawn";
+import FileSaver from "file-saver";
 
 interface MapViewerControlsProps {
     renderer: MapViewerRenderer;
@@ -196,11 +190,6 @@ export const MapViewerControls = memo(
             };
         }, [mapViewer, cameraPoints, animationDuration, isCameraRunning]);
 
-        const rendererOptions: Record<string, MapViewerRendererType> = {};
-        for (let v of getAvailableRenderers()) {
-            rendererOptions[getRendererName(v)] = v;
-        }
-
         const recordSchema: Schema = {
             "Add point (F3)": button(() => addPoint()),
             "Delete last point (F4)": button(() => removeLastPoint()),
@@ -319,17 +308,6 @@ export const MapViewerControls = memo(
                 ),
                 Render: folder(
                     {
-                        Renderer: {
-                            value: renderer.type,
-                            options: rendererOptions,
-                            onChange: (v: MapViewerRendererType) => {
-                                if (renderer.type !== v) {
-                                    const renderer = createRenderer(v, mapViewer);
-                                    mapViewer.setRenderer(renderer);
-                                    setRenderer(renderer);
-                                }
-                            },
-                        },
                         "Fps Limit": {
                             value: renderer.fpsLimit,
                             min: 1,
@@ -363,7 +341,7 @@ export const MapViewerControls = memo(
                             onChange: setVarValue,
                         },
                         Set: button(() => {
-                            const varManager = mapViewer.varManager;
+                            const varManager = mapViewer.cacheLoaders.varManager;
                             let updated = false;
                             if (varType === VarType.VARP) {
                                 updated = varManager.setVarp(varId, varValue);
@@ -376,7 +354,7 @@ export const MapViewerControls = memo(
                             }
                         }),
                         Clear: button(() => {
-                            mapViewer.varManager.clear();
+                            mapViewer.cacheLoaders.varManager.clear();
                             mapViewer.updateVars();
                             mapViewer.renderer.mapManager.clearMaps();
                         }),
