@@ -38,6 +38,7 @@ import { RenderDataWorkerPool } from "../../worker/RenderDataWorkerPool";
 import { MapManager } from "../MapManager";
 import { SceneBuilder } from "../../rs/scene/SceneBuilder";
 import { Camera } from "../Camera";
+import { Pathfinder } from "../../rs/pathfinder/Pathfinder";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -87,6 +88,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     lodDistance: number;
 
     camera: Camera;
+    pathfinder: Pathfinder;
 
     app!: PicoApp;
     gl!: WebGL2RenderingContext;
@@ -185,7 +187,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     constructor(public mapViewer: MapViewer, cacheLoaders: CacheLoaders,
         inputManager: InputManager, workerPool: RenderDataWorkerPool,
         renderDistance: number, unloadDistance: number, lodDistance: number,
-        camera: Camera) {
+        camera: Camera, pathfinder: Pathfinder) {
         super(mapViewer);
         this.cacheLoaders = cacheLoaders;
         this.inputManager = inputManager;
@@ -198,6 +200,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             this.queueLoadMap.bind(this),
         );
         this.camera = camera;
+        this.pathfinder = pathfinder;
         this.interactions = new Array(INTERACT_BUFFER_COUNT);
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
             this.interactions[i] = new Interactions(INTERACTION_RADIUS);
@@ -1001,8 +1004,6 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         const seqFrameLoader = this.cacheLoaders.seqFrameLoader;
         const seqTypeLoader = this.cacheLoaders.seqTypeLoader;
 
-        const pathfinder = this.mapViewer.pathfinder;
-
         this.npcRenderCount = 0;
         for (let i = 0; i < this.mapManager.visibleMapCount; i++) {
             const map = this.mapManager.visibleMaps[i];
@@ -1013,7 +1014,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
             for (let t = 0; t < ticksElapsed; t++) {
                 for (const npc of map.npcs) {
-                    npc.updateServerMovement(pathfinder, map.borderSize, map.collisionMaps);
+                    npc.updateServerMovement(this.pathfinder, map.borderSize, map.collisionMaps);
                 }
             }
 
