@@ -180,13 +180,14 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         return this.mapManagerTime;
     }
 
-    constructor(public mapViewer: MapViewer, inputManager: InputManager, workerPool: RenderDataWorkerPool,
+    constructor(public mapViewer: MapViewer, cacheLoaders: CacheLoaders,
+        inputManager: InputManager, workerPool: RenderDataWorkerPool,
         renderDistance: number, unloadDistance: number, lodDistance: number,
         camera: Camera) {
         super(mapViewer);
+        this.cacheLoaders = cacheLoaders;
         this.inputManager = inputManager;
         this.workerPool = workerPool;
-        this.cacheLoaders = mapViewer.cacheLoaders;
         this.renderDistance = renderDistance;
         this.unloadDistance = unloadDistance;
         this.lodDistance = lodDistance;
