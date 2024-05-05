@@ -72,9 +72,7 @@ export class MapViewer {
     ) {
         this.loadedCache = cache;
         this.cacheLoaders = new CacheLoaders(cache);
-        this.renderer = new WebGLMapRenderer(this, this.cacheLoaders, this.inputManager, workerPool,
-            this.renderDistance, this.unloadDistance, this.lodDistance,
-            this.camera, this.pathfinder);
+        this.renderer = new MapViewerRenderer(this);
         this.initCache(cache);
     }
 
@@ -239,7 +237,7 @@ export class MapViewer {
     }
 
     async queueLoadMapImage(mapX: number, mapY: number) {
-        const mapManager = this.renderer.getMapManager();
+        const mapManager = this.renderer.mapManager;
         const mapId = getMapSquareId(mapX, mapY);
         if (
             this.loadingMapImageIds.size > this.workerPool.size * 4 ||
@@ -269,7 +267,7 @@ export class MapViewer {
         }
         const urls = minimap ? this.minimapImageUrls : this.mapImageUrls;
         if (minimap) {
-            this.renderer.getMapManager().loadMap(mapX, mapY);
+            this.renderer.mapManager.loadMap(mapX, mapY);
         } else {
             this.queueLoadMapImage(mapX, mapY);
         }

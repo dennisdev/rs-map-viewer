@@ -18,8 +18,6 @@ import {
 import { createTextureArray } from "./PicoTexture";
 import { Scene } from "../../rs/scene/Scene";
 import { isWebGL2Supported, pixelRatio } from "../../util/DeviceUtil";
-import { MapViewer } from "../../mapviewer/MapViewer";
-import { MapViewerRenderer } from "../../mapviewer/MapViewerRenderer";
 import { DrawRange, NULL_DRAW_RANGE } from "../DrawRange";
 import { INTERACTION_RADIUS, INTERACT_BUFFER_COUNT, Interactions } from "../Interactions";
 import { WebGLMapSquare } from "./WebGLMapSquare";
@@ -40,6 +38,7 @@ import { SceneBuilder } from "../../rs/scene/SceneBuilder";
 import { Camera } from "../Camera";
 import { Pathfinder } from "../../rs/pathfinder/Pathfinder";
 import { RendererStats } from "./RendererStats";
+import { RendererMainLoop } from "../../components/renderer/RendererMainLoop";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -76,7 +75,7 @@ function getMaxAnisotropy(mode: TextureFilterMode): number {
     }
 }
 
-export class WebGLMapRenderer extends MapViewerRenderer {
+export class WebGLMapRenderer extends RendererMainLoop {
     inputManager: InputManager;
     workerPool: RenderDataWorkerPool;
     dataLoader = new SdMapDataLoader();
@@ -177,20 +176,11 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     isNewTextureAnim: boolean = false;
 
-    // Temporary, will be cleaned up in the following commits.
-    getMapManager(): MapManager<WebGLMapSquare> {
-        return this.mapManager;
-    }
-
-    getRendererStats(): RendererStats {
-        return this.rendererStats;
-    }
-
-    constructor(public mapViewer: MapViewer, cacheLoaders: CacheLoaders,
+    constructor(cacheLoaders: CacheLoaders,
         inputManager: InputManager, workerPool: RenderDataWorkerPool,
         renderDistance: number, unloadDistance: number, lodDistance: number,
         camera: Camera, pathfinder: Pathfinder) {
-        super(mapViewer);
+        super();
         this.cacheLoaders = cacheLoaders;
         this.inputManager = inputManager;
         this.workerPool = workerPool;
@@ -215,8 +205,6 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     }
 
     async init(): Promise<void> {
-        await super.init();
-
         this.app = PicoGL.createApp(this.canvas);
         this.gl = this.app.gl as WebGL2RenderingContext;
 
@@ -353,9 +341,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         this.needsFramebufferUpdate = false;
     }
 
-    override initCache(): void {
-        super.initCache();
-
+    initCache(): void {
         const cache = this.cacheLoaders.cache;
         this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
 
@@ -677,7 +663,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         };
     }
 
-    override async queueLoadMap(mapX: number, mapY: number): Promise<void> {
+    async queueLoadMap(mapX: number, mapY: number): Promise<void> {
         const mapData = await this.workerPool.queueLoad<
             SdMapLoaderInput,
             SdMapData | undefined,
@@ -701,6 +687,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             this.mapManager.addInvalidMap(mapX, mapY);
         }
     }
+
+    onMapLoad(mapData: SdMapData) {}
 
     loadMap(
         mainProgram: Program,
@@ -809,7 +797,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         this.app.resize(width, height);
     }
 
-    override rendererUpdate() {
+    override update(time: number, deltaTime: number) {
         this.camera.update(this.app.width, this.app.height);
 
         const renderDistance = this.renderDistance;
@@ -1251,6 +1239,9 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         }
     }
 
+    checkInteractions(interactReady: boolean, interactBuffer: Float32Array,
+        closestInteractIndices: Map<number, number[]>): void {}
+
     prepareInteractions(interactions: Interactions): void {
         const interactReady = interactions.check(
             this.gl,
@@ -1269,8 +1260,6 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     }
 
     override async cleanUp(): Promise<void> {
-        super.cleanUp();
-
         this.quadArray?.delete();
         this.quadArray = undefined;
 
