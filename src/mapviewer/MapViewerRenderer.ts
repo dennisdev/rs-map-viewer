@@ -33,12 +33,6 @@ export class MapViewerRenderer extends WebGLMapRenderer {
         super.update(time, deltaTime);
     }
 
-    initCache(): void { }
-
-    getControls(): Schema {
-        return {};
-    }
-
     handleInput(deltaTime: number) {
         this.handleKeyInput(deltaTime);
         this.handleMouseInput();
