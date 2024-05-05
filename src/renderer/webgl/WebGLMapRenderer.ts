@@ -39,6 +39,7 @@ import { MapManager } from "../MapManager";
 import { SceneBuilder } from "../../rs/scene/SceneBuilder";
 import { Camera } from "../Camera";
 import { Pathfinder } from "../../rs/pathfinder/Pathfinder";
+import { RendererStats } from "./RendererStats";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -81,7 +82,6 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     dataLoader = new SdMapDataLoader();
     cacheLoaders: CacheLoaders;
     mapManager: MapManager<WebGLMapSquare>;
-    mapManagerTime: number = 0;
 
     renderDistance: number;
     unloadDistance: number;
@@ -89,6 +89,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     camera: Camera;
     pathfinder: Pathfinder;
+
+    rendererStats: RendererStats;
 
     app!: PicoApp;
     gl!: WebGL2RenderingContext;
@@ -180,8 +182,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         return this.mapManager;
     }
 
-    getMapManagerTime(): number {
-        return this.mapManagerTime;
+    getRendererStats(): RendererStats {
+        return this.rendererStats;
     }
 
     constructor(public mapViewer: MapViewer, cacheLoaders: CacheLoaders,
@@ -201,6 +203,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         );
         this.camera = camera;
         this.pathfinder = pathfinder;
+        this.rendererStats = new RendererStats();
         this.interactions = new Array(INTERACT_BUFFER_COUNT);
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
             this.interactions[i] = new Interactions(INTERACTION_RADIUS);
@@ -814,7 +817,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
         const mapManagerStart = performance.now();
         this.mapManager.update(this.camera, frameCount, renderDistance, this.unloadDistance);
-        this.mapManagerTime = performance.now() - mapManagerStart;
+        this.rendererStats.mapManagerTime = performance.now() - mapManagerStart;
     }
 
     override render(time: number, deltaTime: number, resized: boolean): void {
@@ -908,7 +911,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
         const tickStart = performance.now();
         this.tickPass(timeSec, ticksElapsed, clientTicksElapsed);
-        this.tickTime = performance.now() - tickStart;
+        this.rendererStats.tickTime = performance.now() - tickStart;
 
         const npcDataTextureIndex = this.updateNpcDataTexture();
         const npcDataTexture = this.npcDataTextureBuffer[npcDataTextureIndex];

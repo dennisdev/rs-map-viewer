@@ -12,42 +12,18 @@ import { isTouchDevice } from "../util/DeviceUtil";
 import { InputManager } from "../util/InputManager";
 import { WebGLMapSquare } from "../renderer/webgl/WebGLMapSquare";
 import { SdMapData } from "../renderer/loader/SdMapData";
-
-export class MapViewerRendererStats {
-    frameStart: number;
-    interactionsTime: number;
-
-    opaquePassTime: number;
-    opaqueNpcPassTime: number;
-    transparentPassTime: number;
-    transparentNpcPassTime: number;
-
-    constructor() {
-        this.frameStart = 0;
-        this.interactionsTime = 0;
-        this.opaquePassTime = 0;
-        this.opaqueNpcPassTime = 0;
-        this.transparentPassTime = 0;
-        this.transparentNpcPassTime = 0;
-    }
-};
+import { RendererStats } from "../renderer/webgl/RendererStats";
 
 export abstract class MapViewerRenderer extends RendererMainLoop {
     inputManager: InputManager;
 
-    tickTime: number;
-    rendererStats: MapViewerRendererStats;
-
     // Temporary, will be cleaned up in the following commits.
     abstract getMapManager(): MapManager<WebGLMapSquare>;
-    abstract getMapManagerTime(): number;
+    abstract getRendererStats(): RendererStats;
 
     constructor(public mapViewer: MapViewer) {
         super();
         this.inputManager = mapViewer.inputManager;
-
-        this.tickTime = 0;
-        this.rendererStats = new MapViewerRendererStats();
     }
 
     override async init() {
@@ -211,28 +187,28 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
     override onFrameEnd(): void {
         super.onFrameEnd();
 
-        const frameTime = performance.now() - this.rendererStats.frameStart;
+        const frameTime = performance.now() - this.getRendererStats().frameStart;
 
         if (this.inputManager.isKeyDown("KeyH")) {
-            this.mapViewer.debugText = `MapManager: ${this.getMapManagerTime().toFixed(2)}ms`;
+            this.mapViewer.debugText = `MapManager: ${this.getRendererStats().mapManagerTime.toFixed(2)}ms`;
         }
         if (this.inputManager.isKeyDown("KeyJ")) {
-            this.mapViewer.debugText = `Interactions: ${this.rendererStats.interactionsTime.toFixed(2)}ms`;
+            this.mapViewer.debugText = `Interactions: ${this.getRendererStats().interactionsTime.toFixed(2)}ms`;
         }
         if (this.inputManager.isKeyDown("KeyK")) {
-            this.mapViewer.debugText = `Tick: ${this.tickTime.toFixed(2)}ms`;
+            this.mapViewer.debugText = `Tick: ${this.getRendererStats().tickTime.toFixed(2)}ms`;
         }
         if (this.inputManager.isKeyDown("KeyL")) {
-            this.mapViewer.debugText = `Opaque Pass: ${this.rendererStats.opaquePassTime.toFixed(2)}ms`;
+            this.mapViewer.debugText = `Opaque Pass: ${this.getRendererStats().opaquePassTime.toFixed(2)}ms`;
         }
         if (this.inputManager.isKeyDown("KeyB")) {
-            this.mapViewer.debugText = `Opaque Npc Pass: ${this.rendererStats.opaqueNpcPassTime.toFixed(2)}ms`;
+            this.mapViewer.debugText = `Opaque Npc Pass: ${this.getRendererStats().opaqueNpcPassTime.toFixed(2)}ms`;
         }
         if (this.inputManager.isKeyDown("KeyN")) {
-            this.mapViewer.debugText = `Transparent Pass: ${this.rendererStats.transparentPassTime.toFixed(2)}ms`;
+            this.mapViewer.debugText = `Transparent Pass: ${this.getRendererStats().transparentPassTime.toFixed(2)}ms`;
         }
         if (this.inputManager.isKeyDown("KeyM")) {
-            this.mapViewer.debugText = `Transparent Npc Pass: ${this.rendererStats.transparentNpcPassTime.toFixed(
+            this.mapViewer.debugText = `Transparent Npc Pass: ${this.getRendererStats().transparentNpcPassTime.toFixed(
                 2,
             )}ms`;
         }
