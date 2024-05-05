@@ -69,7 +69,7 @@ function getMaxAnisotropy(mode: TextureFilterMode): number {
     }
 }
 
-export class WebGLRenderer extends MapViewerRenderer {
+export class WebGLMapRenderer extends MapViewerRenderer {
     dataLoader = new SdMapDataLoader();
     cacheLoaders: CacheLoaders;
 
