@@ -350,13 +350,13 @@ export const MapViewerControls = memo(
                             }
                             if (updated) {
                                 mapViewer.updateVars();
-                                mapViewer.renderer.mapManager.clearMaps();
+                                mapViewer.renderer.getMapManager().clearMaps();
                             }
                         }),
                         Clear: button(() => {
                             mapViewer.cacheLoaders.varManager.clear();
                             mapViewer.updateVars();
-                            mapViewer.renderer.mapManager.clearMaps();
+                            mapViewer.renderer.getMapManager().clearMaps();
                         }),
                     },
                     { collapsed: true },

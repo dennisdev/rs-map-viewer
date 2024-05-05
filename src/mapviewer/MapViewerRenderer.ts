@@ -1,7 +1,6 @@
 import { Schema } from "leva/dist/declarations/src/types";
 
 import { RendererMainLoop } from "../components/renderer/RendererMainLoop";
-import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
 import { MapManager } from "../renderer/MapManager";
 import { MapViewer } from "./MapViewer";
@@ -35,21 +34,17 @@ export class MapViewerRendererStats {
 export abstract class MapViewerRenderer extends RendererMainLoop {
     inputManager: InputManager;
 
-    mapManager: MapManager<WebGLMapSquare>;
-    mapManagerTime: number;
-
     tickTime: number;
     rendererStats: MapViewerRendererStats;
+
+    // Temporary, will be cleaned up in the following commits.
+    abstract getMapManager(): MapManager<WebGLMapSquare>;
+    abstract getMapManagerTime(): number;
 
     constructor(public mapViewer: MapViewer) {
         super();
         this.inputManager = mapViewer.inputManager;
-        this.mapManager = new MapManager(
-            mapViewer.workerPool.size * 2,
-            this.queueLoadMap.bind(this),
-        );
 
-        this.mapManagerTime = 0;
         this.tickTime = 0;
         this.rendererStats = new MapViewerRendererStats();
     }
@@ -65,32 +60,11 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
     abstract rendererUpdate(): void;
 
     update(time: number, deltaTime: number) {
-        const camera = this.mapViewer.camera;
-
         this.handleInput(deltaTime);
-
         this.rendererUpdate();
-
-        const renderDistance = this.mapViewer.renderDistance;
-        const frameCount = this.stats.frameCount;
-
-        const mapManagerStart = performance.now();
-        this.mapManager.update(camera, frameCount, renderDistance, this.mapViewer.unloadDistance);
-        this.mapManagerTime = performance.now() - mapManagerStart;
     }
 
-    initCache(): void {
-        this.mapManager.init(
-            this.mapViewer.cacheLoaders.mapFileIndex,
-            SceneBuilder.fillEmptyTerrain(this.mapViewer.loadedCache.info),
-        );
-        this.mapManager.update(
-            this.mapViewer.camera,
-            this.stats.frameCount,
-            this.mapViewer.renderDistance,
-            this.mapViewer.unloadDistance,
-        );
-    }
+    initCache(): void { }
 
     getControls(): Schema {
         return {};
@@ -239,7 +213,7 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
         const frameTime = performance.now() - this.rendererStats.frameStart;
 
         if (this.inputManager.isKeyDown("KeyH")) {
-            this.mapViewer.debugText = `MapManager: ${this.mapManagerTime.toFixed(2)}ms`;
+            this.mapViewer.debugText = `MapManager: ${this.getMapManagerTime().toFixed(2)}ms`;
         }
         if (this.inputManager.isKeyDown("KeyJ")) {
             this.mapViewer.debugText = `Interactions: ${this.rendererStats.interactionsTime.toFixed(2)}ms`;

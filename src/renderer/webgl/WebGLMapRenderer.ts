@@ -35,6 +35,8 @@ import {
 import { CacheLoaders } from "../../rs/cache/CacheLoaders";
 import { InputManager } from "../../util/InputManager";
 import { RenderDataWorkerPool } from "../../worker/RenderDataWorkerPool";
+import { MapManager } from "../MapManager";
+import { SceneBuilder } from "../../rs/scene/SceneBuilder";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -76,6 +78,12 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     workerPool: RenderDataWorkerPool;
     dataLoader = new SdMapDataLoader();
     cacheLoaders: CacheLoaders;
+    mapManager: MapManager<WebGLMapSquare>;
+    mapManagerTime: number = 0;
+
+    renderDistance: number;
+    unloadDistance: number;
+    lodDistance: number;
 
     app!: PicoApp;
     gl!: WebGL2RenderingContext;
@@ -160,11 +168,28 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
-    constructor(public mapViewer: MapViewer, inputManager: InputManager, workerPool: RenderDataWorkerPool) {
+    // Temporary, will be cleaned up in the following commits.
+    getMapManager(): MapManager<WebGLMapSquare> {
+        return this.mapManager;
+    }
+
+    getMapManagerTime(): number {
+        return this.mapManagerTime;
+    }
+
+    constructor(public mapViewer: MapViewer, inputManager: InputManager, workerPool: RenderDataWorkerPool,
+        renderDistance: number, unloadDistance: number, lodDistance: number) {
         super(mapViewer);
         this.inputManager = inputManager;
         this.workerPool = workerPool;
         this.cacheLoaders = mapViewer.cacheLoaders;
+        this.renderDistance = renderDistance;
+        this.unloadDistance = unloadDistance;
+        this.lodDistance = lodDistance;
+        this.mapManager = new MapManager(
+            workerPool.size * 2,
+            this.queueLoadMap.bind(this),
+        );
         this.interactions = new Array(INTERACT_BUFFER_COUNT);
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
             this.interactions[i] = new Interactions(INTERACTION_RADIUS);
@@ -316,6 +341,18 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     override initCache(): void {
         super.initCache();
+
+        this.mapManager.init(
+            this.cacheLoaders.mapFileIndex,
+            SceneBuilder.fillEmptyTerrain(this.cacheLoaders.cache.info),
+        );
+        this.mapManager.update(
+            this.mapViewer.camera,
+            this.stats.frameCount,
+            this.renderDistance,
+            this.unloadDistance,
+        );
+
         if (this.app) {
             this.initTextures();
         }
@@ -764,6 +801,13 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     override rendererUpdate() {
         const camera = this.mapViewer.camera;
         camera.update(this.app.width, this.app.height);
+
+        const renderDistance = this.renderDistance;
+        const frameCount = this.stats.frameCount;
+
+        const mapManagerStart = performance.now();
+        this.mapManager.update(camera, frameCount, renderDistance, this.unloadDistance);
+        this.mapManagerTime = performance.now() - mapManagerStart;
     }
 
     override render(time: number, deltaTime: number, resized: boolean): void {
@@ -817,15 +861,13 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         this.cameraPosUni[0] = camera.getPosX();
         this.cameraPosUni[1] = camera.getPosZ();
 
-        const renderDistance = this.mapViewer.renderDistance;
-
         this.sceneUniformBuffer
             .set(0, camera.viewProjMatrix as Float32Array)
             .set(1, camera.viewMatrix as Float32Array)
             .set(2, camera.projectionMatrix as Float32Array)
             .set(3, this.skyColor as Float32Array)
             .set(4, this.cameraPosUni as Float32Array)
-            .set(5, renderDistance as any)
+            .set(5, this.renderDistance as any)
             .set(6, this.fogDepth as any)
             .set(7, timeSec as any)
             .set(8, this.brightness as any)
@@ -1064,7 +1106,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             const dist = map.getMapDistance(cameraMapX, cameraMapY);
 
             const isInteract = this.hoveredMapIds.has(map.id);
-            const isLod = dist >= this.mapViewer.lodDistance;
+            const isLod = dist >= this.lodDistance;
 
             const { drawCall, drawRanges } = map.getDrawCall(false, isInteract, isLod);
 
@@ -1135,7 +1177,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             const dist = map.getMapDistance(cameraMapX, cameraMapY);
 
             const isInteract = this.hoveredMapIds.has(map.id);
-            const isLod = dist >= this.mapViewer.lodDistance;
+            const isLod = dist >= this.lodDistance;
 
             const { drawCall, drawRanges } = map.getDrawCall(true, isInteract, isLod);
 
