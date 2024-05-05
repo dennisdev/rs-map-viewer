@@ -11,6 +11,7 @@ import { MenuTargetType } from "../rs/MenuEntry";
 import { isTouchDevice } from "../util/DeviceUtil";
 import { InputManager } from "../util/InputManager";
 import { WebGLMapSquare } from "../renderer/webgl/WebGLMapSquare";
+import { SdMapData } from "../renderer/loader/SdMapData";
 
 export class MapViewerRendererStats {
     frameStart: number;
@@ -254,6 +255,16 @@ export abstract class MapViewerRenderer extends RendererMainLoop {
         this.mapViewer.camera.onFrameEnd();
 
         // this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(3)}`;
+    }
+
+    onMapLoad(mapData: SdMapData) {
+        this.mapViewer.setMapImageUrl(
+            mapData.mapX,
+            mapData.mapY,
+            URL.createObjectURL(mapData.minimapBlob),
+            true,
+            false,
+        );
     }
 
     checkInteractions(interactReady: boolean, interactBuffer: Float32Array,

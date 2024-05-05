@@ -708,13 +708,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     ): void {
         const { mapX, mapY } = mapData;
 
-        this.mapViewer.setMapImageUrl(
-            mapX,
-            mapY,
-            URL.createObjectURL(mapData.minimapBlob),
-            true,
-            false,
-        );
+        this.onMapLoad(mapData);
 
         const frameCount = this.stats.frameCount;
         this.mapManager.addMap(
