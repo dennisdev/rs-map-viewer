@@ -16,10 +16,21 @@ declare module "picogl" {
         VertexArray,
         VertexBuffer,
         Texture,
+        Timer,
         Program,
         UniformBuffer,
     } from "picogl";
 
     export default PicoGL;
-    export { PicoGL, App, DrawCall, VertexArray, VertexBuffer, Texture, Program, UniformBuffer };
+    export {
+        PicoGL,
+        App,
+        DrawCall,
+        VertexArray,
+        VertexBuffer,
+        Texture,
+        Timer,
+        Program,
+        UniformBuffer,
+    };
 }

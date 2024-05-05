@@ -10,6 +10,7 @@ import {
     Program,
     Renderbuffer,
     Texture,
+    Timer,
     UniformBuffer,
     VertexArray,
     VertexBuffer,
@@ -81,6 +82,8 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
     app!: PicoApp;
     gl!: WebGL2RenderingContext;
+
+    timer!: Timer;
 
     hasMultiDraw: boolean = false;
 
@@ -179,6 +182,8 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
         this.app = PicoGL.createApp(this.canvas);
         this.gl = this.app.gl as WebGL2RenderingContext;
+
+        this.timer = this.app.createTimer();
 
         // hack to get the right multi draw extension for picogl
         const state: any = this.app.state;
@@ -763,7 +768,11 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
     }
 
     override render(time: number, deltaTime: number, resized: boolean): void {
-        const frameStart = performance.now();
+        const showDebugTimer = this.mapViewer.inputManager.isKeyDown("KeyY");
+
+        if (showDebugTimer) {
+            this.timer.start();
+        }
 
         const frameCount = this.stats.frameCount;
 
@@ -951,7 +960,9 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
             );
         }
 
-        const frameTime = performance.now() - frameStart;
+        if (showDebugTimer) {
+            this.timer.end();
+        }
 
         if (this.mapViewer.inputManager.isKeyDown("KeyH")) {
             this.mapViewer.debugText = `MapManager: ${mapManagerTime.toFixed(2)}ms`;
@@ -976,11 +987,11 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                 2,
             )}ms`;
         }
-        if (this.mapViewer.inputManager.isKeyDown("KeyV")) {
-            this.mapViewer.debugText = `Frame Time: ${frameTime.toFixed(2)}ms`;
-        }
-        if (this.mapViewer.inputManager.isKeyDown("KeyU")) {
-            this.mapViewer.debugText = `Frame Time Js: ${this.stats.frameTimeJs.toFixed(2)}ms`;
+
+        if (showDebugTimer && this.timer.ready()) {
+            this.mapViewer.debugText = `Frame Time GL: ${this.timer.gpuTime.toFixed(
+                2,
+            )}ms\n JS: ${this.timer.cpuTime.toFixed(2)}ms`;
         }
     }
 
