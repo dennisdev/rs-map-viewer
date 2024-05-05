@@ -32,8 +32,6 @@ export class MapViewer {
     loadedCache!: LoadedCache;
     cacheLoaders: CacheLoaders;
 
-    isNewTextureAnim: boolean = false;
-
     // Settings
 
     // Tile distance
@@ -77,7 +75,6 @@ export class MapViewer {
         this.renderer = new WebGLMapRenderer(this, this.cacheLoaders, this.inputManager, workerPool,
             this.renderDistance, this.unloadDistance, this.lodDistance,
             this.camera);
-        this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
         this.initCache(cache);
     }
 
@@ -159,8 +156,6 @@ export class MapViewer {
     initCache(cache: LoadedCache): void {
         this.workerPool.initCache(cache, this.objSpawns, this.npcSpawns);
         this.clearMapImageUrls();
-
-        this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
 
         this.renderer.initCache();
 

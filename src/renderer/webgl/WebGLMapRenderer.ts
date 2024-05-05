@@ -171,6 +171,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     npcDataTextureBuffer: (Texture | undefined)[] = new Array(5);
 
+    isNewTextureAnim: boolean = false;
+
     // Temporary, will be cleaned up in the following commits.
     getMapManager(): MapManager<WebGLMapSquare> {
         return this.mapManager;
@@ -347,6 +349,9 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     override initCache(): void {
         super.initCache();
+
+        const cache = this.cacheLoaders.cache;
+        this.isNewTextureAnim = cache.info.game === "runescape" && cache.info.revision >= 681;
 
         this.mapManager.init(
             this.cacheLoaders.mapFileIndex,
@@ -876,7 +881,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             .set(7, timeSec as any)
             .set(8, this.brightness as any)
             .set(9, this.colorBanding as any)
-            .set(10, this.mapViewer.isNewTextureAnim as any)
+            .set(10, this.isNewTextureAnim as any)
             .update();
 
         const currInteractions = this.interactions[frameCount % this.interactions.length];
