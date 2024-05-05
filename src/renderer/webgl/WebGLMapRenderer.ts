@@ -354,7 +354,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
         // White texture
         pixels.fill(0xffffffff, 0, pixelCount);
 
-        const cacheInfo = this.mapViewer.loadedCache.info;
+        const cacheInfo = this.cacheLoaders.cache.info;
 
         let maxPreloadTextures = textureCount;
         // we should check if the texture loader is procedural instead
@@ -694,7 +694,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
 
     isValidMapData(mapData: SdMapData): boolean {
         return (
-            mapData.cacheName === this.mapViewer.loadedCache.info.name &&
+            mapData.cacheName === this.cacheLoaders.cache.info.name &&
             mapData.maxLevel === this.maxLevel &&
             mapData.loadObjs === this.loadObjs &&
             mapData.loadNpcs === this.loadNpcs &&

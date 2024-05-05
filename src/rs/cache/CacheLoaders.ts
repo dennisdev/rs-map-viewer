@@ -13,6 +13,7 @@ import { LoadedCache } from "../../util/Caches";
 
 export class CacheLoaders {
     // Cache
+    cache: LoadedCache;
     cacheSystem!: CacheSystem;
     loaderFactory!: CacheLoaderFactory;
 
@@ -31,6 +32,7 @@ export class CacheLoaders {
     mapFileIndex!: MapFileIndex;
 
     constructor(cache: LoadedCache) {
+        this.cache = cache;
         this.cacheSystem = CacheSystem.fromFiles(cache.type, cache.files);
         this.loaderFactory = getCacheLoaderFactory(cache.info, this.cacheSystem);
 
