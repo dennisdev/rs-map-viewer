@@ -37,8 +37,8 @@ flat out float v_alphaCutOff;
 out float v_fogAmount;
 flat out vec4 v_interactId;
 
-#include "./includes/hsl-to-rgb.glsl";
 #include "./includes/branchless-logic.glsl";
+#include "./includes/hsl-to-rgb.glsl";
 #include "./includes/unpack-float.glsl";
 #include "./includes/fog.glsl";
 
