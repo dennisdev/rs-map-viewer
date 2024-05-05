@@ -37,6 +37,7 @@ import { InputManager } from "../../util/InputManager";
 import { RenderDataWorkerPool } from "../../worker/RenderDataWorkerPool";
 import { MapManager } from "../MapManager";
 import { SceneBuilder } from "../../rs/scene/SceneBuilder";
+import { Camera } from "../Camera";
 
 const MAX_TEXTURES = 2048;
 const TEXTURE_SIZE = 128;
@@ -84,6 +85,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     renderDistance: number;
     unloadDistance: number;
     lodDistance: number;
+
+    camera: Camera;
 
     app!: PicoApp;
     gl!: WebGL2RenderingContext;
@@ -178,7 +181,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     }
 
     constructor(public mapViewer: MapViewer, inputManager: InputManager, workerPool: RenderDataWorkerPool,
-        renderDistance: number, unloadDistance: number, lodDistance: number) {
+        renderDistance: number, unloadDistance: number, lodDistance: number,
+        camera: Camera) {
         super(mapViewer);
         this.inputManager = inputManager;
         this.workerPool = workerPool;
@@ -190,6 +194,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             workerPool.size * 2,
             this.queueLoadMap.bind(this),
         );
+        this.camera = camera;
         this.interactions = new Array(INTERACT_BUFFER_COUNT);
         for (let i = 0; i < INTERACT_BUFFER_COUNT; i++) {
             this.interactions[i] = new Interactions(INTERACTION_RADIUS);
@@ -347,7 +352,7 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             SceneBuilder.fillEmptyTerrain(this.cacheLoaders.cache.info),
         );
         this.mapManager.update(
-            this.mapViewer.camera,
+            this.camera,
             this.stats.frameCount,
             this.renderDistance,
             this.unloadDistance,
@@ -799,14 +804,13 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     }
 
     override rendererUpdate() {
-        const camera = this.mapViewer.camera;
-        camera.update(this.app.width, this.app.height);
+        this.camera.update(this.app.width, this.app.height);
 
         const renderDistance = this.renderDistance;
         const frameCount = this.stats.frameCount;
 
         const mapManagerStart = performance.now();
-        this.mapManager.update(camera, frameCount, renderDistance, this.unloadDistance);
+        this.mapManager.update(this.camera, frameCount, renderDistance, this.unloadDistance);
         this.mapManagerTime = performance.now() - mapManagerStart;
     }
 
@@ -857,14 +861,13 @@ export class WebGLMapRenderer extends MapViewerRenderer {
             this.resolutionUni[1] = this.app.height;
         }
 
-        const camera = this.mapViewer.camera;
-        this.cameraPosUni[0] = camera.getPosX();
-        this.cameraPosUni[1] = camera.getPosZ();
+        this.cameraPosUni[0] = this.camera.getPosX();
+        this.cameraPosUni[1] = this.camera.getPosZ();
 
         this.sceneUniformBuffer
-            .set(0, camera.viewProjMatrix as Float32Array)
-            .set(1, camera.viewMatrix as Float32Array)
-            .set(2, camera.projectionMatrix as Float32Array)
+            .set(0, this.camera.viewProjMatrix as Float32Array)
+            .set(1, this.camera.viewMatrix as Float32Array)
+            .set(2, this.camera.projectionMatrix as Float32Array)
             .set(3, this.skyColor as Float32Array)
             .set(4, this.cameraPosUni as Float32Array)
             .set(5, this.renderDistance as any)
@@ -1097,9 +1100,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     }
 
     renderOpaquePass(): void {
-        const camera = this.mapViewer.camera;
-        const cameraMapX = camera.getMapX();
-        const cameraMapY = camera.getMapY();
+        const cameraMapX = this.camera.getMapX();
+        const cameraMapY = this.camera.getMapY();
 
         for (let i = 0; i < this.mapManager.visibleMapCount; i++) {
             const map = this.mapManager.visibleMaps[i];
@@ -1168,9 +1170,8 @@ export class WebGLMapRenderer extends MapViewerRenderer {
     }
 
     renderTransparentPass(): void {
-        const camera = this.mapViewer.camera;
-        const cameraMapX = camera.getMapX();
-        const cameraMapY = camera.getMapY();
+        const cameraMapX = this.camera.getMapX();
+        const cameraMapY = this.camera.getMapY();
 
         for (let i = this.mapManager.visibleMapCount - 1; i >= 0; i--) {
             const map = this.mapManager.visibleMaps[i];
