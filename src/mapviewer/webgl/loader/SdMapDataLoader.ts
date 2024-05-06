@@ -44,7 +44,8 @@ function loadHeightMapTextureData(scene: Scene): Int16Array {
     for (let level = 0; level < scene.levels; level++) {
         for (let y = 0; y < scene.sizeY; y++) {
             for (let x = 0; x < scene.sizeX; x++) {
-                heightMapTextureData[dataIndex++] = (-scene.tileHeights[level][x][y] / Scene.UNITS_TILE_HEIGHT_BASIS) | 0;
+                heightMapTextureData[dataIndex++] =
+                    (-scene.tileHeights[level][x][y] / Scene.UNITS_TILE_HEIGHT_BASIS) | 0;
             }
         }
     }

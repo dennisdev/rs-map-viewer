@@ -75,6 +75,13 @@ function getMaxAnisotropy(mode: TextureFilterMode): number {
     }
 }
 
+function optimizeAssumingFlatsHaveSameFirstAndLastData(gl: WebGL2RenderingContext) {
+    const epv = gl.getExtension("WEBGL_provoking_vertex");
+    if (epv) {
+        epv.provokingVertexWEBGL(epv.FIRST_VERTEX_CONVENTION_WEBGL);
+    }
+}
+
 export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
     type: MapViewerRendererType = WEBGL;
 
@@ -182,6 +189,9 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
         this.app = PicoGL.createApp(this.canvas);
         this.gl = this.app.gl as WebGL2RenderingContext;
+
+        // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#use_webgl_provoking_vertex_when_its_available
+        optimizeAssumingFlatsHaveSameFirstAndLastData(this.gl);
 
         this.timer = this.app.createTimer();
 
