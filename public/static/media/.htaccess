@@ -1,4 +1,4 @@
 <IfModule mod_mime.c>
-  AddEncoding gzip .wasm
+  AddEncoding br .wasm
   AddType application/wasm .wasm
 </IfModule>
