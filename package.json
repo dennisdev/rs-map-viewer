@@ -45,7 +45,8 @@
     "lint": "prettier --write \"./**/*.{js,ts,jsx,tsx,css,md}\"",
     "prepare": "husky install",
     "download-caches": "node scripts/download-caches.js",
-    "export-textures": "npx ts-node scripts/cache/export-textures.ts"
+    "export-textures": "npx tsx scripts/cache/export-textures.ts",
+    "export-height-map": "npx tsx scripts/cache/export-height-map.ts"
   },
   "eslintConfig": {
     "extends": [
