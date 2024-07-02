@@ -197,6 +197,9 @@ export class NpcType extends Type {
                     this.chatheadModelIds[i] = buffer.readUnsignedShort();
                 }
             }
+        } else if (opcode >= 74 && opcode <= 79) {
+            // stats
+            buffer.readUnsignedShort();
         } else if (opcode === 93) {
             this.drawMapDot = false;
         } else if (opcode === 95) {
