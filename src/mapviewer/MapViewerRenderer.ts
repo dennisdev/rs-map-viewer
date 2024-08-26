@@ -3,6 +3,7 @@ import { Schema } from "leva/dist/declarations/src/types";
 import { Renderer } from "../components/renderer/Renderer";
 import { SceneBuilder } from "../rs/scene/SceneBuilder";
 import { clamp } from "../util/MathUtil";
+import { getAxisDeadzone } from "./InputManager";
 import { MapManager, MapSquare } from "./MapManager";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRendererType } from "./MapViewerRenderers";
@@ -50,6 +51,7 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     handleInput(deltaTime: number) {
         this.handleKeyInput(deltaTime);
         this.handleMouseInput();
+        this.handleControllerInput(deltaTime);
         this.handleJoystickInput(deltaTime);
     }
 
@@ -152,6 +154,54 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
             } else {
                 camera.updatePitch(camera.pitch, deltaMouseY * 0.9);
                 camera.updateYaw(camera.yaw, deltaMouseX * -0.9);
+            }
+        }
+    }
+
+    handleControllerInput(deltaTime: number) {
+        const deltaPitch = deltaTime;
+        const deltaYaw = deltaTime;
+
+        const inputManager = this.mapViewer.inputManager;
+        const camera = this.mapViewer.camera;
+
+        // controller
+        const gamepad = inputManager.getGamepad();
+
+        if (gamepad && gamepad.connected && gamepad.mapping === "standard") {
+            let cameraSpeedMult = 0.01;
+            // X, R1
+            if (gamepad.buttons[0].pressed || gamepad.buttons[5].pressed) {
+                cameraSpeedMult = 0.1;
+            }
+
+            const zone = 0.1;
+
+            const leftX = getAxisDeadzone(gamepad.axes[0], zone);
+            const leftY = getAxisDeadzone(-gamepad.axes[1], zone);
+            const leftTrigger = gamepad.buttons[6].value;
+
+            const rightX = getAxisDeadzone(gamepad.axes[2], zone);
+            const rightY = getAxisDeadzone(-gamepad.axes[3], zone);
+            const rightTrigger = gamepad.buttons[7].value;
+
+            const trigger = leftTrigger - rightTrigger;
+
+            if (leftX !== 0 || leftY !== 0 || trigger !== 0) {
+                camera.move(
+                    leftX * cameraSpeedMult * -deltaTime,
+                    0,
+                    leftY * cameraSpeedMult * -deltaTime,
+                    false,
+                );
+                camera.move(0, trigger * cameraSpeedMult * -deltaTime, 0);
+            }
+
+            if (rightX !== 0) {
+                camera.updateYaw(camera.yaw, deltaYaw * 1.5 * rightX);
+            }
+            if (rightY !== 0) {
+                camera.updatePitch(camera.pitch, deltaPitch * 1.5 * rightY);
             }
         }
     }
