@@ -225,8 +225,16 @@ export class LocModelLoader {
                     -50,
                 );
             } else {
-                modelData.ambient = locType.ambient + 64;
-                modelData.contrast = locType.contrast + 768;
+                let ambient = 64;
+                let constrast = 768;
+                const ignoreLocLighting =
+                    locType.cacheInfo.game === "runescape" && locType.cacheInfo.revision <= 445;
+                if (!ignoreLocLighting) {
+                    ambient += locType.ambient;
+                    constrast += locType.contrast;
+                }
+                modelData.ambient = ambient;
+                modelData.contrast = constrast;
                 modelData.calculateVertexNormals();
 
                 model = modelData;
