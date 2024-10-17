@@ -12,11 +12,30 @@ export class SeqSoundEffect {
     ) {}
 }
 
+function decodeSoundEffect(buffer: ByteBuffer, isNewSoundEffects: boolean): SeqSoundEffect {
+    let id: number;
+    let loops: number;
+    let location: number;
+    let retain: number = 0;
+    if (isNewSoundEffects) {
+        id = buffer.readUnsignedShort();
+        loops = buffer.readUnsignedByte();
+        location = buffer.readUnsignedByte();
+        retain = buffer.readUnsignedByte();
+    } else {
+        const sound = buffer.readUnsignedMedium();
+        id = sound >> 8;
+        loops = (sound >> 4) & 0x7;
+        location = sound & 0xf;
+    }
+    return new SeqSoundEffect(id, loops, location, retain);
+}
+
 export class SeqType extends Type {
     frameIds!: number[];
     chatFrameIds?: number[];
     frameLengths!: number[];
-    frameSounds?: SeqSoundEffect[];
+    frameSounds?: Map<number, SeqSoundEffect[]>;
 
     frameStep: number;
 
@@ -40,7 +59,6 @@ export class SeqType extends Type {
     replyMode: number;
 
     skeletalId: number;
-    skeletalFrameSounds?: Map<number, SeqSoundEffect>;
     skeletalStart: number;
     skeletalEnd: number;
     skeletalMasks?: boolean[];
@@ -86,6 +104,54 @@ export class SeqType extends Type {
 
     isNewSoundEffects(): boolean {
         return this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 220;
+    }
+
+    decodeFrameSounds(buffer: ByteBuffer): void {
+        const count = buffer.readUnsignedByte();
+        if (!this.frameSounds) {
+            this.frameSounds = new Map();
+        }
+
+        const isNewSoundEffects = this.isNewSoundEffects();
+
+        for (let i = 0; i < count; i++) {
+            const soundEffect = decodeSoundEffect(buffer, isNewSoundEffects);
+            const effects = this.frameSounds.get(i);
+            if (effects) {
+                effects.push(soundEffect);
+            } else {
+                this.frameSounds.set(i, [soundEffect]);
+            }
+        }
+    }
+
+    decodeSparseFrameSounds(buffer: ByteBuffer): void {
+        const count = buffer.readUnsignedShort();
+        if (!this.frameSounds) {
+            this.frameSounds = new Map();
+        }
+
+        const isNewSoundEffects = this.isNewSoundEffects();
+
+        for (let i = 0; i < count; i++) {
+            const frame = buffer.readUnsignedShort();
+            const soundEffect = decodeSoundEffect(buffer, isNewSoundEffects);
+            const effects = this.frameSounds.get(frame);
+            if (effects) {
+                effects.push(soundEffect);
+            } else {
+                this.frameSounds.set(frame, [soundEffect]);
+            }
+        }
+    }
+
+    decodeSkeletalId(buffer: ByteBuffer): void {
+        this.skeletalId = buffer.readInt();
+    }
+
+    decodeSkeletalDuration(buffer: ByteBuffer): void {
+        this.skeletalStart = buffer.readUnsignedShort();
+        this.skeletalEnd = buffer.readUnsignedShort();
     }
 
     override decodeOpcode(opcode: number, buffer: ByteBuffer): void {
@@ -174,73 +240,36 @@ export class SeqType extends Type {
                         }
                     }
                 }
+            } else if (this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 226) {
+                this.decodeSkeletalId(buffer);
             } else {
-                const count = buffer.readUnsignedByte();
-                this.frameSounds = new Array(count);
-
-                const isNewSoundEffects = this.isNewSoundEffects();
-
-                for (let i = 0; i < count; i++) {
-                    let id: number;
-                    let loops: number;
-                    let location: number;
-                    let retain: number = 0;
-                    if (isNewSoundEffects) {
-                        id = buffer.readUnsignedShort();
-                        loops = buffer.readUnsignedByte();
-                        location = buffer.readUnsignedByte();
-                        retain = buffer.readUnsignedByte();
-                    } else {
-                        const sound = buffer.readUnsignedMedium();
-                        id = sound >> 8;
-                        loops = (sound >> 4) & 0x7;
-                        location = sound & 0xf;
-                    }
-                    this.frameSounds[i] = new SeqSoundEffect(id, loops, location, retain);
-                }
+                this.decodeFrameSounds(buffer);
             }
         } else if (opcode === 14) {
             if (this.cacheInfo.game === "oldschool") {
-                this.skeletalId = buffer.readInt();
+                if (this.cacheInfo.revision >= 226) {
+                    this.decodeSparseFrameSounds(buffer);
+                } else {
+                    this.decodeSkeletalId(buffer);
+                }
             } else {
                 this.op14 = true;
             }
         } else if (opcode === 15) {
             if (this.cacheInfo.game === "oldschool") {
-                const count = buffer.readUnsignedShort();
-                this.skeletalFrameSounds = new Map();
-
-                const isNewSoundEffects = this.isNewSoundEffects();
-
-                for (let i = 0; i < count; i++) {
-                    const frame = buffer.readUnsignedShort();
-                    let id: number;
-                    let loops: number;
-                    let location: number;
-                    let retain: number = 0;
-                    if (isNewSoundEffects) {
-                        id = buffer.readUnsignedShort();
-                        loops = buffer.readUnsignedByte();
-                        location = buffer.readUnsignedByte();
-                        retain = buffer.readUnsignedByte();
-                    } else {
-                        const sound = buffer.readUnsignedMedium();
-                        id = sound >> 8;
-                        loops = (sound >> 4) & 0x7;
-                        location = sound & 0xf;
-                    }
-                    this.skeletalFrameSounds.set(
-                        frame,
-                        new SeqSoundEffect(id, loops, location, retain),
-                    );
+                if (this.cacheInfo.revision >= 226) {
+                    this.decodeSkeletalDuration(buffer);
+                } else {
+                    this.decodeSparseFrameSounds(buffer);
                 }
             } else {
                 // interpolate = true;
             }
         } else if (opcode === 16) {
             if (this.cacheInfo.game === "oldschool") {
-                this.skeletalStart = buffer.readUnsignedShort();
-                this.skeletalEnd = buffer.readUnsignedShort();
+                if (this.cacheInfo.revision < 226) {
+                    this.decodeSkeletalDuration(buffer);
+                }
             } else {
                 // bool = true;
             }
