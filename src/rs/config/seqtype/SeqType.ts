@@ -12,13 +12,20 @@ export class SeqSoundEffect {
     ) {}
 }
 
-function decodeSoundEffect(buffer: ByteBuffer, isNewSoundEffects: boolean): SeqSoundEffect {
+function decodeSoundEffect(
+    buffer: ByteBuffer,
+    isNewSoundEffects: boolean,
+    hasUnknown: boolean,
+): SeqSoundEffect {
     let id: number;
     let loops: number;
     let location: number;
     let retain: number = 0;
     if (isNewSoundEffects) {
         id = buffer.readUnsignedShort();
+        if (hasUnknown) {
+            buffer.readUnsignedByte();
+        }
         loops = buffer.readUnsignedByte();
         location = buffer.readUnsignedByte();
         retain = buffer.readUnsignedByte();
@@ -115,7 +122,7 @@ export class SeqType extends Type {
         const isNewSoundEffects = this.isNewSoundEffects();
 
         for (let i = 0; i < count; i++) {
-            const soundEffect = decodeSoundEffect(buffer, isNewSoundEffects);
+            const soundEffect = decodeSoundEffect(buffer, isNewSoundEffects, false);
             const effects = this.frameSounds.get(i);
             if (effects) {
                 effects.push(soundEffect);
@@ -125,7 +132,7 @@ export class SeqType extends Type {
         }
     }
 
-    decodeSparseFrameSounds(buffer: ByteBuffer): void {
+    decodeSparseFrameSounds(buffer: ByteBuffer, hasUnknown: boolean): void {
         const count = buffer.readUnsignedShort();
         if (!this.frameSounds) {
             this.frameSounds = new Map();
@@ -135,7 +142,7 @@ export class SeqType extends Type {
 
         for (let i = 0; i < count; i++) {
             const frame = buffer.readUnsignedShort();
-            const soundEffect = decodeSoundEffect(buffer, isNewSoundEffects);
+            const soundEffect = decodeSoundEffect(buffer, isNewSoundEffects, hasUnknown);
             const effects = this.frameSounds.get(frame);
             if (effects) {
                 effects.push(soundEffect);
@@ -248,7 +255,7 @@ export class SeqType extends Type {
         } else if (opcode === 14) {
             if (this.cacheInfo.game === "oldschool") {
                 if (this.cacheInfo.revision >= 226) {
-                    this.decodeSparseFrameSounds(buffer);
+                    this.decodeSparseFrameSounds(buffer, true);
                 } else {
                     this.decodeSkeletalId(buffer);
                 }
@@ -260,7 +267,7 @@ export class SeqType extends Type {
                 if (this.cacheInfo.revision >= 226) {
                     this.decodeSkeletalDuration(buffer);
                 } else {
-                    this.decodeSparseFrameSounds(buffer);
+                    this.decodeSparseFrameSounds(buffer, false);
                 }
             } else {
                 // interpolate = true;
