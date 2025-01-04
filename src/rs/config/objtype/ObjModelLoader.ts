@@ -55,7 +55,7 @@ export class ObjModelLoader {
 
         if (objType.recolorFrom) {
             const retexture =
-                objType.cacheInfo.game === "runescape" && objType.cacheInfo.revision <= 377;
+                objType.cacheInfo.game === "runescape" && objType.cacheInfo.revision <= 464;
             for (let i = 0; i < objType.recolorFrom.length; i++) {
                 modelData.recolor(objType.recolorFrom[i], objType.recolorTo[i]);
                 if (retexture) {

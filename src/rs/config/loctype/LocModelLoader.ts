@@ -164,7 +164,7 @@ export class LocModelLoader {
 
         if (locType.recolorFrom) {
             const retexture =
-                locType.cacheInfo.game === "runescape" && locType.cacheInfo.revision <= 377;
+                locType.cacheInfo.game === "runescape" && locType.cacheInfo.revision <= 464;
             for (let i = 0; i < locType.recolorFrom.length; i++) {
                 copy.recolor(locType.recolorFrom[i], locType.recolorTo[i]);
                 if (retexture) {
