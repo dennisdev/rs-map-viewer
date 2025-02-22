@@ -215,6 +215,10 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
     }
 
     getSkeletalSeqLoader(): SkeletalSeqLoader | undefined {
+        if (this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 229) {
+            const index = this.cacheSystem.getIndex(IndexType.OSRS.animKeyFrames);
+            return new IndexSkeletalSeqLoader(index, this.getSeqBaseLoader());
+        }
         const index = this.cacheSystem.getIndex(IndexType.DAT2.animations);
         return new IndexSkeletalSeqLoader(index, this.getSeqBaseLoader());
     }

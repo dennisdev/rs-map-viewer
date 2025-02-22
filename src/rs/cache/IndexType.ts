@@ -41,6 +41,7 @@ export class IndexType {
         worldMap: 19,
         worldMapGround: 20,
         dbTableIndex: 21,
+        animKeyFrames: 22,
     };
 
     static readonly RS2 = {

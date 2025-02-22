@@ -68,8 +68,10 @@ export class ReferenceTable {
         }
         const revision = protocol > 5 ? buffer.readInt() : 0;
         const flag = buffer.readUnsignedByte();
-        const named = (flag & 0x1) !== 0;
-        const usesWhirlpool = (flag & 0x2) !== 0;
+        const hasNames = (flag & 0x1) !== 0;
+        const hasWhirlpool = (flag & 0x2) !== 0;
+        const hasSizes = (flag & 0x4) !== 0;
+        const hasUncompressedCrcs = (flag & 0x8) !== 0;
         const archiveCount = protocol === 7 ? buffer.readBigSmart() : buffer.readUnsignedShort();
 
         let lastArchiveId = 0;
@@ -90,14 +92,14 @@ export class ReferenceTable {
         }
 
         const archiveNameHashes = new Int32Array(archiveCount);
-        if (named) {
+        if (hasNames) {
             for (let i = 0; i < archiveCount; i++) {
                 archiveNameHashes[i] = buffer.readInt();
             }
         }
 
         const archiveWhirlpools = new Array<Int8Array>(archiveCount);
-        if (usesWhirlpool) {
+        if (hasWhirlpool) {
             for (let i = 0; i < archiveCount; i++) {
                 archiveWhirlpools[i] = buffer.readBytes(64);
             }
@@ -105,6 +107,10 @@ export class ReferenceTable {
 
         const archiveCrcs = new DataView(buffer.data.buffer, buffer.offset, archiveCount * 4);
         buffer.offset += archiveCrcs.byteLength;
+
+        if (hasSizes) {
+            buffer.offset += archiveCount * 8;
+        }
 
         const archiveRevisions = new DataView(buffer.data.buffer, buffer.offset, archiveCount * 4);
         buffer.offset += archiveRevisions.byteLength;
@@ -130,7 +136,7 @@ export class ReferenceTable {
         }
 
         const archiveFileNameHashes = new Array<Int32Array>(archiveCount);
-        if (named) {
+        if (hasNames) {
             for (let i = 0; i < archiveCount; i++) {
                 archiveFileNameHashes[i] = new Int32Array(archiveFileCounts[i]);
             }
@@ -144,8 +150,8 @@ export class ReferenceTable {
         return new ReferenceTable(
             protocol,
             revision,
-            named,
-            usesWhirlpool,
+            hasNames,
+            hasWhirlpool,
             archiveCount,
             lastArchiveId,
             archiveIdIndexMap,
