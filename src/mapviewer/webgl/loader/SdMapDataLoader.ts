@@ -36,6 +36,7 @@ import { createNpcDatas } from "../npc/NpcData";
 import { NpcSpawnGroup } from "../npc/NpcSpawnGroup";
 import { SdMapData } from "./SdMapData";
 import { SdMapLoaderInput } from "./SdMapLoaderInput";
+import { LocAnimatedData } from "../loc/LocAnimatedData";
 
 function loadHeightMapTextureData(scene: Scene): Int16Array {
     const heightMapTextureData = new Int16Array(Scene.MAX_LEVELS * scene.sizeX * scene.sizeY);
@@ -558,6 +559,7 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
             maxLevel,
             loadObjs,
             loadNpcs,
+            loadLocs,
             smoothTerrain,
             minimizeDrawCalls,
             loadedTextureIds,
@@ -615,11 +617,14 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
             createObjSceneModels(objModelLoader, sceneModels, scene, borderSize, objSpawns);
         }
 
-        addSceneModels(this.modelHashBuf!, textureLoader, sceneBuf, sceneModels, minimizeDrawCalls);
+        let locsAnimated: LocAnimatedData[] = [];
+        if (loadLocs) {
+            addSceneModels(this.modelHashBuf!, textureLoader, sceneBuf, sceneModels, minimizeDrawCalls);
 
-        // Animated locs
-        const locsAnimated = sceneBuf.addLocAnimatedGroups(locAnimatedGroups);
-        console.log(`animated locs: ${locsAnimated.length}`);
+            // Animated locs
+            locsAnimated = sceneBuf.addLocAnimatedGroups(locAnimatedGroups);
+            console.log(`animated locs: ${locsAnimated.length}`);
+        }
 
         // Npcs
 
@@ -785,6 +790,7 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
                 maxLevel,
                 loadObjs,
                 loadNpcs,
+                loadLocs,
 
                 smoothTerrain,
 
