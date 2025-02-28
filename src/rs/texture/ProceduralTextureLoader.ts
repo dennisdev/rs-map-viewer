@@ -14,12 +14,15 @@ export class ProceduralTextureLoader implements TextureLoader {
     transparentTextureMap: Map<number, boolean> = new Map();
 
     static load(
-        hasAlphaMaterialField: boolean,
-        hasAlphaOperation: boolean,
+        revision: number,
         materialsIndex: CacheIndex,
         textureIndex: CacheIndex,
         spriteIndex: CacheIndex,
     ): ProceduralTextureLoader {
+        const hasModOperation = revision >= 537;
+        const hasCombineModeAndShaderParam2 = revision >= 582;
+        const hasAlphaBlending = revision >= 629;
+
         const materialsFile = materialsIndex.getFile(0, 0);
         if (!materialsFile) {
             throw new Error("Materials file not found");
@@ -40,7 +43,7 @@ export class ProceduralTextureLoader implements TextureLoader {
                 material.valid = buffer.readUnsignedByte() === 1;
             }
         }
-        if (hasAlphaMaterialField) {
+        if (!hasAlphaBlending) {
             for (let i = 0; i < count; i++) {
                 const material = materials[i];
                 if (material) {
@@ -140,22 +143,26 @@ export class ProceduralTextureLoader implements TextureLoader {
                     material.floatTexture = buffer.readUnsignedByte() === 1;
                 }
             }
-            for (let i = 0; i < count; i++) {
-                const material = materials[i];
-                if (material) {
-                    material.combineMode = buffer.readUnsignedByte();
+            if (hasCombineModeAndShaderParam2) {
+                for (let i = 0; i < count; i++) {
+                    const material = materials[i];
+                    if (material) {
+                        material.combineMode = buffer.readUnsignedByte();
+                    }
+                }
+                for (let i = 0; i < count; i++) {
+                    const material = materials[i];
+                    if (material) {
+                        material.shaderParam2 = buffer.readInt();
+                    }
                 }
             }
-            for (let i = 0; i < count; i++) {
-                const material = materials[i];
-                if (material) {
-                    material.shaderParam2 = buffer.readInt();
-                }
-            }
-            for (let i = 0; i < count; i++) {
-                const material = materials[i];
-                if (material) {
-                    material.alphaMode = buffer.readUnsignedByte();
+            if (hasAlphaBlending) {
+                for (let i = 0; i < count; i++) {
+                    const material = materials[i];
+                    if (material) {
+                        material.alphaMode = buffer.readUnsignedByte();
+                    }
                 }
             }
         }
@@ -163,7 +170,8 @@ export class ProceduralTextureLoader implements TextureLoader {
         const textureIds = Array.from(textureIndex.getArchiveIds());
 
         return new ProceduralTextureLoader(
-            hasAlphaOperation,
+            revision >= 555,
+            hasModOperation,
             textureIndex,
             spriteIndex,
             textureIds,
@@ -172,7 +180,8 @@ export class ProceduralTextureLoader implements TextureLoader {
     }
 
     constructor(
-        readonly hasAlphaOperation: boolean,
+        readonly isRunetek5: boolean,
+        readonly hasModOperation: boolean,
         readonly textureIndex: CacheIndex,
         readonly spriteIndex: CacheIndex,
         readonly textureIds: number[],
@@ -192,7 +201,7 @@ export class ProceduralTextureLoader implements TextureLoader {
             return undefined;
         }
         const buffer = textureFile.getDataAsBuffer();
-        const texture = new ProceduralTextureDefinition(id, buffer, this.hasAlphaOperation);
+        const texture = new ProceduralTextureDefinition(id, buffer, this.hasModOperation);
         this.textures.set(id, texture);
         return texture;
     }
@@ -244,7 +253,7 @@ export class ProceduralTextureLoader implements TextureLoader {
     getMaterial(id: number): TextureMaterial {
         const texture = this.getTexture(id);
         const material = this.materials[id];
-        if (!texture || !material) {
+        if (!material) {
             return {
                 animU: 0,
                 animV: 0,
@@ -252,14 +261,25 @@ export class ProceduralTextureLoader implements TextureLoader {
             };
         }
 
+        let animU = material.animU;
+        let animV = material.animV;
+
+        if (!this.isRunetek5) {
+            const textureDef = this.getTexture(id);
+            if (textureDef) {
+                animU = textureDef.animU;
+                animV = textureDef.animV;
+            }
+        }
+
         let alphaCutOff = 0.9;
-        if (texture.animU !== 0 || texture.animV !== 0 || material.alphaMode === 2) {
+        if (animU !== 0 || animV !== 0 || material.alphaMode === 2) {
             alphaCutOff = 0.01;
         }
 
         return {
-            animU: texture.animU,
-            animV: texture.animV,
+            animU,
+            animV,
             alphaCutOff,
         };
     }
@@ -351,9 +371,9 @@ class ProceduralTextureDefinition {
 
     combineMode: TextureCombineMode;
 
-    constructor(id: number, buffer: ByteBuffer, hasAlphaOperation: boolean) {
+    constructor(id: number, buffer: ByteBuffer, hasModOperation: boolean) {
         this.id = id;
-        this.proceduralTexture = new ProceduralTexture(buffer, hasAlphaOperation);
+        this.proceduralTexture = new ProceduralTexture(buffer, hasModOperation);
         this.bool1 = buffer.readUnsignedByte() === 1;
         this.flipV = buffer.readUnsignedByte() === 1;
         this.repeatS = buffer.readUnsignedByte() === 1;

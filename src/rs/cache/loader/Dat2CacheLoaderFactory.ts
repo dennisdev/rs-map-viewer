@@ -179,17 +179,10 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
             return SpriteTextureLoader.load(textureIndex, spriteIndex);
         } else if (this.cacheSystem.indexExists(IndexType.RS2.materials)) {
             // materials starting 499 or 500
-
-            // removed in 629
-            const hasAlphaMaterialField = this.cacheInfo.revision < 629;
-            // after 534
-            const hasAlphaOperation = this.cacheInfo.revision >= 537;
-
             const materialIndex = this.cacheSystem.getIndex(IndexType.RS2.materials);
 
             return ProceduralTextureLoader.load(
-                hasAlphaMaterialField,
-                hasAlphaOperation,
+                this.cacheInfo.revision,
                 materialIndex,
                 textureIndex,
                 spriteIndex,

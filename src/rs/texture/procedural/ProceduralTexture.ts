@@ -11,11 +11,10 @@ export class ProceduralTexture {
     textureDependencies: number[];
 
     colourOperation: TextureOperation;
-    monochromeOperation: TextureOperation;
+    alphaOperation: TextureOperation;
+    monochromeOperation?: TextureOperation;
 
-    alphaOperation?: TextureOperation;
-
-    constructor(buffer: ByteBuffer, hasAlphaOperation: boolean) {
+    constructor(buffer: ByteBuffer, hasModOperation: boolean) {
         const operationCount = buffer.readUnsignedByte();
         // console.log("op count", operationCount);
         let spriteDepCount = 0;
@@ -58,10 +57,10 @@ export class ProceduralTexture {
             delete inputConnections[op];
         }
         this.colourOperation = this.operations[buffer.readUnsignedByte()];
-        if (hasAlphaOperation) {
-            this.alphaOperation = this.operations[buffer.readUnsignedByte()];
+        this.alphaOperation = this.operations[buffer.readUnsignedByte()];
+        if (hasModOperation) {
+            this.monochromeOperation = this.operations[buffer.readUnsignedByte()];
         }
-        this.monochromeOperation = this.operations[buffer.readUnsignedByte()];
     }
 
     getPixelsRgb(
