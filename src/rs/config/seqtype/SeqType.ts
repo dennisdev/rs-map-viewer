@@ -293,7 +293,11 @@ export class SeqType extends Type {
                 const v = buffer.readUnsignedByte();
             }
         } else if (opcode === 18) {
-            const b = true;
+            if (this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 230) {
+                const name = buffer.readString();
+            } else {
+                const b = true;
+            }
         } else if (opcode === 19) {
             const index = buffer.readUnsignedByte();
             const value = buffer.readUnsignedByte();
