@@ -42,6 +42,7 @@ export class SceneBuilder {
     static readonly WATER_OVERLAY_ID = 5;
 
     newTerrainFormat: boolean;
+    centerLocHeightWithSize: boolean;
 
     constructor(
         readonly cacheInfo: CacheInfo,
@@ -54,6 +55,8 @@ export class SceneBuilder {
     ) {
         this.newTerrainFormat =
             this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 209;
+        this.centerLocHeightWithSize =
+            this.cacheInfo.game === "oldschool" || this.cacheInfo.revision >= 465;
     }
 
     static fillEmptyTerrain(info: CacheInfo): boolean {
@@ -448,6 +451,13 @@ export class SceneBuilder {
             startY = (sizeY >> 1) + tileY;
             endY = tileY + ((sizeY + 1) >> 1);
         } else {
+            startY = tileY;
+            endY = tileY + 1;
+        }
+
+        if (!this.centerLocHeightWithSize) {
+            startX = tileX;
+            endX = tileX + 1;
             startY = tileY;
             endY = tileY + 1;
         }

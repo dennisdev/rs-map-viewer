@@ -333,6 +333,7 @@ function addLocAnimationFrames(
 }
 
 function addLocEntities(
+    centerLocHeightWithSize: boolean,
     locModelLoader: LocModelLoader,
     varManager: VarManager,
     scene: Scene,
@@ -367,10 +368,17 @@ function addLocEntities(
             locType = transformed;
         }
 
-        const startX = (sizeX >> 1) + tileX;
-        const endX = ((sizeX + 1) >> 1) + tileX;
-        const startY = (sizeY >> 1) + tileY;
-        const endY = ((sizeY + 1) >> 1) + tileY;
+        let startX = (sizeX >> 1) + tileX;
+        let endX = ((sizeX + 1) >> 1) + tileX;
+        let startY = (sizeY >> 1) + tileY;
+        let endY = ((sizeY + 1) >> 1) + tileY;
+
+        if (!centerLocHeightWithSize) {
+            startX = tileX;
+            endX = tileX + 1;
+            startY = tileY;
+            endY = tileY + 1;
+        }
 
         const heightMap = scene.tileHeights[level];
         let heightMapAbove: Int32Array[] | undefined;
@@ -602,6 +610,7 @@ export class SdMapDataLoader implements RenderDataLoader<SdMapLoaderInput, SdMap
 
         // Create loc animated groups and add transformed locs
         const locAnimatedGroups = addLocEntities(
+            state.sceneBuilder.centerLocHeightWithSize,
             locModelLoader,
             varManager,
             scene,
