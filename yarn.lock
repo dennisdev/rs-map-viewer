@@ -2580,6 +2580,11 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-16.18.46.tgz#9f2102d0ba74a318fcbe170cbff5463f119eab59"
   integrity sha512-Mnq3O9Xz52exs3mlxMcQuA7/9VFe/dXcrgAyfjLkABIqxXKOgBRjyazTxUbjsxDa4BP7hhPliyjVTP9RDP14xg==
 
+"@types/pako@^2.0.3":
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/@types/pako/-/pako-2.0.3.tgz#b6993334f3af27c158f3fe0dfeeba987c578afb1"
+  integrity sha512-bq0hMV9opAcrmE0Byyo0fY3Ew4tgOevJmQ9grUhpXQhYfyLJ1Kqg3P33JT5fdbT2AjeAjR51zqqVjAL/HMkx7Q==
+
 "@types/parse-json@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@types/parse-json/-/parse-json-4.0.0.tgz#2f8bb441434d163b35fb8ffdccd7138927ffb8c0"
@@ -4073,11 +4078,6 @@ cosmiconfig@^7, cosmiconfig@^7.0.0, cosmiconfig@^7.0.1:
     path-type "^4.0.0"
     yaml "^1.10.0"
 
-"crc32@>= 0.2.2":
-  version "0.2.2"
-  resolved "https://registry.yarnpkg.com/crc32/-/crc32-0.2.2.tgz#7ad220d6ffdcd119f9fc127a7772cacea390a4ba"
-  integrity sha512-PFZEGbDUeoNbL2GHIEpJRQGheXReDody/9axKTxhXtQqIL443wnNigtVZO9iuCIMPApKZRv7k2xr8euXHqNxQQ==
-
 create-require@^1.1.0:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/create-require/-/create-require-1.1.1.tgz#c1d7e8f1e5f6cfc9ff65f9cd352d37348756c333"
@@ -4402,11 +4402,6 @@ define-properties@^1.1.3, define-properties@^1.1.4, define-properties@^1.2.0:
   dependencies:
     has-property-descriptors "^1.0.0"
     object-keys "^1.1.1"
-
-"deflate-js@>= 0.2.2":
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/deflate-js/-/deflate-js-0.2.3.tgz#f85abb58ebc5151a306147473d57c3e4f7e4426b"
-  integrity sha512-r5KgHJ/yTiWQs23nVeQz5dSL/kmW0MBszsssNyEqDCjjFDj4XG/c6QUN/I0JtY3ZHwwcaNBtGE8s+oV33acTfQ==
 
 delayed-stream@~1.0.0:
   version "1.0.0"
@@ -5707,14 +5702,6 @@ graphemer@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/graphemer/-/graphemer-1.4.0.tgz#fb2f1d55e0e3a1849aeffc90c4fa0dd53a0e66c6"
   integrity sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==
-
-gzip-js@^0.3.2:
-  version "0.3.2"
-  resolved "https://registry.yarnpkg.com/gzip-js/-/gzip-js-0.3.2.tgz#23117efeeb28cf385248deff0dffad894836d96b"
-  integrity sha512-BFTiwtEN12koJsnhVo77SzW+u6VANzhaK0HEtdwFwgFzFOq1WQJ8eSPEyGAueUfs1C/WqdgtuYnUwCRuRm1A5Q==
-  dependencies:
-    crc32 ">= 0.2.2"
-    deflate-js ">= 0.2.2"
 
 gzip-size@^6.0.0:
   version "6.0.0"
@@ -7892,6 +7879,11 @@ p-try@^2.0.0:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/p-try/-/p-try-2.2.0.tgz#cb2868540e313d61de58fafbe35ce9004d5540e6"
   integrity sha512-R4nPAVTAU0B9D35/Gk3uJf/7XYbQcyohSKdvAxIRSNghFl4e71hVoGnBNQz9cWaXxO2I10KTC+3jMdvvoKw6dQ==
+
+pako@^2.1.0:
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/pako/-/pako-2.1.0.tgz#266cc37f98c7d883545d11335c00fbd4062c9a86"
+  integrity sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==
 
 pako@~1.0.2:
   version "1.0.11"

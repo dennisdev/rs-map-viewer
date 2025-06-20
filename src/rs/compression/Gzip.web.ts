@@ -1,4 +1,4 @@
-import gzip from "gzip-js";
+import pako from "pako";
 import init, { decompressGzip } from "wasm-gzip";
 
 const wasmGzipUrl = require("wasm-gzip/wasm_gzip_bg.wasm");
@@ -13,7 +13,7 @@ export class Gzip {
 
     static decompress(compressed: Uint8Array): Int8Array {
         if (!Gzip.wasmLoaded) {
-            const decompressed = new Int8Array(gzip.unzip(compressed));
+            const decompressed = new Int8Array(pako.ungzip(compressed).buffer);
             return decompressed;
         }
         const decompressed = decompressGzip(compressed);
