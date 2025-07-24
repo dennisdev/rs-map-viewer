@@ -157,6 +157,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
     loadObjs: boolean = true;
     loadNpcs: boolean = true;
+    loadLocs: boolean = true;
 
     // State
     lastClientTick: number = 0;
@@ -633,6 +634,12 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                             this.setLoadNpcs(v);
                         },
                     },
+                    Locs: {
+                        value: this.loadLocs,
+                        onChange: (v: boolean) => {
+                            this.setLoadLocs(v);
+                        },
+                    },
                 },
                 { collapsed: true },
             ),
@@ -650,6 +657,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
             maxLevel: this.maxLevel,
             loadObjs: this.loadObjs,
             loadNpcs: this.loadNpcs,
+            loadLocs: this.loadLocs,
             smoothTerrain: this.smoothTerrain,
             minimizeDrawCalls: !this.hasMultiDraw,
             loadedTextureIds: this.loadedTextureIds,
@@ -714,6 +722,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
             mapData.maxLevel === this.maxLevel &&
             mapData.loadObjs === this.loadObjs &&
             mapData.loadNpcs === this.loadNpcs &&
+            mapData.loadLocs === this.loadLocs &&
             mapData.smoothTerrain === this.smoothTerrain
         );
     }
@@ -768,6 +777,14 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
     setLoadNpcs(enabled: boolean): void {
         const updated = this.loadNpcs !== enabled;
         this.loadNpcs = enabled;
+        if (updated) {
+            this.clearMaps();
+        }
+    }
+
+    setLoadLocs(enabled: boolean): void {
+        const updated = this.loadLocs !== enabled;
+        this.loadLocs = enabled;
         if (updated) {
             this.clearMaps();
         }
