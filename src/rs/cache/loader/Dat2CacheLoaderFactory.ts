@@ -176,7 +176,9 @@ export class Dat2CacheLoaderFactory implements CacheLoaderFactory {
             this.cacheInfo.game === "oldschool" ||
             (this.cacheInfo.game === "runescape" && this.cacheInfo.revision < 474)
         ) {
-            return SpriteTextureLoader.load(textureIndex, spriteIndex);
+            const isSimplified =
+                this.cacheInfo.game === "oldschool" && this.cacheInfo.revision >= 233;
+            return SpriteTextureLoader.load(textureIndex, spriteIndex, isSimplified);
         } else if (this.cacheSystem.indexExists(IndexType.RS2.materials)) {
             // materials starting 499 or 500
             const materialIndex = this.cacheSystem.getIndex(IndexType.RS2.materials);

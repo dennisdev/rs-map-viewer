@@ -17,7 +17,11 @@ export class SpriteTextureLoader implements TextureLoader {
 
     idIndexMap: Map<number, number>;
 
-    static load(textureIndex: CacheIndex, spriteIndex: CacheIndex): SpriteTextureLoader {
+    static load(
+        textureIndex: CacheIndex,
+        spriteIndex: CacheIndex,
+        isSimplified: boolean,
+    ): SpriteTextureLoader {
         const definitions = new Map<number, TextureDefinition>();
 
         const textureArchive = textureIndex.getArchive(0);
@@ -27,7 +31,9 @@ export class SpriteTextureLoader implements TextureLoader {
             const file = textureArchive.getFile(textureId);
             if (file) {
                 const buffer = file.getDataAsBuffer();
-                const definition = TextureDefinition.decode(textureId, buffer);
+                const definition = isSimplified
+                    ? TextureDefinition.decodeSimplified(textureId, buffer)
+                    : TextureDefinition.decode(textureId, buffer);
                 definitions.set(textureId, definition);
             }
         }
@@ -274,6 +280,25 @@ class TextureDefinition {
             animationSpeed,
             spriteTypes,
             unused,
+        );
+    }
+
+    static decodeSimplified(id: number, buffer: ByteBuffer): TextureDefinition {
+        const spriteId = buffer.readUnsignedShort();
+        const averageHsl = buffer.readUnsignedShort();
+        const opaque = buffer.readUnsignedByte() === 1;
+        const animationDirection = buffer.readUnsignedByte();
+        const animationSpeed = buffer.readUnsignedByte();
+
+        return new TextureDefinition(
+            id,
+            averageHsl,
+            opaque,
+            1,
+            [spriteId],
+            [0],
+            animationDirection,
+            animationSpeed,
         );
     }
 
