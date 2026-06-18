@@ -9,13 +9,30 @@ import {
     useState,
 } from "react";
 import { SingleValue } from "react-select";
-import { useElementSize } from "usehooks-ts";
 
 import { getMapSquareId } from "../../../rs/map/MapFileIndex";
 import { clamp } from "../../../util/MathUtil";
 import { OsrsSelect } from "../select/OsrsSelect";
 import "./WorldMap.css";
 import locationsImport from "./locations.json";
+
+function useElementSize() {
+    const ref = useRef<HTMLDivElement>(null);
+    const [size, setSize] = useState({ width: 0, height: 0 });
+    useLayoutEffect(() => {
+        const element = ref.current;
+        if (!element) {
+            return;
+        }
+        const resizeObserver = new ResizeObserver((entries) => {
+            const { width, height } = entries[0].contentRect;
+            setSize({ width, height });
+        });
+        resizeObserver.observe(element);
+        return () => resizeObserver.disconnect();
+    }, []);
+    return [ref, size] as const;
+}
 
 interface Location {
     name: string;
@@ -87,7 +104,7 @@ export const WorldMap = memo(function WorldMap(props: WorldMapProps) {
 
     const [images, setImages] = useState<JSX.Element[]>([]);
 
-    const requestRef = useRef<number | undefined>();
+    const requestRef = useRef<number | undefined>(undefined);
 
     const tileSize = TILE_SIZES[tileSizeIndex];
 

@@ -22,7 +22,7 @@ export class PerlinNoiseOperation extends TextureOperation {
     noiseInput0!: Int16Array;
     noiseInput1!: Int16Array;
 
-    permutations = new Int8Array(512);
+    permutations: Int8Array = new Int8Array(512);
 
     static initNoise(): void {
         // correct

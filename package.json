@@ -2,57 +2,45 @@
   "name": "rs-map-viewer",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "dependencies": {
-    "@foxglove/wasm-bz2": "^0.1.1",
-    "@testing-library/jest-dom": "^5.14.1",
-    "@testing-library/react": "^13.0.0",
-    "@testing-library/user-event": "^13.2.1",
-    "@types/jest": "^27.0.1",
-    "@types/node": "^16.7.13",
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
-    "@webgpu/types": "^0.1.40",
+    "@foxglove/wasm-bz2": "^0.3.0",
     "bzip2": "^0.1.1",
     "denque": "^2.1.0",
     "fast-memoize": "^2.5.2",
     "file-saver": "^2.0.5",
-    "gl-matrix": "^3.4.3",
+    "gl-matrix": "^3.4.4",
     "java-random": "^0.4.0",
-    "js-xxhash": "^2.0.0",
+    "js-xxhash": "^5.0.1",
     "jszip": "^3.10.1",
-    "leva": "^0.9.35",
+    "leva": "^0.10.1",
     "pako": "^2.1.0",
     "picogl": "^0.17.9",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "react-joystick-component": "^6.2.1",
-    "react-modal": "^3.16.1",
-    "react-router-dom": "^6.14.2",
-    "react-scripts": "5.0.1",
-    "react-select": "^5.7.4",
+    "react-modal": "^3.16.3",
+    "react-router-dom": "^7.18.0",
+    "react-select": "^5.10.2",
     "threads": "^1.7.0",
-    "typescript": "^5.1.6",
-    "usehooks-ts": "^2.9.1",
-    "wasm-gzip": "^1.0.1",
-    "web-vitals": "^2.1.0",
+    "wasm-gzip": "^2.1.0",
+    "web-vitals": "^5.3.0",
     "webfontloader": "^1.6.28",
-    "xxhash-wasm": "^1.0.2"
+    "xxhash-wasm": "^1.1.0"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test",
+    "start": "vite",
+    "build": "vite build",
+    "test": "vitest run",
+    "preview": "vite preview",
     "lint": "prettier --write \"./**/*.{js,ts,jsx,tsx,css,md}\"",
-    "prepare": "husky install",
-    "download-caches": "node scripts/download-caches.js",
+    "prepare": "husky",
+    "download-caches": "node scripts/download-caches.cjs",
     "export-textures": "npx tsx scripts/cache/export-textures.ts",
     "export-height-map": "npx tsx scripts/cache/export-height-map.ts"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [
@@ -68,31 +56,31 @@
       "last 1 safari version"
     ]
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,css,md}": "prettier --write"
   },
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
-    "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/file-saver": "^2.0.7",
-    "@types/gzip-js": "^0.3.3",
+    "@types/node": "^24.0.0",
     "@types/pako": "^2.0.3",
-    "@types/react-modal": "^3.16.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/react-modal": "^3.16.3",
     "@types/webfontloader": "^1.6.35",
-    "adm-zip": "^0.5.10",
-    "husky": "^8.0.3",
-    "json-minimizer-webpack-plugin": "^4.0.0",
-    "lint-staged": "^13.2.3",
-    "path": "^0.12.7",
-    "prettier": "^3.0.0",
-    "sharp": "^0.32.6",
-    "threads-plugin": "^1.4.0",
-    "ts-node": "^10.9.1",
-    "ts-shader-loader": "^2.0.2"
+    "@vitejs/plugin-react": "^6.0.2",
+    "@webgpu/types": "^0.1.70",
+    "adm-zip": "^0.5.17",
+    "husky": "^9.1.7",
+    "jsdom": "^29.1.1",
+    "lint-staged": "^17.0.7",
+    "prettier": "^3.8.4",
+    "sharp": "^0.35.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.9"
   }
 }

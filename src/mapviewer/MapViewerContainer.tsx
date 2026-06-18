@@ -34,7 +34,7 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
 
     const [menuProps, setMenuProps] = useState<OsrsMenuProps | undefined>(undefined);
 
-    const requestRef = useRef<number | undefined>();
+    const requestRef = useRef<number | undefined>(undefined);
 
     const animate = (time: DOMHighResTimeStamp) => {
         // Wait for 200ms before updating search params

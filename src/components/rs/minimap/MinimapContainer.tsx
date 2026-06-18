@@ -31,7 +31,7 @@ export const MinimapContainer = memo(function MinimapContainer({
     loadMapImageUrl,
 }: MinimapContainerProps) {
     const [minimapImages, setMinimapImages] = useState<JSX.Element[]>([]);
-    const requestRef = useRef<number | undefined>();
+    const requestRef = useRef<number | undefined>(undefined);
 
     const animate = (time: DOMHighResTimeStamp) => {
         const pos = getPosition();
