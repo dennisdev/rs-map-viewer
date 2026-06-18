@@ -22,8 +22,9 @@ import { MenuTargetType } from "../../rs/MenuEntry";
 import { Scene } from "../../rs/scene/Scene";
 import { isTouchDevice, isWebGL2Supported, pixelRatio } from "../../util/DeviceUtil";
 import { MapViewer } from "../MapViewer";
-import { MapViewerRenderer } from "../MapViewerRenderer";
+import { CameraPathGeometry, MapViewerRenderer } from "../MapViewerRenderer";
 import { MapViewerRendererType, WEBGL } from "../MapViewerRenderers";
+import { CameraTrackOverlay } from "./CameraTrackOverlay";
 import { DrawRange, NULL_DRAW_RANGE } from "./DrawRange";
 import { InteractType } from "./InteractType";
 import { Interactions } from "./Interactions";
@@ -32,6 +33,7 @@ import { SdMapData } from "./loader/SdMapData";
 import { SdMapDataLoader } from "./loader/SdMapDataLoader";
 import { SdMapLoaderInput } from "./loader/SdMapLoaderInput";
 import {
+    DEBUG_LINE_PROGRAM,
     FRAME_FXAA_PROGRAM,
     FRAME_PROGRAM,
     createMainProgram,
@@ -138,6 +140,12 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
 
     frameDrawCall?: DrawCall;
     frameFxaaDrawCall?: DrawCall;
+
+    // Camera rail overlay
+    debugLineProgram?: Program;
+    cameraTrackOverlay?: CameraTrackOverlay;
+    private pendingCameraPath?: CameraPathGeometry;
+    private pendingCameraPathVisible = true;
 
     // Settings
     maxLevel: number = Scene.MAX_LEVELS - 1;
@@ -253,20 +261,53 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
             createNpcProgram(hasMultiDraw, true),
             FRAME_PROGRAM,
             FRAME_FXAA_PROGRAM,
+            DEBUG_LINE_PROGRAM,
         );
 
-        const [mainProgram, mainAlphaProgram, npcProgram, frameProgram, frameFxaaProgram] =
-            programs;
+        const [
+            mainProgram,
+            mainAlphaProgram,
+            npcProgram,
+            frameProgram,
+            frameFxaaProgram,
+            debugLineProgram,
+        ] = programs;
         this.mainProgram = mainProgram;
         this.mainAlphaProgram = mainAlphaProgram;
         this.npcProgram = npcProgram;
         this.frameProgram = frameProgram;
         this.frameFxaaProgram = frameFxaaProgram;
+        this.debugLineProgram = debugLineProgram;
 
         this.frameDrawCall = this.app.createDrawCall(frameProgram, this.quadArray);
         this.frameFxaaDrawCall = this.app.createDrawCall(frameFxaaProgram, this.quadArray);
 
+        this.cameraTrackOverlay = new CameraTrackOverlay(this.app, debugLineProgram);
+        if (this.pendingCameraPath) {
+            this.cameraTrackOverlay.setPath(this.pendingCameraPath);
+            this.pendingCameraPath = undefined;
+        }
+        this.cameraTrackOverlay.setVisible(this.pendingCameraPathVisible);
+
         return programs;
+    }
+
+    override setCameraPath(geometry: CameraPathGeometry): void {
+        if (this.cameraTrackOverlay) {
+            this.cameraTrackOverlay.setPath(geometry);
+        } else {
+            // Shaders not compiled yet; apply once they are.
+            this.pendingCameraPath = geometry;
+        }
+    }
+
+    override setCameraPathVisible(visible: boolean): void {
+        this.pendingCameraPathVisible = visible;
+        this.cameraTrackOverlay?.setVisible(visible);
+    }
+
+    override setHighlightedSegment(index: number): void {
+        this.cameraTrackOverlay?.setHighlightedSegment(index);
     }
 
     initFramebuffers(): void {
@@ -955,6 +996,16 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
             this.frameDrawCall.draw();
         }
 
+        // Camera rail overlay: drawn last, into the default framebuffer with
+        // depth disabled, so it always renders on top (never occluded by
+        // terrain). Wrapped so the overlay can never break the world render.
+        try {
+            this.cameraTrackOverlay?.render(camera.viewProjMatrix);
+        } catch (e) {
+            console.warn("Camera rail overlay render failed:", e);
+            this.cameraTrackOverlay = undefined;
+        }
+
         // Load new map squares
         const mapData = this.mapsToLoad.shift();
         if (mapData && this.isValidMapData(mapData)) {
@@ -1458,6 +1509,10 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
     override async cleanUp(): Promise<void> {
         super.cleanUp();
         this.mapViewer.workerPool.resetLoader(this.dataLoader);
+
+        this.cameraTrackOverlay?.dispose();
+        this.cameraTrackOverlay = undefined;
+        this.pendingCameraPath = undefined;
 
         this.quadArray?.delete();
         this.quadArray = undefined;

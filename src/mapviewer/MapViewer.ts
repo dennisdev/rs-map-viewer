@@ -22,6 +22,13 @@ import { InputManager } from "./InputManager";
 import { MapManager } from "./MapManager";
 import { MapViewerRenderer } from "./MapViewerRenderer";
 import { MapViewerRendererType, createRenderer } from "./MapViewerRenderers";
+import {
+    RecordingConfig,
+    createDefaultRecordingConfig,
+    deserializeRecordingConfig,
+    isRecordingDefault,
+    serializeRecordingConfig,
+} from "./RecordingConfig";
 import { NpcSpawn } from "./data/npc/NpcSpawn";
 import { ObjSpawn } from "./data/obj/ObjSpawn";
 import { RenderDataWorkerPool } from "./worker/RenderDataWorkerPool";
@@ -83,6 +90,9 @@ export class MapViewer {
 
     debugText?: string;
 
+    /** Camera recorder authoring state, persisted to the URL `r` param. */
+    recording: RecordingConfig = createDefaultRecordingConfig();
+
     mapImageUrls: Map<number, string> = new Map();
     minimapImageUrls: Map<number, string> = new Map();
     loadingMapImageIds: Set<number> = new Set();
@@ -129,6 +139,10 @@ export class MapViewer {
             params["cache"] = this.loadedCache.info.name;
         }
 
+        if (!isRecordingDefault(this.recording)) {
+            params["r"] = serializeRecordingConfig(this.recording);
+        }
+
         params["v"] = 1;
 
         return params;
@@ -168,6 +182,11 @@ export class MapViewer {
             if (!v) {
                 this.camera.yaw = 2048 - this.camera.yaw;
             }
+        }
+
+        const recording = deserializeRecordingConfig(searchParams.get("r"));
+        if (recording) {
+            this.recording = recording;
         }
     }
 

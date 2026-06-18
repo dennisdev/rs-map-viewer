@@ -1,4 +1,6 @@
 import { ProgramSource, prependDefines } from "./ShaderUtil";
+import debugLineFragShader from "./debug-line.frag.glsl";
+import debugLineVertShader from "./debug-line.vert.glsl";
 import frameFxaaFragShader from "./frame-fxaa.frag.glsl";
 import frameFxaaVertShader from "./frame-fxaa.vert.glsl";
 import frameFragShader from "./frame.frag.glsl";
@@ -33,3 +35,4 @@ export function createNpcProgram(hasMultiDraw: boolean, discardAlpha: boolean): 
 
 export const FRAME_PROGRAM = [frameVertShader, frameFragShader];
 export const FRAME_FXAA_PROGRAM = [frameFxaaVertShader, frameFxaaFragShader];
+export const DEBUG_LINE_PROGRAM: ProgramSource = [debugLineVertShader, debugLineFragShader];
