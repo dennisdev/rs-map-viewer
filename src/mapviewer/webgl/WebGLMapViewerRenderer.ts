@@ -18,12 +18,17 @@ import {
 
 import { OsrsMenuEntry } from "../../components/rs/menu/OsrsMenu";
 import { createTextureArray } from "../../picogl/PicoTexture";
-import { MenuTargetType } from "../../rs/MenuEntry";
+import { MenuEntry, MenuTargetType } from "../../rs/MenuEntry";
 import { Scene } from "../../rs/scene/Scene";
 import { isTouchDevice, isWebGL2Supported, pixelRatio } from "../../util/DeviceUtil";
 import { MapViewer } from "../MapViewer";
 import { CameraPathGeometry, MapViewerRenderer } from "../MapViewerRenderer";
 import { MapViewerRendererType, WEBGL } from "../MapViewerRenderers";
+import {
+    TransportEdge,
+    buildTransportChoices,
+    pickChoiceDestination,
+} from "../data/transports/Transport";
 import { CameraTrackOverlay } from "./CameraTrackOverlay";
 import { DrawRange, NULL_DRAW_RANGE } from "./DrawRange";
 import { InteractType } from "./InteractType";
@@ -1329,18 +1334,20 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
         const inputManager = this.mapViewer.inputManager;
         const isMouseDown = inputManager.dragX !== -1 || inputManager.dragY !== -1;
         const picked = inputManager.pickX !== -1 && inputManager.pickY !== -1;
+        // A left click (press+release without dragging) triggers the default
+        // menu option OSRS-style instead of opening the context menu.
+        const leftClick = inputManager.leftClick;
 
-        if (!interactReady && !picked) {
+        if (!interactReady && !picked && !leftClick) {
             return;
         }
 
         const menuCooldown = isTouchDevice ? 50 : 10;
 
-        if (
-            inputManager.mouseX === -1 ||
-            inputManager.mouseY === -1 ||
-            frameCount - this.mapViewer.menuOpenedFrame < menuCooldown
-        ) {
+        if (inputManager.mouseX === -1 || inputManager.mouseY === -1) {
+            return;
+        }
+        if (!leftClick && frameCount - this.mapViewer.menuOpenedFrame < menuCooldown) {
             return;
         }
 
@@ -1349,7 +1356,7 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
             return;
         }
 
-        if (!picked && !this.mapViewer.tooltips) {
+        if (!picked && !leftClick && !this.mapViewer.tooltips) {
             this.mapViewer.closeMenu();
             return;
         }
@@ -1379,19 +1386,16 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                     }
                     locIds.add(interactId);
 
-                    for (const option of locType.actions) {
-                        if (!option) {
-                            continue;
-                        }
-                        menuEntries.push({
-                            option,
-                            targetId: locType.id,
-                            targetType: MenuTargetType.LOC,
-                            targetName: locType.name,
-                            targetLevel: -1,
-                            onClick: this.mapViewer.closeMenu,
-                        });
-                    }
+                    this.addActionEntries(
+                        menuEntries,
+                        locType.actions,
+                        interactId,
+                        index,
+                        locType.id,
+                        MenuTargetType.LOC,
+                        locType.name,
+                        -1,
+                    );
 
                     examineEntries.push({
                         option: "Examine",
@@ -1411,19 +1415,16 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                     }
                     objIds.add(interactId);
 
-                    for (const option of objType.groundActions) {
-                        if (!option) {
-                            continue;
-                        }
-                        menuEntries.push({
-                            option,
-                            targetId: objType.id,
-                            targetType: MenuTargetType.OBJ,
-                            targetName: objType.name,
-                            targetLevel: -1,
-                            onClick: this.mapViewer.closeMenu,
-                        });
-                    }
+                    this.addActionEntries(
+                        menuEntries,
+                        objType.groundActions,
+                        interactId,
+                        index,
+                        objType.id,
+                        MenuTargetType.OBJ,
+                        objType.name,
+                        -1,
+                    );
 
                     examineEntries.push({
                         option: "Examine",
@@ -1453,19 +1454,16 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                     }
                     npcIds.add(interactId);
 
-                    for (const option of npcType.actions) {
-                        if (!option) {
-                            continue;
-                        }
-                        menuEntries.push({
-                            option,
-                            targetId: npcType.id,
-                            targetType: MenuTargetType.NPC,
-                            targetName: npcType.name,
-                            targetLevel: npcType.combatLevel,
-                            onClick: this.mapViewer.closeMenu,
-                        });
-                    }
+                    this.addActionEntries(
+                        menuEntries,
+                        npcType.actions,
+                        interactId,
+                        index,
+                        npcType.id,
+                        MenuTargetType.NPC,
+                        npcType.name,
+                        npcType.combatLevel,
+                    );
 
                     examineEntries.push({
                         option: "Examine",
@@ -1477,6 +1475,19 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
                     });
                 }
             }
+        }
+
+        // Left click: trigger the default (top) option when it's a transport,
+        // without opening the context menu. Non-transport defaults are ignored
+        // so normal left-click/camera-drag behaviour is unchanged.
+        if (leftClick) {
+            inputManager.leftClick = false;
+            const def = menuEntries[0];
+            if (def?.isTransport && def.onClick) {
+                def.onClick(def);
+            }
+            this.mapViewer.closeMenu();
+            return;
         }
 
         menuEntries.push({
@@ -1504,6 +1515,126 @@ export class WebGLMapViewerRenderer extends MapViewerRenderer<WebGLMapSquare> {
         this.mapViewer.menuX = inputManager.mouseX;
         this.mapViewer.menuY = inputManager.mouseY;
         this.mapViewer.menuEntries = menuEntries;
+    }
+
+    /**
+     * Push menu entries for a picked object's in-game actions, wiring up
+     * teleport behaviour where a transport edge matches the action text:
+     *  - a single matching destination makes the existing action teleport there
+     *    (e.g. "Climb-up" on a staircase just works — no duplicate option),
+     *  - multiple destinations open a picker modal (e.g. spirit-tree "Travel"),
+     *  - transport options that don't correspond to any existing action are
+     *    appended (e.g. ship destination names).
+     */
+    private addActionEntries(
+        menuEntries: OsrsMenuEntry[],
+        actions: (string | null | undefined)[],
+        objectId: number,
+        interactIndex: number,
+        targetId: number,
+        targetType: MenuTargetType,
+        targetName: string,
+        targetLevel: number,
+    ): void {
+        const mapViewer = this.mapViewer;
+        const groups = this.lookupTransportGroups(objectId, interactIndex);
+        const consumed = new Set<number>();
+        const norm = (s: string) => s.trim().toLowerCase();
+
+        const baseEntry = (option: string): OsrsMenuEntry => ({
+            option,
+            targetId,
+            targetType,
+            targetName,
+            targetLevel,
+            onClick: mapViewer.closeMenu,
+        });
+
+        for (const option of actions) {
+            if (!option) {
+                continue;
+            }
+            const entry = baseEntry(option);
+            const gi = groups.findIndex(
+                (g, idx) =>
+                    !consumed.has(idx) && !!g.menuOption && norm(g.menuOption) === norm(option),
+            );
+            if (gi >= 0) {
+                consumed.add(gi);
+                entry.onClick = this.makeTransportOnClick(groups[gi].edges, targetName);
+                entry.isTransport = true;
+            }
+            menuEntries.push(entry);
+        }
+
+        // Transport destinations whose menu option isn't an object action
+        // (e.g. per-destination ship options) — surface them as new entries.
+        for (let idx = 0; idx < groups.length; idx++) {
+            if (consumed.has(idx)) {
+                continue;
+            }
+            const group = groups[idx];
+            const entry = baseEntry(group.menuOption ?? "Travel");
+            entry.onClick = this.makeTransportOnClick(group.edges, targetName);
+            entry.isTransport = true;
+            menuEntries.push(entry);
+        }
+    }
+
+    /**
+     * onClick handler for a transport option: teleport directly when there is a
+     * single destination, otherwise open the destination picker modal.
+     */
+    private makeTransportOnClick(
+        edges: TransportEdge[],
+        targetName: string,
+    ): (entry: MenuEntry) => void {
+        const mapViewer = this.mapViewer;
+        // Collapse to distinct destinations so a single landing point (even if
+        // reached via several origin tiles) teleports directly instead of
+        // opening a redundant picker.
+        if (buildTransportChoices(edges).length === 1) {
+            return () => {
+                const choice = buildTransportChoices(edges)[0];
+                const dest = pickChoiceDestination(choice);
+                mapViewer.teleportTo(dest.x, dest.y, dest.plane);
+            };
+        }
+        return () => mapViewer.openTransportChoices(edges, targetName);
+    }
+
+    /**
+     * Look up transport edges for a clicked object (resolved to its map square)
+     * and group them by in-game menu option, so one option with many outputs
+     * (fairy rings, spirit trees) becomes a single multi-destination entry.
+     */
+    private lookupTransportGroups(
+        objectId: number,
+        interactIndex: number,
+    ): { menuOption: string | undefined; edges: TransportEdge[] }[] {
+        if (!this.interactBuffer) {
+            return [];
+        }
+        const mapId = this.interactBuffer[interactIndex + 1] | 0;
+        const mapX = mapId >> 8;
+        const mapY = mapId & 0xff;
+        const edges = this.mapViewer.findTransportEdges(objectId, mapX, mapY);
+
+        const map = new Map<string, TransportEdge[]>();
+        for (const edge of edges) {
+            const key = (edge.menuOption ?? "").trim().toLowerCase();
+            const list = map.get(key);
+            if (list) {
+                list.push(edge);
+            } else {
+                map.set(key, [edge]);
+            }
+        }
+        const groups: { menuOption: string | undefined; edges: TransportEdge[] }[] = [];
+        for (const list of map.values()) {
+            groups.push({ menuOption: list[0].menuOption, edges: list });
+        }
+        return groups;
     }
 
     override async cleanUp(): Promise<void> {

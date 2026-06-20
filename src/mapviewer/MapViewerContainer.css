@@ -30,3 +30,16 @@
 .joystick-container.right {
     right: 0;
 }
+
+.teleport-button {
+    display: block;
+    margin-top: 6px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.teleport-button:hover {
+    color: #ff981f;
+}

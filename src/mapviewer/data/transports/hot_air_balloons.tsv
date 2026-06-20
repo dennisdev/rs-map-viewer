@@ -1,0 +1,75 @@
+# Origin	Destination	menuOption menuTarget objectID	Items	Varbits	Duration	Display info
+# Entrana						
+2806 3357 0		Use Basket 19128		2867=2		
+2807 3357 0		Use Basket 19128		2867=2		
+2805 3356 0		Use Basket 19128		2867=2		
+2805 3355 0		Use Basket 19128		2867=2		
+2808 3355 0		Use Basket 19128		2867=2		
+2806 3354 0		Use Basket 19128		2867=2		
+						
+# Taverley						
+2939 3423 0		Use Basket 19129		2868=2		
+2940 3423 0		Use Basket 19129		2868=2		
+2938 3422 0		Use Basket 19129		2868=2		
+2938 3421 0		Use Basket 19129		2868=2		
+2941 3422 0		Use Basket 19129		2868=2		
+2941 3421 0		Use Basket 19129		2868=2		
+2939 3420 0		Use Basket 19129		2868=2		
+2940 3420 0		Use Basket 19129		2868=2		
+						
+# Crafting Guild						
+2924 3303 0		Use Basket 19129		2871=1		
+2925 3303 0		Use Basket 19129		2871=1		
+2923 3302 0		Use Basket 19129		2871=1		
+2923 3301 0		Use Basket 19129		2871=1		
+2926 3302 0		Use Basket 19129		2871=1		
+2926 3301 0		Use Basket 19129		2871=1		
+2924 3300 0		Use Basket 19129		2871=1		
+2925 3300 0		Use Basket 19129		2871=1		
+						
+# Varrock						
+3296 3483 0		Use Basket 19129		2872=1		
+3297 3483 0		Use Basket 19129		2872=1		
+3295 3482 0		Use Basket 19129		2872=1		
+3295 3481 0		Use Basket 19129		2872=1		
+3298 3482 0		Use Basket 19129		2872=1		
+3298 3481 0		Use Basket 19129		2872=1		
+3296 3480 0		Use Basket 19129		2872=1		
+3297 3480 0		Use Basket 19129		2872=1		
+						
+# Castle Wars						
+2461 3111 0		Use Basket 19129		2869=1		
+2460 3110 0		Use Basket 19129		2869=1		
+2460 3109 0		Use Basket 19129		2869=1		
+2463 3110 0		Use Basket 19129		2869=1		
+2463 3109 0		Use Basket 19129		2869=1		
+2461 3108 0		Use Basket 19129		2869=1		
+2462 3108 0		Use Basket 19129		2869=1		
+						
+# Grand Tree						
+2481 3459 0		Use Basket 19129		2870=1		
+2482 3459 0		Use Basket 19129		2870=1		
+2480 3458 0		Use Basket 19129		2870=1		
+2480 3457 0		Use Basket 19129		2870=1		
+2483 3458 0		Use Basket 19129		2870=1		
+2483 3457 0		Use Basket 19129		2870=1		
+2481 3456 0		Use Basket 19129		2870=1		
+2482 3456 0		Use Basket 19129		2870=1		
+						
+# Entrana						
+	2808 3354 0			2867=2	7	Entrana
+						
+# Taverley						
+	2941 3420 0			2868=2	7	Taverley
+						
+# Crafting Guild						
+	2923 3302 0			2871=1	7	Crafting Guild
+						
+# Varrock						
+	3299 3482 0			2872=1	7	Varrock
+						
+# Castle Wars						
+	2459 3110 0			2869=1	7	Castle Wars
+						
+# Grand Tree						
+	2478 3456 0			2870=1	7	Grand Tree

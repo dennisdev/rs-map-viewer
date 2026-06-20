@@ -1,0 +1,115 @@
+# Origin	Destination	menuOption menuTarget objectID	Skills	Quests	Varbits	Duration	Display info
+2412 4434 0		Configure Fairy ring 29560				5	
+2996 3114 0		Configure Fairy ring 29495				5	
+2700 3247 0		Configure Fairy ring 29495				5	
+1429 3324 0		Configure Fairy ring 29495				5	
+2328 4426 0		Configure Fairy ring 29495				5	
+1651 3010 0		Configure Fairy ring 29495		Children of the Sun		5	
+2735 5221 0		Configure Fairy ring 43109		Death to the Dorgeshuun		5	
+2780 3613 0		Configure Fairy ring 29495				5	
+2500 3896 0		Configure Fairy ring 29495				5	
+3284 2706 0		Configure Fairy ring 29495				5	
+2319 3619 0		Configure Fairy ring 29495				5	
+1826 3540 0		Configure Fairy ring 29495				5	
+2571 2956 0		Configure Fairy ring 29495				5	
+2503 3636 0		Configure Fairy ring 29495				5	
+3597 3495 0		Configure Fairy ring 29495				5	
+3059 4875 0		Configure Fairy ring 29495				5	
+2644 3495 0		Configure Fairy ring 29495				5	
+3410 3324 0		Configure Fairy ring 29495				5	
+3251 3095 0		Configure Fairy ring 29495				5	
+2635 3266 0		Configure Fairy ring 29495				5	
+2264 2976 0		Configure Fairy ring 29495				5	
+2650 4730 0		Configure Fairy ring 29495		Holy Grail		5	
+2150 3070 0		Configure Fairy ring 29495		Regicide		5	
+2385 3035 0		Configure Fairy ring 29495				5	
+3041 4532 0		Configure Fairy ring 29495				5	
+3469 3431 0		Configure Fairy ring 29495				5	
+2412 4434 0		Configure Fairy ring 29495				5	
+2437 5126 0		Configure Fairy ring 29495				5	
+3572 4372 0		Enter Portal 43119			13599>49	5	
+2740 3351 0		Configure Fairy ring 29495				5	
+1295 3493 0		Configure Fairy ring 29495				5	
+2513 3884 0		Configure Fairy ring 29495		The Fremennik Trials		5	
+2528 3127 0		Configure Fairy ring 29495				5	
+1302 3762 0		Configure Fairy ring 29495				5	
+1639 3868 0		Configure Fairy ring 29495				5	
+3178 2447 0		Configure Fairy ring 29495		Troubled Tortugans		5	
+2705 3576 0		Configure Fairy ring 29495				5	
+2075 4848 0		Configure Fairy ring 29495				5	
+1359 2941 0		Configure Fairy ring 29495		Children of the Sun		5	
+2801 3003 0		Configure Fairy ring 29495				5	
+3447 3470 0		Configure Fairy ring 29495				5	
+3082 3206 0		Configure Fairy ring 29495				5	
+2740 2738 0		Configure Fairy ring 29495		Monkey Madness I		5	
+2682 3081 0		Configure Fairy ring 29495				5	
+3037 4763 0		Configure Fairy ring 29495				5	
+# POH fairy ring (controlled by usePohFairyRing setting)							
+2027 5700 0		Configure Fairy ring 29228				5	
+3038 5348 0		Configure Fairy ring 29495				5	
+3108 3149 0		Configure Fairy ring 29495				5	
+2658 3230 0		Configure Fairy ring 29495				5	
+1455 3658 0		Configure Fairy ring 29495				5	
+2900 3111 0		Configure Fairy ring 29495				5	
+3129 3496 0		Configure Fairy ring 29495				5	
+2744 3719 0		Configure Fairy ring 29495				5	
+3423 3016 0		Configure Fairy ring 29495				5	
+2213 3099 0		Configure Fairy ring 29495				5	
+3447 9824 0		Configure Fairy ring 29495		In Search of the Myreque		5	
+	2412 4434 0					5	ZANARIS
+	2996 3114 0					5	A I Q
+	2700 3247 0					5	A I R
+	1429 3324 0					5	A I S
+	2328 4426 0					5	A I R - D L R - D J Q - A J S
+	1651 3010 0			Children of the Sun		5	A J P
+	2735 5221 0			Death to the Dorgeshuun		5	A J Q
+	2780 3613 0					5	A J R
+	2500 3896 0					5	A J S
+	3284 2706 0					5	A K P
+	2319 3619 0					5	A K Q
+	1826 3540 0					5	A K R
+	2571 2956 0					5	A K S
+	2503 3636 0					5	A L P
+	3597 3495 0					5	A L Q
+	3059 4875 0					5	A L R
+	2644 3495 0					5	A L S
+	3410 3324 0					5	B I P
+	3251 3095 0					5	B I Q
+	2635 3266 0					5	B I S
+	2264 2976 0					5	B J P
+	2650 4730 0			Holy Grail		5	B J R
+	2150 3070 0			Regicide		5	B J S
+	2385 3035 0					5	B K P
+	3041 4532 0					5	B K Q
+	3469 3431 0					5	B K R
+	2412 4434 0					5	B K S
+	2437 5126 0					5	B L P
+	3572 4372 0				13599>49	5	B L Q
+	2740 3351 0					5	B L R
+	1295 3493 0					5	B L S
+	2513 3884 0			The Fremennik Trials		5	C I P
+	2528 3127 0					5	C I Q
+	1302 3762 0					5	C I R
+	1639 3868 0					5	C I S
+	3178 2447 0			Troubled Tortugans		5	C J Q
+	2705 3576 0					5	C J R
+	2075 4848 0					5	C K P
+	1359 2941 0			Children of the Sun		5	C K Q
+	2801 3003 0					5	C K R
+	3447 3470 0					5	C K S
+	3082 3206 0					5	C L P
+	2740 2738 0			Monkey Madness I		5	C L R
+	2682 3081 0					5	C L S
+	3037 4763 0					5	D I P
+# Player-owned house							
+	2027 5700 0					5	D I Q
+	3038 5348 0					5	D I R
+	3108 3149 0					5	D I S
+	2658 3230 0					5	D J P
+	1455 3658 0					5	D J R
+	2900 3111 0					5	D K P
+	3129 3496 0					5	D K R
+	2744 3719 0					5	D K S
+	3423 3016 0					5	D L Q
+	2213 3099 0					5	D L R
+	3447 9824 0			In Search of the Myreque		5	D L S

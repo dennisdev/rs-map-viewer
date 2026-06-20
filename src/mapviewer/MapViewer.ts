@@ -31,6 +31,8 @@ import {
 } from "./RecordingConfig";
 import { NpcSpawn } from "./data/npc/NpcSpawn";
 import { ObjSpawn } from "./data/obj/ObjSpawn";
+import { TransportEdge, TransportIndex } from "./data/transports/Transport";
+import { getTransportIndex } from "./data/transports/Transports";
 import { RenderDataWorkerPool } from "./worker/RenderDataWorkerPool";
 
 const DEFAULT_RENDER_DISTANCE = isWallpaperEngine ? 512 : 128;
@@ -77,6 +79,7 @@ export class MapViewer {
 
     tooltips: boolean = !isTouchDevice;
     debugId: boolean = false;
+    showTeleportButton: boolean = true;
 
     // State
     needsSearchParamUpdate: boolean = false;
@@ -98,6 +101,17 @@ export class MapViewer {
     loadingMapImageIds: Set<number> = new Set();
 
     cameraSpeed: number = 1;
+
+    /** Transport graph (teleports/ships/fairy rings/...) loaded from TSV data. */
+    transportIndex?: TransportIndex;
+
+    /**
+     * When non-empty, the UI renders a destination-picker modal for these
+     * transport edges (multi-destination objects such as spirit trees or fairy
+     * rings). Set by {@link openTransportChoices}, cleared by the UI on pick.
+     */
+    pendingTransportEdges: TransportEdge[] = [];
+    pendingTransportTitle: string = "";
 
     constructor(
         readonly workerPool: RenderDataWorkerPool,
@@ -194,6 +208,9 @@ export class MapViewer {
         this.workerPool.loadCachedMapImages().then((mapImageUrls) => {
             mapImageUrls.forEach((value, key) => this.mapImageUrls.set(key, value));
         });
+        getTransportIndex().then((index) => {
+            this.transportIndex = index;
+        });
     }
 
     initCache(cache: LoadedCache): void {
@@ -254,6 +271,47 @@ export class MapViewer {
             this.camera.orthoZoom = newView.orthoZoom;
         }
         this.camera.updated = true;
+    }
+
+    /**
+     * Find transport edges leaving a clicked world object, resolved to the
+     * specific map square so network objects (fairy rings, spirit trees, ...)
+     * only offer destinations from the ring/tree the user actually clicked.
+     */
+    findTransportEdges(objectId: number, mapX: number, mapY: number): TransportEdge[] {
+        if (!this.transportIndex) {
+            return [];
+        }
+        return this.transportIndex.lookupByObject(objectId, mapX, mapY);
+    }
+
+    /**
+     * Teleport the camera to a destination tile. Height (camera Y) is preserved,
+     * matching the existing world-map click behaviour; plane changes are applied
+     * as a coarse offset so stairs/ladders land on roughly the right level.
+     */
+    teleportTo(x: number, y: number, plane: number = 0): void {
+        this.camera.pos[0] = x;
+        this.camera.pos[2] = y;
+        this.camera.updated = true;
+        this.updateSearchParams();
+        this.closeMenu();
+        this.closeTransportChoices();
+    }
+
+    /**
+     * Show a destination picker for a multi-output object (spirit tree, fairy
+     * ring, obelisk, ...). The UI polls {@link pendingTransportEdges}.
+     */
+    openTransportChoices(edges: TransportEdge[], title: string): void {
+        this.pendingTransportEdges = edges;
+        this.pendingTransportTitle = title;
+        this.closeMenu();
+    }
+
+    closeTransportChoices(): void {
+        this.pendingTransportEdges = [];
+        this.pendingTransportTitle = "";
     }
 
     updateSearchParams(): void {

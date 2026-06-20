@@ -8,6 +8,8 @@ import { OsrsMenu, OsrsMenuProps } from "../components/rs/menu/OsrsMenu";
 import { MinimapContainer } from "../components/rs/minimap/MinimapContainer";
 import { MusicLibraryModal } from "../components/rs/music/MusicLibraryModal";
 import { MusicPlayer } from "../components/rs/music/MusicPlayer";
+import { TeleportModal } from "../components/rs/teleport/TeleportModal";
+import { TransportChoicesModal } from "../components/rs/teleport/TransportChoicesModal";
 import { WorldMapModal } from "../components/rs/worldmap/WorldMapModal";
 import { RS_TO_DEGREES } from "../rs/MathConstants";
 import { DownloadProgress } from "../rs/cache/CacheFiles";
@@ -17,6 +19,7 @@ import { MapViewer } from "./MapViewer";
 import "./MapViewerContainer.css";
 import { MapViewerControls } from "./MapViewerControls";
 import { MapViewerRenderer } from "./MapViewerRenderer";
+import { PanelTeleport, TransportEdge } from "./data/transports/Transport";
 import { MusicMode, MusicSettings, MusicSettingsState } from "./music/MusicSettings";
 import { MusicEntry, MusicTrackIndex } from "./music/MusicTrackIndex";
 import { WikiMusicService } from "./music/WikiMusicService";
@@ -50,6 +53,11 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
     const [musicTotal, setMusicTotal] = useState(0);
     const [musicStatus, setMusicStatus] = useState<string>("");
     const [isMusicLibraryOpen, setMusicLibraryOpen] = useState(false);
+
+    const [isTeleportOpen, setTeleportOpen] = useState<boolean>(false);
+    const [panelTeleports, setPanelTeleports] = useState<PanelTeleport[]>([]);
+    const [transportChoices, setTransportChoices] = useState<TransportEdge[]>([]);
+    const [transportTitle, setTransportTitle] = useState<string>("");
 
     const requestRef = useRef<number | undefined>(undefined);
 
@@ -99,6 +107,15 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
             });
         } else {
             setMenuProps(undefined);
+        }
+
+        // Mirror the multi-destination transport-picker state (set from menu
+        // click handlers off the React tree) so the modal can render.
+        if (mapViewer.pendingTransportEdges.length > 0 && transportChoices.length === 0) {
+            setTransportChoices(mapViewer.pendingTransportEdges);
+            setTransportTitle(mapViewer.pendingTransportTitle);
+        } else if (mapViewer.pendingTransportEdges.length === 0 && transportChoices.length > 0) {
+            setTransportChoices([]);
         }
 
         // Position-driven music: throttle spatial lookups to every 200ms.
@@ -230,6 +247,47 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
     );
     playTrackByEntryRef.current = playTrackByEntry;
 
+    const openTeleport = useCallback(() => {
+        setTeleportOpen(true);
+    }, []);
+
+    const closeTeleport = useCallback(() => {
+        setTeleportOpen(false);
+        renderer.canvas.focus();
+    }, [renderer]);
+
+    const onTeleport = useCallback(
+        (x: number, y: number, plane: number) => {
+            mapViewer.teleportTo(x, y, plane);
+            setTeleportOpen(false);
+            renderer.canvas.focus();
+        },
+        [mapViewer, renderer],
+    );
+
+    const closeTransportChoices = useCallback(() => {
+        mapViewer.closeTransportChoices();
+        renderer.canvas.focus();
+    }, [mapViewer, renderer]);
+
+    // Populate the teleport panel list once the transport index has loaded.
+    useEffect(() => {
+        if (panelTeleports.length > 0) {
+            return;
+        }
+        if (mapViewer.transportIndex) {
+            setPanelTeleports(mapViewer.transportIndex.getPanelTeleports());
+        } else {
+            const interval = window.setInterval(() => {
+                if (mapViewer.transportIndex) {
+                    setPanelTeleports(mapViewer.transportIndex.getPanelTeleports());
+                    window.clearInterval(interval);
+                }
+            }, 250);
+            return () => window.clearInterval(interval);
+        }
+    }, [mapViewer, panelTeleports.length]);
+
     const resetCameraYaw = useCallback(() => {
         mapViewer.camera.setYaw(0);
     }, [mapViewer]);
@@ -318,6 +376,14 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
 
                         <div className="fps-counter content-text">{fps}</div>
                         <div className="fps-counter content-text">{mapViewer.debugText}</div>
+                        {mapViewer.showTeleportButton && (
+                            <button
+                                className="teleport-button rs-border rs-background content-text"
+                                onClick={openTeleport}
+                            >
+                                Teleport
+                            </button>
+                        )}
                     </div>
                     <WorldMapModal
                         isOpen={isWorldMapOpen}
@@ -325,6 +391,19 @@ export function MapViewerContainer({ mapViewer }: MapViewerContainerProps): JSX.
                         onDoubleClick={onMapClicked}
                         getPosition={getMapPosition}
                         loadMapImageUrl={loadMapImageUrl}
+                    />
+
+                    <TeleportModal
+                        isOpen={isTeleportOpen}
+                        teleports={panelTeleports}
+                        onTeleport={onTeleport}
+                        onRequestClose={closeTeleport}
+                    />
+                    <TransportChoicesModal
+                        edges={transportChoices}
+                        title={transportTitle}
+                        onTeleport={onTeleport}
+                        onRequestClose={closeTransportChoices}
                     />
 
                     <MusicPlayer

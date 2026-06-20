@@ -1,0 +1,173 @@
+# Destination	Items	Skills	Quests	Duration	Display info	Wilderness level	Varbits	VarPlayers
+# Standard Spellbook - Varbit 4070=0								
+# Lumbridge Home Teleport (enabled animation:4560=3 is both 1 and 2 randomly. &249 is either 1, 8, 16, 32, 64 or 128)								
+3221 3218 0				23	Lumbridge Home Teleport	20	4070=0	4560=0;892@30
+3221 3218 0				21	Lumbridge Home Teleport	20	4070=0	4560&2;892@30
+3221 3218 0				18	Lumbridge Home Teleport	20	4070=0	4560&4;892@30
+3221 3218 0				23	Lumbridge Home Teleport	20	4070=0	4560&249;892@30
+								
+# Varrock Teleport								
+3213 3424 0	AIR_RUNE=3&&FIRE_RUNE=1&&LAW_RUNE=1	25 Magic		4	Varrock Teleport	20	4070=0	
+# Varbit 4480 is DIARY_VARROCK_MEDIUM								
+3165 3479 0	AIR_RUNE=3&&FIRE_RUNE=1&&LAW_RUNE=1	25 Magic		4	Varrock Teleport: GE	20	4070=0;4480=1	
+								
+# Lumbridge Teleport								
+3221 3218 0	AIR_RUNE=3&&EARTH_RUNE=1&&LAW_RUNE=1	31 Magic		4	Lumbridge Teleport	20	4070=0	
+								
+# Falador Teleport								
+2964 3378 0	AIR_RUNE=3&&WATER_RUNE=1&&LAW_RUNE=1	37 Magic		4	Falador Teleport	20	4070=0	
+								
+# Teleport to House - These depend on the current player's home location  determined by varbit 2187								
+1923 5709 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House	20	4070=0;4744=0	
+# 1 - Rimmington								
+2953 3224 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=1;4744=1	
+# 2 - Taverly								
+2893 3465 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=2;4744=1	
+# 3 - Pollnivneach								
+3340 3003 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=3;4744=1	
+# 4 - Rellekka								
+2670 3631 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=4;4744=1	
+# 5 - Brimhaven								
+2757 3178 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=5;4744=1	
+# 6 - Yanille								
+2544 3096 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=6;4744=1	
+# 7 - Prifddinas								
+3239 6076 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=7;4744=1	
+# 8 - Hosidius								
+1743 3517 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=8;4744=1	
+# 9 - Aldarin								
+1422 2963 0	AIR_RUNE=1&&EARTH_RUNE=1&&LAW_RUNE=1	40 Magic		4	Teleport to House (Outside)	20	4070=0;2187=9;4744=1	
+								
+# Camelot Teleport								
+2757 3479 0	AIR_RUNE=5&&LAW_RUNE=1	45 Magic		4	Camelot Teleport	20	4070=0	
+# Varbit 4477 is DIARY_KANDARIN_HARD								
+2726 3487 0	AIR_RUNE=5&&LAW_RUNE=1	45 Magic		4	Camelot Teleport: Seers'	20	4070=0;4477=1	
+								
+# Kourend Castle Teleport								
+1641 3673 0	FIRE_RUNE=1&&WATER_RUNE=1&&LAW_RUNE=2	48 Magic	Client of Kourend	4	Kourend Castle Teleport	20	4070=0	
+								
+# Ardougne Teleport								
+2662 3305 0	WATER_RUNE=2&&LAW_RUNE=2	51 Magic	Plague City	4	Ardougne Teleport	20	4070=0	165=30
+								
+# Civitas illa Fortis Teleport								
+1681 3136 0	EARTH_RUNE=1&&FIRE_RUNE=1&&LAW_RUNE=2	54 Magic	Twilight's Promise	4	Civitas illa Fortis Teleport	20	4070=0	
+								
+# Watchtower Teleport								
+2546 3112 0	EARTH_RUNE=2&&LAW_RUNE=2	58 Magic	Watchtower	4	Watchtower Teleport	20	4070=0	212=14
+# Varbit 4460 is DIARY_ARDOUGNE_HARD								
+2584 3097 0	EARTH_RUNE=2&&LAW_RUNE=2	58 Magic	Watchtower	4	Watchtower Teleport: Yanille	20	4070=0;4460=1	212=14
+								
+# Trollheim Teleport								
+2890 3679 0	FIRE_RUNE=2&&LAW_RUNE=2	61 Magic	Eadgar's Ruse	4	Trollheim Teleport	20	4070=0	
+								
+# Ape Atoll Teleport								
+2797 2798 1	FIRE_RUNE=2&&WATER_RUNE=2&&LAW_RUNE=2&&BANANA=1	64 Magic	Freeing King Awowogei	4	Ape Atoll Teleport	20	4070=0	
+								
+# Ancient Spellbook - Varbit 4070=1								
+# Edgeville Home Teleport								
+3087 3504 0			Desert Treasure I	23	Edgeville Home Teleport	20	4070=1	4560=0;892@30
+3087 3504 0			Desert Treasure I	21	Edgeville Home Teleport	20	4070=1	4560&2;892@30
+3087 3504 0			Desert Treasure I	18	Edgeville Home Teleport	20	4070=1	4560&4;892@30
+3087 3504 0			Desert Treasure I	23	Edgeville Home Teleport	20	4070=1	4560&249;892@30
+								
+# Paddewwa Teleport								
+3097 9881 0	AIR_RUNE=1&&FIRE_RUNE=1&&LAW_RUNE=2	54 Magic	Desert Treasure I	5	Paddewwa Teleport	20	4070=1	
+								
+# Senntisten Teleport								
+3320 3337 0	LAW_RUNE=2&&SOUL_RUNE=1	60 Magic	Desert Treasure I	5	Senntisten Teleport	20	4070=1	
+								
+# Kharyrll Teleport								
+3494 3473 0	LAW_RUNE=2&&BLOOD_RUNE=1	66 Magic	Desert Treasure I	5	Kharyrll Teleport	20	4070=1	
+								
+# Lassar Teleport								
+3004 3470 0	LAW_RUNE=2&&WATER_RUNE=4	72 Magic	Desert Treasure I	5	Lassar Teleport	20	4070=1	
+								
+# Dareeyak Teleport								
+2968 3696 0	AIR_RUNE=2&&FIRE_RUNE=3&&LAW_RUNE=2	78 Magic	Desert Treasure I	5	Dareeyak Teleport	20	4070=1	
+								
+# Carrallanger Teleport								
+3158 3666 0	LAW_RUNE=2&&SOUL_RUNE=2	84 Magic	Desert Treasure I	5	Carrallanger Teleport	20	4070=1	
+								
+# Teleport to Target								
+#		85 Magic	Desert Treasure I	5	Teleport to Target	20	4070=1	
+								
+# Annakarl Teleport								
+3288 3888 0	LAW_RUNE=2&&BLOOD_RUNE=2	90 Magic	Desert Treasure I	5	Annakarl Teleport	20	4070=1	
+								
+# Ghorrock Teleport								
+2976 3875 0	LAW_RUNE=2&&WATER_RUNE=8	96 Magic	Desert Treasure I	5	Ghorrock Teleport	20	4070=1	
+								
+# Lunar Spellbook - Varbit 4070=2								
+# Lunar Home Teleport								
+2113 3915 0			Lunar Diplomacy	23	Lunar Home Teleport	20	4070=2	4560=0;892@30
+2113 3915 0			Lunar Diplomacy	21	Lunar Home Teleport	20	4070=2	4560&2;892@30
+2113 3915 0			Lunar Diplomacy	18	Lunar Home Teleport	20	4070=2	4560&4;892@30
+2113 3915 0			Lunar Diplomacy	23	Lunar Home Teleport	20	4070=2	4560&249;892@30
+								
+# Moonclan Teleport								
+2113 3915 0	EARTH_RUNE=2&&ASTRAL_RUNE=2&&LAW_RUNE=1	69 Magic	Lunar Diplomacy	4	Moonclan Teleport	20	4070=2	
+								
+# Ourania Teleport								
+2468 3246 0	EARTH_RUNE=6&&ASTRAL_RUNE=2&&LAW_RUNE=1	71 Magic	Lunar Diplomacy	4	Ourania Teleport	20	4070=2	
+								
+# Waterbirth Teleport								
+2546 3755 0	WATER_RUNE=1&&ASTRAL_RUNE=2&&LAW_RUNE=1	72 Magic	Lunar Diplomacy	4	Waterbirth Teleport	20	4070=2	
+								
+# Barbarian Teleport								
+2543 3569 0	FIRE_RUNE=3&&ASTRAL_RUNE=2&&LAW_RUNE=2	75 Magic	Lunar Diplomacy	4	Barbarian Teleport	20	4070=2	
+								
+# Khazard Teleport								
+2636 3167 0	WATER_RUNE=4&&ASTRAL_RUNE=2&&LAW_RUNE=2	78 Magic	Lunar Diplomacy	4	Khazard Teleport	20	4070=2	
+								
+# Fishing Guild Teleport								
+2613 3391 0	WATER_RUNE=10&&ASTRAL_RUNE=3&&LAW_RUNE=3	85 Magic	Lunar Diplomacy	4	Fishing Guild Teleport	20	4070=2	
+								
+# Catherby Teleport								
+2801 3449 0	WATER_RUNE=10&&ASTRAL_RUNE=3&&LAW_RUNE=3	87 Magic	Lunar Diplomacy	4	Catherby Teleport	20	4070=2	
+								
+# Ice Plateau Teleport								
+2975 3938 0	WATER_RUNE=8&&ASTRAL_RUNE=3&&LAW_RUNE=3	89 Magic	Lunar Diplomacy	4	Ice Plateau Teleport	20	4070=2	
+								
+# Arceuus Spellbook - Varbit 4070=3								
+# Arceuus Home Teleport								
+1700 3882 0				23	Arceuus Home Teleport	20	4070=3	4560=0;892@30
+1700 3882 0				21	Arceuus Home Teleport	20	4070=3	4560&2;892@30
+1700 3882 0				18	Arceuus Home Teleport	20	4070=3	4560&4;892@30
+1700 3882 0				23	Arceuus Home Teleport	20	4070=3	4560&249;892@30
+								
+# Arceuus Library Teleport								
+1632 3837 0	EARTH_RUNE=2&&LAW_RUNE=1	6 Magic		4	Arceuus Library Teleport	20	4070=3	
+								
+# Draynor Manor Teleport								
+3109 3351 0	EARTH_RUNE=1&&WATER_RUNE=1&&LAW_RUNE=1	17 Magic		4	Draynor Manor Teleport	20	4070=3	
+								
+# Battlefront Teleport								
+1347 3740 0	EARTH_RUNE=1&&FIRE_RUNE=1&&LAW_RUNE=1	23 Magic		4	Battlefront Teleport	20	4070=3	
+								
+# Mind Altar Teleport								
+2979 3510 0	LAW_RUNE=1&&MIND_RUNE=2	28 Magic		4	Mind Altar Teleport	20	4070=3	
+								
+# Respawn Teleport								
+# TODO: Figure out values of Varbit 668								
+#	LAW_RUNE=1&&SOUL_RUNE=1	34 Magic		4	Respawn Teleport	20	4070=3	
+								
+# Salve Graveyard Teleport								
+3433 3459 0	LAW_RUNE=1&&SOUL_RUNE=2	40 Magic	Priest in Peril	4	Salve Graveyard Teleport	20	4070=3	
+								
+# Fenkenstrain's Castle Teleport								
+3548 3529 0	EARTH_RUNE=1&&LAW_RUNE=1&&SOUL_RUNE=1	48 Magic	Priest in Peril	4	Fenkenstrain's Castle Teleport	20	4070=3	
+								
+# West Ardougne Teleport								
+2500 3290 0	LAW_RUNE=2&&SOUL_RUNE=2	61 Magic	Biohazard	4	West Ardougne Teleport	20	4070=3	
+								
+# Harmony Island Teleport								
+3797 2866 0	LAW_RUNE=1&&NATURE_RUNE=1&&SOUL_RUNE=1	65 Magic	The Great Brain Robbery	4	Harmony Island Teleport	20	4070=3	
+								
+# Cemetery Teleport								
+2981 3762 0	BLOOD_RUNE=1&&LAW_RUNE=1&&SOUL_RUNE=1	71 Magic		4	Cemetery Teleport	20	4070=3	
+								
+# Barrows Teleport								
+3564 3315 0	BLOOD_RUNE=1&&LAW_RUNE=2&&SOUL_RUNE=2	83 Magic		4	Barrows Teleport	20	4070=3	
+								
+# Ape Atoll Teleport								
+2771 9102 0	BLOOD_RUNE=2&&LAW_RUNE=2&&SOUL_RUNE=2	90 Magic	Monkey Madness I	4	Ape Atoll Teleport	20	4070=3	

@@ -1,0 +1,413 @@
+# Destination	menuOption menuTarget objectID	Skills	Items	Quests	Duration	Display info	Consumable	Wilderness level	Varbits	VarPlayers
+# Ardougne cloaks (2 has 3 teleports to farm, 3 has 5 teleports to farm, 4 has unlimited teleports to farm) PS: varbit 6069 is only lowbits, highbits is not transmitted										
+2607 3221 0			13121=1||13122=1||13123=1||13124=1||20760=1		4	Ardougne cloak: Kandarin Monastery	F	20	4458=1	
+2665 3374 0			13122=1		4	Ardougne cloak: Ardougne Farm	T	20	4459=1;6069<3	
+2665 3374 0			13123=1		4	Ardougne cloak: Ardougne Farm	T	20	4460=1;6069<5	
+2665 3374 0			13124=1||20760=1		4	Ardougne cloak: Ardougne Farm	F	20	4461=1	
+# Karamja gloves										
+2840 9387 0			11140=1||13103=1		4	Karamja gloves: Gem Mine	F	20	3611=2	
+2869 2982 1			13103=1		4	Karamja gloves 4: Slayer Master	F	20	4566=1	
+# Desert amulets (2 and 3 have one teleport per day, 4 is unlimited)										
+3420 2917 0			13134=1||13135=1		4	Desert amulet 3: Teleport	T	20	4485=1;4558=0	
+3426 2927 0			13136=1		4	Desert amulet 4: Nardah	F	20	4486=1	
+3322 3122 0			13136=1		4	Desert amulet 4: Kalphite cave	F	20	4486=1	
+# Morytania legs (1 has 2 teleports per day to slime, 2 and 3 have 5 teleports per day to slime, 4 is unlimited)										
+3683 9888 0			13112=1		4	Morytania legs: Slime Pit	T	20	4487=1;4542<2	
+3683 9888 0			13113=1||13114=1		4	Morytania legs: Slime Pit	T	20	4488=1;4542<5	
+3683 9888 0			13115=1		4	Morytania legs: Slime Pit	F	20	4490=1	
+3482 3230 0			13114=1||13115=1		4	Morytania legs: Burgh de Rott	F	20	4489=1	
+# Fremennik sea boots (1 has 1, 2 has 3, 3 has 5 teleports per day, 4 is unlimited)										
+2643 3675 0			13129=1		4	Fremennik sea boots: Teleport	T	20	4491=1;5005=0	
+2643 3675 0			13130=1		4	Fremennik sea boots: Teleport	T	20	4491=1;5005<3	
+2643 3675 0			13131=1		4	Fremennik sea boots: Teleport	T	20	4491=1;5005<5	
+2643 3675 0			13132=1		4	Fremennik sea boots: Teleport	F	20	4494=1	
+# Kandarin headgear (3 has 1 teleport per day, 4 is unlimited)										
+2730 3420 0			13139=1		4	Kandarin headgear 3: Teleport	T	20	4477=1;4561=0	
+2730 3420 0			13140=1		4	Kandarin headgear 4: Teleport	F	20	4478=1	
+# Wilderness sword (3 has 1 teleport per day, 4 is unlimited)										
+3377 3890 0			13110=1		4	Wilderness sword 3: Teleport	T	20	4468=1;4541=0	
+3377 3890 0			13111=1		4	Wilderness sword 4: Teleport	F	20	4469=1	
+# Western banner (3 has 1 teleport per day, 4 is unlimited)										
+2332 3681 0			13143=1		4	Western banner 3: Teleport	T	20	4473=1;4564=0	
+2332 3681 0			13144=1		4	Western banner 4: Teleport	F	20	4474=1	
+# Explorer's ring (2 has 3 teleports per day, 3 and 4 are unlimited)										
+3052 3291 0			13126=1		4	Explorer's ring 2: Teleport	T	20	4496=1;4552<3	
+3052 3291 0			13127=1||13128=1		4	Explorer's ring: Teleport	F	20	4497=1	
+# Rada's blessing (Kourend Woodland, 1 has 3 teleports, 2 has 5 teleports, 3 and 4 have unlimited. For Mount Karuulum, 3 has 3 teleports and 4 has unlimited)										
+1554 3461 0			22941=1		4	Rada's blessing: Kourend Woodland	T	20	7925=1;7937<3	
+1554 3461 0			22943=1		4	Rada's blessing: Kourend Woodland	T	20	7926=1;7937<5	
+1554 3461 0			22945=1||22947=1		4	Rada's blessing: Kourend Woodland	F	20	7927=1	
+1311 3806 0			22945=1		4	Rada's blessing: Mount Karuulm	T	20	7927=1;7938<3	
+1311 3806 0			22947=1		4	Rada's blessing: Mount Karuulm	F	20	7928=1	
+										
+# Games necklace										
+2520 3571 0			3853=1||3855=1||3857=1||3859=1||3861=1||3863=1||3865=1||3867=1		4	Games necklace: Barbarian Outpost	T	20		
+2899 3553 0			3853=1||3855=1||3857=1||3859=1||3861=1||3863=1||3865=1||3867=1		4	Games necklace: Burthorpe	T	20		
+2965 4254 2			3853=1||3855=1||3857=1||3859=1||3861=1||3863=1||3865=1||3867=1		4	Games necklace: Corporeal Beast	T	20		
+3245 9500 2			3853=1||3855=1||3857=1||3859=1||3861=1||3863=1||3865=1||3867=1		4	Games necklace: Tears of Guthix	T	20	451>1	
+1631 3940 0			3853=1||3855=1||3857=1||3859=1||3861=1||3863=1||3865=1||3867=1		4	Games necklace: Wintertodt	T	20	5619>0	
+										
+# Ring of dueling (1-8). Fortis Colosseum 12000 glory unlock is now estimated based on highest wave										
+3315 3235 0			2566=1||2564=1||2562=1||2560=1||2558=1||2556=1||2554=1||2552=1		4	Ring of dueling: Emir's Arena	T	20		
+2440 3090 0			2566=1||2564=1||2562=1||2560=1||2558=1||2556=1||2554=1||2552=1		4	Ring of dueling: Castle Wars	T	20		
+3151 3635 0			2566=1||2564=1||2562=1||2560=1||2558=1||2556=1||2554=1||2552=1		4	Ring of dueling: Ferox Enclave	T	20		
+1793 3107 0			2566=1||2564=1||2562=1||2560=1||2558=1||2556=1||2554=1||2552=1		4	Ring of dueling: Fortis Colosseum	T	20	11410>8	
+										
+# Combat bracelet (1-6) (uncharged is 11126)										
+2882 3547 0			11118=1||11120=1||11122=1||11124=1||11972=1||11974=1		4	Combat bracelet: Warriors' Guild	T	30		
+3192 3368 0			11118=1||11120=1||11122=1||11124=1||11972=1||11974=1		4	Combat bracelet: Champions' Guild	T	30		
+3052 3490 0			11118=1||11120=1||11122=1||11124=1||11972=1||11974=1		4	Combat bracelet: Monastery	T	30		
+2653 3439 0			11118=1||11120=1||11122=1||11124=1||11972=1||11974=1		4	Combat bracelet: Ranging Guild	T	30		
+										
+# Skills necklace (1-6) (uncharged is 11113)										
+2611 3390 0			11105=1||11107=1||11109=1||11111=1||11968=1||11970=1		4	Skills necklace: Fishing Guild	T	30		
+3049 9763 0			11105=1||11107=1||11109=1||11111=1||11968=1||11970=1		4	Skills necklace: Mining Guild	T	30		
+2933 3295 0			11105=1||11107=1||11109=1||11111=1||11968=1||11970=1		4	Skills necklace: Crafting Guild	T	30		
+3144 3438 0			11105=1||11107=1||11109=1||11111=1||11968=1||11970=1		4	Skills necklace: Cooking Guild	T	30		
+1662 3505 0			11105=1||11107=1||11109=1||11111=1||11968=1||11970=1		4	Skills necklace: Woodcutting Guild	T	30		
+1248 3719 0			11105=1||11107=1||11109=1||11111=1||11968=1||11970=1		4	Skills necklace: Farming Guild	T	30		
+1248 3725 0		45 Farming	11105=1||11107=1||11109=1||11111=1||11968=1||11970=1		4	Skills necklace: Farming Guild	T	30		
+										
+# Amulet of glory (1-6, 1t-6t) (uncharged is 1704, trimmed 10362)										
+3087 3496 0			1706=1||1708=1||1710=1||1712=1||11976=1||11978=1||10360=1||10358=1||10356=1||10354=1||11966=1||11964=1		4	Amulet of glory: Edgeville	T	30		
+2918 3176 0			1706=1||1708=1||1710=1||1712=1||11976=1||11978=1||10360=1||10358=1||10356=1||10354=1||11966=1||11964=1		4	Amulet of glory: Karamja	T	30		
+3105 3251 0			1706=1||1708=1||1710=1||1712=1||11976=1||11978=1||10360=1||10358=1||10356=1||10354=1||11966=1||11964=1		4	Amulet of glory: Draynor Village	T	30		
+3293 3163 0			1706=1||1708=1||1710=1||1712=1||11976=1||11978=1||10360=1||10358=1||10356=1||10354=1||11966=1||11964=1		4	Amulet of glory: Al Kharid	T	30		
+										
+# Amulet of eternal glory										
+3087 3496 0			19707=1		4	Amulet of glory: Edgeville	F	30		
+2918 3176 0			19707=1		4	Amulet of glory: Karamja	F	30		
+3105 3251 0			19707=1		4	Amulet of glory: Draynor Village	F	30		
+3293 3163 0			19707=1		4	Amulet of glory: Al Kharid	F	30		
+										
+# Ring of wealth (1-5, 1i-5i) (uncharged is 2572, trimmed 12785)										
+2534 3862 0			11988=1||11986=1||11984=1||11982=1||11980=1||20790=1||20789=1||20788=1||20787=1||20786=1	Throne of Miscellania	4	Ring of wealth: Miscellania	T	30		359=100
+3163 3478 0			11988=1||11986=1||11984=1||11982=1||11980=1||20790=1||20789=1||20788=1||20787=1||20786=1		4	Ring of wealth: Grand Exchange	T	30		
+2995 3375 0			11988=1||11986=1||11984=1||11982=1||11980=1||20790=1||20789=1||20788=1||20787=1||20786=1		4	Ring of wealth: Falador Park	T	30		
+2824 10168 0			11988=1||11986=1||11984=1||11982=1||11980=1||20790=1||20789=1||20788=1||20787=1||20786=1	Between a Rock...	4	Ring of wealth: Dondakan	T	30	299=10	
+										
+# Slayer ring (1-8)										
+2431 3422 0			11866=1||11867=1||11868=1||11869=1||11870=1||11871=1||11872=1||11873=1		4	Slayer ring: Stronghold	T	30		
+3421 3537 0			11866=1||11867=1||11868=1||11869=1||11870=1||11871=1||11872=1||11873=1	Priest in Peril	4	Slayer ring: Slayer Tower	T	30		
+2802 9999 0			11866=1||11867=1||11868=1||11869=1||11870=1||11871=1||11872=1||11873=1		4	Slayer ring: Fremennik	T	30		
+3185 4601 0			11866=1||11867=1||11868=1||11869=1||11870=1||11871=1||11872=1||11873=1	Haunted Mine	4	Slayer ring: Tarn's Lair	T	30		
+2028 4636 0			11866=1||11867=1||11868=1||11869=1||11870=1||11871=1||11872=1||11873=1	Mourning's End Part II	4	Slayer ring: Dark Beasts	T	30		
+										
+# Slayer ring (eternal)										
+2431 3422 0			21268=1		4	Slayer ring: Stronghold	F	30		
+3421 3537 0			21268=1	Priest in Peril	4	Slayer ring: Slayer Tower	F	30		
+2802 9999 0			21268=1		4	Slayer ring: Fremennik	F	30		
+3185 4601 0			21268=1	Haunted Mine	4	Slayer ring: Tarn's Lair	F	30		
+2028 4636 0			21268=1	Mourning's End Part II	4	Slayer ring: Dark Beasts	F	30		
+										
+# Digsite pendant (can't find a varbit for the other location's activation)										
+3341 3445 0			11190=1||11191=1||11192=1||11193=1||11194=1		4	Digsite pendant: Digsite	T	20		
+3763 3869 1			11190=1||11191=1||11192=1||11193=1||11194=1	Bone Voyage	4	Digsite pendant: Fossil Island	T	20		
+3549 10456 0			11190=1||11191=1||11192=1||11193=1||11194=1	Dragon Slayer II	4	Digsite pendant: Lithkren	T	20		
+										
+# Necklace of passage (1-5)										
+3114 3179 0			21146=1||21149=1||21151=1||21153=1||21155=1		4	Necklace of passage: Wizards' Tower	T	20		
+2430 3349 0			21146=1||21149=1||21151=1||21153=1||21155=1		4	Necklace of passage: The Outpost	T	20		
+3405 3158 0			21146=1||21149=1||21151=1||21153=1||21155=1		4	Necklace of passage: Eagle's Eyrie	T	20		
+										
+# Burning amulet										
+3234 3634 0			21166=1||21169=1||21171=1||21173=1||21175=1		4	Burning amulet: Chaos Temple	T	20		
+3038 3651 0			21166=1||21169=1||21171=1||21173=1||21175=1		4	Burning amulet: Bandit Camp	T	20		
+3028 3842 0			21166=1||21169=1||21171=1||21173=1||21175=1		4	Burning amulet: Lava Maze	T	20		
+										
+# Teleport to house (tablet) - These depend on the current player's home location, determined by varbit 2187, and teleport inside or outside determined by varbit 4744										
+1923 5709 0			8013=1		4	Teleport to House tablet	T	20	4744=0	
+# 1 - Rimmington										
+2953 3224 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=1;4744=1	
+# 2 - Taverly										
+2893 3465 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=2;4744=1	
+# 3 - Pollnivneach										
+3340 3003 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=3;4744=1	
+# 4 - Rellekka										
+2670 3631 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=4;4744=1	
+# 5 - Brimhaven										
+2757 3178 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=5;4744=1	
+# 6 - Yanille										
+2544 3096 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=6;4744=1	
+# 7 - Prifddinas										
+3239 6076 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=7;4744=1	
+# 8 - Hosidius										
+1743 3517 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=8;4744=1	
+# 9 - Aldarin										
+1422 2963 0			8013=1		4	Teleport to House tablet (Outside)	T	20	2187=9;4744=1	
+										
+#  Teleport tablets										
+3213 3424 0			8007=1		4	Varrock tablet	T	20		
+# Varbit 4480 is DIARY_VARROCK_MEDIUM										
+3165 3479 0			8007=1		4	Varrock tablet: GE	T	20	4480=1	
+2964 3378 0			8009=1		4	Falador tablet	T	20		
+3221 3218 0			8008=1		4	Lumbridge tablet	T	20		
+2757 3479 0			8010=1		4	Camelot tablet	T	20		
+2662 3305 0			8011=1	Plague City	4	Ardougne tablet	T	20		
+2546 3112 0			8012=1	Watchtower	4	Watchtower tablet	T	20		
+# Varbit 4460 is DIARY_ARDOUGNE_HARD										
+2584 3097 0			8012=1	Watchtower	4	Watchtower tablet: Yanille	T	20	4460=1	
+2953 3224 0			11741=1		4	Rimmington tablet	T	20		
+2893 3465 0			11742=1		4	Taverley tablet	T	20		
+3340 3004 0			11743=1		4	Pollnivneach tablet	T	20		
+2670 3631 0			11744=1		4	Rellekka tablet	T	20		
+2757 3179 0			11745=1		4	Brimhaven tablet	T	20		
+2544 3096 0			11746=1		4	Yanille tablet	T	20		
+2890 3679 0			11747=1		4	Trollheim tablet	T	20		
+1743 3517 0			19651=1		4	Hosidius tablet	T	20		
+3239 6077 0			23771=1		4	Prifddinas tablet	T	20		
+3097 9881 0			12781=1	Desert Treasure I	4	Paddewwa tablet	T	20		
+3320 3337 0			12782=1	Desert Treasure I	4	Senntisten tablet	T	20		
+3494 3473 0			12779=1	Desert Treasure I	4	Kharyrll tablet	T	20		
+3004 3470 0			12780=1	Desert Treasure I	4	Lassar tablet	T	20		
+2968 3696 0			12777=1	Desert Treasure I	4	Dareeyak tablet	T	20		
+3158 3666 0			12776=1	Desert Treasure I	4	Carrallanger tablet	T	20		
+3288 3888 0			12775=1	Desert Treasure I	4	Annakarl tablet	T	20		
+2976 3875 0			12778=1	Desert Treasure I	4	Ghorrock tablet	T	20		
+2113 3915 0			24949=1	Lunar Diplomacy	4	Moonclan tablet	T	20		
+2468 3246 0			24951=1	Lunar Diplomacy	4	Ourania tablet	T	20		
+2546 3755 0			24953=1		4	Waterbirth tablet	T	20		
+2543 3569 0			24955=1		4	Barbarian tablet	T	20		
+2636 3167 0			24957=1		4	Khazard tablet	T	20		
+2613 3391 0			24959=1		4	Fishing guild tablet	T	20		
+2801 3449 0			24961=1		4	Catherby tablet	T	20		
+2975 3938 0			24963=1		4	Ice plateau tablet	T	20		
+1632 3837 0			19613=1		4	Arceuus Library tablet	T	20		
+3109 3351 0			19615=1		4	Draynor Manor tablet	T	20		
+1347 3740 0			22949=1		4	Battlefront tablet	T	20		
+2979 3510 0			19617=1		4	Mind Altar tablet	T	20		
+3433 3461 0			19619=1	Priest in Peril	4	Salve Graveyard tablet	T	20		
+3548 3529 0			19621=1	Priest in Peril	4	Fenkenstrain's Castle tablet	T	20		
+2500 3290 0			19623=1	Biohazard	4	West Ardougne tablet	T	20		
+3797 2866 0			19625=1	The Great Brain Robbery	4	Harmony Island tablet	T	20		
+2981 3764 0			19627=1		4	Cemetery tablet	T	20		
+3564 3315 0			19629=1	Priest in Peril	4	Barrows tablet	T	20		
+2771 9102 0			19631=1	Monkey Madness I	4	Ape Atoll tablet	T	20		
+3811 3813 0			21541=1		4	Volcanic Mine tablet	T	20		
+3352 3782 0			24251=1		4	Wilderness Crabs tablet	T	20		
+										
+#  Teleport scrolls										
+3419 2917 0			12402=1		4	Nardah teleport	T	20		
+3419 2917 0			21389=1		4	Master scroll book: Nardah teleport	T	20	5672>0	
+3325 3412 0			12403=1		4	Digsite teleport	T	20		
+3325 3412 0			21389=1		4	Master scroll book: Digsite teleport	T	20	5673>0	
+2541 2925 0			12404=1		4	Feldip hills teleport	T	20		
+2541 2925 0			21389=1		4	Master scroll book: Feldip hills teleport	T	20	5674>0	
+2094 3913 0			12405=1	Lunar Diplomacy	4	Lunar isle teleport	T	20		
+2094 3913 0			21389=1	Lunar Diplomacy	4	Master scroll book: Lunar isle teleport	T	20	5675>0	
+3488 3288 0			12406=1	Priest in Peril	4	Mort'ton teleport	T	20		
+3488 3288 0			21389=1	Priest in Peril	4	Master scroll book: Mort'ton teleport	T	20	5676>0	
+2658 2659 0			12407=1		4	Pest control teleport	T	20		
+2658 2659 0			21389=1		4	Master scroll book: Pest control teleport	T	20	5677>0	
+2339 3649 0			12408=1		4	Piscatoris teleport	T	20		
+2339 3649 0			21389=1		4	Master scroll book: Piscatoris teleport	T	20	5678>0	
+2789 3066 0			12409=1	Tai Bwo Wannai Trio	4	Tai bwo wannai teleport	T	20		
+2789 3066 0			21389=1	Tai Bwo Wannai Trio	4	Master scroll book: Tai bwo wannai teleport	T	20	5679>0	
+2194 3258 0			12410=1	Regicide	4	Iorwerth camp teleport	T	20		
+2194 3258 0			21389=1	Regicide	4	Master scroll book: Iorwerth camp teleport	T	20	5680>0	
+3701 2996 0			12411=1	Cabin Fever	4	Mos le'harmless teleport	T	20		
+3701 2996 0			21389=1	Cabin Fever	4	Master scroll book: Mos le'harmless teleport	T	20	5681>0	
+3302 3487 0			12642=1		4	Lumberyard teleport	T	20		
+3302 3487 0			21389=1		4	Master scroll book: Lumberyard teleport	T	20	5682>0	
+2196 3056 0			12938=1	Regicide	4	Zul-andra teleport	T	20		
+2196 3056 0			21389=1	Regicide	4	Master scroll book: Zul-andra teleport	T	20	5683>0	
+1310 1250 0			13249=1		4	Key master teleport	T	20		
+1310 1250 0			21389=1		4	Master scroll book: Key master teleport	T	20	5684>0	
+3128 3832 0			21802=1		4	Revenant cave teleport	T	20		
+3128 3832 0			21389=1		4	Master scroll book: Revenant cave teleport	T	20	6056>0	
+1645 3580 0			23387=1		4	Watson teleport	T	20		
+1645 3580 0			21389=1		4	Master scroll book: Watson teleport	T	20	8253>0	
+										
+# Capes										
+2931 3286 0		99 Crafting	9780=1||9781=1		4	Crafting cape: Teleport	F	20		
+# The Construction cape's home teleports, determined by varbit 2187, and teleport inside or outside determined by varbit 4744										
+1923 5709 0			9789=1||9790=1		4	Construction cape: Tele to POH	F	20	4744=0	
+# 1 - Rimmington										
+2952 3224 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=1;4744=1	
+# 2 - Taverly										
+2892 3465 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=2;4744=1	
+# 3 - Pollnivneach										
+3339 3001 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=3;4744=1	
+# 4 - Rellekka										
+2669 3629 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=4;4744=1	
+# 5 - Brimhaven										
+2756 3176 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=5;4744=1	
+# 6 - Yanille										
+2545 3097 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=6;4744=1	
+# 7 - Prifddinas										
+3239 6077 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=7;4744=1	
+# 8 - Hosidius										
+1740 3517 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=8;4744=1	
+# 9 - Aldarin										
+1422 2963 0			9789=1||9790=1		4	Construction cape: Home	F	20	2187=9;4744=1	
+2952 3224 0		99 Construction	9789=1||9790=1		4	Construction cape: Rimmington	F	20		
+2892 3465 0		99 Construction	9789=1||9790=1		4	Construction cape: Taverley	F	20		
+3339 3001 0		99 Construction	9789=1||9790=1		4	Construction cape: Pollnivneach	F	20		
+1743 3517 0		99 Construction	9789=1||9790=1		4	Construction cape: Hosidius	F	20		
+2669 3629 0		99 Construction	9789=1||9790=1		4	Construction cape: Rellekka	F	20		
+2756 3176 0		99 Construction	9789=1||9790=1		4	Construction cape: Brimhaven	F	20		
+2545 3097 0		99 Construction	9789=1||9790=1		4	Construction cape: Yanille	F	20		
+3239 6077 0		99 Construction	9789=1||9790=1		4	Construction cape: Prifddinas	F	20		
+2604 3401 0		99 Fishing	9798=1||9799=1		4	Fishing cape: Fishing Guild	F	20		
+2504 3484 0		99 Fishing	9798=1||9799=1		4	Fishing cape: Otto's Grotto	F	20		
+1248 3725 0		99 Farming	9810=1||9811=1		4	Farming cape: Teleport	F	20		
+2556 2917 0		99 Hunter	9948=1||9949=1		4	Hunter cape: Feldip Hills	T	20	4819<5	
+3144 3772 0		99 Hunter	9948=1||9949=1		4	Hunter cape: Black chinchompa	T	20	4819<5	
+1558 3046 0		99 Hunter	9948=1||9949=1		4	Hunter cape: Hunter Guild	F	20		
+2865 3546 0		99 Strength	9750=1||9751=1		4	Strength cape: Teleport	F	20		
+# Max capes										
+# The Max cape's home teleports, determined by varbit 2187, and teleport inside or outside determined by varbit 4744										
+1923 5709 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	4744=0	
+# 1 - Rimmington										
+2952 3224 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=1;4744=1	
+# 2 - Taverly										
+2892 3465 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=2;4744=1	
+# 3 - Pollnivneach										
+3339 3001 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=3;4744=1	
+# 4 - Rellekka										
+2669 3629 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=4;4744=1	
+# 5 - Brimhaven										
+2756 3176 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=5;4744=1	
+# 6 - Yanille										
+2545 3097 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=6;4744=1	
+# 7 - Prifddinas										
+3239 6077 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=7;4744=1	
+# 8 - Hosidius										
+1740 3517 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=8;4744=1	
+# 9 - Aldarin										
+1422 2963 0		2376 Total	13280=1||13342=1		4	Max cape: Tele to POH	F	20	2187=9;4744=1	
+2952 3224 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Rimmington	F	20		
+2892 3465 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Taverley	F	20		
+3339 3001 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Pollnivneach	F	20		
+1743 3517 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Hosidius	F	20		
+2669 3629 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Rellekka	F	20		
+2756 3176 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Brimhaven	F	20		
+2545 3097 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Yanille	F	20		
+3239 6077 0		2376 Total	13280=1||13342=1		4	Max cape: POH Portals: Prifddinas	F	20		
+2865 3546 0		2376 Total	13280=1||13342=1		4	Max cape: Warriors' Guild	F	20		
+2604 3401 0		2376 Total	13280=1||13342=1		4	Max cape: Fishing Teleports: Fishing Guild	F	20		
+2504 3484 0		2376 Total	13280=1||13342=1		4	Max cape: Fishing Teleports: Otto's Grotto	F	20		
+2931 3286 0		2376 Total	13280=1||13342=1		4	Max cape: Crafting Guild	F	20		
+2556 2917 0		2376 Total	13280=1||13342=1		4	Max cape: Other Teleports: Feldip Hills	T	20		
+3144 3772 0		2376 Total	13280=1||13342=1		4	Max cape: Other Teleports: Black chinchompa	T	20		
+1558 3046 0		2376 Total	13280=1||13342=1		4	Max cape: Other Teleports: Hunter Guild	F	20		
+1248 3725 0		2376 Total	13280=1||13342=1		4	Max cape: Other Teleports: Farming Guild	F	20		
+3048 2972 0		2376 Total	13280=1||13342=1		4	Max cape: Other Teleports: The Pandemonium	F	20		
+2729 3348 0		327 Quest	9813=1||13068=1		4	Quest point cape: Teleport	F	20		
+2689 3547 0			13221=1||13222=1		4	Music cape: Teleport	F	20		
+2574 3323 0			13069=1||19476=1		4	Achievement diary cape: 1. Two-pints	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+3302 3122 0			13069=1||19476=1		4	Achievement diary cape: 2. Jarr	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2689 3547 0			13069=1||19476=1		4	Achievement diary cape: 3. Sir Rebral	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2689 3547 0			13069=1||19476=1		4	Achievement diary cape: 4. Thorodin	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2978 3347 0			13069=1||19476=1		4	Achievement diary cape: 3. Sir Rebral	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2659 3627 0			13069=1||19476=1		4	Achievement diary cape: 4. Thorodin	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2744 3443 0			13069=1||19476=1		4	Achievement diary cape: 5. Flax keeper	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2808 3192 0			13069=1||19476=1		4	Achievement diary cape: 6. Pirate Jackie the Fruit	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2862 2997 0			13069=1||19476=1		4	Achievement diary cape: 7. Kaleb Paramaya	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2795 2945 0			13069=1||19476=1		4	Achievement diary cape: 8. Jungle forester	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2455 5133 0			13069=1||19476=1		4	Achievement diary cape: 9. TzHaar-Mej	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+1648 3665 0			13069=1||19476=1		4	Achievement diary cape: A. Elise	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+3234 3214 0			13069=1||19476=1		4	Achievement diary cape: B. Hatius Cosaintus	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+3465 3478 0			13069=1||19476=1		4	Achievement diary cape: C. Le-sabrè	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+3225 3415 0			13069=1||19476=1		4	Achievement diary cape: D. Toby	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+3121 3516 0			13069=1||19476=1		4	Achievement diary cape: E. Lesser Fanatic	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+2467 3459 0			13069=1||19476=1		4	Achievement diary cape: F. Elder Gnome child	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+3096 3227 0			13069=1||19476=1		4	Achievement diary cape: G. Twiggy O'Korn	F	20	4461=1;4465=1;4469=1;4474=1;4478=1;4482=1;4486=1;4490=1;4494=1;4498=1;4566=1	
+										
+# Quest items										
+# Ectophial - includes the empty version										
+3660 3522 0			4251=1||4252=1		4	Ectophial	F	20		
+2330 3171 0			6099=1||6100=1||6101=1||6102=1||13102=1		4	Teleport crystal: Lletya	T	20		
+3264 6066 0			6099=1||6100=1||6101=1||6102=1||13102=1	Song of the Elves	4	Teleport crystal: Prifddinas	T	20		
+2330 3171 0			23946=1		4	Eternal teleport crystal: Lletya	F	20		
+3264 6066 0			23946=1	Song of the Elves	4	Eternal teleport crystal: Prifddinas	F	20		
+2465 3495 0			19564=1		4	Royal seed pod	F	30		
+2465 3495 0			9469=1		4	Grand seed pod	T	30		
+# Enchanted lyre - 4493 is DIARY_FREMENNIK_HARD, 4494 is DIARY_FREMENNIK_ELITE										
+2662 3644 0			3691=1||6125=1||6126=1||6127=1||13079=1		4	Enchanted lyre: Rellekka	T	20		
+2551 3755 0			3691=1||6125=1||6126=1||6127=1||13079=1		4	Enchanted lyre: Waterbirth Island	T	20	4493=1	
+2409 3809 0			3691=1||6125=1||6126=1||6127=1||13079=1		4	Enchanted lyre: Jatizso	T	20	4494=1	
+2336 3802 0			3691=1||6125=1||6126=1||6127=1||13079=1		4	Enchanted lyre: Neitiznot	T	20	4494=1	
+2662 3644 0			23458=1		4	Enchanted lyre (i): Rellekka	F	20		
+2551 3755 0			23458=1		4	Enchanted lyre (i): Waterbirth Island	F	20	4493=1	
+2409 3809 0			23458=1		4	Enchanted lyre (i): Jatizso	F	20	4494=1	
+2336 3802 0			23458=1		4	Enchanted lyre (i): Neitiznot	F	20	4494=1	
+3105 9315 0			6707=1		4	Camulet: Enakhra's Temple	F	20		
+3191 2924 0			6707=1		4	Camulet: Bandit Camp Quarry	F	20	4485=1	
+1714 3611 0			21760=1		4	Kharedst's memoirs: Lunch by the Lancalliums	T	20	6028=1;6035>0	
+1803 3748 0			21760=1		4	Kharedst's memoirs: The Fisher's Flute	T	20	6038=1;6035>0	
+1478 3576 0			21760=1		4	Kharedst's memoirs: History and Hearsay	T	20	6359=1;6035>0	
+1544 3761 0			21760=1		4	Kharedst's memoirs: Jewelry of Jubilation	T	20	7801=1;6035>0	
+1681 3746 0			21760=1		4	Kharedst's memoirs: A Dark Disposition	T	20	7857=1;6035>0	
+1714 3611 0			25818=1		4	Book of the dead: Lunch by the Lancalliums	T	20	6028=1;6035>0	
+1803 3748 0			25818=1		4	Book of the dead: The Fisher's Flute	T	20	6038=1;6035>0	
+1478 3576 0			25818=1		4	Book of the dead: History and Hearsay	T	20	6359=1;6035>0	
+1544 3761 0			25818=1		4	Book of the dead: Jewelry of Jubilation	T	20	7801=1;6035>0	
+1681 3746 0			25818=1		4	Book of the dead: A Dark Disposition	T	20	7857=1;6035>0	
+3649 3230 0			22400=1		4	Drakan's medallion: Ver Sinhaza	F	20		
+3592 3337 0			22400=1	Sins of the Father	4	Drakan's medallion: Darkmeyer	F	20		
+# todo: this only works if you've used a Slepey tablet on the medallion										
+3808 9700 0			22400=1		4	Drakan's medallion: Slepe	F	20		
+2457 2850 0			21913=1||22114=1||24855=1		4	Mythical cape	F	20		
+# Stony basalt - 6528 is MAKING_FRIENDS_WITH_MY_ARM and 4493 is DIARY_FREMENNIK_HARD										
+2845 3694 0			22601=1		4	Stony basalt	T	20	6528=207	
+2837 3695 0		73 Agility	22601=1		4	Stony basalt: Roof	T	20	6528=207;4493=1	
+2846 3938 0			22599=1		4	Icy basalt	T	20	6528=207	
+										
+# Other										
+1934 4428 0			26948=1		4	Pharaoh's sceptre: Jalsavrah	T	20		
+3341 2827 0			26948=1		4	Pharaoh's sceptre: Jaleustrophos	T	20		
+3232 2897 0			26948=1		4	Pharaoh's sceptre: Jaldraocht	T	20		
+3313 2718 0			26948=1		4	Pharaoh's sceptre: Jaltevas	T	20	13839=1	
+3081 3421 0			9013=1||21276=1		4	Skull sceptre	T	20		
+1579 3530 0			13393=1		4	Xeric's talisman: 1. Xeric's Lookout	T	20		
+1752 3566 0			13393=1		4	Xeric's talisman: 2. Xeric's Glade	T	20		
+1504 3815 0			13393=1		4	Xeric's talisman: 3. Xeric's Inferno	T	20		
+1644 3673 0			13393=1		4	Xeric's talisman: 4. Xeric's Heart	T	20		
+# Requires the use of an ancient tablet to activate										
+1254 3560 0			13393=1		4	Xeric's talisman: 5. Xeric's Honour	T	20		
+3200 3355 0			13660=1		4	Chronicle	T	0		
+3615 9461 0			26914=1		4	Amulet of the eye	F	20		
+2981 3276 0			26818=1		4	Ring of the elements: Air	T	20		
+3170 3155 0			26818=1		4	Ring of the elements: Water	T	20		
+3288 3468 0			26818=1		4	Ring of the elements: Earth	T	20		
+3314 3279 0			26818=1		4	Ring of the elements: Fire	T	20		
+2400 5982 0			24709=1		4	Hallowed crystal shard	T	20		
+3296 6436 0			28327=1		4	Ring of shadows: Ancient Vault	T	20		
+# todo: The remaining Ring of shadows teleports require using a tablet on it once										
+2912 10336 0			28327=1		4	Ring of shadows: Ghorrock Dungeon	T	20		
+2019 6434 0			28327=1		4	Ring of shadows: The Scar	T	20		
+2588 6435 0			28327=1		4	Ring of shadows: Lassar Undercity	T	20		
+1175 3424 0			28327=1		4	Ring of shadows: The Stranglewood	T	20		
+1491 3283 0			29893=1		4	Pendant of ates: 1. The Darkfrost	T	20	11175=1	
+1668 3223 0			29893=1		4	Pendant of ates: 2. Twilight Temple	T	20	11176=1	
+1459 3138 0			29893=1		4	Pendant of ates: 3. Ralos' Rise	T	20	11177=1	
+# Requires using an icon to use										
+1426 2995 0			29893=1		4	Pendant of ates: 4. North Aldarin	T	20	11178=1	
+1367 3086 0			29893=1		4	Pendant of ates: 5. Kastori	T	20	11179=1	
+1365 3276 0			29893=1		4	Pendant of ates: 6. Nemus Retreat	T	20	11180=1	
+										
+# Giantsoul amulet										
+3174 9898 0			30638=1		4	Giantsoul amulet: 1. Bryophyta	T	20		
+3096 9833 0			30638=1		4	Giantsoul amulet: 2. Obor	T	20		
+2952 9574 0			30638=1		4	Giantsoul amulet: 3. Branda and Eldric	T	20		
+										
+# Sailors' amulet (Charged)										
+# TODO: gate Port Roberts and Deepfin Point teleports on the Sailors' Marker inspection varbit.										
+# Confirmed from cache dump (see SailingAmenityVarbitDumperTest):										
+#   Item 32398 Sailors amulet (inert)   interfaceOptions: [null, Wear, null, Inspect, Destroy]										
+#   Item 32399 Sailors amulet (charged) interfaceOptions: [null, Wear, Teleport, Check, Destroy]										
+#     subops[2] = [The Pandemonium, Port Roberts, _, _, Deepfin Point, ...]										
+#     param[2257] = 7040 (cs2 script that handles the Teleport submenu and checks the unlock varbit).										
+# The unlock varbit itself lives only in that cs2 script and can't be decoded by the bundled										
+# runelite-cache 1.12.24 loader against the current cache rev. Find it in-game by inspecting the										
+# Sailors' Marker with RuneLite's varbit inspector open. Marker scenery object IDs + world tiles:										
+#   59985 Port Roberts     @ 1902 3304 1										
+#   59988 Deepfin Point    @ 1936 2766 1										
+#   59986 Red Rock         @ 2803 2523 1 (not currently accessible)										
+3058 2975 0			32399=1		4	Sailors' amulet: The Pandemonium	T	20		
+1889 3292 0			32399=1		4	Sailors' amulet: Port Roberts	T	20		
+1943 2757 0			32399=1		4	Sailors' amulet: Deepfin Point	T	20		
+
+# Cowbell amulet										
+3259 3277 0			33104=1		4	Cowbell amulet	T	20		

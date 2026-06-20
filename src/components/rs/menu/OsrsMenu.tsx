@@ -18,6 +18,8 @@ function getTargetClassName(type: MenuTargetType): string {
 
 export interface OsrsMenuEntry extends MenuEntry {
     onClick?: (entry: MenuEntry) => void;
+    /** True when this option triggers a transport (teleport / travel). */
+    isTransport?: boolean;
 }
 
 export interface OsrsMenuProps {

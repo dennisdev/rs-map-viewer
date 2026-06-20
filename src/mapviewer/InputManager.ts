@@ -1,6 +1,11 @@
 import { vec2 } from "gl-matrix";
 import { IJoystickUpdateEvent } from "react-joystick-component/build/lib/Joystick";
 
+// A left press/release within this movement (px²) and duration (ms) counts as a
+// click rather than a camera drag.
+const LEFT_CLICK_MOVE_TOLERANCE_SQ = 16;
+const LEFT_CLICK_TIME_MS = 350;
+
 export function getMousePos(container: HTMLElement, event: MouseEvent | Touch): vec2 {
     const rect = container.getBoundingClientRect();
     const x = event.clientX - rect.left;
@@ -39,6 +44,17 @@ export class InputManager {
 
     pickX: number = -1;
     pickY: number = -1;
+
+    /** Left mouse press position/time, used to detect a click vs. a camera drag. */
+    private leftDownX: number = -1;
+    private leftDownY: number = -1;
+    private leftDownTime: number = 0;
+
+    /**
+     * Set for one frame when the left button is pressed and released without
+     * dragging, so the renderer can trigger the default (top) menu option.
+     */
+    leftClick: boolean = false;
 
     positionJoystickEvent?: IJoystickUpdateEvent;
     cameraJoystickEvent?: IJoystickUpdateEvent;
@@ -192,6 +208,9 @@ export class InputManager {
         this.dragY = y;
         this.mouseX = x;
         this.mouseY = y;
+        this.leftDownX = x;
+        this.leftDownY = y;
+        this.leftDownTime = performance.now();
     };
 
     private onMouseMove = (event: MouseEvent) => {
@@ -210,6 +229,20 @@ export class InputManager {
     };
 
     private onMouseUp = (event: MouseEvent) => {
+        // Detect a left click (press + release without meaningful movement) so
+        // the viewer can trigger the default menu option, OSRS-style. A real
+        // camera drag exceeds the threshold and is ignored here.
+        if (event.button === 0 && this.leftDownX !== -1 && this.element) {
+            const [x, y] = getMousePos(this.element, event);
+            const dx = x - this.leftDownX;
+            const dy = y - this.leftDownY;
+            const movedSq = dx * dx + dy * dy;
+            const elapsed = performance.now() - this.leftDownTime;
+            if (movedSq <= LEFT_CLICK_MOVE_TOLERANCE_SQ && elapsed <= LEFT_CLICK_TIME_MS) {
+                this.leftClick = true;
+            }
+            this.leftDownX = -1;
+        }
         this.dragX = -1;
         this.dragY = -1;
     };
@@ -295,6 +328,7 @@ export class InputManager {
         this.deltaMouseY = 0;
         this.pickX = -1;
         this.pickY = -1;
+        this.leftClick = false;
         this.lastMouseX = this.mouseX;
         this.lastMouseY = this.mouseY;
     }
