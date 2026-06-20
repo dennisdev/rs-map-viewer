@@ -1,0 +1,123 @@
+.music-library-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.3);
+    z-index: 1337;
+}
+
+.music-library-modal {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 480px;
+    max-width: calc(100vw - 40px);
+    height: 560px;
+    max-height: calc(100vh - 60px);
+    padding: 10px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    outline: none;
+}
+
+.music-library-close {
+    position: absolute;
+    right: 4px;
+    top: 2px;
+    cursor: pointer;
+    font-size: 22px;
+    line-height: 1;
+    padding: 4px 8px;
+    color: #ff981f;
+    user-select: none;
+}
+
+.music-library-close:hover {
+    color: #ffeb3b;
+}
+
+.music-library-header {
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.music-library-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    background: black;
+    color: white;
+    font-size: 13px;
+    border-radius: 0;
+    outline: none;
+}
+
+.music-library-search:focus {
+    color: #ffeb3b;
+}
+
+.music-library-count {
+    font-size: 11px;
+    color: #b8c0c8;
+    margin: 6px 0 4px;
+}
+
+.music-library-list {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #3a3a3a;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.music-library-row {
+    padding: 5px 10px;
+    border-bottom: 1px solid #2a2a2a;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.music-library-row:hover:not(.disabled) {
+    background: rgba(255, 152, 31, 0.15);
+    color: #ffeb3b;
+}
+
+.music-library-row.current {
+    color: #ff981f;
+}
+
+.music-library-row.disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.music-library-row-name {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.music-library-playing {
+    font-size: 9px;
+}
+
+.music-library-row-meta {
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+    color: #8c95a0;
+    padding-left: 16px;
+}
+
+.music-library-empty {
+    padding: 20px;
+    text-align: center;
+    color: #8c95a0;
+    font-size: 13px;
+}
