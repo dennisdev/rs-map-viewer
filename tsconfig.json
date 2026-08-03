@@ -1,20 +1,8 @@
 {
-  "ts-node": {
-    "esm": true,
-    "files": true,
-    "compilerOptions": {
-      "module": "nodenext",
-    }
-  },
   "compilerOptions": {
-    "target": "ES2020",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext",
-      "ES2020"
-    ],
-    "types": ["@webgpu/types"],
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext", "ES2022"],
+    "types": ["@webgpu/types", "node", "vitest/globals"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -23,13 +11,21 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "paths": {
+        "threads": ["./node_modules/threads/dist/index.d.ts"],
+        "threads/worker": ["./node_modules/threads/worker.d.ts"],
+        "threads/dist/master/pool": ["./node_modules/threads/dist/master/pool.d.ts"],
+        "threads/dist/master/pool-types": ["./node_modules/threads/dist/master/pool-types.d.ts"],
+        "threads/dist/observable-promise": ["./node_modules/threads/dist/observable-promise.d.ts"]
+    },
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "verbatimModuleSyntax": false,
     "noEmit": true,
     "jsx": "react-jsx"
   },
   "include": [
-    "src", "scripts"
+    "src", "scripts", "vite.config.ts"
   ]
 }

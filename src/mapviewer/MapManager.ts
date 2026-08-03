@@ -242,7 +242,7 @@ export class MapManager<T extends MapSquare> {
     }
 
     cleanUp(): void {
-        this.renderBounds.fill(-1);
+        this.renderBounds = vec4.fromValues(-1, -1, -1, -1);
         this.clearMaps();
     }
 }

@@ -8,6 +8,25 @@ import { MapManager, MapSquare } from "./MapManager";
 import { MapViewer } from "./MapViewer";
 import { MapViewerRendererType } from "./MapViewerRenderers";
 
+/** Geometry describing the camera rail for in-scene visualisation. */
+export interface CameraPathGeometry {
+    /** Flat xyz positions sampled along the rail (spatially uniform), drawn as a line strip. */
+    path: Float32Array;
+    /**
+     * Flat xyz positions sampled at equal *time* intervals across the recording,
+     * drawn as a point trail. Dot density therefore correlates with camera speed
+     * (slow zones bunch up, fast zones spread out).
+     */
+    dots: Float32Array;
+    /** Flat xyz positions of each keyframe, drawn as markers. */
+    keyframes: Float32Array;
+    /**
+     * Flat xyz pairs [start, end] per keyframe describing its aim segment,
+     * pointing where the camera looks at that keyframe.
+     */
+    aims: Float32Array;
+}
+
 export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends Renderer {
     abstract type: MapViewerRendererType;
 
@@ -45,6 +64,18 @@ export abstract class MapViewerRenderer<T extends MapSquare = MapSquare> extends
     getControls(): Schema {
         return {};
     }
+
+    /**
+     * Push camera rail geometry for in-scene visualisation. No-op by default;
+     * overridden by renderers that support overlay drawing (WebGL).
+     */
+    setCameraPath(_geometry: CameraPathGeometry): void {}
+
+    /** Toggle visibility of the camera rail overlay. No-op by default. */
+    setCameraPathVisible(_visible: boolean): void {}
+
+    /** Highlight a path segment by index (-1 clears). No-op by default. */
+    setHighlightedSegment(_index: number): void {}
 
     queueLoadMap(mapX: number, mapY: number): void {}
 

@@ -235,7 +235,7 @@ function partsToBuffer(parts: Uint8Array[], shared: boolean): ArrayBuffer {
         u8.set(buffer, offset);
         offset += buffer.byteLength;
     }
-    return sab;
+    return sab as ArrayBuffer;
 }
 
 type CachedFile = {

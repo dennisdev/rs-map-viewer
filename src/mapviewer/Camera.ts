@@ -164,4 +164,21 @@ export class Camera {
     getMapY(): number {
         return this.getPosZ() >> 6;
     }
+
+    /**
+     * World-space unit vector the camera looks along for the given pitch/yaw,
+     * using the same rotation convention as {@link update} (forward = local -Z
+     * transformed by Ry·Rz(180°)·Rx). `out` receives the result.
+     */
+    static getDirection(pitch: number, yaw: number, out: vec3 = vec3.create()): vec3 {
+        const m = mat4.create();
+        mat4.rotateY(m, m, (yaw - 1024) * RS_TO_RADIANS);
+        mat4.rotateZ(m, m, 180 * DEGREES_TO_RADIANS);
+        mat4.rotateX(m, m, pitch * RS_TO_RADIANS);
+        // Rotation R = Ry·Rz·Rx; forward = R · (0,0,-1) = -third column of R.
+        out[0] = -m[8];
+        out[1] = -m[9];
+        out[2] = -m[10];
+        return out;
+    }
 }

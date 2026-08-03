@@ -123,10 +123,8 @@ export class SkeletalBone {
 
     getInvertedModelMatrix(poseId: number): mat4 {
         if (this.invertedModelMatrices[poseId] === undefined) {
-            this.invertedModelMatrices[poseId] = mat4.invert(
-                mat4.create(),
-                this.getModelMatrix(poseId),
-            );
+            const inverted = mat4.invert(mat4.create(), this.getModelMatrix(poseId));
+            this.invertedModelMatrices[poseId] = inverted ?? mat4.create();
         }
         return this.invertedModelMatrices[poseId];
     }

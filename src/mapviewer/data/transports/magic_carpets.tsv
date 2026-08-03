@@ -1,0 +1,17 @@
+# Origin	Destination	menuOption menuTarget objectID	Duration	Items	Varbits	Display info
+# Shantay Pass, Pollnivneach Bedabin Camp, Ruins of Uzer						
+3311 3109 0	3467 3110 0	Travel Rug Merchant 17	65	COINS=200	346=10	1: Uzer
+3467 3110 0	3311 3109 0	Travel Rug Merchant 21	65	COINS=200	346=10	1: Shantay Pass
+3311 3109 0	3182 3043 0	Travel Rug Merchant 17	77	COINS=200		2: Bedabin Camp
+3182 3043 0	3311 3109 0	Travel Rug Merchant 18	77	COINS=200		1: Shantay Pass
+3311 3109 0	3350 3001 0	Travel Rug Merchant 17	63	COINS=200		3: Pollnivneach
+3350 3001 0	3311 3109 0	Travel Rug Merchant 20	63	COINS=200		1: Shantay Pass
+						
+# Pollnivneach, Nardah, Sophanem, Menaphos						
+3348 2942 0	3401 2918 0	Travel Rug Merchant 19	36	COINS=200	418<26	1: Nardah
+3348 2942 0	3401 2918 0	Travel Rug Merchant 19	36	COINS=200	418=26	3: Nardah
+3401 2918 0	3348 2942 0	Travel Rug Merchant 22	36	COINS=200		1: Pollnivneach
+3348 2942 0	3287 2813 0	Travel Rug Merchant 19	50	COINS=200	418=26	1: Sophanem
+3287 2813 0	3348 2942 0	Travel Rug Merchant 1321	50	COINS=200	418=26	1: Pollnivneach
+3348 2942 0	3243 2813 0	Travel Rug Merchant 19	50	COINS=200	418=26	2: Menaphos
+3243 2813 0	3348 2942 0	Travel Rug Merchant 1322	50	COINS=200	418=26	1: Pollnivneach

@@ -1,0 +1,18 @@
+#Destination	menuOption menuTarget objectID	Skills	Items	Quests	Duration	Display info	Consumable	Wilderness level	Varbits	VarPlayers
+# Quetzal whistle - teleports to any unlocked quetzal destination										
+# Always available destinations after Twilight's Promise										
+1389 2901 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Aldarin	T	20		
+1411 3361 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Auburnvale	T	20		
+1697 3140 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Civitas illa Fortis	T	20		
+1585 3053 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Hunter Guild	T	20		
+1510 3222 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Quetzacalli Gorge	T	20		
+1548 2995 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Sunset Coast	T	20		
+1226 3091 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Tal Teklan	T	20		
+1437 3171 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: The Teomat	T	20		
+# Destinations requiring platform to be built (VarPlayer 4182 bits)										
+1779 3111 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Fortis Colosseum	T	20		4182&256
+1344 3022 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Kastori	T	20		4182&16384
+1700 3037 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Outer Fortis	T	20		4182&128
+1670 2933 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Colossal Wyrm Remains	T	20		4182&64
+1446 3108 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Cam Torum	T	20		4182&32
+1613 3300 0			29271=1||29273=1||29275=1||33120=1	Twilight's Promise	4	Quetzal whistle: Salvager Overlook	T	20		4182&2048

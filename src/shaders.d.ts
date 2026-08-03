@@ -3,7 +3,7 @@ declare module "*.glsl" {
     export default value;
 }
 
-declare module "*.wgsl?source" {
+declare module "*.wgsl?raw" {
     const value: string;
     export default value;
 }

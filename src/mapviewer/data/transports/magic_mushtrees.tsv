@@ -1,0 +1,21 @@
+# Origin	Destination	menuOption menuTarget objectID	Duration	Display info
+# House on the Hill				
+3764 3879 1		Use Magic Mushtree 30920		
+3765 3879 1		Use Magic Mushtree 30920		
+				
+# Verdant Valley				
+3757 3756 0		Use Magic Mushtree 30924		
+3757 3757 0		Use Magic Mushtree 30924		
+				
+# Sticky Swamp				
+3676 3755 0		Use Magic Mushtree 30924		
+3676 3756 0		Use Magic Mushtree 30924		
+				
+# Mushroom Meadow				
+3676 3871 0		Use Magic Mushtree 30924		
+3676 3872 0		Use Magic Mushtree 30924		
+				
+	3764 3879 1		6	1. House on the Hill
+	3760 3758 0		6	2. Verdant Valley
+	3676 3755 0		6	3. Sticky Swamp
+	3676 3871 0		6	4. Mushroom Meadow

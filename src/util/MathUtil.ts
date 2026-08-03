@@ -27,6 +27,14 @@ export const slerp = (start: number, end: number, progress: number, range: numbe
     return start + movement;
 };
 
+export const easeLinear = (t: number) => t;
+
+export const easeIn = (t: number) => t * t * t;
+
+export const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+export const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
 export function isPowerOfTwo(n: number) {
     return n === (-n & n);
 }
@@ -51,7 +59,7 @@ export function nextIntJagex(random: JavaRandom, bound: number): number {
     if (isPowerOfTwo(bound)) {
         return Number((BigInt(bound) * (BigInt(random.nextInt()) & 0xffffffffn)) >> 32n);
     }
-    const maxValue = (-0x80000000 - (0x100000000 % bound | 0)) | 0;
+    const maxValue = (-0x80000000 - ((0x100000000 % bound) | 0)) | 0;
     let rndValue: number;
     do {
         rndValue = random.nextInt();

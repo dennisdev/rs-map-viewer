@@ -1027,7 +1027,7 @@ export class Model extends Entity {
             if (group && group.length !== 0) {
                 const scalings = this.animMayaScales[v];
 
-                Model.sketetalTransformMatrix.fill(0);
+                (Model.sketetalTransformMatrix as Float32Array).fill(0);
                 for (let i = 0; i < group.length; i++) {
                     const boneId = group[i];
                     const bone = skeletalBase.getBone(boneId);

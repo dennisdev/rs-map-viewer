@@ -6,6 +6,9 @@ const CACHE_PATH = "/caches/";
 
 export async function fetchCacheInfos(): Promise<CacheInfo[]> {
     const resp = await fetch(CACHE_PATH + "caches.json");
+    if (!resp.ok) {
+        throw new Error(`Failed to fetch caches.json: ${resp.status} ${resp.statusText}`);
+    }
     return resp.json();
 }
 
@@ -15,15 +18,23 @@ export type CacheList = {
 };
 
 export async function fetchCacheList(): Promise<CacheList | undefined> {
-    const caches = await fetchCacheInfos();
-    const latest = getLatestCache(caches);
-    if (!latest) {
+    try {
+        const caches = await fetchCacheInfos();
+        const latest = getLatestCache(caches);
+        if (!latest) {
+            return undefined;
+        }
+        return {
+            caches,
+            latest,
+        };
+    } catch (e) {
+        console.error(
+            "Failed to load cache list. Run `npm run download-caches` to fetch the game caches.",
+            e,
+        );
         return undefined;
     }
-    return {
-        caches,
-        latest,
-    };
 }
 
 export type LoadedCache = {
