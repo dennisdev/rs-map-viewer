@@ -5,6 +5,7 @@ export type SdMapLoaderInput = {
     maxLevel: number;
     loadObjs: boolean;
     loadNpcs: boolean;
+    loadLocs: boolean;
 
     smoothTerrain: boolean;
 
